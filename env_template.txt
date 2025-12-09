@@ -1,0 +1,26 @@
+# Telegram Bot Configuration
+# Получите токен у @BotFather в Telegram
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+
+# KIE AI API Configuration
+# Получите API ключ на https://api.kie.ai
+KIE_API_KEY=your_kie_api_key_here
+KIE_API_URL=https://api.kie.ai
+KIE_TIMEOUT_SECONDS=30
+
+# Admin Configuration
+# Ваш Telegram User ID (можно узнать у @userinfobot)
+ADMIN_ID=6913446846
+
+# Payment Configuration (для проверки скриншотов оплаты)
+# Эти параметры используются для OCR проверки платежей
+PAYMENT_CARD_HOLDER=Дмитрий
+PAYMENT_PHONE=89962176524
+PAYMENT_BANK=Юмани
+
+# Support Configuration
+# Контакт для связи с поддержкой
+SUPPORT_TELEGRAM=@username
+SUPPORT_TEXT=Если у вас возникли вопросы, напишите администратору
+
+

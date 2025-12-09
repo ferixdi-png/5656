@@ -1,0 +1,42 @@
+{
+  "name": "kie-telegram-bot",
+  "version": "1.0.0",
+  "description": "AI Models Marketplace Telegram bot with KIE.ai integration",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "start:python": "node index.js",
+    "start:node": "node --loader esm mybot_new.js",
+    "bot": "node index.js",
+    "sync:models": "node scripts/kie-sync.mjs",
+    "doctor": "node scripts/doctor.mjs",
+    "dev": "node index.js",
+    "health": "node -e \"import('./scripts/doctor.mjs').then(m => m.runDoctor())\" && echo 'Health check completed'",
+    "pack": "node generate-pack.mjs",
+    "logs": "type logs\\kie-sync.log"
+  },
+  "dependencies": {
+    "telegraf": "^4.16.3",
+    "axios": "^1.6.0",
+    "cheerio": "^1.0.0-rc.12",
+    "node-html-parser": "^6.1.12",
+    "@supabase/supabase-js": "^2.38.4",
+    "dotenv": "^16.3.1",
+    "fs-extra": "^11.1.1",
+    "validator": "^13.11.0",
+    "node-fetch": "^2.7.0",
+    "file-type": "^16.5.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "ai",
+    "models",
+    "kie"
+  ],
+  "author": "KIE",
+  "license": "MIT"
+}

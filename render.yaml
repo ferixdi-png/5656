@@ -1,0 +1,22 @@
+# Render.com Configuration
+# Этот файл позволяет автоматически настроить сервис на Render
+
+services:
+  - type: web
+    name: kie-telegram-bot
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free  # Измените на 'starter' или 'standard' для постоянной работы
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      # Добавьте остальные переменные через панель Render:
+      # TELEGRAM_BOT_TOKEN
+      # KIE_API_KEY
+      # ADMIN_ID
+    healthCheckPath: /
+    autoDeploy: true
+
