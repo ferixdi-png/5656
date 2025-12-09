@@ -720,19 +720,19 @@ def get_payment_details() -> str:
     # Check if any payment details are configured
     has_details = False
     
-    if phone:
+    if phone and phone != '':
         details += f"📱 <b>Номер телефона:</b> <code>{phone}</code>\n"
         has_details = True
     else:
         details += "📱 <b>Номер телефона:</b> <i>Не указан в настройках</i>\n"
     
-    if bank:
+    if bank and bank != '':
         details += f"🏦 <b>Банк:</b> {bank}\n"
         has_details = True
     else:
         details += "🏦 <b>Банк:</b> <i>Не указан в настройках</i>\n"
     
-    if card_holder:
+    if card_holder and card_holder != '':
         details += f"👤 <b>Получатель:</b> {card_holder}\n"
         has_details = True
     else:
@@ -797,17 +797,23 @@ def use_free_generation(user_id: int) -> bool:
     today = datetime.now().strftime('%Y-%m-%d')
     
     if user_key not in data:
-        data[user_key] = {'date': today, 'count': 0}
+        data[user_key] = {'date': today, 'count': 0, 'bonus': 0}
     
     user_data = data[user_key]
     
-    # Reset if new day
+    # Reset if new day (but keep bonus)
     if user_data.get('date') != today:
+        old_bonus = user_data.get('bonus', 0)
         user_data['date'] = today
         user_data['count'] = 0
+        user_data['bonus'] = old_bonus  # Keep bonus across days
     
-    # Check limit
-    if user_data.get('count', 0) >= FREE_GENERATIONS_PER_DAY:
+    # Get total available (base + bonus)
+    bonus = user_data.get('bonus', 0)
+    total_available = FREE_GENERATIONS_PER_DAY + bonus
+    
+    # Check limit (including bonus)
+    if user_data.get('count', 0) >= total_available:
         return False
     
     # Increment count
@@ -833,8 +839,12 @@ def is_free_generation_available(user_id: int, model_id: str) -> bool:
 
 def get_support_contact() -> str:
     """Get support contact information from .env (only Telegram)."""
-    support_telegram = os.getenv('SUPPORT_TELEGRAM', '')
-    support_text = os.getenv('SUPPORT_TEXT', '')
+    # Reload environment variables to ensure latest values
+    from dotenv import load_dotenv
+    load_dotenv()
+    
+    support_telegram = os.getenv('SUPPORT_TELEGRAM', '').strip()
+    support_text = os.getenv('SUPPORT_TEXT', '').strip()
     
     contact = "🆘 <b>Поддержка</b>\n\n"
     
@@ -844,13 +854,105 @@ def get_support_contact() -> str:
         contact += "Если у вас возникли вопросы или проблемы, свяжитесь с нами:\n\n"
     
     if support_telegram:
-        telegram_username = support_telegram.replace('@', '')
-        contact += f"💬 <b>Telegram:</b> @{telegram_username}\n"
+        telegram_username = support_telegram.replace('@', '').strip()
+        if telegram_username:
+            contact += f"💬 <b>Telegram:</b> @{telegram_username}\n"
+        else:
+            contact += "⚠️ Контактная информация не настроена.\n"
+            contact += "Обратитесь к администратору."
     else:
         contact += "⚠️ Контактная информация не настроена.\n"
         contact += "Обратитесь к администратору."
     
     return contact
+
+
+def get_referrals_data() -> dict:
+    """Get referrals data."""
+    return load_json_file(REFERRALS_FILE, {})
+
+
+def save_referrals_data(data: dict):
+    """Save referrals data."""
+    save_json_file(REFERRALS_FILE, data)
+
+
+def get_user_referrals(user_id: int) -> list:
+    """Get list of users referred by this user."""
+    data = get_referrals_data()
+    user_key = str(user_id)
+    return data.get(user_key, {}).get('referred_users', [])
+
+
+def get_referrer(user_id: int) -> int:
+    """Get the user who referred this user, or None if not referred."""
+    data = get_referrals_data()
+    user_key = str(user_id)
+    return data.get(user_key, {}).get('referred_by')
+
+
+def add_referral(referrer_id: int, referred_id: int):
+    """Add a referral relationship and give bonus to referrer."""
+    import time
+    data = get_referrals_data()
+    referrer_key = str(referrer_id)
+    referred_key = str(referred_id)
+    
+    # Check if already referred
+    if referred_key in data and data[referred_key].get('referred_by'):
+        return  # Already referred by someone
+    
+    # Add referral relationship
+    if referred_key not in data:
+        data[referred_key] = {}
+    data[referred_key]['referred_by'] = referrer_id
+    data[referred_key]['referred_at'] = int(time.time())
+    
+    # Add to referrer's list
+    if referrer_key not in data:
+        data[referrer_key] = {'referred_users': []}
+    if 'referred_users' not in data[referrer_key]:
+        data[referrer_key]['referred_users'] = []
+    
+    if referred_id not in data[referrer_key]['referred_users']:
+        data[referrer_key]['referred_users'].append(referred_id)
+    
+    save_referrals_data(data)
+    
+    # Give bonus generations to referrer
+    give_bonus_generations(referrer_id, REFERRAL_BONUS_GENERATIONS)
+
+
+def give_bonus_generations(user_id: int, bonus_count: int):
+    """Give bonus free generations to a user."""
+    from datetime import datetime
+    
+    data = get_free_generations_data()
+    user_key = str(user_id)
+    today = datetime.now().strftime('%Y-%m-%d')
+    
+    if user_key not in data:
+        data[user_key] = {'date': today, 'count': 0, 'bonus': 0}
+    
+    user_data = data[user_key]
+    
+    # Reset if new day (but keep bonus)
+    if user_data.get('date') != today:
+        old_bonus = user_data.get('bonus', 0)
+        user_data['date'] = today
+        user_data['count'] = 0
+        user_data['bonus'] = old_bonus + bonus_count
+    else:
+        user_data['bonus'] = user_data.get('bonus', 0) + bonus_count
+    
+    save_free_generations_data(data)
+
+
+def get_user_referral_link(user_id: int, bot_username: str = None) -> str:
+    """Get referral link for user."""
+    if bot_username is None:
+        bot_username = "Ferixdi_bot_ai_bot"
+    return f"https://t.me/{bot_username}?start=ref_{user_id}"
 
 
 async def analyze_payment_screenshot(image_data: bytes, expected_amount: float, expected_phone: str = None) -> dict:
@@ -1263,7 +1365,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         welcome_text = (
             f'🚀 <b>✨ ДОСТУП К ЛУЧШИМ AI-МОДЕЛЯМ МИРА БЕЗ VPN! ✨</b>\n\n'
             f'Привет, {user.mention_html()}! 👋\n\n'
-            f'🎯 <b>ПЕРВЫЙ В РОССИИ ДОСТУП К ТОПОВЫМ НЕЙРОСЕТЯМ 2025!</b>\n\n'
+            f'🎯 <b>ДОСТУП К ТОПОВЫМ НЕЙРОСЕТЯМ 2025!</b>\n\n'
             f'🌟 <b>ЧТО ВАС ЖДЕТ:</b>\n'
             f'🔥 <b>Google Imagen 4 Ultra</b> - только что представлена на Google I/O 2025!\n'
             f'🔥 <b>OpenAI Sora 2</b> - революция в видео-генерации!\n'
@@ -1328,6 +1430,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ])
         keyboard.append([
             InlineKeyboardButton("🎁 Активировать промокод", callback_data="activate_promo")
+        ])
+        keyboard.append([
+            InlineKeyboardButton("👥 Пригласить друга", callback_data="invite_friend")
         ])
         keyboard.append([InlineKeyboardButton("🆘 Помощь", callback_data="help_menu")])
     
@@ -1476,7 +1581,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             welcome_text = (
                 f'🚀 <b>✨ ДОСТУП К ЛУЧШИМ AI-МОДЕЛЯМ МИРА БЕЗ VPN! ✨</b>\n\n'
                 f'Привет, {user.mention_html()}! 👋\n\n'
-                f'🎯 <b>ПЕРВЫЙ В РОССИИ ДОСТУП К ТОПОВЫМ НЕЙРОСЕТЯМ 2025!</b>\n\n'
+                f'🎯 <b>ДОСТУП К ТОПОВЫМ НЕЙРОСЕТЯМ 2025!</b>\n\n'
                 f'🌟 <b>ЧТО ВАС ЖДЕТ:</b>\n'
                 f'🔥 <b>Google Imagen 4 Ultra</b> - только что представлена на Google I/O 2025!\n'
                 f'🔥 <b>OpenAI Sora 2</b> - революция в видео-генерации!\n'
@@ -1771,7 +1876,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             welcome_text = (
                 f'🚀 <b>✨ ДОСТУП К ЛУЧШИМ AI-МОДЕЛЯМ МИРА БЕЗ VPN! ✨</b>\n\n'
                 f'Привет, {user.mention_html()}! 👋\n\n'
-                f'🎯 <b>ПЕРВЫЙ В РОССИИ ДОСТУП К ТОПОВЫМ НЕЙРОСЕТЯМ 2025!</b>\n\n'
+                f'🎯 <b>ДОСТУП К ТОПОВЫМ НЕЙРОСЕТЯМ 2025!</b>\n\n'
                 f'🌟 <b>ЧТО ВАС ЖДЕТ:</b>\n'
                 f'🔥 <b>Google Imagen 4 Ultra</b> - только что представлена на Google I/O 2025!\n'
                 f'🔥 <b>OpenAI Sora 2</b> - революция в видео-генерации!\n'
@@ -2321,38 +2426,81 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if data == "check_balance":
         # Check balance
-        await query.edit_message_text('💳 Проверяю баланс...')
+        is_admin_user = get_is_admin(user_id)
+        is_main_admin = (user_id == ADMIN_ID)
         
-        try:
-            result = await kie.get_credits()
+        if is_main_admin:
+            # Main admin - show KIE API balance
+            await query.edit_message_text('💳 Проверяю баланс...')
+            try:
+                result = await kie.get_credits()
+                
+                if result.get('ok'):
+                    credits = result.get('credits', 0)
+                    # Convert credits to rubles (no rounding)
+                    credits_rub = credits * CREDIT_TO_USD * USD_TO_RUB
+                    credits_rub_str = f"{credits_rub:.2f}".rstrip('0').rstrip('.')
+                    
+                    keyboard = [
+                        [InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]
+                    ]
+                    
+                    await query.edit_message_text(
+                        f'💳 <b>Баланс KIE API:</b> {credits_rub_str} ₽\n'
+                        f'<i>({credits} кредитов)</i>\n\n'
+                        f'👑 <b>Безлимитный доступ</b> ко всем генерациям.',
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                else:
+                    error = result.get('error', 'Unknown error')
+                    await query.edit_message_text(
+                        f'❌ <b>Ошибка проверки баланса:</b>\n{error}',
+                        parse_mode='HTML'
+                    )
+            except Exception as e:
+                logger.error(f"Error checking balance: {e}")
+                await query.edit_message_text(f'❌ Ошибка: {str(e)}')
+        elif is_admin_user:
+            # Limited admin - show limit info
+            limit = get_admin_limit(user_id)
+            spent = get_admin_spent(user_id)
+            remaining = get_admin_remaining(user_id)
+            keyboard = [
+                [InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]
+            ]
             
-            if result.get('ok'):
-                credits = result.get('credits', 0)
-                # Convert credits to rubles (no rounding)
-                credits_rub = credits * CREDIT_TO_USD * USD_TO_RUB
-                credits_rub_str = f"{credits_rub:.2f}".rstrip('0').rstrip('.')
-                
-                keyboard = [
-                    [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
-                    [InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]
-                ]
-                
-                await query.edit_message_text(
-                    f'💳 <b>Баланс:</b> {credits_rub_str} ₽\n'
-                    f'<i>({credits} кредитов)</i>\n\n'
-                    f'Доступно для генерации контента.',
-                    reply_markup=InlineKeyboardMarkup(keyboard),
-                    parse_mode='HTML'
-                )
-            else:
-                error = result.get('error', 'Unknown error')
-                await query.edit_message_text(
-                    f'❌ <b>Ошибка проверки баланса:</b>\n{error}',
-                    parse_mode='HTML'
-                )
-        except Exception as e:
-            logger.error(f"Error checking balance: {e}")
-            await query.edit_message_text(f'❌ Ошибка: {str(e)}')
+            await query.edit_message_text(
+                f'👑 <b>Баланс администратора:</b>\n\n'
+                f'💳 <b>Лимит:</b> {limit:.2f} ₽\n'
+                f'💸 <b>Потрачено:</b> {spent:.2f} ₽\n'
+                f'✅ <b>Осталось:</b> {remaining:.2f} ₽',
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+        else:
+            # Regular user - show user balance from user_balances.json
+            user_balance = get_user_balance(user_id)
+            balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
+            
+            # Check for free generations
+            remaining_free = get_user_free_generations_remaining(user_id)
+            total_free = FREE_GENERATIONS_PER_DAY + get_free_generations_data().get(str(user_id), {}).get('bonus', 0)
+            free_info = ""
+            if remaining_free > 0:
+                free_info = f"\n\n🎁 <b>Бесплатные генерации:</b> {remaining_free}/{total_free} в день"
+            
+            keyboard = [
+                [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
+                [InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]
+            ]
+            
+            await query.edit_message_text(
+                f'💳 <b>Баланс:</b> {balance_str} ₽{free_info}\n\n'
+                f'Доступно для генерации контента.',
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
         
         return ConversationHandler.END
     
@@ -2527,11 +2675,115 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             
             keyboard = [
+                [InlineKeyboardButton("🎁 Промокоды", callback_data="admin_promocodes")],
                 [InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]
             ]
             
             await query.edit_message_text(
                 settings_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
+        
+        if data == "admin_promocodes":
+            # Show promocodes menu
+            promocodes = load_promocodes()
+            active_promo = get_active_promocode()
+            
+            promocodes_text = "🎁 <b>Управление промокодами</b>\n\n"
+            
+            if active_promo:
+                promo_code = active_promo.get('code', 'N/A')
+                promo_value = active_promo.get('value', 0)
+                promo_expires = active_promo.get('expires', 'N/A')
+                promo_used = active_promo.get('used_count', 0)
+                
+                promocodes_text += (
+                    f"✅ <b>Активный промокод:</b>\n"
+                    f"🔑 <b>Код:</b> <code>{promo_code}</code>\n"
+                    f"💰 <b>Значение:</b> {promo_value} ₽\n"
+                    f"📅 <b>Действителен до:</b> {promo_expires}\n"
+                    f"👥 <b>Использовано раз:</b> {promo_used}\n\n"
+                )
+            else:
+                promocodes_text += "❌ <b>Нет активного промокода</b>\n\n"
+            
+            promocodes_text += "💡 <b>Доступные действия:</b>\n"
+            promocodes_text += "• Создать новый промокод\n"
+            promocodes_text += "• Просмотреть все промокоды\n"
+            promocodes_text += "• Управление промокодами\n"
+            
+            keyboard = [
+                [InlineKeyboardButton("🆕 Создать новый промокод", callback_data="admin_create_promo")],
+                [InlineKeyboardButton("📋 Просмотреть все промокоды", callback_data="admin_list_promos")],
+                [InlineKeyboardButton("🔄 Обновить", callback_data="admin_promocodes")],
+                [InlineKeyboardButton("◀️ Назад", callback_data="admin_settings")]
+            ]
+            
+            await query.edit_message_text(
+                promocodes_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
+        
+        if data == "admin_create_promo":
+            # Generate new daily promo code
+            new_promo = generate_daily_promocode()
+            promo_code = new_promo.get('code', 'N/A')
+            promo_value = new_promo.get('value', 0)
+            promo_expires = new_promo.get('expires', 'N/A')
+            
+            keyboard = [
+                [InlineKeyboardButton("🎁 Промокоды", callback_data="admin_promocodes")],
+                [InlineKeyboardButton("◀️ Назад", callback_data="admin_settings")]
+            ]
+            
+            await query.edit_message_text(
+                f"✅ <b>Новый промокод создан!</b>\n\n"
+                f"🔑 <b>Код:</b> <code>{promo_code}</code>\n"
+                f"💰 <b>Значение:</b> {promo_value} ₽\n"
+                f"📅 <b>Действителен до:</b> {promo_expires}\n\n"
+                f"💡 Промокод автоматически обновляется каждый день.",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
+        
+        if data == "admin_list_promos":
+            # List all promocodes
+            promocodes = load_promocodes()
+            
+            promocodes_text = "📋 <b>Все промокоды:</b>\n\n"
+            
+            if not promocodes or len(promocodes) == 0:
+                promocodes_text += "❌ <b>Нет созданных промокодов</b>\n\n"
+            else:
+                for i, promo in enumerate(promocodes, 1):
+                    promo_code = promo.get('code', 'N/A')
+                    promo_value = promo.get('value', 0)
+                    promo_expires = promo.get('expires', 'N/A')
+                    promo_used = promo.get('used_count', 0)
+                    is_active = promo.get('active', False)
+                    
+                    status = "✅ Активен" if is_active else "❌ Неактивен"
+                    
+                    promocodes_text += (
+                        f"{i}. <b>{status}</b>\n"
+                        f"   🔑 <code>{promo_code}</code>\n"
+                        f"   💰 {promo_value} ₽ | 👥 {promo_used} использований\n"
+                        f"   📅 До: {promo_expires}\n\n"
+                    )
+            
+            keyboard = [
+                [InlineKeyboardButton("🔄 Обновить", callback_data="admin_list_promos")],
+                [InlineKeyboardButton("🎁 Промокоды", callback_data="admin_promocodes")],
+                [InlineKeyboardButton("◀️ Назад", callback_data="admin_settings")]
+            ]
+            
+            await query.edit_message_text(
+                promocodes_text,
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='HTML'
             )
@@ -4103,21 +4355,62 @@ async def check_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_admin_user = get_is_admin(user_id)
     is_main_admin = (user_id == ADMIN_ID)
     
-    # Get user balance
-    user_balance = get_user_balance(user_id)
-    
-    # Check if limited admin
-    is_limited_admin = is_admin(user_id) and not is_main_admin
-    balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
-    
-    if is_limited_admin:
+    if is_main_admin:
+        # Main admin - show KIE API balance
+        try:
+            result = await kie.get_credits()
+            
+            if result.get('ok'):
+                credits = result.get('credits', 0)
+                # Convert credits to rubles (no rounding)
+                credits_rub = credits * CREDIT_TO_USD * USD_TO_RUB
+                credits_rub_str = f"{credits_rub:.2f}".rstrip('0').rstrip('.')
+                
+                await update.message.reply_text(
+                    f'💳 <b>Баланс KIE API:</b> {credits_rub_str} ₽\n'
+                    f'<i>({credits} кредитов)</i>\n\n'
+                    f'👑 <b>Безлимитный доступ</b> ко всем генерациям.',
+                    parse_mode='HTML'
+                )
+            else:
+                error = result.get('error', 'Unknown error')
+                await update.message.reply_text(
+                    f'❌ <b>Ошибка проверки баланса:</b>\n{error}',
+                    parse_mode='HTML'
+                )
+        except Exception as e:
+            logger.error(f"Error checking balance: {e}")
+            await update.message.reply_text(f'❌ Ошибка: {str(e)}')
+    elif is_admin_user:
         # Limited admin - show limit info
         limit = get_admin_limit(user_id)
         spent = get_admin_spent(user_id)
         remaining = get_admin_remaining(user_id)
-        keyboard = [
-            [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
-        ]
+        
+        await update.message.reply_text(
+            f'👑 <b>Баланс администратора:</b>\n\n'
+            f'💳 <b>Лимит:</b> {limit:.2f} ₽\n'
+            f'💸 <b>Потрачено:</b> {spent:.2f} ₽\n'
+            f'✅ <b>Осталось:</b> {remaining:.2f} ₽',
+            parse_mode='HTML'
+        )
+    else:
+        # Regular user - show user balance from user_balances.json
+        user_balance = get_user_balance(user_id)
+        balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
+        
+        # Check for free generations
+        remaining_free = get_user_free_generations_remaining(user_id)
+        total_free = FREE_GENERATIONS_PER_DAY + get_free_generations_data().get(str(user_id), {}).get('bonus', 0)
+        free_info = ""
+        if remaining_free > 0:
+            free_info = f"\n\n🎁 <b>Бесплатные генерации:</b> {remaining_free}/{total_free} в день"
+        
+        await update.message.reply_text(
+            f'💳 <b>Баланс:</b> {balance_str} ₽{free_info}\n\n'
+            f'Доступно для генерации контента.',
+            parse_mode='HTML'
+        )
         
         await update.message.reply_text(
             f'👑 <b>Админ с лимитом</b>\n\n'
