@@ -4411,62 +4411,6 @@ async def check_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f'Доступно для генерации контента.',
             parse_mode='HTML'
         )
-        
-        await update.message.reply_text(
-            f'👑 <b>Админ с лимитом</b>\n\n'
-            f'💳 <b>Лимит:</b> {limit:.2f} ₽\n'
-            f'💸 <b>Потрачено:</b> {spent:.2f} ₽\n'
-            f'✅ <b>Осталось:</b> {remaining:.2f} ₽\n\n'
-            f'💰 <b>Баланс пользователя:</b> {balance_str} ₽',
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-    elif is_main_admin:
-        # Main admin sees both user balance and KIE credits
-        try:
-            result = await kie.get_credits()
-            if result.get('ok'):
-                credits = result.get('credits', 0)
-                credits_rub = credits * CREDIT_TO_USD * USD_TO_RUB
-                credits_rub_str = f"{credits_rub:.2f}".rstrip('0').rstrip('.')
-                keyboard = [
-                    [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
-                    [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
-                ]
-                
-                await update.message.reply_text(
-                    f'💳 <b>Ваш баланс:</b> {balance_str} ₽\n\n'
-                    f'🔧 <b>API баланс:</b> {credits_rub_str} ₽\n'
-                    f'<i>({credits} кредитов)</i>',
-                    reply_markup=InlineKeyboardMarkup(keyboard),
-                    parse_mode='HTML'
-                )
-            else:
-                await update.message.reply_text(
-                    f'💳 <b>Ваш баланс:</b> {balance_str} ₽\n\n'
-                    f'⚠️ API баланс недоступен',
-                    parse_mode='HTML'
-                )
-        except Exception as e:
-            logger.error(f"Error checking KIE balance: {e}")
-            await update.message.reply_text(
-                f'💳 <b>Ваш баланс:</b> {balance_str} ₽\n\n'
-                    f'⚠️ API баланс недоступен',
-                parse_mode='HTML'
-            )
-    else:
-        # Regular user sees only their balance
-        keyboard = [
-            [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
-            [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
-        ]
-        
-        await update.message.reply_text(
-            f'💳 <b>Ваш баланс:</b> {balance_str} ₽\n\n'
-            f'Доступно для генерации контента.',
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
