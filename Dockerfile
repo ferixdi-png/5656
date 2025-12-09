@@ -25,7 +25,8 @@ RUN npm install --omit=dev
 COPY requirements.txt ./
 
 # Install Python dependencies
-RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+# Note: Running as root in Docker is safe and normal
+RUN pip3 install --no-cache-dir --break-system-packages --root-user-action=ignore -r requirements.txt
 
 # Copy all application files
 COPY . .

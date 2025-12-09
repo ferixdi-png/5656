@@ -200,12 +200,73 @@ def calculate_price_rub(model_id: str, params: dict = None, is_admin: bool = Fal
     elif model_id == "seedream/4.5-text-to-image" or model_id == "seedream/4.5-edit":
         # Both Seedream models cost 6.5 credits per image
         base_credits = 6.5
+    elif model_id == "google/nano-banana" or model_id == "google/nano-banana-edit":
+        # Google Nano Banana and Edit both cost 4 credits per image
+        base_credits = 4
+    elif model_id == "google/imagen4-ultra":
+        # Google Imagen 4 Ultra costs 12 credits per image
+        base_credits = 12
+    elif model_id == "google/imagen4-fast":
+        # Google Imagen 4 Fast costs 4 credits per image
+        # Price multiplies by num_images if specified
+        base_credits = 4
+        if params and 'num_images' in params:
+            num_images = int(params.get('num_images', '1'))
+            base_credits = 4 * num_images
+    elif model_id == "google/imagen4":
+        # Google Imagen 4 costs 8 credits per image
+        # Price multiplies by num_images if specified
+        base_credits = 8
+        if params and 'num_images' in params:
+            num_images = int(params.get('num_images', '1'))
+            base_credits = 8 * num_images
     elif model_id == "sora-watermark-remover":
         # Sora watermark remover costs 10 credits per use
         base_credits = 10
     elif model_id == "sora-2-text-to-video":
         # Sora 2 text-to-video costs 30 credits per 10-second video with audio
         base_credits = 30
+    elif model_id == "bytedance/v1-pro-fast-image-to-video":
+        # ByteDance V1 Pro Fast: 16 credits (720p 5s) / 36 credits (720p 10s) / 36 credits (1080p 5s) / 72 credits (1080p 10s)
+        # Default to 720p 5s (16 credits)
+        resolution = params.get('resolution', '720p') if params else '720p'
+        duration = params.get('duration', '5') if params else '5'
+        if resolution == '1080p':
+            base_credits = 36 if duration == '5' else 72
+        else:  # 720p
+            base_credits = 16 if duration == '5' else 36
+    elif model_id == "grok-imagine/image-to-video":
+        # Grok Imagine image-to-video costs 20 credits per 6-second video
+        base_credits = 20
+    elif model_id == "grok-imagine/text-to-video":
+        # Grok Imagine text-to-video costs 20 credits per 6-second video
+        base_credits = 20
+    elif model_id == "grok-imagine/text-to-image":
+        # Grok Imagine text-to-image costs 4 credits per generation (6 images)
+        base_credits = 4
+    elif model_id == "grok-imagine/upscale":
+        # Grok Imagine upscale costs 10 credits per upscale
+        base_credits = 10
+    elif model_id == "hailuo/2-3-image-to-video-pro":
+        # Hailuo 2.3 Pro: 45 credits (Pro 6s 768P) / 90 credits (Pro 10s 768P) / 80 credits (Pro 6s 1080P)
+        # Note: 10s videos are not supported for 1080P
+        resolution = params.get('resolution', '768P') if params else '768P'
+        duration = params.get('duration', '6') if params else '6'
+        if resolution == '1080P':
+            # Only 6s supported for 1080P
+            base_credits = 80
+        else:  # 768P
+            base_credits = 45 if duration == '6' else 90
+    elif model_id == "hailuo/2-3-image-to-video-standard":
+        # Hailuo 2.3 Standard: 30 credits (Standard 6s 768P) / 50 credits (Standard 10s 768P) / 50 credits (Standard 6s 1080P)
+        # Note: 10s videos are not supported for 1080P
+        resolution = params.get('resolution', '768P') if params else '768P'
+        duration = params.get('duration', '6') if params else '6'
+        if resolution == '1080P':
+            # Only 6s supported for 1080P
+            base_credits = 50
+        else:  # 768P
+            base_credits = 30 if duration == '6' else 50
     else:
         # Default fallback
         base_credits = 1.0
@@ -254,6 +315,33 @@ def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = Fa
     elif model_id == "sora-2-text-to-video":
         price = calculate_price_rub(model_id, params, is_admin)
         return format_price_rub(price, is_admin) + " за 10-секундное видео"
+    elif model_id == "bytedance/v1-pro-fast-image-to-video":
+        price = calculate_price_rub(model_id, params, is_admin)
+        resolution = params.get('resolution', '720p') if params else '720p'
+        duration = params.get('duration', '5') if params else '5'
+        return format_price_rub(price, is_admin) + f" за {duration}с видео ({resolution})"
+    elif model_id == "grok-imagine/image-to-video":
+        price = calculate_price_rub(model_id, params, is_admin)
+        return format_price_rub(price, is_admin) + " за 6-секундное видео"
+    elif model_id == "grok-imagine/text-to-video":
+        price = calculate_price_rub(model_id, params, is_admin)
+        return format_price_rub(price, is_admin) + " за 6-секундное видео"
+    elif model_id == "grok-imagine/text-to-image":
+        price = calculate_price_rub(model_id, params, is_admin)
+        return format_price_rub(price, is_admin) + " за генерацию (6 изображений)"
+    elif model_id == "grok-imagine/upscale":
+        price = calculate_price_rub(model_id, params, is_admin)
+        return format_price_rub(price, is_admin) + " за улучшение качества"
+    elif model_id == "hailuo/2-3-image-to-video-pro":
+        price = calculate_price_rub(model_id, params, is_admin)
+        resolution = params.get('resolution', '768P') if params else '768P'
+        duration = params.get('duration', '6') if params else '6'
+        return format_price_rub(price, is_admin) + f" за {duration}с видео Pro ({resolution})"
+    elif model_id == "hailuo/2-3-image-to-video-standard":
+        price = calculate_price_rub(model_id, params, is_admin)
+        resolution = params.get('resolution', '768P') if params else '768P'
+        duration = params.get('duration', '6') if params else '6'
+        return format_price_rub(price, is_admin) + f" за {duration}с видео Standard ({resolution})"
     else:
         price = calculate_price_rub(model_id, params, is_admin)
         return format_price_rub(price, is_admin)
@@ -263,6 +351,7 @@ SELECTING_MODEL, INPUTTING_PARAMS, CONFIRMING_GENERATION = range(3)
 
 # Payment states
 SELECTING_AMOUNT, WAITING_PAYMENT_SCREENSHOT = range(3, 5)
+WAITING_PROMOCODE = 5  # State for entering promo code
 
 # Admin test OCR state
 ADMIN_TEST_OCR = 5
@@ -273,14 +362,198 @@ user_sessions = {}
 # Store saved generation data for "generate again" feature
 saved_generations = {}
 
-# Store saved generation data for "generate again" feature
-saved_generations = {}
+# Rate limiting for flood protection
+user_request_times = {}  # {user_id: [timestamps]}
+FLOOD_LIMIT = 10  # Max requests per time window
+FLOOD_WINDOW = 60  # Time window in seconds (1 minute)
+FLOOD_COOLDOWN = 300  # Cooldown period in seconds (5 minutes) if limit exceeded
+
+
+def check_flood_protection(user_id: int) -> dict:
+    """
+    Check if user is flooding/spamming requests.
+    Returns: {'allowed': bool, 'message': str, 'cooldown_remaining': int}
+    """
+    import time
+    current_time = time.time()
+    
+    # Initialize user request times if not exists
+    if user_id not in user_request_times:
+        user_request_times[user_id] = []
+    
+    # Clean old requests outside the time window
+    user_request_times[user_id] = [
+        t for t in user_request_times[user_id] 
+        if current_time - t < FLOOD_WINDOW
+    ]
+    
+    # Check if user is in cooldown (stored in user_sessions)
+    if user_id in user_sessions:
+        cooldown_until = user_sessions[user_id].get('flood_cooldown_until', 0)
+        if cooldown_until > current_time:
+            remaining = int(cooldown_until - current_time)
+            minutes = remaining // 60
+            seconds = remaining % 60
+            time_str = f"{minutes} мин {seconds} сек" if minutes > 0 else f"{seconds} сек"
+            return {
+                'allowed': False,
+                'message': f'⏳ <b>Слишком много запросов!</b>\n\n'
+                          f'Пожалуйста, подождите <b>{time_str}</b> перед следующим запросом.\n\n'
+                          f'💡 <b>Что это значит?</b>\n'
+                          f'Система защищает от спама и перегрузки. Это временная пауза для стабильной работы бота.',
+                'cooldown_remaining': remaining
+            }
+    
+    # Check current request count
+    request_count = len(user_request_times[user_id])
+    
+    if request_count >= FLOOD_LIMIT:
+        # User exceeded limit - set cooldown
+        if user_id not in user_sessions:
+            user_sessions[user_id] = {}
+        user_sessions[user_id]['flood_cooldown_until'] = current_time + FLOOD_COOLDOWN
+        
+        return {
+            'allowed': False,
+            'message': f'⚠️ <b>Обнаружено слишком много запросов!</b>\n\n'
+                      f'Пожалуйста, <b>не флудите</b>. Подождите <b>{FLOOD_COOLDOWN // 60} минут</b> перед следующим запросом.\n\n'
+                      f'💡 <b>Что это значит?</b>\n'
+                      f'Вы отправили слишком много запросов за короткое время ({FLOOD_LIMIT} запросов за {FLOOD_WINDOW} секунд).\n'
+                      f'Это защита от спама и перегрузки сервера.\n\n'
+                      f'✅ <b>Рекомендация:</b>\n'
+                      f'Делайте паузы между запросами (минимум 6 секунд), чтобы избежать этой блокировки.',
+            'cooldown_remaining': FLOOD_COOLDOWN
+        }
+    
+    # Add current request
+    user_request_times[user_id].append(current_time)
+    
+    return {'allowed': True, 'message': '', 'cooldown_remaining': 0}
+
+
+def get_user_friendly_param_description(param_name: str, param_info: dict, model_id: str = None) -> str:
+    """
+    Get user-friendly description for a parameter with explanations.
+    """
+    base_desc = param_info.get('description', '')
+    
+    # Add explanations for common parameters
+    explanations = {
+        'prompt': {
+            'text': '💬 <b>Что это?</b>\n'
+                   'Текстовое описание того, что вы хотите создать. Чем подробнее описание, тем лучше результат!\n\n'
+                   '💡 <b>Совет:</b>\n'
+                   'Опишите детали: стиль, цвета, композицию, настроение. Например: "Фотореалистичный портрет женщины в стиле 80-х, яркие цвета, ретро атмосфера"',
+            'video': '💬 <b>Что это?</b>\n'
+                    'Текстовое описание движения и сцены для видео. Опишите, что должно происходить в кадре.\n\n'
+                    '💡 <b>Совет:</b>\n'
+                    'Опишите движение, камеру, освещение. Например: "Плавное движение камеры вокруг объекта, мягкое освещение, кинематографический стиль"'
+        },
+        'aspect_ratio': '📐 <b>Что это?</b>\n'
+                       'Соотношение сторон (ширина:высота) вашего изображения/видео.\n\n'
+                       '💡 <b>Выбор:</b>\n'
+                       '• <b>1:1</b> - Квадрат (Instagram, профили)\n'
+                       '• <b>16:9</b> - Широкоформатное (YouTube, презентации)\n'
+                       '• <b>9:16</b> - Вертикальное (Stories, TikTok)\n'
+                       '• <b>3:4</b> - Портретное (вертикальные посты)\n'
+                       '• <b>4:3</b> - Классическое (горизонтальные посты)',
+        'resolution': '🎬 <b>Что это?</b>\n'
+                     'Разрешение (качество) видео или изображения.\n\n'
+                     '💡 <b>Выбор:</b>\n'
+                     '• <b>720p/768P</b> - Хорошее качество, быстрее генерируется\n'
+                     '• <b>1080P</b> - Высокое качество, дольше генерируется\n'
+                     '• <b>1K/2K</b> - Стандартное качество\n'
+                     '• <b>4K</b> - Максимальное качество для печати и профессионального использования',
+        'duration': '⏱️ <b>Что это?</b>\n'
+                   'Длительность видео в секундах.\n\n'
+                   '💡 <b>Выбор:</b>\n'
+                   '• <b>5-6 секунд</b> - Короткое видео, быстрее генерируется\n'
+                   '• <b>10-15 секунд</b> - Длиннее видео, больше деталей\n\n'
+                   '⚠️ <b>Важно:</b> Некоторые разрешения не поддерживают длинные видео.',
+        'negative_prompt': '🚫 <b>Что это?</b>\n'
+                          'Опишите, чего НЕ должно быть в результате.\n\n'
+                          '💡 <b>Примеры:</b>\n'
+                          '• "размытие, низкое качество, артефакты"\n'
+                          '• "текст, водяные знаки, логотипы"\n'
+                          '• "искажения, деформации"\n\n'
+                          'Это поможет улучшить результат, исключив нежелательные элементы.',
+        'num_images': '🖼️ <b>Что это?</b>\n'
+                     'Количество изображений для генерации за один раз.\n\n'
+                     '💡 <b>Выбор:</b>\n'
+                     '• <b>1</b> - Одно изображение (быстрее)\n'
+                     '• <b>2-4</b> - Несколько вариантов (больше выбор)\n\n'
+                     '⚠️ <b>Важно:</b> Цена умножается на количество изображений.',
+        'remove_watermark': '🔍 <b>Что это?</b>\n'
+                          'Удаление водяного знака с видео.\n\n'
+                          '💡 <b>Выбор:</b>\n'
+                          '• <b>Да</b> - Видео без водяного знака (рекомендуется)\n'
+                          '• <b>Нет</b> - Видео с водяным знаком (быстрее, но с меткой)',
+        'mode': '🎨 <b>Что это?</b>\n'
+               'Режим генерации, влияющий на стиль и качество.\n\n'
+               '💡 <b>Выбор:</b>\n'
+               '• <b>normal</b> - Стандартный режим (рекомендуется)\n'
+               '• <b>fun</b> - Более креативный и необычный стиль\n'
+               '• <b>spicy</b> - Расширенные возможности (не для всех моделей)',
+        'quality': '⭐ <b>Что это?</b>\n'
+                  'Уровень качества генерации.\n\n'
+                  '💡 <b>Выбор:</b>\n'
+                  '• <b>basic</b> - Базовое качество (2K, быстрее)\n'
+                  '• <b>high</b> - Высокое качество (4K, дольше, дороже)',
+        'output_format': '📄 <b>Что это?</b>\n'
+                        'Формат файла результата.\n\n'
+                        '💡 <b>Выбор:</b>\n'
+                        '• <b>png</b> - Лучшее качество, прозрачность (больше размер)\n'
+                        '• <b>jpeg/jpg</b> - Меньше размер, хорошее качество',
+        'seed': '🎲 <b>Что это?</b>\n'
+               'Случайное число для воспроизводимости результатов.\n\n'
+               '💡 <b>Как использовать:</b>\n'
+               'Если вы хотите получить похожий результат, используйте тот же seed.\n'
+               'Если не указать, будет случайный результат каждый раз.',
+        'image_url': '🖼️ <b>Что это?</b>\n'
+                    'Ссылка на изображение для обработки.\n\n'
+                    '💡 <b>Как получить:</b>\n'
+                    '1. Загрузите изображение в бот\n'
+                    '2. Бот автоматически получит ссылку\n'
+                    '3. Или укажите публичную ссылку на изображение',
+        'image_urls': '🖼️ <b>Что это?</b>\n'
+                     'Список ссылок на изображения (до 10 штук).\n\n'
+                     '💡 <b>Как использовать:</b>\n'
+                     'Можно загрузить несколько изображений для обработки или редактирования.',
+        'n_frames': '🎬 <b>Что это?</b>\n'
+                   'Количество кадров (длительность) видео.\n\n'
+                   '💡 <b>Выбор:</b>\n'
+                   '• <b>10</b> - 10 секунд видео\n'
+                   '• <b>15</b> - 15 секунд видео (дольше генерируется)'
+    }
+    
+    # Get specific explanation if available
+    explanation = explanations.get(param_name, '')
+    
+    # For prompt, check if it's for video or image
+    if param_name == 'prompt':
+        if model_id and any(v in model_id for v in ['video', 'sora', 'hailuo', 'grok-imagine/image-to-video', 'grok-imagine/text-to-video']):
+            explanation = explanations['prompt']['video']
+        else:
+            explanation = explanations['prompt']['text']
+    
+    # Combine base description with explanation
+    if explanation:
+        return f"{base_desc}\n\n{explanation}"
+    else:
+        return base_desc
+
+# Rate limiting for flood protection
+user_request_times = {}  # {user_id: [timestamps]}
+FLOOD_LIMIT = 10  # Max requests per time window
+FLOOD_WINDOW = 60  # Time window in seconds (1 minute)
+FLOOD_COOLDOWN = 300  # Cooldown period in seconds (5 minutes) if limit exceeded
 
 # Payment data files
 BALANCES_FILE = "user_balances.json"
 ADMIN_LIMITS_FILE = "admin_limits.json"  # File to store admins with spending limits
 PAYMENTS_FILE = "payments.json"
 BLOCKED_USERS_FILE = "blocked_users.json"
+PROMOCODES_FILE = "promocodes.json"  # File to store promo codes
 
 
 # ==================== Payment System Functions ====================
@@ -357,6 +630,17 @@ def unblock_user(user_id: int):
     if str(user_id) in blocked:
         del blocked[str(user_id)]
         save_json_file(BLOCKED_USERS_FILE, blocked)
+
+
+def check_duplicate_payment(screenshot_file_id: str) -> bool:
+    """Check if this screenshot was already used for payment."""
+    if not screenshot_file_id:
+        return False
+    payments = load_json_file(PAYMENTS_FILE, {})
+    for payment in payments.values():
+        if payment.get('screenshot_file_id') == screenshot_file_id:
+            return True
+    return False
 
 
 def add_payment(user_id: int, amount: float, screenshot_file_id: str = None) -> dict:
@@ -578,16 +862,59 @@ async def analyze_payment_screenshot(image_data: bytes, expected_amount: float, 
                     break
         
         # Determine if screenshot is valid
-        # Must have: (amount match OR phone match) AND payment keywords
-        # OR if no phone expected: amount match AND payment keywords
-        if expected_phone:
-            # With phone: need (amount OR phone) AND keywords
-            valid = (amount_found or phone_found) and has_payment_keywords
-        else:
-            # Without phone: need amount AND keywords
-            valid = amount_found and has_payment_keywords
+        # Improved logic: more flexible for legitimate payments, but still secure
         
+        # Score-based validation (more reliable)
+        score = 0
+        max_score = 3
+        
+        # Amount match: +2 points (most important)
+        if amount_found:
+            score += 2
+        elif all_found_amounts:
+            # If amount found but doesn't match exactly, check if close
+            reasonable_amounts = [a for a in all_found_amounts if 10 <= a <= 100000]
+            if reasonable_amounts:
+                # Check if any amount is within 20% of expected
+                for amt in reasonable_amounts:
+                    diff_percent = abs(amt - expected_amount) / expected_amount if expected_amount > 0 else 1
+                    if diff_percent <= 0.2:  # Within 20%
+                        score += 1  # Partial credit
+                        break
+        
+        # Phone match: +1 point (if expected)
+        if expected_phone and phone_found:
+            score += 1
+        
+        # Payment keywords: +1 point (required for security)
+        if has_payment_keywords:
+            score += 1
+        else:
+            # If no keywords but amount matches perfectly, still allow (OCR might miss keywords)
+            if amount_found and abs(found_amount - expected_amount) < 0.5:
+                score += 0.5  # Partial credit
+        
+        # Initialize message parts
         message_parts = []
+        
+        # Validation: Need at least 2.5 points (flexible but secure)
+        # This means: (amount + keywords) OR (amount + phone) OR (amount perfect match)
+        valid = score >= 2.5
+        
+        # Additional security: if no amount found at all, reject (unless OCR failed)
+        if not all_found_amounts and not has_payment_keywords:
+            valid = False
+            message_parts.append("❌ Не удалось найти сумму или признаки платежа в скриншоте")
+        
+        # Additional check: if amount is found but way off, be more strict
+        if amount_found and found_amount:
+            diff_percent = abs(found_amount - expected_amount) / expected_amount if expected_amount > 0 else 1
+            # If difference is more than 30%, require additional verification
+            if diff_percent > 0.3:
+                # Require both phone and keywords if amount is way off
+                if not (phone_found and has_payment_keywords):
+                    valid = False
+                    message_parts.append("⚠️ Сумма значительно отличается от ожидаемой. Требуется дополнительная проверка.")
         if amount_found:
             message_parts.append(f"✅ Сумма найдена: {found_amount:.2f} ₽")
         else:
@@ -723,6 +1050,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
     
+    # Check flood protection
+    flood_check = check_flood_protection(user_id)
+    if not flood_check['allowed']:
+        await update.message.reply_text(
+            flood_check['message'],
+            parse_mode='HTML'
+        )
+        return
+    
     # Check if admin is in user mode (viewing as regular user)
     if user_id == ADMIN_ID:
         if user_id in user_sessions and user_sessions[user_id].get('admin_user_mode', False):
@@ -789,22 +1125,34 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         # Regular user menu - simple version
         welcome_text = (
-            f'🎉 <b>Добро пожаловать в AI Marketplace!</b>\n\n'
+            f'✨ <b>🎨 ДОБРО ПОЖАЛОВАТЬ В МИР AI-ГЕНЕРАЦИИ! 🎨</b>\n\n'
             f'Привет, {user.mention_html()}! 👋\n\n'
-            f'🚀 <b>Доступ к лучшим нейросетям без VPN!</b>\n\n'
-            f'✨ <b>Почему выбирают нас:</b>\n'
-            f'✅ <b>Без VPN</b> - работаем напрямую\n'
-            f'✅ <b>Высокое качество</b> - 2K/4K генерация\n'
-            f'✅ <b>Быстрая обработка</b> - результаты за минуты\n\n'
-            f'🎨 <b>Популярные модели:</b>\n\n'
-            f'🖼️ <b>Z-Image</b> - Фотореалистичные изображения\n'
-            f'   {get_model_price_text("z-image", None, is_admin)}\n'
-            f'   ⚡ Быстрая генерация Turbo\n\n'
-            f'🍌 <b>Nano Banana Pro</b> - 2K/4K от Google DeepMind\n'
+            f'🌟 <b>Создавайте невероятный контент с помощью лучших нейросетей!</b>\n\n'
+            f'🚀 <b>ПОЧЕМУ МЫ?</b>\n'
+            f'💎 <b>Премиум качество</b> - 2K/4K генерация от топовых моделей\n'
+            f'⚡ <b>Молниеносная скорость</b> - результаты за секунды, не минуты\n'
+            f'🌍 <b>Без VPN</b> - прямой доступ к мировым AI-моделям\n'
+            f'🎯 <b>Профессиональные инструменты</b> - для дизайнеров, маркетологов, креаторов\n'
+            f'💰 <b>Доступные цены</b> - от 0.8 кредита за изображение\n\n'
+            f'🎬 <b>ЧТО МОЖНО СОЗДАТЬ:</b>\n'
+            f'📸 Фотореалистичные изображения\n'
+            f'🎥 Кинематографические видео\n'
+            f'🎨 Художественные иллюстрации\n'
+            f'📱 Контент для соцсетей\n'
+            f'🎯 Рекламные материалы\n'
+            f'✨ И многое другое!\n\n'
+            f'🔥 <b>ТОПОВЫЕ МОДЕЛИ:</b>\n\n'
+            f'🎨 <b>Google Imagen 4 Ultra</b> - Флагман от Google DeepMind\n'
+            f'   {get_model_price_text("google/imagen4-ultra", None, is_admin)}\n'
+            f'   ⭐ Максимальное качество и детализация\n\n'
+            f'🍌 <b>Nano Banana Pro</b> - 4K от Google\n'
             f'   {get_model_price_text("nano-banana-pro", None, is_admin)}\n'
-            f'   🎯 Улучшенное качество и текст\n\n'
-            f'🔥 <b>Начните генерировать прямо сейчас!</b>\n\n'
-            f'Выберите все модели или категорию:'
+            f'   🎯 Профессиональная генерация 2K/4K\n\n'
+            f'🎥 <b>Sora 2</b> - Видео от OpenAI\n'
+            f'   {get_model_price_text("sora-2-text-to-video", None, is_admin)}\n'
+            f'   🎬 Реалистичные видео с аудио\n\n'
+            f'💫 <b>НАЧНИТЕ ТВОРИТЬ ПРЯМО СЕЙЧАС!</b>\n\n'
+            f'Выберите категорию или посмотрите все модели:'
         )
         
         # Regular user keyboard - simple
@@ -832,6 +1180,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ])
         keyboard.append([
             InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")
+        ])
+        keyboard.append([
+            InlineKeyboardButton("🎁 Активировать промокод", callback_data="activate_promo")
         ])
         keyboard.append([InlineKeyboardButton("🆘 Помощь", callback_data="help_menu")])
     
@@ -981,6 +1332,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ])
             keyboard.append([
                 InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")
+            ])
+            keyboard.append([
+                InlineKeyboardButton("🎁 Активировать промокод", callback_data="activate_promo")
             ])
             keyboard.append([
                 InlineKeyboardButton("🔙 Вернуться в админ-панель", callback_data="admin_back_to_admin")
@@ -2190,7 +2544,9 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                     [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
                 ]
                 
-                param_desc = param_info.get('description', '')
+                # Get model_id from session for better descriptions
+                model_id = session.get('model_id', '')
+                param_desc = get_user_friendly_param_description(param_name, param_info, model_id)
                 chat_id = None
                 if hasattr(update, 'effective_chat') and update.effective_chat:
                     chat_id = update.effective_chat.id
@@ -2205,7 +2561,7 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                 
                 await context.bot.send_message(
                     chat_id=chat_id,
-                    text=f"📝 <b>Выберите {param_name}:</b>\n\n{param_desc}\n\nПо умолчанию: {'Да' if default_value else 'Нет'}",
+                    text=f"📝 <b>Выберите {param_name}:</b>\n\n{param_desc}\n\n💡 <b>По умолчанию:</b> {'Да' if default_value else 'Нет'}",
                     reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
                 )
@@ -2228,7 +2584,9 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                     keyboard.append(row)
                 keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data="cancel")])
                 
-                param_desc = param_info.get('description', '')
+                # Get model_id from session for better descriptions
+                model_id = session.get('model_id', '')
+                param_desc = get_user_friendly_param_description(param_name, param_info, model_id)
                 # Get chat_id from update
                 chat_id = None
                 if hasattr(update, 'effective_chat') and update.effective_chat:
@@ -2251,9 +2609,11 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                 return INPUTTING_PARAMS
             else:
                 # Text input
-                param_desc = param_info.get('description', '')
+                # Get model_id from session for better descriptions
+                model_id = session.get('model_id', '')
+                param_desc = get_user_friendly_param_description(param_name, param_info, model_id)
                 max_length = param_info.get('max_length')
-                max_text = f"\n\nМаксимум {max_length} символов." if max_length else ""
+                max_text = f"\n\n⚠️ <b>Максимум {max_length} символов.</b>" if max_length else ""
                 
                 # Get chat_id from update
                 chat_id = None
@@ -2283,6 +2643,15 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
 async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle parameter input."""
     user_id = update.effective_user.id
+    
+    # Check flood protection
+    flood_check = check_flood_protection(user_id)
+    if not flood_check['allowed']:
+        await update.message.reply_text(
+            flood_check['message'],
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
     
     # Handle admin OCR test
     if user_id == ADMIN_ID and user_id in user_sessions and user_sessions[user_id].get('waiting_for') == 'admin_test_ocr':
@@ -2435,6 +2804,30 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ADMIN_TEST_OCR
     
     # Handle payment screenshot
+    # Handle promo code input
+    if user_id in user_sessions and user_sessions[user_id].get('waiting_for') == 'promocode':
+        promocode_text = update.message.text.strip()
+        
+        # Activate promo code
+        result = activate_promocode(user_id, promocode_text)
+        
+        keyboard = [
+            [InlineKeyboardButton("💰 Проверить баланс", callback_data="check_balance")],
+            [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
+        ]
+        
+        await update.message.reply_text(
+            result['message'],
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        
+        # Clear waiting state
+        if user_id in user_sessions:
+            user_sessions[user_id]['waiting_for'] = None
+        
+        return ConversationHandler.END
+    
     if user_id in user_sessions and user_sessions[user_id].get('waiting_for') == 'payment_screenshot':
         if update.message.photo:
             # User sent payment screenshot
@@ -2451,6 +2844,16 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 loading_msg = await update.message.reply_text("⏳ Обрабатываю платеж...")
             
             try:
+                # Check for duplicate screenshot
+                if check_duplicate_payment(screenshot_file_id):
+                    await update.message.reply_text(
+                        f"⚠️ <b>Этот скриншот уже был использован</b>\n\n"
+                        f"Пожалуйста, отправьте новый скриншот перевода.\n\n"
+                        f"Если вы уверены, что это новый платеж, обратитесь к администратору.",
+                        parse_mode='HTML'
+                    )
+                    return WAITING_PAYMENT_SCREENSHOT
+                
                 file = await context.bot.get_file(photo.file_id)
                 image_data = await file.download_as_bytearray()
                 
@@ -2876,13 +3279,26 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if user_balance < price:
             price_str = f"{price:.2f}".rstrip('0').rstrip('.')
             balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
+            
+            # Create keyboard with topup button
+            keyboard = [
+                [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
+                [InlineKeyboardButton("💰 Проверить баланс", callback_data="check_balance")],
+                [InlineKeyboardButton("◀️ Назад к моделям", callback_data="back_to_menu")]
+            ]
+            
             await query.edit_message_text(
-                f"❌ <b>Недостаточно средств</b>\n\n"
-                f"💰 <b>Требуется:</b> {price_str} ₽\n"
+                f"❌ <b>Недостаточно средств для генерации</b>\n\n"
+                f"💵 <b>Требуется:</b> {price_str} ₽\n"
                 f"💳 <b>Ваш баланс:</b> {balance_str} ₽\n\n"
-                f"Пополните баланс для продолжения.",
+                f"⚠️ <b>Генерация не будет выполнена</b> до пополнения баланса.\n\n"
+                f"Пополните баланс, чтобы продолжить.",
+                reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='HTML'
             )
+            # Clean up session to prevent generation
+            if user_id in user_sessions:
+                del user_sessions[user_id]
             return ConversationHandler.END
     elif user_id != ADMIN_ID:
         # Limited admin - check limit
@@ -3019,7 +3435,29 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                             add_admin_spent(user_id, price)
                         else:
                             # Regular user - deduct from balance
-                            subtract_user_balance(user_id, price)
+                            # Double-check balance before deducting (safety check)
+                            current_balance = get_user_balance(user_id)
+                            if current_balance >= price:
+                                success = subtract_user_balance(user_id, price)
+                                if not success:
+                                    logger.warning(f"Failed to deduct balance for user {user_id}. Balance: {current_balance}, Price: {price}")
+                                    await context.bot.send_message(
+                                        chat_id=update.effective_chat.id,
+                                        text=f"⚠️ <b>Ошибка списания баланса</b>\n\n"
+                                             f"Обратитесь к администратору.",
+                                        parse_mode='HTML'
+                                    )
+                            else:
+                                logger.warning(f"Insufficient balance for user {user_id}. Balance: {current_balance}, Price: {price}")
+                                await context.bot.send_message(
+                                    chat_id=update.effective_chat.id,
+                                    text=f"❌ <b>Недостаточно средств</b>\n\n"
+                                         f"💳 <b>Ваш баланс:</b> {format_price_rub(current_balance, False)} ₽\n"
+                                         f"💵 <b>Требуется:</b> {format_price_rub(price, False)} ₽\n\n"
+                                         f"Пополните баланс для получения результата.",
+                                    parse_mode='HTML'
+                                )
+                                return  # Don't send results if balance is insufficient
                 
                 # Task completed successfully
                 result_json = status_result.get('resultJson', '{}')
@@ -3028,7 +3466,16 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                     result_data = json.loads(result_json)
                     
                     # Determine if this is a video model
-                    is_video_model = model_id in ['sora-2-text-to-video', 'sora-watermark-remover']
+                    is_video_model = model_id in [
+                        'sora-2-text-to-video', 
+                        'sora-watermark-remover',
+                        'bytedance/v1-pro-fast-image-to-video',
+                        'grok-imagine/image-to-video',
+                        'grok-imagine/text-to-video',
+                        'grok-imagine/upscale',
+                        'hailuo/2-3-image-to-video-pro',
+                        'hailuo/2-3-image-to-video-standard'
+                    ]
                     
                     # For sora-2-text-to-video, check remove_watermark parameter
                     if model_id == 'sora-2-text-to-video':
@@ -3507,7 +3954,13 @@ def main():
             CallbackQueryHandler(button_callback, pattern='^topup_balance$'),
             CallbackQueryHandler(button_callback, pattern='^topup_amount:'),
             CallbackQueryHandler(button_callback, pattern='^topup_custom$'),
-            CallbackQueryHandler(button_callback, pattern='^generate_again$')
+            CallbackQueryHandler(button_callback, pattern='^generate_again$'),
+            CallbackQueryHandler(button_callback, pattern='^activate_promo$'),
+            CallbackQueryHandler(button_callback, pattern='^admin_promocodes$'),
+            CallbackQueryHandler(button_callback, pattern='^admin_create_promo$'),
+            CallbackQueryHandler(button_callback, pattern='^admin_list_promos$'),
+            CallbackQueryHandler(button_callback, pattern='^admin_delete_promo:'),
+            CallbackQueryHandler(button_callback, pattern='^admin_toggle_promo:')
         ],
         states={
             SELECTING_MODEL: [
