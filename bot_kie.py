@@ -49,7 +49,9 @@ try:
     
     # Try to set Tesseract path
     # On Windows, check common installation paths
-    # On Linux (Timeweb), Tesseract should be in PATH
+    # On Linux (Render), Tesseract should be in PATH
+    tesseract_found = False  # Initialize variable for all platforms
+    
     if platform.system() == 'Windows':
         # Common Tesseract installation paths on Windows
         possible_paths = [
@@ -57,7 +59,6 @@ try:
             r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
             r'C:\Users\{}\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'.format(os.getenv('USERNAME', '')),
         ]
-        tesseract_found = False
         for path in possible_paths:
             if os.path.exists(path):
                 pytesseract.pytesseract.tesseract_cmd = path
