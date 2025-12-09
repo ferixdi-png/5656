@@ -13,6 +13,7 @@
  */
 
 const { spawn } = require('child_process');
+const http = require('http');
 const path = require('path');
 const fs = require('fs');
 
@@ -170,6 +171,50 @@ async function startBot() {
   });
 }
 
+// Start HTTP server for health check (prevents Render from sleeping)
+function startHealthCheckServer() {
+  // Render automatically sets PORT environment variable
+  const port = process.env.PORT || 10000;
+  
+  if (!process.env.PORT) {
+    console.log(`⚠️  PORT environment variable not set, using default: ${port}`);
+    console.log(`   Render will set PORT automatically`);
+  } else {
+    console.log(`✅ Using PORT from environment: ${port}`);
+  }
+  
+  const server = http.createServer((req, res) => {
+    // Health check endpoint
+    if (req.url === '/' || req.url === '/health' || req.url === '/ping') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        status: 'ok',
+        service: 'KIE Telegram Bot',
+        timestamp: new Date().toISOString()
+      }));
+    } else {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Not Found');
+    }
+  });
+  
+  server.listen(port, () => {
+    console.log(`✅ Health check server running on port ${port}`);
+    console.log(`   Endpoint: http://localhost:${port}/health`);
+    console.log(`   This prevents Render from sleeping (for UptimeRobot)`);
+  });
+  
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`⚠️  Port ${port} is already in use, health check server not started`);
+    } else {
+      console.error('❌ Health check server error:', err);
+    }
+  });
+  
+  return server;
+}
+
 // Start the bot
 console.log('='.repeat(60));
 console.log('KIE Telegram Bot - Starting...');
@@ -184,6 +229,10 @@ console.log('');
 process.stdout.setEncoding('utf8');
 process.stderr.setEncoding('utf8');
 
+// Start health check server
+startHealthCheckServer();
+
+// Start bot
 startBot().catch((error) => {
   console.error('❌ Fatal error:', error);
   console.error('Error stack:', error.stack);

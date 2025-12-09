@@ -8,6 +8,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     python3 \
     python3-pip \
     curl \
+    tesseract-ocr \
+    tesseract-ocr-rus \
     && rm -rf /var/lib/apt/lists/*
 
 # Create symlink for python command
@@ -23,7 +25,7 @@ RUN npm install --omit=dev
 COPY requirements.txt ./
 
 # Install Python dependencies
-     RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
 
 # Copy all application files
 COPY . .
