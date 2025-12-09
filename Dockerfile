@@ -17,7 +17,7 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 COPY package*.json ./
 
 # Install Node.js dependencies
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
 # Copy Python requirements
 COPY requirements.txt ./
