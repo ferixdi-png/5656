@@ -294,9 +294,16 @@ def format_price_rub(price: float, is_admin: bool = False) -> str:
         return f"💰 <b>{price_str} ₽</b>"
 
 
-def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = False) -> str:
+def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = False, user_id: int = None) -> str:
     """Get formatted price text for a model."""
     if model_id == "z-image":
+        if not is_admin and user_id is not None:
+            # Check if user has free generations available
+            remaining = get_user_free_generations_remaining(user_id)
+            if remaining > 0:
+                price = calculate_price_rub(model_id, params, is_admin)
+                price_str = f"{round(price, 2):.2f}"
+                return f"🎁 <b>БЕСПЛАТНО</b> ({remaining}/{FREE_GENERATIONS_PER_DAY} в день) или {price_str} ₽"
         price = calculate_price_rub(model_id, params, is_admin)
         return format_price_rub(price, is_admin) + " за изображение"
     elif model_id == "nano-banana-pro":
@@ -554,6 +561,13 @@ ADMIN_LIMITS_FILE = "admin_limits.json"  # File to store admins with spending li
 PAYMENTS_FILE = "payments.json"
 BLOCKED_USERS_FILE = "blocked_users.json"
 PROMOCODES_FILE = "promocodes.json"  # File to store promo codes
+FREE_GENERATIONS_FILE = "daily_free_generations.json"  # File to store daily free generations
+REFERRALS_FILE = "referrals.json"  # File to store referral data
+
+# Free generation settings
+FREE_MODEL_ID = "z-image"  # Model that is free for users
+FREE_GENERATIONS_PER_DAY = 5  # Number of free generations per day per user
+REFERRAL_BONUS_GENERATIONS = 5  # Bonus generations for inviting a user
 
 
 # ==================== Payment System Functions ====================
@@ -693,23 +707,128 @@ def get_payment_stats() -> dict:
 
 def get_payment_details() -> str:
     """Get payment details from .env (СБП - Система быстрых платежей)."""
-    card_holder = os.getenv('PAYMENT_CARD_HOLDER', '')
-    phone = os.getenv('PAYMENT_PHONE', '')
-    bank = os.getenv('PAYMENT_BANK', '')
+    # Reload environment variables to ensure latest values
+    from dotenv import load_dotenv
+    load_dotenv()
+    
+    card_holder = os.getenv('PAYMENT_CARD_HOLDER', '').strip()
+    phone = os.getenv('PAYMENT_PHONE', '').strip()
+    bank = os.getenv('PAYMENT_BANK', '').strip()
     
     details = "💳 <b>Реквизиты для оплаты (СБП):</b>\n\n"
     
+    # Check if any payment details are configured
+    has_details = False
+    
     if phone:
         details += f"📱 <b>Номер телефона:</b> <code>{phone}</code>\n"
+        has_details = True
+    else:
+        details += "📱 <b>Номер телефона:</b> <i>Не указан в настройках</i>\n"
+    
     if bank:
         details += f"🏦 <b>Банк:</b> {bank}\n"
+        has_details = True
+    else:
+        details += "🏦 <b>Банк:</b> <i>Не указан в настройках</i>\n"
+    
     if card_holder:
         details += f"👤 <b>Получатель:</b> {card_holder}\n"
+        has_details = True
+    else:
+        details += "👤 <b>Получатель:</b> <i>Не указан в настройках</i>\n"
+    
+    if not has_details:
+        details += "\n⚠️ <b>ВНИМАНИЕ:</b> Реквизиты не настроены!\n"
+        details += "Администратору необходимо указать PAYMENT_PHONE, PAYMENT_BANK и PAYMENT_CARD_HOLDER в файле .env\n\n"
     
     details += "\n⚠️ <b>Важно:</b> После оплаты отправьте скриншот перевода в этот чат.\n\n"
     details += "✅ <b>Баланс начислится автоматически</b> после отправки скриншота."
     
     return details
+
+
+def get_free_generations_data() -> dict:
+    """Get daily free generations data."""
+    return load_json_file(FREE_GENERATIONS_FILE, {})
+
+
+def save_free_generations_data(data: dict):
+    """Save daily free generations data."""
+    save_json_file(FREE_GENERATIONS_FILE, data)
+
+
+def get_user_free_generations_today(user_id: int) -> int:
+    """Get number of free generations used by user today."""
+    from datetime import datetime
+    
+    data = get_free_generations_data()
+    user_key = str(user_id)
+    today = datetime.now().strftime('%Y-%m-%d')
+    
+    if user_key not in data:
+        return 0
+    
+    user_data = data[user_key]
+    if user_data.get('date') == today:
+        return user_data.get('count', 0)
+    else:
+        # Reset for new day
+        return 0
+
+
+def get_user_free_generations_remaining(user_id: int) -> int:
+    """Get remaining free generations for user today (including bonus)."""
+    used = get_user_free_generations_today(user_id)
+    data = get_free_generations_data()
+    user_key = str(user_id)
+    bonus = data.get(user_key, {}).get('bonus', 0)
+    total_available = FREE_GENERATIONS_PER_DAY + bonus
+    remaining = total_available - used
+    return max(0, remaining)
+
+
+def use_free_generation(user_id: int) -> bool:
+    """Use one free generation. Returns True if successful, False if limit reached."""
+    from datetime import datetime
+    
+    data = get_free_generations_data()
+    user_key = str(user_id)
+    today = datetime.now().strftime('%Y-%m-%d')
+    
+    if user_key not in data:
+        data[user_key] = {'date': today, 'count': 0}
+    
+    user_data = data[user_key]
+    
+    # Reset if new day
+    if user_data.get('date') != today:
+        user_data['date'] = today
+        user_data['count'] = 0
+    
+    # Check limit
+    if user_data.get('count', 0) >= FREE_GENERATIONS_PER_DAY:
+        return False
+    
+    # Increment count
+    user_data['count'] = user_data.get('count', 0) + 1
+    save_free_generations_data(data)
+    return True
+
+
+def is_free_generation_available(user_id: int, model_id: str) -> bool:
+    """Check if free generation is available for this user and model."""
+    # Only for regular users (not admins)
+    if get_is_admin(user_id):
+        return False
+    
+    # Only for free model
+    if model_id != FREE_MODEL_ID:
+        return False
+    
+    # Check if user has remaining free generations
+    remaining = get_user_free_generations_remaining(user_id)
+    return remaining > 0
 
 
 def get_support_contact() -> str:
@@ -1073,15 +1192,32 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     total_models = len(KIE_MODELS)
     
     if is_admin:
-        # Admin menu - extended version
+        # Admin menu - extended version with marketing appeal
         welcome_text = (
-            f'👑 <b>Панель администратора</b>\n\n'
+            f'👑 <b>✨ ПАНЕЛЬ АДМИНИСТРАТОРА ✨</b>\n\n'
             f'Привет, {user.mention_html()}! 👋\n\n'
-            f'🚀 <b>Расширенное меню управления</b>\n\n'
-            f'📊 <b>Статистика:</b>\n'
-            f'✅ <b>{total_models} моделей</b> доступно\n'
-            f'✅ <b>{len(categories)} категорий</b>\n\n'
-            f'⚙️ <b>Административные функции доступны</b>'
+            f'🎯 <b>ПОЛНЫЙ КОНТРОЛЬ НАД AI MARKETPLACE</b>\n\n'
+            f'📊 <b>СТАТИСТИКА СИСТЕМЫ:</b>\n'
+            f'✅ <b>{total_models} премиум моделей</b> в арсенале\n'
+            f'✅ <b>{len(categories)} категорий</b> контента\n'
+            f'✅ <b>Безлимитный доступ</b> ко всем генерациям\n\n'
+            f'🔥 <b>ТОПОВЫЕ МОДЕЛИ В СИСТЕМЕ:</b>\n\n'
+            f'🎨 <b>Google Imagen 4 Ultra</b> - Флагман от Google DeepMind\n'
+            f'   {get_model_price_text("google/imagen4-ultra", None, True)}\n'
+            f'   ⭐ Максимальное качество для тестирования\n\n'
+            f'🍌 <b>Nano Banana Pro</b> - 4K от Google\n'
+            f'   {get_model_price_text("nano-banana-pro", None, True)}\n'
+            f'   🎯 Профессиональная генерация 2K/4K\n\n'
+            f'🎥 <b>Sora 2</b> - Видео от OpenAI\n'
+            f'   {get_model_price_text("sora-2-text-to-video", None, True)}\n'
+            f'   🎬 Кинематографические видео с аудио\n\n'
+            f'⚙️ <b>АДМИНИСТРАТИВНЫЕ ВОЗМОЖНОСТИ:</b>\n'
+            f'📈 Просмотр статистики и аналитики\n'
+            f'👥 Управление пользователями\n'
+            f'🎁 Управление промокодами\n'
+            f'🧪 Тестирование OCR системы\n'
+            f'💼 Полный контроль над ботом\n\n'
+            f'💫 <b>НАЧНИТЕ УПРАВЛЕНИЕ ИЛИ ТЕСТИРОВАНИЕ!</b>'
         )
         
         # Admin keyboard - extended
@@ -1123,36 +1259,45 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ])
         keyboard.append([InlineKeyboardButton("🆘 Помощь", callback_data="help_menu")])
     else:
-        # Regular user menu - simple version
+        # Regular user menu - ultra marketing version
         welcome_text = (
-            f'✨ <b>🎨 ДОБРО ПОЖАЛОВАТЬ В МИР AI-ГЕНЕРАЦИИ! 🎨</b>\n\n'
+            f'🚀 <b>✨ ДОСТУП К ЛУЧШИМ AI-МОДЕЛЯМ МИРА БЕЗ VPN! ✨</b>\n\n'
             f'Привет, {user.mention_html()}! 👋\n\n'
-            f'🌟 <b>Создавайте невероятный контент с помощью лучших нейросетей!</b>\n\n'
-            f'🚀 <b>ПОЧЕМУ МЫ?</b>\n'
-            f'💎 <b>Премиум качество</b> - 2K/4K генерация от топовых моделей\n'
-            f'⚡ <b>Молниеносная скорость</b> - результаты за секунды, не минуты\n'
-            f'🌍 <b>Без VPN</b> - прямой доступ к мировым AI-моделям\n'
-            f'🎯 <b>Профессиональные инструменты</b> - для дизайнеров, маркетологов, креаторов\n'
-            f'💰 <b>Доступные цены</b> - от 0.8 кредита за изображение\n\n'
-            f'🎬 <b>ЧТО МОЖНО СОЗДАТЬ:</b>\n'
-            f'📸 Фотореалистичные изображения\n'
-            f'🎥 Кинематографические видео\n'
-            f'🎨 Художественные иллюстрации\n'
-            f'📱 Контент для соцсетей\n'
-            f'🎯 Рекламные материалы\n'
-            f'✨ И многое другое!\n\n'
-            f'🔥 <b>ТОПОВЫЕ МОДЕЛИ:</b>\n\n'
-            f'🎨 <b>Google Imagen 4 Ultra</b> - Флагман от Google DeepMind\n'
+            f'🎯 <b>ПЕРВЫЙ В РОССИИ ДОСТУП К ТОПОВЫМ НЕЙРОСЕТЯМ 2025!</b>\n\n'
+            f'🌟 <b>ЧТО ВАС ЖДЕТ:</b>\n'
+            f'🔥 <b>Google Imagen 4 Ultra</b> - только что представлена на Google I/O 2025!\n'
+            f'🔥 <b>OpenAI Sora 2</b> - революция в видео-генерации!\n'
+            f'🔥 <b>Google Nano Banana</b> - новейшая модель от DeepMind!\n'
+            f'🔥 <b>Grok Imagine</b> - от создателей ChatGPT (xAI)!\n'
+            f'🔥 <b>ByteDance Seedream</b> - профессиональная 4K генерация!\n\n'
+            f'💎 <b>ПРЕИМУЩЕСТВА:</b>\n'
+            f'✅ <b>БЕЗ VPN</b> - прямой доступ к мировым AI-моделям\n'
+            f'✅ <b>ТОПОВЫЕ МОДЕЛИ</b> - только лучшие нейросети 2025 года\n'
+            f'✅ <b>4K КАЧЕСТВО</b> - профессиональная генерация для бизнеса\n'
+            f'✅ <b>МГНОВЕННАЯ СКОРОСТЬ</b> - результаты за секунды\n'
+            f'✅ <b>ДОСТУПНЫЕ ЦЕНЫ</b> - от 0.8 кредита за изображение\n\n'
+            f'🎬 <b>СОЗДАВАЙТЕ:</b>\n'
+            f'📸 Фотореалистичные изображения для рекламы\n'
+            f'🎥 Кинематографические видео для YouTube\n'
+            f'🎨 Художественные иллюстрации для портфолио\n'
+            f'📱 Контент для Instagram, TikTok, VK\n'
+            f'🎯 Рекламные материалы для бизнеса\n'
+            f'💼 Профессиональные визуалы для презентаций\n\n'
+            f'🔥 <b>ТОП-3 МОДЕЛИ ПРЯМО СЕЙЧАС:</b>\n\n'
+            f'🥇 <b>Google Imagen 4 Ultra</b> - Флагман 2025\n'
             f'   {get_model_price_text("google/imagen4-ultra", None, is_admin)}\n'
-            f'   ⭐ Максимальное качество и детализация\n\n'
-            f'🍌 <b>Nano Banana Pro</b> - 4K от Google\n'
+            f'   ⭐ Максимальное качество • Google I/O 2025\n\n'
+            f'🥈 <b>OpenAI Sora 2</b> - Видео нового поколения\n'
+            f'   {get_model_price_text("sora-2-text-to-video", None, is_admin)}\n'
+            f'   🎬 Кинематография • Реалистичная физика\n\n'
+            f'🥉 <b>Google Nano Banana Pro</b> - 4K от DeepMind\n'
             f'   {get_model_price_text("nano-banana-pro", None, is_admin)}\n'
             f'   🎯 Профессиональная генерация 2K/4K\n\n'
-            f'🎥 <b>Sora 2</b> - Видео от OpenAI\n'
-            f'   {get_model_price_text("sora-2-text-to-video", None, is_admin)}\n'
-            f'   🎬 Реалистичные видео с аудио\n\n'
-            f'💫 <b>НАЧНИТЕ ТВОРИТЬ ПРЯМО СЕЙЧАС!</b>\n\n'
-            f'Выберите категорию или посмотрите все модели:'
+            f'🎁 <b>БЕСПЛАТНЫЕ ГЕНЕРАЦИИ!</b>\n'
+            f'✨ <b>Z-Image</b> - {FREE_GENERATIONS_PER_DAY} бесплатных генераций в день!\n'
+            f'   Попробуйте без пополнения баланса\n\n'
+            f'💫 <b>НАЧНИТЕ СОЗДАВАТЬ ПРЯМО СЕЙЧАС!</b>\n\n'
+            f'Выберите категорию или посмотрите все {total_models} моделей:'
         )
         
         # Regular user keyboard - simple
@@ -1194,25 +1339,53 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /help is issued."""
-    await update.message.reply_text(
-        '📋 <b>Доступные команды:</b>\n\n'
-        '/start - Начать работу с ботом\n'
-        '/models - Показать список доступных моделей\n'
-        '/generate - Начать генерацию контента\n'
-        '/balance - Проверить баланс\n'
-        '/cancel - Отменить текущую операцию\n'
-        '/search [запрос] - Поиск в базе знаний\n'
-        '/ask [вопрос] - Задать вопрос\n'
-        '/add [знание] - Добавить знание в базу\n\n'
-        '💡 <b>Как использовать:</b>\n'
-        '1. Используйте /models чтобы увидеть доступные модели\n'
-        '2. Используйте /balance чтобы проверить баланс\n'
-        '3. Используйте /generate чтобы начать генерацию\n'
-        '4. Выберите модель из списка\n'
-        '5. Введите необходимые параметры\n'
-        '6. Получите результат!',
-        parse_mode='HTML'
-    )
+    user_id = update.effective_user.id
+    is_admin_user = get_is_admin(user_id)
+    
+    if is_admin_user:
+        # Admin help
+        help_text = (
+            '📋 <b>Доступные команды:</b>\n\n'
+            '/start - Главное меню\n'
+            '/models - Показать модели\n'
+            '/balance - Проверить баланс\n'
+            '/generate - Начать генерацию\n'
+            '/help - Справка\n\n'
+            '👑 <b>Административные команды:</b>\n'
+            '/search - Поиск в базе знаний\n'
+            '/add - Добавление знаний\n'
+            '/payments - Просмотр платежей\n'
+            '/block_user - Заблокировать пользователя\n'
+            '/unblock_user - Разблокировать пользователя\n'
+            '/user_balance - Баланс пользователя\n'
+            '/add_admin - Добавить администратора\n\n'
+            '💡 <b>Как использовать:</b>\n'
+            '1. Используйте /models чтобы увидеть доступные модели\n'
+            '2. Используйте /balance чтобы проверить баланс\n'
+            '3. Используйте /generate чтобы начать генерацию\n'
+            '4. Выберите модель из списка\n'
+            '5. Введите необходимые параметры\n'
+            '6. Получите результат!'
+        )
+    else:
+        # Regular user help
+        help_text = (
+            '📋 <b>Доступные команды:</b>\n\n'
+            '/start - Главное меню\n'
+            '/models - Показать модели\n'
+            '/balance - Проверить баланс\n'
+            '/generate - Начать генерацию\n'
+            '/help - Справка\n\n'
+            '💡 <b>Как использовать:</b>\n'
+            '1. Используйте /models чтобы увидеть доступные модели\n'
+            '2. Используйте /balance чтобы проверить баланс\n'
+            '3. Используйте /generate чтобы начать генерацию\n'
+            '4. Выберите модель из списка\n'
+            '5. Введите необходимые параметры\n'
+            '6. Получите результат!'
+        )
+    
+    await update.message.reply_text(help_text, parse_mode='HTML')
 
 
 async def list_models(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1301,15 +1474,21 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             total_models = len(KIE_MODELS)
             
             welcome_text = (
-                f'🎉 <b>Добро пожаловать в AI Marketplace!</b>\n\n'
+                f'🚀 <b>✨ ДОСТУП К ЛУЧШИМ AI-МОДЕЛЯМ МИРА БЕЗ VPN! ✨</b>\n\n'
                 f'Привет, {user.mention_html()}! 👋\n\n'
-                f'🚀 <b>Доступ к лучшим нейросетям без VPN!</b>\n\n'
-                f'✨ <b>Почему выбирают нас:</b>\n'
-                f'✅ <b>Без VPN</b> - работаем напрямую\n'
-                f'✅ <b>Высокое качество</b> - 2K/4K генерация\n'
-                f'✅ <b>Быстрая обработка</b> - результаты за минуты\n\n'
-                f'🔥 <b>Начните генерировать прямо сейчас!</b>\n\n'
-                f'Выберите все модели или категорию:'
+                f'🎯 <b>ПЕРВЫЙ В РОССИИ ДОСТУП К ТОПОВЫМ НЕЙРОСЕТЯМ 2025!</b>\n\n'
+                f'🌟 <b>ЧТО ВАС ЖДЕТ:</b>\n'
+                f'🔥 <b>Google Imagen 4 Ultra</b> - только что представлена на Google I/O 2025!\n'
+                f'🔥 <b>OpenAI Sora 2</b> - революция в видео-генерации!\n'
+                f'🔥 <b>Google Nano Banana</b> - новейшая модель от DeepMind!\n'
+                f'🔥 <b>Grok Imagine</b> - от создателей ChatGPT (xAI)!\n\n'
+                f'💎 <b>ПРЕИМУЩЕСТВА:</b>\n'
+                f'✅ <b>БЕЗ VPN</b> - прямой доступ к мировым AI-моделям\n'
+                f'✅ <b>ТОПОВЫЕ МОДЕЛИ</b> - только лучшие нейросети 2025 года\n'
+                f'✅ <b>4K КАЧЕСТВО</b> - профессиональная генерация\n'
+                f'✅ <b>МГНОВЕННАЯ СКОРОСТЬ</b> - результаты за секунды\n\n'
+                f'💫 <b>НАЧНИТЕ СОЗДАВАТЬ ПРЯМО СЕЙЧАС!</b>\n\n'
+                f'Выберите категорию или посмотрите все модели:'
             )
             
             keyboard = []
@@ -1359,18 +1538,30 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             total_models = len(KIE_MODELS)
             
             welcome_text = (
-                f'👑 <b>Панель администратора</b>\n\n'
+                f'👑 <b>✨ ПАНЕЛЬ АДМИНИСТРАТОРА ✨</b>\n\n'
                 f'Привет, {user.mention_html()}! 👋\n\n'
-                f'🚀 <b>Расширенное меню управления</b>\n\n'
-                f'📊 <b>Статистика:</b>\n'
-                f'✅ <b>{total_models} моделей</b> доступно\n'
-                f'✅ <b>{len(categories)} категорий</b>\n\n'
-                f'🎨 <b>Популярные модели:</b>\n\n'
-                f'🖼️ <b>Z-Image</b> - Фотореалистичные изображения\n'
-                f'   {get_model_price_text("z-image", None, True)}\n\n'
-                f'🍌 <b>Nano Banana Pro</b> - 2K/4K от Google DeepMind\n'
-                f'   {get_model_price_text("nano-banana-pro", None, True)}\n\n'
-                f'⚙️ <b>Административные функции доступны</b>'
+                f'🎯 <b>ПОЛНЫЙ КОНТРОЛЬ НАД AI MARKETPLACE</b>\n\n'
+                f'📊 <b>СТАТИСТИКА СИСТЕМЫ:</b>\n'
+                f'✅ <b>{total_models} премиум моделей</b> в арсенале\n'
+                f'✅ <b>{len(categories)} категорий</b> контента\n'
+                f'✅ <b>Безлимитный доступ</b> ко всем генерациям\n\n'
+                f'🔥 <b>ТОПОВЫЕ МОДЕЛИ В СИСТЕМЕ:</b>\n\n'
+                f'🎨 <b>Google Imagen 4 Ultra</b> - Флагман от Google DeepMind\n'
+                f'   {get_model_price_text("google/imagen4-ultra", None, True)}\n'
+                f'   ⭐ Максимальное качество для тестирования\n\n'
+                f'🍌 <b>Nano Banana Pro</b> - 4K от Google\n'
+                f'   {get_model_price_text("nano-banana-pro", None, True)}\n'
+                f'   🎯 Профессиональная генерация 2K/4K\n\n'
+                f'🎥 <b>Sora 2</b> - Видео от OpenAI\n'
+                f'   {get_model_price_text("sora-2-text-to-video", None, True)}\n'
+                f'   🎬 Кинематографические видео с аудио\n\n'
+                f'⚙️ <b>АДМИНИСТРАТИВНЫЕ ВОЗМОЖНОСТИ:</b>\n'
+                f'📈 Просмотр статистики и аналитики\n'
+                f'👥 Управление пользователями\n'
+                f'🎁 Управление промокодами\n'
+                f'🧪 Тестирование OCR системы\n'
+                f'💼 Полный контроль над ботом\n\n'
+                f'💫 <b>НАЧНИТЕ УПРАВЛЕНИЕ ИЛИ ТЕСТИРОВАНИЕ!</b>'
             )
             
             keyboard = []
@@ -1429,13 +1620,30 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         total_models = len(KIE_MODELS)
         
         welcome_text = (
-            f'👑 <b>Панель администратора</b>\n\n'
+            f'👑 <b>✨ ПАНЕЛЬ АДМИНИСТРАТОРА ✨</b>\n\n'
             f'Привет, {user.mention_html()}! 👋\n\n'
-            f'🚀 <b>Расширенное меню управления</b>\n\n'
-            f'📊 <b>Статистика:</b>\n'
-            f'✅ <b>{total_models} моделей</b> доступно\n'
-            f'✅ <b>{len(categories)} категорий</b>\n\n'
-            f'⚙️ <b>Административные функции доступны</b>'
+            f'🎯 <b>ПОЛНЫЙ КОНТРОЛЬ НАД AI MARKETPLACE</b>\n\n'
+            f'📊 <b>СТАТИСТИКА СИСТЕМЫ:</b>\n'
+            f'✅ <b>{total_models} премиум моделей</b> в арсенале\n'
+            f'✅ <b>{len(categories)} категорий</b> контента\n'
+            f'✅ <b>Безлимитный доступ</b> ко всем генерациям\n\n'
+            f'🔥 <b>ТОПОВЫЕ МОДЕЛИ В СИСТЕМЕ:</b>\n\n'
+            f'🎨 <b>Google Imagen 4 Ultra</b> - Флагман от Google DeepMind\n'
+            f'   {get_model_price_text("google/imagen4-ultra", None, True)}\n'
+            f'   ⭐ Максимальное качество для тестирования\n\n'
+            f'🍌 <b>Nano Banana Pro</b> - 4K от Google\n'
+            f'   {get_model_price_text("nano-banana-pro", None, True)}\n'
+            f'   🎯 Профессиональная генерация 2K/4K\n\n'
+            f'🎥 <b>Sora 2</b> - Видео от OpenAI\n'
+            f'   {get_model_price_text("sora-2-text-to-video", None, True)}\n'
+            f'   🎬 Кинематографические видео с аудио\n\n'
+            f'⚙️ <b>АДМИНИСТРАТИВНЫЕ ВОЗМОЖНОСТИ:</b>\n'
+            f'📈 Просмотр статистики и аналитики\n'
+            f'👥 Управление пользователями\n'
+            f'🎁 Управление промокодами\n'
+            f'🧪 Тестирование OCR системы\n'
+            f'💼 Полный контроль над ботом\n\n'
+            f'💫 <b>НАЧНИТЕ УПРАВЛЕНИЕ ИЛИ ТЕСТИРОВАНИЕ!</b>'
         )
         
         keyboard = []
@@ -1499,18 +1707,30 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if is_admin:
             welcome_text = (
-                f'👑 <b>Панель администратора</b>\n\n'
+                f'👑 <b>✨ ПАНЕЛЬ АДМИНИСТРАТОРА ✨</b>\n\n'
                 f'Привет, {user.mention_html()}! 👋\n\n'
-                f'🚀 <b>Расширенное меню управления</b>\n\n'
-                f'📊 <b>Статистика:</b>\n'
-                f'✅ <b>{total_models} моделей</b> доступно\n'
-                f'✅ <b>{len(categories)} категорий</b>\n\n'
-                f'🎨 <b>Популярные модели:</b>\n\n'
-                f'🖼️ <b>Z-Image</b> - Фотореалистичные изображения\n'
-                f'   {get_model_price_text("z-image", None, True)}\n\n'
-                f'🍌 <b>Nano Banana Pro</b> - 2K/4K от Google DeepMind\n'
-                f'   {get_model_price_text("nano-banana-pro", None, True)}\n\n'
-                f'⚙️ <b>Административные функции доступны</b>'
+                f'🎯 <b>ПОЛНЫЙ КОНТРОЛЬ НАД AI MARKETPLACE</b>\n\n'
+                f'📊 <b>СТАТИСТИКА СИСТЕМЫ:</b>\n'
+                f'✅ <b>{total_models} премиум моделей</b> в арсенале\n'
+                f'✅ <b>{len(categories)} категорий</b> контента\n'
+                f'✅ <b>Безлимитный доступ</b> ко всем генерациям\n\n'
+                f'🔥 <b>ТОПОВЫЕ МОДЕЛИ В СИСТЕМЕ:</b>\n\n'
+                f'🎨 <b>Google Imagen 4 Ultra</b> - Флагман от Google DeepMind\n'
+                f'   {get_model_price_text("google/imagen4-ultra", None, True)}\n'
+                f'   ⭐ Максимальное качество для тестирования\n\n'
+                f'🍌 <b>Nano Banana Pro</b> - 4K от Google\n'
+                f'   {get_model_price_text("nano-banana-pro", None, True)}\n'
+                f'   🎯 Профессиональная генерация 2K/4K\n\n'
+                f'🎥 <b>Sora 2</b> - Видео от OpenAI\n'
+                f'   {get_model_price_text("sora-2-text-to-video", None, True)}\n'
+                f'   🎬 Кинематографические видео с аудио\n\n'
+                f'⚙️ <b>АДМИНИСТРАТИВНЫЕ ВОЗМОЖНОСТИ:</b>\n'
+                f'📈 Просмотр статистики и аналитики\n'
+                f'👥 Управление пользователями\n'
+                f'🎁 Управление промокодами\n'
+                f'🧪 Тестирование OCR системы\n'
+                f'💼 Полный контроль над ботом\n\n'
+                f'💫 <b>НАЧНИТЕ УПРАВЛЕНИЕ ИЛИ ТЕСТИРОВАНИЕ!</b>'
             )
             
             keyboard = []
@@ -1549,15 +1769,21 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard.append([InlineKeyboardButton("🆘 Помощь", callback_data="help_menu")])
         else:
             welcome_text = (
-                f'🎉 <b>Добро пожаловать в AI Marketplace!</b>\n\n'
+                f'🚀 <b>✨ ДОСТУП К ЛУЧШИМ AI-МОДЕЛЯМ МИРА БЕЗ VPN! ✨</b>\n\n'
                 f'Привет, {user.mention_html()}! 👋\n\n'
-                f'🚀 <b>Доступ к лучшим нейросетям без VPN!</b>\n\n'
-                f'✨ <b>Почему выбирают нас:</b>\n'
-                f'✅ <b>Без VPN</b> - работаем напрямую\n'
-                f'✅ <b>Высокое качество</b> - 2K/4K генерация\n'
-                f'✅ <b>Быстрая обработка</b> - результаты за минуты\n\n'
-                f'🔥 <b>Начните генерировать прямо сейчас!</b>\n\n'
-                f'Выберите все модели или категорию:'
+                f'🎯 <b>ПЕРВЫЙ В РОССИИ ДОСТУП К ТОПОВЫМ НЕЙРОСЕТЯМ 2025!</b>\n\n'
+                f'🌟 <b>ЧТО ВАС ЖДЕТ:</b>\n'
+                f'🔥 <b>Google Imagen 4 Ultra</b> - только что представлена на Google I/O 2025!\n'
+                f'🔥 <b>OpenAI Sora 2</b> - революция в видео-генерации!\n'
+                f'🔥 <b>Google Nano Banana</b> - новейшая модель от DeepMind!\n'
+                f'🔥 <b>Grok Imagine</b> - от создателей ChatGPT (xAI)!\n\n'
+                f'💎 <b>ПРЕИМУЩЕСТВА:</b>\n'
+                f'✅ <b>БЕЗ VPN</b> - прямой доступ к мировым AI-моделям\n'
+                f'✅ <b>ТОПОВЫЕ МОДЕЛИ</b> - только лучшие нейросети 2025 года\n'
+                f'✅ <b>4K КАЧЕСТВО</b> - профессиональная генерация\n'
+                f'✅ <b>МГНОВЕННАЯ СКОРОСТЬ</b> - результаты за секунды\n\n'
+                f'💫 <b>НАЧНИТЕ СОЗДАВАТЬ ПРЯМО СЕЙЧАС!</b>\n\n'
+                f'Выберите категорию или посмотрите все модели:'
             )
             
             keyboard = []
@@ -1813,21 +2039,33 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if model['id'] == "nano-banana-pro":
                 default_params = {"resolution": "1K"}
             min_price = calculate_price_rub(model['id'], default_params, is_admin)
-            price_text = format_price_rub(min_price, is_admin)
             
             if is_admin:
                 available_text = "Безлимит"
             else:
-                if user_balance >= min_price:
+                # Check for free generations for z-image
+                if model['id'] == FREE_MODEL_ID:
+                    remaining = get_user_free_generations_remaining(user_id)
+                    if remaining > 0:
+                        available_text = f"🎁 {remaining} бесплатно в день"
+                    elif user_balance >= min_price:
+                        available = int(user_balance / min_price)
+                        available_text = f"{available} генераций"
+                    else:
+                        available_text = "0 генераций"
+                elif user_balance >= min_price:
                     available = int(user_balance / min_price)
                     available_text = f"{available} генераций"
                 else:
                     available_text = "0 генераций"
             
+            # Get price text with free generation info
+            price_display = get_model_price_text(model['id'], default_params, is_admin, user_id)
+            
             models_text += (
                 f"{model['emoji']} <b>{model['name']}</b>\n"
                 f"{model['description']}\n"
-                f"💰 Цена: {price_text} ₽ | ✅ Доступно: {available_text}\n\n"
+                f"💰 Цена: {price_display} | ✅ Доступно: {available_text}\n\n"
             )
         
         await query.edit_message_text(
@@ -1873,21 +2111,33 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if model['id'] == "nano-banana-pro":
                 default_params = {"resolution": "1K"}
             min_price = calculate_price_rub(model['id'], default_params, is_admin)
-            price_text = format_price_rub(min_price, is_admin)
             
             if is_admin:
                 available_text = "Безлимит"
             else:
-                if user_balance >= min_price:
+                # Check for free generations for z-image
+                if model['id'] == FREE_MODEL_ID:
+                    remaining = get_user_free_generations_remaining(user_id)
+                    if remaining > 0:
+                        available_text = f"🎁 {remaining} бесплатно в день"
+                    elif user_balance >= min_price:
+                        available = int(user_balance / min_price)
+                        available_text = f"{available} генераций"
+                    else:
+                        available_text = "0 генераций"
+                elif user_balance >= min_price:
                     available = int(user_balance / min_price)
                     available_text = f"{available} генераций"
                 else:
                     available_text = "0 генераций"
             
+            # Get price text with free generation info
+            price_display = get_model_price_text(model['id'], default_params, is_admin, user_id)
+            
             models_text += (
                 f"{model['emoji']} <b>{model['name']}</b>\n"
                 f"{model['description']}\n"
-                f"💰 Цена: {price_text} ₽ | ✅ Доступно: {available_text}\n\n"
+                f"💰 Цена: {price_display} | ✅ Доступно: {available_text}\n\n"
             )
         
         await query.edit_message_text(
@@ -1935,8 +2185,22 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 # All parameters collected
                 model_name = session.get('model_info', {}).get('name', 'Unknown')
+                model_id = session.get('model_id', '')
                 params = session.get('params', {})
                 params_text = "\n".join([f"  • {k}: {str(v)[:50]}..." for k, v in params.items()])
+                
+                # Check for free generation
+                is_admin_user = get_is_admin(user_id)
+                is_free = is_free_generation_available(user_id, model_id)
+                free_info = ""
+                if is_free:
+                    remaining = get_user_free_generations_remaining(user_id)
+                    free_info = f"\n\n🎁 <b>БЕСПЛАТНАЯ ГЕНЕРАЦИЯ!</b>\n"
+                    free_info += f"Осталось бесплатных: {remaining}/{FREE_GENERATIONS_PER_DAY} в день"
+                else:
+                    price = calculate_price_rub(model_id, params, is_admin_user)
+                    price_str = f"{price:.2f}".rstrip('0').rstrip('.')
+                    free_info = f"\n\n💰 <b>Стоимость:</b> {price_str} ₽"
                 
                 keyboard = [
                     [InlineKeyboardButton("✅ Генерировать", callback_data="confirm_generate")],
@@ -1946,7 +2210,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.edit_message_text(
                     f"📋 <b>Подтверждение:</b>\n\n"
                     f"Модель: <b>{model_name}</b>\n"
-                    f"Параметры:\n{params_text}\n\n"
+                    f"Параметры:\n{params_text}{free_info}\n\n"
                     f"Продолжить генерацию?",
                     reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
@@ -2130,6 +2394,32 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return SELECTING_AMOUNT
+    
+    if data == "activate_promo":
+        # Activate promo code - show beautiful notification
+        if user_id not in user_sessions:
+            user_sessions[user_id] = {}
+        
+        # Set waiting state for promo code
+        user_sessions[user_id]['waiting_for'] = 'promocode'
+        
+        keyboard = [
+            [InlineKeyboardButton("❌ Отмена", callback_data="back_to_menu")]
+        ]
+        
+        await query.edit_message_text(
+            f"🎁 <b>✨ АКТИВАЦИЯ ПРОМОКОДА ✨</b>\n\n"
+            f"💎 <b>Введите промокод для получения бонусов!</b>\n\n"
+            f"📝 <b>Как использовать:</b>\n"
+            f"1. Введите промокод в следующем сообщении\n"
+            f"2. Бонусы будут начислены автоматически\n"
+            f"3. Проверьте баланс после активации\n\n"
+            f"💡 <i>Промокоды обновляются ежедневно</i>\n\n"
+            f"🔤 <b>Введите промокод сейчас:</b>",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return WAITING_PROMOCODE
     
     if data.startswith("topup_amount:"):
         # User selected a preset amount
@@ -2324,28 +2614,48 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ADMIN_TEST_OCR
     
     if data == "help_menu":
-        help_text = '📋 <b>Доступные команды:</b>\n\n'
-        help_text += '/start - Главное меню\n'
-        help_text += '/models - Показать модели\n'
-        help_text += '/balance - Проверить баланс\n'
-        help_text += '/generate - Начать генерацию\n'
-        help_text += '/help - Справка\n\n'
+        is_admin_user = get_is_admin(user_id)
         
-        if user_id == ADMIN_ID:
-            help_text += '👑 <b>Административные команды:</b>\n'
-            help_text += '/search - Поиск в базе знаний\n'
-            help_text += '/add - Добавление знаний\n'
-            help_text += '/payments - Просмотр платежей\n'
-            help_text += '/block_user - Заблокировать пользователя\n'
-            help_text += '/unblock_user - Разблокировать пользователя\n'
-            help_text += '/user_balance - Баланс пользователя\n\n'
-        
-        help_text += '💡 <b>Как использовать:</b>\n'
-        help_text += '1. Выберите модель из меню\n'
-        help_text += '2. Введите промпт (описание)\n'
-        help_text += '3. Выберите параметры через кнопки\n'
-        help_text += '4. Подтвердите генерацию\n'
-        help_text += '5. Получите результат!'
+        if is_admin_user:
+            # Admin help
+            help_text = (
+                '📋 <b>Доступные команды:</b>\n\n'
+                '/start - Главное меню\n'
+                '/models - Показать модели\n'
+                '/balance - Проверить баланс\n'
+                '/generate - Начать генерацию\n'
+                '/help - Справка\n\n'
+                '👑 <b>Административные команды:</b>\n'
+                '/search - Поиск в базе знаний\n'
+                '/add - Добавление знаний\n'
+                '/payments - Просмотр платежей\n'
+                '/block_user - Заблокировать пользователя\n'
+                '/unblock_user - Разблокировать пользователя\n'
+                '/user_balance - Баланс пользователя\n'
+                '/add_admin - Добавить администратора\n\n'
+                '💡 <b>Как использовать:</b>\n'
+                '1. Выберите модель из меню\n'
+                '2. Введите промпт (описание)\n'
+                '3. Выберите параметры через кнопки\n'
+                '4. Подтвердите генерацию\n'
+                '5. Получите результат!'
+            )
+        else:
+            # Regular user help
+            help_text = (
+                '📋 <b>Доступные команды:</b>\n\n'
+                '/start - Главное меню\n'
+                '/models - Показать модели\n'
+                '/balance - Проверить баланс\n'
+                '/generate - Начать генерацию\n'
+                '/help - Справка\n\n'
+                '💡 <b>Как использовать:</b>\n'
+                '1. Выберите модель из меню\n'
+                '2. Введите промпт (описание)\n'
+                '3. Выберите параметры через кнопки\n'
+                '4. Подтвердите генерацию\n'
+                '5. Получите результат!'
+            )
         
         keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]]
         
@@ -3216,7 +3526,21 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             # All parameters collected, show confirmation
             model_name = session.get('model_info', {}).get('name', 'Unknown')
+            model_id = session.get('model_id', '')
             params_text = "\n".join([f"  • {k}: {str(v)[:50]}..." for k, v in params.items()])
+            
+            # Check for free generation
+            is_admin_user = get_is_admin(user_id)
+            is_free = is_free_generation_available(user_id, model_id)
+            free_info = ""
+            if is_free:
+                remaining = get_user_free_generations_remaining(user_id)
+                free_info = f"\n\n🎁 <b>БЕСПЛАТНАЯ ГЕНЕРАЦИЯ!</b>\n"
+                free_info += f"Осталось бесплатных: {remaining}/{FREE_GENERATIONS_PER_DAY} в день"
+            else:
+                price = calculate_price_rub(model_id, params, is_admin_user)
+                price_str = f"{price:.2f}".rstrip('0').rstrip('.')
+                free_info = f"\n\n💰 <b>Стоимость:</b> {price_str} ₽"
             
             keyboard = [
                 [InlineKeyboardButton("✅ Генерировать", callback_data="confirm_generate")],
@@ -3226,7 +3550,7 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(
                 f"📋 <b>Подтверждение:</b>\n\n"
                 f"Модель: <b>{model_name}</b>\n"
-                f"Параметры:\n{params_text}\n\n"
+                f"Параметры:\n{params_text}{free_info}\n\n"
                 f"Продолжить генерацию?",
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='HTML'
@@ -3269,16 +3593,24 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
     params = session.get('params', {})
     model_info = session.get('model_info', {})
     
+    # Check if this is a free generation
+    is_free = is_free_generation_available(user_id, model_id)
+    
     # Calculate price (admins pay admin price, users pay user price)
     price = calculate_price_rub(model_id, params, is_admin_user)
     
+    # For free generations, price is 0
+    if is_free:
+        price = 0.0
+    
     # Check balance/limit before generation
     if not is_admin_user:
-        # Regular user - check balance
-        user_balance = get_user_balance(user_id)
-        if user_balance < price:
-            price_str = f"{price:.2f}".rstrip('0').rstrip('.')
-            balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
+        # Regular user - check balance (unless free generation)
+        if not is_free:
+            user_balance = get_user_balance(user_id)
+            if user_balance < price:
+                price_str = f"{price:.2f}".rstrip('0').rstrip('.')
+                balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
             
             # Create keyboard with topup button
             keyboard = [
@@ -3427,10 +3759,25 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                     model_id = session.get('model_id', '')
                     params = session.get('params', {})
                     is_admin_user = get_is_admin(user_id)
-                    price = calculate_price_rub(model_id, params, is_admin_user)
+                    
+                    # Check if this is a free generation
+                    is_free = is_free_generation_available(user_id, model_id)
+                    if is_free:
+                        # Use free generation
+                        if use_free_generation(user_id):
+                            price = 0.0
+                        else:
+                            # Free generation limit reached, treat as paid
+                            is_free = False
+                            price = calculate_price_rub(model_id, params, is_admin_user)
+                    else:
+                        price = calculate_price_rub(model_id, params, is_admin_user)
                     
                     if user_id != ADMIN_ID:
-                        if is_admin_user:
+                        if is_free:
+                            # Free generation - no deduction needed
+                            pass
+                        elif is_admin_user:
                             # Limited admin - deduct from limit
                             add_admin_spent(user_id, price)
                         else:
@@ -4004,6 +4351,11 @@ def main():
                 CallbackQueryHandler(button_callback, pattern='^generate_again$'),
                 CallbackQueryHandler(button_callback, pattern='^cancel$')
             ],
+            WAITING_PROMOCODE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, input_parameters),
+                CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
+                CallbackQueryHandler(button_callback, pattern='^cancel$')
+            ],
             ADMIN_TEST_OCR: [
                 MessageHandler(filters.PHOTO, input_parameters),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, input_parameters),
@@ -4099,7 +4451,8 @@ def main():
     
     async def admin_user_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Check user balance (admin only)."""
-        if update.effective_user.id != ADMIN_ID:
+        user_id = update.effective_user.id
+        if not get_is_admin(user_id):
             await update.message.reply_text("❌ Эта команда доступна только администратору.")
             return
         
