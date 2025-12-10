@@ -7,7 +7,17 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
+    python3-dev \
     curl \
+    build-essential \
+    libjpeg-dev \
+    zlib1g-dev \
+    libtiff5-dev \
+    libfreetype6-dev \
+    liblcms2-dev \
+    libwebp-dev \
+    tesseract-ocr \
+    tesseract-ocr-rus \
     && rm -rf /var/lib/apt/lists/*
 
 # Create symlink for python command
@@ -22,8 +32,9 @@ RUN npm ci --omit=dev
 # Copy Python requirements
 COPY requirements.txt ./
 
-# Install Python dependencies
-RUN pip3 install --no-cache-dir -r requirements.txt
+# Upgrade pip and install Python dependencies
+RUN pip3 install --upgrade pip setuptools wheel && \
+    pip3 install --no-cache-dir -r requirements.txt
 
 # Copy all application files
 COPY . .
