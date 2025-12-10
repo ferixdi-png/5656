@@ -2744,6 +2744,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 return ConversationHandler.END
             
+            # Get admin status for price calculations
+            is_admin = get_is_admin(user_id)
+            
             # Show generation type info and models with marketing text
             remaining_free = get_user_free_generations_remaining(user_id)
             
