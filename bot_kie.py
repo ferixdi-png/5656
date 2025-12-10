@@ -1852,335 +1852,162 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
     
-    # Check if admin is in user mode (viewing as regular user)
-    if user_id == ADMIN_ID:
-        if user_id in user_sessions and user_sessions[user_id].get('admin_user_mode', False):
-            is_admin = False  # Show as regular user
-        else:
-            is_admin = True
-    else:
-        is_admin = False
+    # Check if user is admin
+    is_admin = (user_id == ADMIN_ID)
     
     # Get generation types and models count
     generation_types = get_generation_types()
     total_models = len(KIE_MODELS)
     
-    if is_admin:
-        # Admin menu - same as user menu but with admin badge and additional admin buttons
-        remaining_free = get_user_free_generations_remaining(user_id)
-        is_new = is_new_user(user_id)
-        referral_link = get_user_referral_link(user_id)
-        referrals_count = len(get_user_referrals(user_id))
+    # Both admin and regular users see the same menu, but admin gets additional "Admin Panel" button
+    # Common menu for both admin and regular users
+    remaining_free = get_user_free_generations_remaining(user_id)
+    is_new = is_new_user(user_id)
+    referral_link = get_user_referral_link(user_id)
+    referrals_count = len(get_user_referrals(user_id))
+    
+    if is_new:
+        # Enhanced marketing welcome for new users - максимальный акцент на бесплатный Z-Image
+        online_count = get_fake_online_count()
         
-        if is_new:
-            # Enhanced marketing welcome for new users
-            online_count = get_fake_online_count()
-            
-            welcome_text = (
-                f'👋 <b>Привет, {user.mention_html()}!</b> Я твой AI-напарник! 🤖✨\n\n'
-                f'👑 <b>РЕЖИМ АДМИНИСТРАТОРА</b> - Безлимитный доступ\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'🎉 <b>ОТЛИЧНЫЕ НОВОСТИ!</b> Ты попал в самый крутой AI-генератор контента! 🚀\n\n'
-                f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
-                f'💡 <b>Я помогу тебе:</b>\n'
-                f'• 🎨 Создавать потрясающие изображения\n'
-                f'• 🎬 Генерировать крутые видео\n'
-                f'• ✨ Трансформировать и редактировать контент\n'
-                f'• 🎯 Делать все это БЕЗ VPN и по цене жвачки!\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'🏢 <b>НАШИ ПОСТАВЩИКИ:</b>\n\n'
-                f'🤖 OpenAI • Google • Black Forest Labs\n'
-                f'🎬 ByteDance • Ideogram • Qwen\n'
-                f'✨ Kling • Hailuo • Topaz\n'
-                f'🎨 Recraft • Grok (xAI) • Wan\n\n'
-                f'💎 <b>Только топовые нейросети 2025 года!</b>\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'🎁 <b>НАЧНИ БЕСПЛАТНО ПРЯМО СЕЙЧАС!</b>\n\n'
-                f'✨ <b>У тебя есть:</b>\n'
-                f'• 🎁 <b>{remaining_free if remaining_free > 0 else FREE_GENERATIONS_PER_DAY} бесплатных генераций</b> Z-Image!\n'
-                f'• 💎 Каждый день обновляется\n'
-                f'• 🎯 Пригласи друга → получи <b>+{REFERRAL_BONUS_GENERATIONS} генераций</b>!\n\n'
-                f'🔗 <b>Твоя реферальная ссылка:</b>\n'
-                f'<code>{referral_link}</code>\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'💼 <b>ИДЕАЛЬНО ДЛЯ:</b>\n'
-                f'📊 Маркетологов • 🎨 Дизайнеров • 💻 Фрилансеров\n'
-                f'🚀 SMM-щиков • ✨ Креаторов • 🎬 Контент-мейкеров\n\n'
-                f'💰 <b>ГЕНЕРАЦИЯ ПО ЦЕНЕ ЖВАЧКИ!</b>\n'
-                f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'🎯 <b>ЧТО ДЕЛАТЬ ДАЛЬШЕ?</b>\n\n'
-                f'1️⃣ <b>Нажми кнопку "🎁 Генерировать бесплатно"</b> ниже\n'
-                f'   → Попробуй Z-Image прямо сейчас!\n\n'
-                f'2️⃣ <b>Или выбери формат генерации</b> из меню\n'
-                f'   → Я покажу все доступные нейросети\n\n'
-                f'3️⃣ <b>Создавай крутой контент!</b> 🎉\n\n'
-                f'💡 <b>Не знаешь с чего начать?</b>\n'
-                f'Нажми "❓ Как это работает?" - я все расскажу!'
-            )
-        else:
-            # Marketing welcome for existing users
-            online_count = get_fake_online_count()
-            referral_bonus_text = ""
-            if referrals_count > 0:
-                referral_bonus_text = (
-                    f"\n🎁 <b>Отлично!</b> Ты пригласил <b>{referrals_count}</b> друзей\n"
-                    f"   → Получено <b>+{referrals_count * REFERRAL_BONUS_GENERATIONS} генераций</b>! 🎉\n\n"
-                )
-            
-            welcome_text = (
-                f'👋 <b>С возвращением, {user.mention_html()}!</b> Рад тебя видеть! 🤖✨\n\n'
-                f'👑 <b>РЕЖИМ АДМИНИСТРАТОРА</b> - Безлимитный доступ\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
-            )
-            
-            if remaining_free > 0:
-                welcome_text += (
-                    f'🎁 <b>У ТЕБЯ ЕСТЬ БЕСПЛАТНЫЕ ГЕНЕРАЦИИ!</b>\n\n'
-                    f'✨ <b>{remaining_free} генераций Z-Image</b> доступно прямо сейчас!\n'
-                    f'💡 Нажми кнопку "🎁 Генерировать бесплатно" ниже\n\n'
-                )
-            
-            welcome_text += (
-                f'{referral_bonus_text}'
-                f'💰 <b>ГЕНЕРАЦИЯ ПО ЦЕНЕ ЖВАЧКИ!</b>\n'
-                f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
-                f'💡 <b>Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} генераций!</b>\n'
-                f'🔗 <code>{referral_link}</code>\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'💼 <b>ИДЕАЛЬНО ДЛЯ:</b>\n'
-                f'📊 Маркетологов • 🎨 Дизайнеров • 💻 Фрилансеров\n'
-                f'🚀 SMM-щиков • ✨ Креаторов • 🎬 Контент-мейкеров\n\n'
-                f'💎 <b>ДОСТУПНО:</b>\n'
-                f'• {len(generation_types)} типов генерации\n'
-                f'• {total_models} топовых нейросетей\n'
-                f'• Без VPN, прямо здесь!\n\n'
-                f'🎯 <b>Выбери формат генерации ниже</b> или начни с бесплатной генерации!'
-            )
-        
-        # Admin keyboard - same structure as user menu but with admin buttons
-        keyboard = []
-        
-        # Free generation button (prominent for new users)
-        if remaining_free > 0:
-            keyboard.append([
-                InlineKeyboardButton(f"🎁 Генерировать бесплатно ({remaining_free} осталось)", callback_data="select_model:z-image")
-            ])
-            keyboard.append([])  # Empty row for spacing
-        
-        # Generation types buttons (compact, 2 per row) - SAME AS USER MENU
-        gen_type_rows = []
-        for i, gen_type in enumerate(generation_types):
-            gen_info = get_generation_type_info(gen_type)
-            models_count = len(get_models_by_generation_type(gen_type))
-            button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
-            
-            if i % 2 == 0:
-                gen_type_rows.append([InlineKeyboardButton(button_text, callback_data=f"gen_type:{gen_type}")])
-            else:
-                if gen_type_rows:
-                    gen_type_rows[-1].append(InlineKeyboardButton(button_text, callback_data=f"gen_type:{gen_type}"))
-                else:
-                    gen_type_rows.append([InlineKeyboardButton(button_text, callback_data=f"gen_type:{gen_type}")])
-        
-        keyboard.extend(gen_type_rows)
-        keyboard.append([])  # Empty row
-        
-        # User functions (same as regular users)
-        keyboard.append([
-            InlineKeyboardButton("💰 Баланс", callback_data="check_balance"),
-            InlineKeyboardButton("📚 Мои генерации", callback_data="my_generations")
-        ])
-        keyboard.append([
-            InlineKeyboardButton("💳 Пополнить", callback_data="topup_balance"),
-            InlineKeyboardButton("🎁 Пригласить друга", callback_data="referral_info")
-        ])
-        keyboard.append([
-            InlineKeyboardButton("❓ Как это работает?", callback_data="help_menu"),
-            InlineKeyboardButton("💬 Поддержка", callback_data="support_contact")
-        ])
-        
-        keyboard.append([])  # Empty row for admin section
-        
-        # Admin functions (additional for admin)
-        keyboard.append([
-            InlineKeyboardButton("👑 АДМИН ПАНЕЛЬ", callback_data="admin_stats")
-        ])
-        keyboard.append([
-            InlineKeyboardButton("📊 Статистика", callback_data="admin_stats"),
-            InlineKeyboardButton("⚙️ Настройки", callback_data="admin_settings")
-        ])
-        keyboard.append([
-            InlineKeyboardButton("🔍 Поиск", callback_data="admin_search"),
-            InlineKeyboardButton("📝 Добавить", callback_data="admin_add")
-        ])
-        keyboard.append([
-            InlineKeyboardButton("🧪 Тест OCR", callback_data="admin_test_ocr")
-        ])
-        keyboard.append([
-            InlineKeyboardButton("👤 Режим пользователя", callback_data="admin_user_mode")
-        ])
+        welcome_text = (
+            f'🎉 <b>ПРИВЕТ, {user.mention_html()}!</b> 🎉\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'🔥 <b>У ТЕБЯ ЕСТЬ {remaining_free if remaining_free > 0 else FREE_GENERATIONS_PER_DAY} БЕСПЛАТНЫХ ГЕНЕРАЦИЙ!</b> 🔥\n\n'
+            f'✨ <b>Z-Image - САМАЯ КРУТАЯ НЕЙРОСЕТЬ ДЛЯ ИЗОБРАЖЕНИЙ!</b> ✨\n\n'
+            f'💎 <b>Почему Z-Image?</b>\n'
+            f'• 🎨 Профессиональное качество изображений\n'
+            f'• ⚡ Мгновенная генерация (10-30 секунд)\n'
+            f'• 🎯 Работает БЕЗ VPN\n'
+            f'• 💰 <b>ПОЛНОСТЬЮ БЕСПЛАТНО для тебя!</b>\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
+            f'🚀 <b>ЧТО МОЖНО ДЕЛАТЬ:</b>\n'
+            f'• 🎨 Создавать изображения из текста\n'
+            f'• 🎬 Генерировать видео\n'
+            f'• ✨ Редактировать и трансформировать контент\n'
+            f'• 🎯 Все это БЕЗ VPN и по цене жвачки!\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'🏢 <b>ТОПОВЫЕ НЕЙРОСЕТИ 2025:</b>\n\n'
+            f'🤖 OpenAI • Google • Black Forest Labs\n'
+            f'🎬 ByteDance • Ideogram • Qwen\n'
+            f'✨ Kling • Hailuo • Topaz\n'
+            f'🎨 Recraft • Grok (xAI) • Wan\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'🎁 <b>КАК НАЧАТЬ?</b>\n\n'
+            f'1️⃣ <b>Нажми кнопку "🎁 Генерировать бесплатно"</b> ниже\n'
+            f'   → Создай свое первое изображение за 30 секунд!\n\n'
+            f'2️⃣ <b>Напиши что хочешь увидеть</b> (например: "Кот в космосе")\n'
+            f'   → Z-Image создаст это для тебя!\n\n'
+            f'3️⃣ <b>Получи результат и наслаждайся!</b> 🎉\n\n'
+            f'💡 <b>Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} бесплатных генераций!</b>\n'
+            f'🔗 <code>{referral_link}</code>\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'💰 <b>После бесплатных генераций:</b>\n'
+            f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео'
+        )
     else:
-        # Regular user menu - premium compact version
-        remaining_free = get_user_free_generations_remaining(user_id)
-        free_info = ""
+        # Marketing welcome for existing users - акцент на бесплатный Z-Image
+        online_count = get_fake_online_count()
+        referral_bonus_text = ""
+        if referrals_count > 0:
+            referral_bonus_text = (
+                f"\n🎁 <b>Отлично!</b> Ты пригласил <b>{referrals_count}</b> друзей\n"
+                f"   → Получено <b>+{referrals_count * REFERRAL_BONUS_GENERATIONS} бесплатных генераций</b>! 🎉\n\n"
+            )
+        
+        welcome_text = (
+            f'👋 <b>С возвращением, {user.mention_html()}!</b> 🤖✨\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
+        )
+        
         if remaining_free > 0:
-            free_info = f"\n🎁 <b>Бесплатно:</b> {remaining_free} генераций Z-Image\n"
-        
-        # Check if new user
-        is_new = is_new_user(user_id)
-        
-        # Get generation types
-        generation_types = get_generation_types()
-        
-        # Get referral link
-        referral_link = get_user_referral_link(user_id)
-        referrals_count = len(get_user_referrals(user_id))
-        
-        if is_new:
-            # Enhanced marketing welcome for new users - харизматичный AI-помощник
-            online_count = get_fake_online_count()
-            
-            welcome_text = (
-                f'👋 <b>Привет, {user.mention_html()}!</b> Я твой AI-напарник! 🤖✨\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'🎉 <b>ОТЛИЧНЫЕ НОВОСТИ!</b> Ты попал в самый крутой AI-генератор контента! 🚀\n\n'
-                f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
-                f'💡 <b>Я помогу тебе:</b>\n'
-                f'• 🎨 Создавать потрясающие изображения\n'
-                f'• 🎬 Генерировать крутые видео\n'
-                f'• ✨ Трансформировать и редактировать контент\n'
-                f'• 🎯 Делать все это БЕЗ VPN и по цене жвачки!\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'🏢 <b>НАШИ ПОСТАВЩИКИ:</b>\n\n'
-                f'🤖 OpenAI • Google • Black Forest Labs\n'
-                f'🎬 ByteDance • Ideogram • Qwen\n'
-                f'✨ Kling • Hailuo • Topaz\n'
-                f'🎨 Recraft • Grok (xAI) • Wan\n\n'
-                f'💎 <b>Только топовые нейросети 2025 года!</b>\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'🎁 <b>НАЧНИ БЕСПЛАТНО ПРЯМО СЕЙЧАС!</b>\n\n'
-                f'✨ <b>У тебя есть:</b>\n'
-                f'• 🎁 <b>{remaining_free if remaining_free > 0 else FREE_GENERATIONS_PER_DAY} бесплатных генераций</b> Z-Image!\n'
-                f'• 💎 Каждый день обновляется\n'
-                f'• 🎯 Пригласи друга → получи <b>+{REFERRAL_BONUS_GENERATIONS} генераций</b>!\n\n'
-                f'🔗 <b>Твоя реферальная ссылка:</b>\n'
-                f'<code>{referral_link}</code>\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'💼 <b>ИДЕАЛЬНО ДЛЯ:</b>\n'
-                f'📊 Маркетологов • 🎨 Дизайнеров • 💻 Фрилансеров\n'
-                f'🚀 SMM-щиков • ✨ Креаторов • 🎬 Контент-мейкеров\n\n'
-                f'💰 <b>ГЕНЕРАЦИЯ ПО ЦЕНЕ ЖВАЧКИ!</b>\n'
-                f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'🎯 <b>ЧТО ДЕЛАТЬ ДАЛЬШЕ?</b>\n\n'
-                f'1️⃣ <b>Нажми кнопку "🎁 Генерировать бесплатно"</b> ниже\n'
-                f'   → Попробуй Z-Image прямо сейчас!\n\n'
-                f'2️⃣ <b>Или выбери формат генерации</b> из меню\n'
-                f'   → Я покажу все доступные нейросети\n\n'
-                f'3️⃣ <b>Создавай крутой контент!</b> 🎉\n\n'
-                f'💡 <b>Не знаешь с чего начать?</b>\n'
-                f'Нажми "❓ Как это работает?" - я все расскажу!'
-            )
-        else:
-            # Marketing welcome for existing users - харизматичный AI-помощник
-            online_count = get_fake_online_count()
-            referral_bonus_text = ""
-            if referrals_count > 0:
-                referral_bonus_text = (
-                    f"\n🎁 <b>Отлично!</b> Ты пригласил <b>{referrals_count}</b> друзей\n"
-                    f"   → Получено <b>+{referrals_count * REFERRAL_BONUS_GENERATIONS} генераций</b>! 🎉\n\n"
-                )
-            
-            welcome_text = (
-                f'👋 <b>С возвращением, {user.mention_html()}!</b> Рад тебя видеть! 🤖✨\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
-            )
-            
-            if remaining_free > 0:
-                welcome_text += (
-                    f'🎁 <b>У ТЕБЯ ЕСТЬ БЕСПЛАТНЫЕ ГЕНЕРАЦИИ!</b>\n\n'
-                    f'✨ <b>{remaining_free} генераций Z-Image</b> доступно прямо сейчас!\n'
-                    f'💡 Нажми кнопку "🎁 Генерировать бесплатно" ниже\n\n'
-                )
-            
             welcome_text += (
-                f'{referral_bonus_text}'
-                f'💰 <b>ГЕНЕРАЦИЯ ПО ЦЕНЕ ЖВАЧКИ!</b>\n'
-                f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
-                f'💡 <b>Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} генераций!</b>\n'
-                f'🔗 <code>{referral_link}</code>\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'💼 <b>ИДЕАЛЬНО ДЛЯ:</b>\n'
-                f'📊 Маркетологов • 🎨 Дизайнеров • 💻 Фрилансеров\n'
-                f'🚀 SMM-щиков • ✨ Креаторов • 🎬 Контент-мейкеров\n\n'
-                f'💎 <b>ДОСТУПНО:</b>\n'
-                f'• {len(generation_types)} типов генерации\n'
-                f'• {total_models} топовых нейросетей\n'
-                f'• Без VPN, прямо здесь!\n\n'
-                f'🎯 <b>Выбери формат генерации ниже</b> или начни с бесплатной генерации!'
+                f'🔥 <b>У ТЕБЯ ЕСТЬ {remaining_free} БЕСПЛАТНЫХ ГЕНЕРАЦИЙ Z-IMAGE!</b> 🔥\n\n'
+                f'✨ <b>Z-Image - лучшая нейросеть для изображений!</b>\n'
+                f'• 🎨 Профессиональное качество\n'
+                f'• ⚡ Мгновенная генерация\n'
+                f'• 💰 <b>ПОЛНОСТЬЮ БЕСПЛАТНО!</b>\n\n'
+                f'💡 <b>Нажми кнопку "🎁 Генерировать бесплатно" ниже</b>\n\n'
             )
         
-        # Regular user keyboard - by generation types with marketing buttons
-        keyboard = []
+        welcome_text += (
+            f'{referral_bonus_text}'
+            f'💎 <b>ДОСТУПНО:</b>\n'
+            f'• {len(generation_types)} типов генерации\n'
+            f'• {total_models} топовых нейросетей\n'
+            f'• Без VPN, прямо здесь!\n\n'
+            f'💰 <b>После бесплатных генераций:</b>\n'
+            f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
+            f'💡 <b>Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} бесплатных генераций!</b>\n'
+            f'🔗 <code>{referral_link}</code>\n\n'
+            f'🎯 <b>Выбери формат генерации ниже или начни с бесплатной!</b>'
+        )
+    
+    # Common keyboard for both admin and regular users
+    keyboard = []
+    
+    # Free generation button (ALWAYS prominent - biggest button)
+    if remaining_free > 0:
+        keyboard.append([
+            InlineKeyboardButton(f"🎁 ГЕНЕРИРОВАТЬ БЕСПЛАТНО ({remaining_free} осталось)", callback_data="select_model:z-image")
+        ])
+        keyboard.append([])  # Empty row for spacing
+    
+    # Generation types buttons (compact, 2 per row)
+    gen_type_rows = []
+    for i, gen_type in enumerate(generation_types):
+        gen_info = get_generation_type_info(gen_type)
+        models_count = len(get_models_by_generation_type(gen_type))
+        button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
         
-        # Free generation button (prominent for new users)
-        if remaining_free > 0:
-            keyboard.append([
-                InlineKeyboardButton(f"🎁 Генерировать бесплатно ({remaining_free} осталось)", callback_data="select_model:z-image")
-            ])
-            keyboard.append([])  # Empty row for spacing
-        
-        # Generation types buttons (compact, 2 per row)
-        gen_type_rows = []
-        for i, gen_type in enumerate(generation_types):
-            gen_info = get_generation_type_info(gen_type)
-            models_count = len(get_models_by_generation_type(gen_type))
-            button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
-            
-            if i % 2 == 0:
-                # First button in row
+        if i % 2 == 0:
+            gen_type_rows.append([InlineKeyboardButton(
+                button_text,
+                callback_data=f"gen_type:{gen_type}"
+            )])
+        else:
+            if gen_type_rows:
+                gen_type_rows[-1].append(InlineKeyboardButton(
+                    button_text,
+                    callback_data=f"gen_type:{gen_type}"
+                ))
+            else:
                 gen_type_rows.append([InlineKeyboardButton(
                     button_text,
                     callback_data=f"gen_type:{gen_type}"
                 )])
-            else:
-                # Second button in row - add to last row
-                if gen_type_rows:
-                    gen_type_rows[-1].append(InlineKeyboardButton(
-                        button_text,
-                        callback_data=f"gen_type:{gen_type}"
-                    ))
-                else:
-                    gen_type_rows.append([InlineKeyboardButton(
-                        button_text,
-                        callback_data=f"gen_type:{gen_type}"
-                    )])
-        
-        keyboard.extend(gen_type_rows)
-        
-        # Bottom action buttons
-        keyboard.append([])  # Empty row for spacing
+    
+    keyboard.extend(gen_type_rows)
+    
+    # Bottom action buttons
+    keyboard.append([])  # Empty row for spacing
+    keyboard.append([
+        InlineKeyboardButton("💰 Баланс", callback_data="check_balance"),
+        InlineKeyboardButton("📚 Мои генерации", callback_data="my_generations")
+    ])
+    keyboard.append([
+        InlineKeyboardButton("💳 Пополнить", callback_data="topup_balance"),
+        InlineKeyboardButton("🎁 Пригласить друга", callback_data="referral_info")
+    ])
+    
+    # Add tutorial button for new users
+    if is_new:
         keyboard.append([
-            InlineKeyboardButton("💰 Баланс", callback_data="check_balance"),
-            InlineKeyboardButton("📚 Мои генерации", callback_data="my_generations")
+            InlineKeyboardButton("❓ Как это работает?", callback_data="tutorial_start")
         ])
+    
+    keyboard.append([
+        InlineKeyboardButton("🆘 Помощь", callback_data="help_menu"),
+        InlineKeyboardButton("💬 Поддержка", callback_data="support_contact")
+    ])
+    
+    # Add admin panel button ONLY for admin (at the end)
+    if is_admin:
+        keyboard.append([])  # Empty row for admin section
         keyboard.append([
-            InlineKeyboardButton("💳 Пополнить", callback_data="topup_balance"),
-            InlineKeyboardButton("🎁 Пригласить друга", callback_data="referral_info")
-        ])
-        
-        # Add tutorial button for new users
-        if is_new:
-            keyboard.append([
-                InlineKeyboardButton("❓ Как это работает?", callback_data="tutorial_start")
-            ])
-        
-        keyboard.append([
-            InlineKeyboardButton("🆘 Помощь", callback_data="help_menu"),
-            InlineKeyboardButton("💬 Поддержка", callback_data="support_contact")
+            InlineKeyboardButton("👑 АДМИН ПАНЕЛЬ", callback_data="admin_stats")
         ])
     
     await update.message.reply_html(
@@ -6332,6 +6159,7 @@ def main():
             CallbackQueryHandler(button_callback, pattern='^topup_balance$'),
             CallbackQueryHandler(button_callback, pattern='^topup_amount:'),
             CallbackQueryHandler(button_callback, pattern='^topup_custom$'),
+            CallbackQueryHandler(button_callback, pattern='^referral_info$'),
             CallbackQueryHandler(button_callback, pattern='^generate_again$'),
             CallbackQueryHandler(button_callback, pattern='^my_generations$'),
             CallbackQueryHandler(button_callback, pattern='^gen_view:'),
@@ -6349,6 +6177,11 @@ def main():
                 CallbackQueryHandler(button_callback, pattern='^all_models$'),
                 CallbackQueryHandler(button_callback, pattern='^gen_type:'),
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
+                CallbackQueryHandler(button_callback, pattern='^check_balance$'),
+                CallbackQueryHandler(button_callback, pattern='^topup_balance$'),
+                CallbackQueryHandler(button_callback, pattern='^referral_info$'),
+                CallbackQueryHandler(button_callback, pattern='^help_menu$'),
+                CallbackQueryHandler(button_callback, pattern='^support_contact$'),
                 CallbackQueryHandler(button_callback, pattern='^generate_again$'),
                 CallbackQueryHandler(button_callback, pattern='^my_generations$'),
                 CallbackQueryHandler(button_callback, pattern='^gen_view:'),
@@ -6362,6 +6195,11 @@ def main():
             CONFIRMING_GENERATION: [
                 CallbackQueryHandler(confirm_generation, pattern='^confirm_generate$'),
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
+                CallbackQueryHandler(button_callback, pattern='^check_balance$'),
+                CallbackQueryHandler(button_callback, pattern='^topup_balance$'),
+                CallbackQueryHandler(button_callback, pattern='^referral_info$'),
+                CallbackQueryHandler(button_callback, pattern='^help_menu$'),
+                CallbackQueryHandler(button_callback, pattern='^support_contact$'),
                 CallbackQueryHandler(button_callback, pattern='^generate_again$'),
                 CallbackQueryHandler(button_callback, pattern='^my_generations$'),
                 CallbackQueryHandler(button_callback, pattern='^gen_view:'),
@@ -6380,6 +6218,11 @@ def main():
                 CallbackQueryHandler(button_callback, pattern='^skip_image$'),
                 CallbackQueryHandler(button_callback, pattern='^image_done$'),
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
+                CallbackQueryHandler(button_callback, pattern='^check_balance$'),
+                CallbackQueryHandler(button_callback, pattern='^topup_balance$'),
+                CallbackQueryHandler(button_callback, pattern='^referral_info$'),
+                CallbackQueryHandler(button_callback, pattern='^help_menu$'),
+                CallbackQueryHandler(button_callback, pattern='^support_contact$'),
                 CallbackQueryHandler(button_callback, pattern='^generate_again$'),
                 CallbackQueryHandler(button_callback, pattern='^my_generations$'),
                 CallbackQueryHandler(button_callback, pattern='^gen_view:'),
@@ -6395,14 +6238,25 @@ def main():
                 CallbackQueryHandler(button_callback, pattern='^topup_amount:'),
                 CallbackQueryHandler(button_callback, pattern='^topup_custom$'),
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
+                CallbackQueryHandler(button_callback, pattern='^check_balance$'),
+                CallbackQueryHandler(button_callback, pattern='^referral_info$'),
+                CallbackQueryHandler(button_callback, pattern='^help_menu$'),
+                CallbackQueryHandler(button_callback, pattern='^support_contact$'),
                 CallbackQueryHandler(button_callback, pattern='^generate_again$'),
+                CallbackQueryHandler(button_callback, pattern='^my_generations$'),
                 CallbackQueryHandler(button_callback, pattern='^cancel$')
             ],
             WAITING_PAYMENT_SCREENSHOT: [
                 MessageHandler(filters.PHOTO, input_parameters),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, input_parameters),
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
+                CallbackQueryHandler(button_callback, pattern='^check_balance$'),
+                CallbackQueryHandler(button_callback, pattern='^topup_balance$'),
+                CallbackQueryHandler(button_callback, pattern='^referral_info$'),
+                CallbackQueryHandler(button_callback, pattern='^help_menu$'),
+                CallbackQueryHandler(button_callback, pattern='^support_contact$'),
                 CallbackQueryHandler(button_callback, pattern='^generate_again$'),
+                CallbackQueryHandler(button_callback, pattern='^my_generations$'),
                 CallbackQueryHandler(button_callback, pattern='^cancel$')
             ],
             ADMIN_TEST_OCR: [
