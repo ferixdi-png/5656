@@ -2146,6 +2146,17 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # This prevents UnboundLocalError if variable is assigned in one branch but used in another
         categories = None
         total_models = None
+        tutorial_text = None
+        help_text = None
+        referral_text = None
+        history_text = None
+        model_info_text = None
+        prompt_text = None
+        admin_text = None
+        settings_text = None
+        promocodes_text = None
+        broadcast_text = None
+        stats_text = None
         
         # Handle admin user mode toggle (MUST be first, before any other checks)
         if data == "admin_user_mode":
@@ -3780,90 +3791,90 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if data == "tutorial_step3":
             tutorial_text = (
-            '📖 <b>ШАГ 3: Как создать контент?</b>\n\n'
-            '━━━━━━━━━━━━━━━━━━━━\n\n'
-            '📝 <b>Простой процесс:</b>\n\n'
-            '1️⃣ Нажмите "📋 Все модели"\n'
-            '2️⃣ Выберите модель (например, Z-Image)\n'
-            '3️⃣ Введите описание (промпт)\n'
-            '   Пример: "Красивый закат над океаном"\n'
-            '4️⃣ Выберите параметры (размер, стиль и т.д.)\n'
-            '5️⃣ Нажмите "✅ Генерировать"\n'
-            '6️⃣ Подождите 10-60 секунд\n'
-            '7️⃣ Получите результат! 🎉\n\n'
-            '💡 <b>Совет:</b> Чем подробнее описание, тем лучше результат!'
-        )
-        
-        keyboard = [
-            [InlineKeyboardButton("▶️ Далее", callback_data="tutorial_step4")],
-            [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_step2")],
-            [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
-        ]
-        
-        await query.edit_message_text(
-            tutorial_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-        return ConversationHandler.END
+                '📖 <b>ШАГ 3: Как создать контент?</b>\n\n'
+                '━━━━━━━━━━━━━━━━━━━━\n\n'
+                '📝 <b>Простой процесс:</b>\n\n'
+                '1️⃣ Нажмите "📋 Все модели"\n'
+                '2️⃣ Выберите модель (например, Z-Image)\n'
+                '3️⃣ Введите описание (промпт)\n'
+                '   Пример: "Красивый закат над океаном"\n'
+                '4️⃣ Выберите параметры (размер, стиль и т.д.)\n'
+                '5️⃣ Нажмите "✅ Генерировать"\n'
+                '6️⃣ Подождите 10-60 секунд\n'
+                '7️⃣ Получите результат! 🎉\n\n'
+                '💡 <b>Совет:</b> Чем подробнее описание, тем лучше результат!'
+            )
+            
+            keyboard = [
+                [InlineKeyboardButton("▶️ Далее", callback_data="tutorial_step4")],
+                [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_step2")],
+                [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+            ]
+            
+            await query.edit_message_text(
+                tutorial_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
         
         if data == "tutorial_step4":
             remaining_free = get_user_free_generations_remaining(user_id)
-        tutorial_text = (
-            '📖 <b>ШАГ 4: Баланс и оплата</b>\n\n'
-            '━━━━━━━━━━━━━━━━━━━━\n\n'
-            '💰 <b>Как это работает:</b>\n\n'
-            '🎁 <b>Бесплатно:</b>\n'
-            f'• {remaining_free if remaining_free > 0 else FREE_GENERATIONS_PER_DAY} генераций Z-Image в день\n'
-            '• Пригласите друга - получите +5 генераций!\n\n'
-            '💳 <b>Пополнение баланса:</b>\n'
-            '• Минимальная сумма: 50 ₽\n'
-            '• Быстрый выбор: 50, 100, 150 ₽\n'
-            '• Или укажите свою сумму\n'
-            '• Оплата через СБП (Система быстрых платежей)\n\n'
-            '💡 <b>Совет:</b> Начните с бесплатных генераций!'
-        )
-        
-        keyboard = [
-            [InlineKeyboardButton("▶️ Завершить", callback_data="tutorial_complete")],
-            [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_step3")],
-            [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
-        ]
-        
-        await query.edit_message_text(
-            tutorial_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-        return ConversationHandler.END
+            tutorial_text = (
+                '📖 <b>ШАГ 4: Баланс и оплата</b>\n\n'
+                '━━━━━━━━━━━━━━━━━━━━\n\n'
+                '💰 <b>Как это работает:</b>\n\n'
+                '🎁 <b>Бесплатно:</b>\n'
+                f'• {remaining_free if remaining_free > 0 else FREE_GENERATIONS_PER_DAY} генераций Z-Image в день\n'
+                '• Пригласите друга - получите +5 генераций!\n\n'
+                '💳 <b>Пополнение баланса:</b>\n'
+                '• Минимальная сумма: 50 ₽\n'
+                '• Быстрый выбор: 50, 100, 150 ₽\n'
+                '• Или укажите свою сумму\n'
+                '• Оплата через СБП (Система быстрых платежей)\n\n'
+                '💡 <b>Совет:</b> Начните с бесплатных генераций!'
+            )
+            
+            keyboard = [
+                [InlineKeyboardButton("▶️ Завершить", callback_data="tutorial_complete")],
+                [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_step3")],
+                [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+            ]
+            
+            await query.edit_message_text(
+                tutorial_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
         
         if data == "tutorial_complete":
             tutorial_text = (
-            '🎉 <b>ТУТОРИАЛ ЗАВЕРШЕН!</b>\n\n'
-            '━━━━━━━━━━━━━━━━━━━━\n\n'
-            '✅ Теперь вы знаете:\n'
-            '• Что такое AI-генерация\n'
-            '• Как выбрать модель\n'
-            '• Как создать контент\n'
-            '• Как пополнить баланс\n\n'
-            '🚀 <b>Готовы начать?</b>\n\n'
-            '💡 <b>Рекомендация:</b>\n'
-            'Начните с бесплатной генерации Z-Image!\n'
-            'Просто выберите модель и опишите, что хотите создать.'
-        )
-        
-        keyboard = [
-            [InlineKeyboardButton("📋 Все модели", callback_data="all_models")],
-            [InlineKeyboardButton("🖼️ Z-Image (бесплатно)", callback_data="select_model:z-image")],
-            [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
-        ]
-        
-        await query.edit_message_text(
-            tutorial_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-        return ConversationHandler.END
+                '🎉 <b>ТУТОРИАЛ ЗАВЕРШЕН!</b>\n\n'
+                '━━━━━━━━━━━━━━━━━━━━\n\n'
+                '✅ Теперь вы знаете:\n'
+                '• Что такое AI-генерация\n'
+                '• Как выбрать модель\n'
+                '• Как создать контент\n'
+                '• Как пополнить баланс\n\n'
+                '🚀 <b>Готовы начать?</b>\n\n'
+                '💡 <b>Рекомендация:</b>\n'
+                'Начните с бесплатной генерации Z-Image!\n'
+                'Просто выберите модель и опишите, что хотите создать.'
+            )
+            
+            keyboard = [
+                [InlineKeyboardButton("📋 Все модели", callback_data="all_models")],
+                [InlineKeyboardButton("🖼️ Z-Image (бесплатно)", callback_data="select_model:z-image")],
+                [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+            ]
+            
+            await query.edit_message_text(
+                tutorial_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
         
         if data == "help_menu":
             is_new = is_new_user(user_id)
