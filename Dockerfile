@@ -34,8 +34,8 @@ COPY requirements.txt ./
 
 # Upgrade pip and install Python dependencies
 # Using --break-system-packages is safe in Docker containers (isolated environment)
-RUN pip3 install --upgrade pip setuptools wheel --break-system-packages && \
-    pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+RUN pip3 install --upgrade pip setuptools wheel --break-system-packages --root-user-action=ignore && \
+    pip3 install --no-cache-dir --break-system-packages --root-user-action=ignore -r requirements.txt
 
 # Copy all application files
 COPY . .

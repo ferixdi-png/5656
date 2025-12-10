@@ -1835,23 +1835,44 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         is_admin = False
     
-    # Get categories and models count
-    categories = get_categories()
+    # Get generation types and models count
+    generation_types = get_generation_types()
     total_models = len(KIE_MODELS)
     
     if is_admin:
-        # Admin menu - extended version
+        # Admin menu - premium marketing version
         welcome_text = (
-            f'👑 <b>Панель администратора</b>\n\n'
+            f'👑 ✨ <b>ПАНЕЛЬ АДМИНИСТРАТОРА</b> ✨\n\n'
             f'Привет, {user.mention_html()}! 👋\n\n'
-            f'🚀 <b>Расширенное меню управления</b>\n\n'
-            f'📊 <b>Статистика:</b>\n'
-            f'✅ <b>{total_models} моделей</b> доступно\n'
-            f'✅ <b>{len(categories)} категорий</b>\n\n'
-            f'⚙️ <b>Административные функции доступны</b>'
+            f'🎯 <b>ПОЛНЫЙ КОНТРОЛЬ НАД AI MARKETPLACE</b>\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'📊 <b>СТАТИСТИКА СИСТЕМЫ:</b>\n\n'
+            f'✅ <b>{total_models} премиум моделей</b> в арсенале\n'
+            f'✅ <b>{len(generation_types)} категорий</b> контента\n'
+            f'✅ Безлимитный доступ ко всем генерациям\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'🔥 <b>ТОПОВЫЕ МОДЕЛИ В СИСТЕМЕ:</b>\n\n'
+            f'🎨 <b>Google Imagen 4 Ultra</b> - Флагман от Google DeepMind\n'
+            f'   💰 Безлимит (цена: 4.63 ₽)\n'
+            f'   ⭐️ Максимальное качество для тестирования\n\n'
+            f'🍌 <b>Nano Banana Pro</b> - 4K от Google\n'
+            f'   💰 Безлимит (1K/2K: 6.95 ₽, 4K: 9.27 ₽)\n'
+            f'   🎯 Профессиональная генерация 2K/4K\n\n'
+            f'🎥 <b>Sora 2</b> - Видео от OpenAI\n'
+            f'   💰 Безлимит (цена: 11.58 ₽) за 10-секундное видео\n'
+            f'   🎬 Кинематографические видео с аудио\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'⚙️ <b>АДМИНИСТРАТИВНЫЕ ВОЗМОЖНОСТИ:</b>\n\n'
+            f'📈 Просмотр статистики и аналитики\n'
+            f'👥 Управление пользователями\n'
+            f'🎁 Управление промокодами\n'
+            f'🧪 Тестирование OCR системы\n'
+            f'💼 Полный контроль над ботом\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'💫 <b>НАЧНИТЕ УПРАВЛЕНИЕ ИЛИ ТЕСТИРОВАНИЕ!</b>'
         )
         
-        # Admin keyboard - extended
+        # Admin keyboard - extended with generation types
         keyboard = []
         
         # All models button first
@@ -1861,14 +1882,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         keyboard.append([])  # Empty row for spacing
         
-        # Categories
-        for category in categories:
-            models_in_category = get_models_by_category(category)
-            emoji = models_in_category[0]["emoji"] if models_in_category else "📦"
+        # Generation types (new structure)
+        for gen_type in generation_types:
+            gen_info = get_generation_type_info(gen_type)
+            models_in_type = get_models_by_generation_type(gen_type)
+            gen_name = gen_info.get('name', gen_type)
             keyboard.append([InlineKeyboardButton(
-                f"{emoji} {category} ({len(models_in_category)})",
-                callback_data=f"category:{category}"
+                f"{gen_name} ({len(models_in_type)})",
+                callback_data=f"gen_type:{gen_type}"
             )])
+        
+        keyboard.append([])  # Empty row for spacing
         
         # Admin functions row
         keyboard.append([
@@ -4186,7 +4210,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             model_info_text += (
                 f"\n💡 <b>Отлично для начала!</b>\n"
                 f"Эта модель бесплатна для первых {FREE_GENERATIONS_PER_DAY} генераций в день.\n"
-                f"Просто опишите, что хотите создать, и нажмите "Генерировать"!\n\n"
+                f"Просто опишите, что хотите создать, и нажмите \"Генерировать\"!\n\n"
             )
         
         if is_admin:
