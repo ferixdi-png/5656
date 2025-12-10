@@ -6356,25 +6356,99 @@ def main():
     application.add_handler(generation_handler)
     application.add_handler(CommandHandler("models", list_models))
     
+    # Start HTTP server for health check (Render requires an open port)
+    import threading
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+    
+    class HealthCheckHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == '/health' or self.path == '/':
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(b'{"status":"ok","service":"telegram-bot"}')
+            else:
+                self.send_response(404)
+                self.end_headers()
+        
+        def log_message(self, format, *args):
+            pass  # Suppress HTTP server logs
+    
+    def start_health_server():
+        port = int(os.getenv('PORT', 10000))
+        server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+        logger.info(f"Health check server started on port {port}")
+        server.serve_forever()
+    
+    # Start health check server in background thread
+    health_thread = threading.Thread(target=start_health_server, daemon=True)
+    health_thread.start()
+    logger.info("Health check server thread started")
+    
     # Run the bot
     logger.info("Bot starting...")
+    
+    # Wait a bit to let any previous instance finish
+    import time
+    import asyncio
+    logger.info("Waiting 5 seconds to avoid conflicts with previous instance...")
+    time.sleep(5)
+    
+    # Try to clear pending updates manually before starting
+    async def clear_updates():
+        try:
+            async with application:
+                # Delete webhook if exists
+                await application.bot.delete_webhook(drop_pending_updates=True)
+                logger.info("Cleared webhook and pending updates")
+        except Exception as e:
+            logger.warning(f"Could not clear updates: {e}")
+    
+    # Run the clearing in a separate event loop
     try:
-        # Drop pending updates to avoid conflicts with other bot instances
-        application.run_polling(
-            drop_pending_updates=True
-        )
+        asyncio.run(clear_updates())
     except Exception as e:
-        error_msg = str(e)
-        if "Conflict" in error_msg or "terminated by other getUpdates" in error_msg:
-            logger.error("❌ Conflict: Another bot instance is already running!")
-            logger.error("Please stop the other instance before starting this one.")
-            logger.error("On Render: Check if there are multiple services running with the same bot token.")
-            logger.error("Wait 10 seconds and try again, or stop the other instance manually.")
-        else:
-            logger.error(f"❌ Bot crashed: {e}")
-            import traceback
-            traceback.print_exc()
-        raise
+        logger.warning(f"Could not clear updates: {e}")
+    
+    max_retries = 5
+    retry_delay = 15
+    
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"Attempt {attempt + 1}/{max_retries} to start bot...")
+            # Drop pending updates to avoid conflicts with other bot instances
+            application.run_polling(
+                drop_pending_updates=True
+            )
+            # If we get here, bot started successfully
+            break
+        except Exception as e:
+            error_msg = str(e)
+            if "Conflict" in error_msg or "terminated by other getUpdates" in error_msg:
+                if attempt < max_retries - 1:
+                    logger.warning(f"⚠️  Conflict detected! Another bot instance may be running.")
+                    logger.info(f"Waiting {retry_delay} seconds before retry {attempt + 2}/{max_retries}...")
+                    time.sleep(retry_delay)
+                    # Try to clear updates again
+                    try:
+                        asyncio.run(clear_updates())
+                    except:
+                        pass
+                    retry_delay = min(retry_delay + 5, 30)  # Increase delay but cap at 30s
+                    continue
+                else:
+                    logger.error("❌ Conflict: Another bot instance is already running!")
+                    logger.error("Please stop the other instance before starting this one.")
+                    logger.error("On Render: Check if there are multiple services running with the same bot token.")
+                    logger.error("Or wait a few minutes and the old instance should stop automatically.")
+                    # Don't raise - let it retry on next deploy
+                    time.sleep(60)  # Wait a minute before exiting
+                    raise
+            else:
+                logger.error(f"❌ Bot crashed: {e}")
+                import traceback
+                traceback.print_exc()
+                raise
 
 
 if __name__ == '__main__':
