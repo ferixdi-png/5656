@@ -3329,56 +3329,61 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 # Show full admin panel menu
                 generation_types = get_generation_types()
                 total_models = len(KIE_MODELS)
-            
-            # Get KIE API balance (for admin info only)
-            kie_balance_info = ""
-            try:
-                balance_result = await kie.get_credits()
-                if balance_result.get('ok'):
-                    balance = balance_result.get('credits', 0)
-                    balance_rub = balance * CREDIT_TO_USD * USD_TO_RUB
-                    balance_rub_str = f"{balance_rub:.2f}".rstrip('0').rstrip('.')
-                    kie_balance_info = f"💰 <b>Баланс KIE API:</b> {balance_rub_str} ₽ ({balance} кредитов)\n\n"
-            except Exception as e:
-                logger.error(f"Error getting KIE balance: {e}")
-                kie_balance_info = "💰 <b>Баланс KIE API:</b> Недоступен\n\n"
-            
-            admin_text = (
-                f'👑 <b>ПАНЕЛЬ АДМИНИСТРАТОРА</b> 👑\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'{kie_balance_info}'
-                f'📊 <b>СТАТИСТИКА СИСТЕМЫ:</b>\n\n'
-                f'✅ <b>{total_models} премиум моделей</b> в арсенале\n'
-                f'✅ <b>{len(generation_types)} категорий</b> контента\n'
-                f'✅ Безлимитный доступ ко всем генерациям\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'⚙️ <b>АДМИНИСТРАТИВНЫЕ ФУНКЦИИ:</b>\n\n'
-                f'📈 Просмотр статистики и аналитики\n'
-                f'👥 Управление пользователями\n'
-                f'🎁 Управление промокодами\n'
-                f'🧪 Тестирование OCR системы\n'
-                f'💼 Полный контроль над ботом\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'💫 <b>ВЫБЕРИТЕ ДЕЙСТВИЕ:</b>'
-            )
-            
-            keyboard = [
-                [InlineKeyboardButton("📊 Статистика", callback_data="admin_stats")],
-                [InlineKeyboardButton("⚙️ Настройки", callback_data="admin_settings")],
-                [InlineKeyboardButton("🔍 Поиск", callback_data="admin_search")],
-                [InlineKeyboardButton("📝 Добавить", callback_data="admin_add")],
-                [InlineKeyboardButton("🧪 Тест OCR", callback_data="admin_test_ocr")],
-                [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
-            ]
-            
-            await query.edit_message_text(
-                admin_text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
-            return ConversationHandler.END
+                
+                # Get KIE API balance (for admin info only)
+                kie_balance_info = ""
+                try:
+                    balance_result = await kie.get_credits()
+                    if balance_result.get('ok'):
+                        balance = balance_result.get('credits', 0)
+                        balance_rub = balance * CREDIT_TO_USD * USD_TO_RUB
+                        balance_rub_str = f"{balance_rub:.2f}".rstrip('0').rstrip('.')
+                        kie_balance_info = f"💰 <b>Баланс KIE API:</b> {balance_rub_str} ₽ ({balance} кредитов)\n\n"
+                except Exception as e:
+                    logger.error(f"Error getting KIE balance: {e}")
+                    kie_balance_info = "💰 <b>Баланс KIE API:</b> Недоступен\n\n"
+                
+                admin_text = (
+                    f'👑 <b>ПАНЕЛЬ АДМИНИСТРАТОРА</b> 👑\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'{kie_balance_info}'
+                    f'📊 <b>СТАТИСТИКА СИСТЕМЫ:</b>\n\n'
+                    f'✅ <b>{total_models} премиум моделей</b> в арсенале\n'
+                    f'✅ <b>{len(generation_types)} категорий</b> контента\n'
+                    f'✅ Безлимитный доступ ко всем генерациям\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'⚙️ <b>АДМИНИСТРАТИВНЫЕ ФУНКЦИИ:</b>\n\n'
+                    f'📈 Просмотр статистики и аналитики\n'
+                    f'👥 Управление пользователями\n'
+                    f'🎁 Управление промокодами\n'
+                    f'🧪 Тестирование OCR системы\n'
+                    f'💼 Полный контроль над ботом\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'💫 <b>ВЫБЕРИТЕ ДЕЙСТВИЕ:</b>'
+                )
+                
+                keyboard = [
+                    [InlineKeyboardButton("📊 Статистика", callback_data="admin_stats")],
+                    [InlineKeyboardButton("⚙️ Настройки", callback_data="admin_settings")],
+                    [InlineKeyboardButton("🔍 Поиск", callback_data="admin_search")],
+                    [InlineKeyboardButton("📝 Добавить", callback_data="admin_add")],
+                    [InlineKeyboardButton("🧪 Тест OCR", callback_data="admin_test_ocr")],
+                    [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
+                ]
+                
+                await query.edit_message_text(
+                    admin_text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+                return ConversationHandler.END
         
         if data == "admin_settings":
+            # Check admin access
+            if user_id != ADMIN_ID:
+                await query.answer("Эта функция доступна только администратору.")
+                return ConversationHandler.END
+            
             # Get support contact info
             support_telegram = os.getenv('SUPPORT_TELEGRAM', 'Не указано')
             
@@ -3417,6 +3422,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ConversationHandler.END
         
         if data == "admin_promocodes":
+            # Check admin access
+            if user_id != ADMIN_ID:
+                await query.answer("Эта функция доступна только администратору.")
+                return ConversationHandler.END
+            
             # Show promocodes menu
             promocodes = load_promocodes()
             active_promo = get_active_promocode()
@@ -3477,6 +3487,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ConversationHandler.END
         
         if data == "admin_broadcast":
+            # Check admin access
+            if user_id != ADMIN_ID:
+                await query.answer("Эта функция доступна только администратору.")
+                return ConversationHandler.END
+            
             # Show broadcast menu
             broadcasts = get_broadcasts()
             total_users = len(get_all_users())
@@ -3531,6 +3546,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ConversationHandler.END
         
         if data == "admin_create_broadcast":
+            # Check admin access
+            if user_id != ADMIN_ID:
+                await query.answer("Эта функция доступна только администратору.")
+                return ConversationHandler.END
+            
             # Start broadcast creation
             await query.edit_message_text(
                 "📢 <b>Создание рассылки</b>\n\n"
@@ -3548,6 +3568,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return WAITING_BROADCAST_MESSAGE
         
         if data == "admin_broadcast_stats":
+            # Check admin access
+            if user_id != ADMIN_ID:
+                await query.answer("Эта функция доступна только администратору.")
+                return ConversationHandler.END
+            
             # Show detailed broadcast statistics
             broadcasts = get_broadcasts()
             total_users = len(get_all_users())
@@ -3595,6 +3620,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ConversationHandler.END
         
         if data == "admin_search":
+            # Check admin access
+            if user_id != ADMIN_ID:
+                await query.answer("Эта функция доступна только администратору.")
+                return ConversationHandler.END
+            
             await query.edit_message_text(
                 '🔍 <b>Поиск в базе знаний</b>\n\n'
                 'Используйте команду:\n'
@@ -3606,6 +3636,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ConversationHandler.END
         
         if data == "admin_add":
+            # Check admin access
+            if user_id != ADMIN_ID:
+                await query.answer("Эта функция доступна только администратору.")
+                return ConversationHandler.END
+            
             await query.edit_message_text(
                 '📝 <b>Добавление знаний</b>\n\n'
                 'Используйте команду:\n'
@@ -3617,6 +3652,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ConversationHandler.END
         
         if data == "admin_test_ocr":
+            # Check admin access
+            if user_id != ADMIN_ID:
+                await query.answer("Эта функция доступна только администратору.")
+                return ConversationHandler.END
+            
             if not OCR_AVAILABLE or not PIL_AVAILABLE:
                 await query.edit_message_text(
                     '❌ <b>OCR недоступен</b>\n\n'
@@ -3646,28 +3686,28 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if data == "tutorial_start":
             # Interactive tutorial for new users
             tutorial_text = (
-            '🎓 <b>ИНТЕРАКТИВНЫЙ ТУТОРИАЛ</b>\n\n'
-            '━━━━━━━━━━━━━━━━━━━━\n\n'
-            '👋 Добро пожаловать! Давайте разберемся, как пользоваться ботом.\n\n'
-            '📚 <b>Что вы узнаете:</b>\n'
-            '• Что такое AI-генерация\n'
-            '• Как выбрать модель\n'
-            '• Как создать контент\n'
-            '• Как пополнить баланс\n\n'
-            '💡 <b>Это займет 2 минуты!</b>'
-        )
-        
-        keyboard = [
-            [InlineKeyboardButton("▶️ Начать туториал", callback_data="tutorial_step1")],
-            [InlineKeyboardButton("⏭️ Пропустить", callback_data="back_to_menu")]
-        ]
-        
-        await query.edit_message_text(
-            tutorial_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-        return ConversationHandler.END
+                '🎓 <b>ИНТЕРАКТИВНЫЙ ТУТОРИАЛ</b>\n\n'
+                '━━━━━━━━━━━━━━━━━━━━\n\n'
+                '👋 Добро пожаловать! Давайте разберемся, как пользоваться ботом.\n\n'
+                '📚 <b>Что вы узнаете:</b>\n'
+                '• Что такое AI-генерация\n'
+                '• Как выбрать модель\n'
+                '• Как создать контент\n'
+                '• Как пополнить баланс\n\n'
+                '💡 <b>Это займет 2 минуты!</b>'
+            )
+            
+            keyboard = [
+                [InlineKeyboardButton("▶️ Начать туториал", callback_data="tutorial_step1")],
+                [InlineKeyboardButton("⏭️ Пропустить", callback_data="back_to_menu")]
+            ]
+            
+            await query.edit_message_text(
+                tutorial_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
         
         if data == "tutorial_step1":
             tutorial_text = (
@@ -3817,115 +3857,115 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if data == "help_menu":
             is_new = is_new_user(user_id)
-        
-        if is_new:
-            help_text = (
-                '📋 <b>ПОМОЩЬ ДЛЯ НОВЫХ ПОЛЬЗОВАТЕЛЕЙ</b>\n\n'
-                '━━━━━━━━━━━━━━━━━━━━\n\n'
-                '👋 <b>Добро пожаловать!</b>\n\n'
-                '🎯 <b>Быстрый старт:</b>\n'
-                '1. Нажмите "📋 Все модели"\n'
-                '2. Выберите "🖼️ Z-Image" (она бесплатная!)\n'
-                '3. Введите описание, например: "Кот в космосе"\n'
-                '4. Нажмите "✅ Генерировать"\n'
-                '5. Получите результат через 10-30 секунд!\n\n'
-                '━━━━━━━━━━━━━━━━━━━━\n\n'
-                '💡 <b>Полезные команды:</b>\n'
-                '/start - Главное меню\n'
-                '/models - Показать все модели\n'
-                '/balance - Проверить баланс\n'
-                '/help - Эта справка\n\n'
-                '❓ <b>Нужна помощь?</b>\n'
-                'Нажмите "❓ Как это работает?" для интерактивного туториала!'
-            )
-        else:
-            help_text = (
-                '📋 <b>ДОСТУПНЫЕ КОМАНДЫ</b>\n\n'
-                '━━━━━━━━━━━━━━━━━━━━\n\n'
-                '🔹 <b>Основные:</b>\n'
-                '/start - Главное меню\n'
-                '/models - Показать модели\n'
-                '/balance - Проверить баланс\n'
-                '/generate - Начать генерацию\n'
-                '/help - Справка\n\n'
-            )
             
-            if user_id == ADMIN_ID:
+            if is_new:
+                help_text = (
+                    '📋 <b>ПОМОЩЬ ДЛЯ НОВЫХ ПОЛЬЗОВАТЕЛЕЙ</b>\n\n'
+                    '━━━━━━━━━━━━━━━━━━━━\n\n'
+                    '👋 <b>Добро пожаловать!</b>\n\n'
+                    '🎯 <b>Быстрый старт:</b>\n'
+                    '1. Нажмите "📋 Все модели"\n'
+                    '2. Выберите "🖼️ Z-Image" (она бесплатная!)\n'
+                    '3. Введите описание, например: "Кот в космосе"\n'
+                    '4. Нажмите "✅ Генерировать"\n'
+                    '5. Получите результат через 10-30 секунд!\n\n'
+                    '━━━━━━━━━━━━━━━━━━━━\n\n'
+                    '💡 <b>Полезные команды:</b>\n'
+                    '/start - Главное меню\n'
+                    '/models - Показать все модели\n'
+                    '/balance - Проверить баланс\n'
+                    '/help - Эта справка\n\n'
+                    '❓ <b>Нужна помощь?</b>\n'
+                    'Нажмите "❓ Как это работает?" для интерактивного туториала!'
+                )
+            else:
+                help_text = (
+                    '📋 <b>ДОСТУПНЫЕ КОМАНДЫ</b>\n\n'
+                    '━━━━━━━━━━━━━━━━━━━━\n\n'
+                    '🔹 <b>Основные:</b>\n'
+                    '/start - Главное меню\n'
+                    '/models - Показать модели\n'
+                    '/balance - Проверить баланс\n'
+                    '/generate - Начать генерацию\n'
+                    '/help - Справка\n\n'
+                )
+                
+                if user_id == ADMIN_ID:
+                    help_text += (
+                        '👑 <b>Административные:</b>\n'
+                        '/search - Поиск в базе знаний\n'
+                        '/add - Добавление знаний\n'
+                        '/payments - Просмотр платежей\n'
+                        '/block_user - Заблокировать пользователя\n'
+                        '/unblock_user - Разблокировать пользователя\n'
+                        '/user_balance - Баланс пользователя\n\n'
+                    )
+                
                 help_text += (
-                    '👑 <b>Административные:</b>\n'
-                    '/search - Поиск в базе знаний\n'
-                    '/add - Добавление знаний\n'
-                    '/payments - Просмотр платежей\n'
-                    '/block_user - Заблокировать пользователя\n'
-                    '/unblock_user - Разблокировать пользователя\n'
-                    '/user_balance - Баланс пользователя\n\n'
+                    '💡 <b>Как использовать:</b>\n'
+                    '1. Выберите модель из меню\n'
+                    '2. Введите промпт (описание)\n'
+                    '3. Выберите параметры через кнопки\n'
+                    '4. Подтвердите генерацию\n'
+                    '5. Получите результат!\n\n'
+                    '📚 <b>Полезные функции:</b>\n'
+                    '• "📚 Мои генерации" - просмотр истории\n'
+                    '• "🔄 Повторить" - создать с теми же параметрами\n'
+                    '• "💳 Пополнить" - пополнение баланса'
                 )
             
-            help_text += (
-                '💡 <b>Как использовать:</b>\n'
-                '1. Выберите модель из меню\n'
-                '2. Введите промпт (описание)\n'
-                '3. Выберите параметры через кнопки\n'
-                '4. Подтвердите генерацию\n'
-                '5. Получите результат!\n\n'
-                '📚 <b>Полезные функции:</b>\n'
-                '• "📚 Мои генерации" - просмотр истории\n'
-                '• "🔄 Повторить" - создать с теми же параметрами\n'
-                '• "💳 Пополнить" - пополнение баланса'
+            keyboard = []
+            if is_new:
+                keyboard.append([InlineKeyboardButton("❓ Как это работает?", callback_data="tutorial_start")])
+            keyboard.append([InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")])
+            
+            await query.edit_message_text(
+                help_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
             )
-        
-        keyboard = []
-        if is_new:
-            keyboard.append([InlineKeyboardButton("❓ Как это работает?", callback_data="tutorial_start")])
-        keyboard.append([InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")])
-        
-        await query.edit_message_text(
-            help_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-        return ConversationHandler.END
+            return ConversationHandler.END
         
         if data == "support_contact":
             support_info = get_support_contact()
-        keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]]
-        
-        await query.edit_message_text(
-            support_info,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-        return ConversationHandler.END
+            keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]]
+            
+            await query.edit_message_text(
+                support_info,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
         
         if data == "referral_info":
             # Show referral information
             referral_link = get_user_referral_link(user_id)
             referrals_count = len(get_user_referrals(user_id))
             remaining_free = get_user_free_generations_remaining(user_id)
-        
-        referral_text = (
-            f'🎁 <b>РЕФЕРАЛЬНАЯ СИСТЕМА</b> 🎁\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'💡 <b>КАК ЭТО РАБОТАЕТ:</b>\n\n'
-            f'1️⃣ Пригласи друга по вашей ссылке\n'
-            f'2️⃣ Он зарегистрируется через бота\n'
-            f'3️⃣ Вы получите <b>+{REFERRAL_BONUS_GENERATIONS} бесплатных генераций</b>!\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'📊 <b>ВАША СТАТИСТИКА:</b>\n'
-            f'• Приглашено друзей: <b>{referrals_count}</b>\n'
-            f'• Получено бонусов: <b>{referrals_count * REFERRAL_BONUS_GENERATIONS}</b> генераций\n'
-            f'• Доступно бесплатно: <b>{remaining_free}</b> генераций\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'🔗 <b>ВАША РЕФЕРАЛЬНАЯ ССЫЛКА:</b>\n\n'
-            f'<code>{referral_link}</code>\n\n'
-            f'💬 <b>Отправьте эту ссылку другу!</b>\n'
-            f'После его регистрации вы получите бонус автоматически.'
-        )
-        
-        keyboard = [
-            [InlineKeyboardButton("📋 Скопировать ссылку", url=referral_link)],
-            [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
-        ]
+            
+            referral_text = (
+                f'🎁 <b>РЕФЕРАЛЬНАЯ СИСТЕМА</b> 🎁\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'💡 <b>КАК ЭТО РАБОТАЕТ:</b>\n\n'
+                f'1️⃣ Пригласи друга по вашей ссылке\n'
+                f'2️⃣ Он зарегистрируется через бота\n'
+                f'3️⃣ Вы получите <b>+{REFERRAL_BONUS_GENERATIONS} бесплатных генераций</b>!\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'📊 <b>ВАША СТАТИСТИКА:</b>\n'
+                f'• Приглашено друзей: <b>{referrals_count}</b>\n'
+                f'• Получено бонусов: <b>{referrals_count * REFERRAL_BONUS_GENERATIONS}</b> генераций\n'
+                f'• Доступно бесплатно: <b>{remaining_free}</b> генераций\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'🔗 <b>ВАША РЕФЕРАЛЬНАЯ ССЫЛКА:</b>\n\n'
+                f'<code>{referral_link}</code>\n\n'
+                f'💬 <b>Отправьте эту ссылку другу!</b>\n'
+                f'После его регистрации вы получите бонус автоматически.'
+            )
+            
+            keyboard = [
+                [InlineKeyboardButton("📋 Скопировать ссылку", url=referral_link)],
+                [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
+            ]
         
         await query.edit_message_text(
             referral_text,
