@@ -51,10 +51,11 @@ except ImportError:
 try:
     import pytesseract
     OCR_AVAILABLE = True
+    tesseract_found = False
     
     # Try to set Tesseract path
     # On Windows, check common installation paths
-    # On Linux (Timeweb), Tesseract should be in PATH
+    # On Linux (Render/Timeweb), Tesseract should be in PATH
     if platform.system() == 'Windows':
         # Common Tesseract installation paths on Windows
         possible_paths = [
@@ -62,21 +63,19 @@ try:
             r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
             r'C:\Users\{}\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'.format(os.getenv('USERNAME', '')),
         ]
-        tesseract_found = False
         for path in possible_paths:
             if os.path.exists(path):
                 pytesseract.pytesseract.tesseract_cmd = path
                 tesseract_found = True
                 logger.info(f"Tesseract found at: {path}")
                 break
-    
-    # Try to find Tesseract in PATH (works on both Windows and Linux)
-    # NOTE: shutil.which() can hang on some systems, so we skip it at import time
-    # Tesseract path will be auto-detected when OCR is actually used
-    if not tesseract_found:
+    else:
+        # On Linux, assume Tesseract is in PATH (installed via apt-get in Dockerfile)
         # Don't search PATH at import time - it can cause timeout
         # pytesseract will try to find tesseract automatically when needed
-        logger.info("Tesseract path not set. Will auto-detect when OCR is used.")
+        logger.info("Tesseract should be in PATH (Linux). Will auto-detect when OCR is used.")
+        # Assume it's available if we're on Linux (installed in Dockerfile)
+        tesseract_found = True
     
     if not tesseract_found:
         logger.warning("Tesseract not found. OCR analysis will be disabled. Install tesseract-ocr package if needed.")
@@ -87,6 +86,7 @@ try:
         logger.info("Tesseract OCR path configured. Will be tested when needed.")
 except ImportError:
     OCR_AVAILABLE = False
+    tesseract_found = False
     logger.warning("pytesseract not available. OCR analysis will be disabled.")
 
 # Bot token from environment variable
