@@ -2335,11 +2335,6 @@ GENERATION_TYPES = {
         "description": "Превращайте изображения в динамичные видео",
         "models": ["kling-2.6/image-to-video", "kling/v2-5-turbo-image-to-video-pro", "wan/2-5-image-to-video", "hailuo/02-image-to-video-pro", "hailuo/02-image-to-video-standard", "bytedance/v1-pro-fast-image-to-video", "kling/v2-1-master-image-to-video", "kling/v2-1-standard", "kling/v2-1-pro", "wan/2-2-a14b-image-to-video-turbo"]
     },
-    "video-to-video": {
-        "name": "🎞️ Видео в видео",
-        "description": "Трансформация и обработка видео",
-        "models": ["grok-imagine-image-to-video", "grok-imagine-text-to-video"]
-    },
     "video-editing": {
         "name": "✂️ Редактирование видео",
         "description": "Редактирование и обработка видео",

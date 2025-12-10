@@ -1112,22 +1112,25 @@ def get_user_referral_link(user_id: int, bot_username: str = None) -> str:
 
 
 def get_fake_online_count() -> int:
-    """Generate dynamic fake online user count."""
+    """Generate dynamic fake online user count - changes every time it's called."""
     # Base number around 500
     base = 500
-    # Random variation ±50
-    variation = random.randint(-50, 50)
+    # Random variation ±80 for more dynamic changes
+    variation = random.randint(-80, 80)
     # Time-based variation (slight changes based on time of day)
     current_hour = time.localtime().tm_hour
     # More activity during day hours (9-22)
     if 9 <= current_hour <= 22:
-        time_multiplier = random.randint(0, 30)
+        time_multiplier = random.randint(0, 50)
     else:
-        time_multiplier = random.randint(-20, 10)
+        time_multiplier = random.randint(-30, 20)
     
-    count = base + variation + time_multiplier
-    # Ensure reasonable bounds
-    return max(350, min(650, count))
+    # Add microsecond-based variation for more randomness
+    microsecond_variation = random.randint(-20, 20)
+    
+    count = base + variation + time_multiplier + microsecond_variation
+    # Ensure reasonable bounds (300-700 range)
+    return max(300, min(700, count))
 
 
 # ==================== Promocodes System ====================
@@ -1460,10 +1463,19 @@ def get_payment_details() -> str:
     phone = os.getenv('PAYMENT_PHONE', '').strip()
     bank = os.getenv('PAYMENT_BANK', '').strip()
     
-    # Debug logging (only in development)
+    # Enhanced debug logging for troubleshooting
+    logger.debug(f"Loading payment details - PAYMENT_PHONE: {'SET' if phone else 'NOT SET'}, PAYMENT_BANK: {'SET' if bank else 'NOT SET'}, PAYMENT_CARD_HOLDER: {'SET' if card_holder else 'NOT SET'}")
+    
+    # Check if any payment details are missing
     if not phone and not bank and not card_holder:
         logger.warning("Payment details not found in environment variables!")
-        logger.debug(f"PAYMENT_PHONE: {repr(phone)}, PAYMENT_BANK: {repr(bank)}, PAYMENT_CARD_HOLDER: {repr(card_holder)}")
+        logger.warning("Make sure these environment variables are set in Render dashboard:")
+        logger.warning("  - PAYMENT_PHONE")
+        logger.warning("  - PAYMENT_BANK")
+        logger.warning("  - PAYMENT_CARD_HOLDER")
+        # Also log all environment variables that start with PAYMENT_ for debugging
+        payment_env_vars = {k: v for k, v in os.environ.items() if k.startswith('PAYMENT_')}
+        logger.debug(f"All PAYMENT_* environment variables: {payment_env_vars}")
     
     details = "💳 <b>Реквизиты для оплаты (СБП):</b>\n\n"
     
@@ -1492,10 +1504,18 @@ def get_payment_details() -> str:
 def get_support_contact() -> str:
     """Get support contact information from .env (only Telegram)."""
     # Reload .env to ensure latest values are loaded
-    load_dotenv(override=True)
+    # On Render, environment variables are set via dashboard, not .env file
+    # But we still try to load .env for local development
+    try:
+        load_dotenv(override=True)
+    except Exception as e:
+        logger.debug(f"Could not reload .env: {e}")
     
-    support_telegram = os.getenv('SUPPORT_TELEGRAM', '')
-    support_text = os.getenv('SUPPORT_TEXT', '')
+    support_telegram = os.getenv('SUPPORT_TELEGRAM', '').strip()
+    support_text = os.getenv('SUPPORT_TEXT', '').strip()
+    
+    # Enhanced debug logging for troubleshooting
+    logger.debug(f"Loading support contact - SUPPORT_TELEGRAM: {'SET' if support_telegram else 'NOT SET'}, SUPPORT_TEXT: {'SET' if support_text else 'NOT SET'}")
     
     contact = "🆘 <b>Поддержка</b>\n\n"
     
@@ -1508,6 +1528,13 @@ def get_support_contact() -> str:
         telegram_username = support_telegram.replace('@', '')
         contact += f"💬 <b>Telegram:</b> @{telegram_username}\n"
     else:
+        logger.warning("Support contact not found in environment variables!")
+        logger.warning("Make sure these environment variables are set in Render dashboard:")
+        logger.warning("  - SUPPORT_TELEGRAM")
+        logger.warning("  - SUPPORT_TEXT (optional)")
+        # Also log all environment variables that start with SUPPORT_ for debugging
+        support_env_vars = {k: v for k, v in os.environ.items() if k.startswith('SUPPORT_')}
+        logger.debug(f"All SUPPORT_* environment variables: {support_env_vars}")
         contact += "⚠️ <b>Контактная информация не настроена.</b>\n\n"
         contact += "Администратору необходимо указать SUPPORT_TELEGRAM в файле .env или в настройках Render (Environment Variables).\n\n"
         contact += "Обратитесь к администратору."
@@ -1839,63 +1866,146 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     total_models = len(KIE_MODELS)
     
     if is_admin:
-        # Admin menu - premium marketing version
-        welcome_text = (
-            f'👑 ✨ <b>ПАНЕЛЬ АДМИНИСТРАТОРА</b> ✨\n\n'
-            f'Привет, {user.mention_html()}! 👋\n\n'
-            f'🎯 <b>ПОЛНЫЙ КОНТРОЛЬ НАД AI MARKETPLACE</b>\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'📊 <b>СТАТИСТИКА СИСТЕМЫ:</b>\n\n'
-            f'✅ <b>{total_models} премиум моделей</b> в арсенале\n'
-            f'✅ <b>{len(generation_types)} категорий</b> контента\n'
-            f'✅ Безлимитный доступ ко всем генерациям\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'🔥 <b>ТОПОВЫЕ МОДЕЛИ В СИСТЕМЕ:</b>\n\n'
-            f'🎨 <b>Google Imagen 4 Ultra</b> - Флагман от Google DeepMind\n'
-            f'   💰 Безлимит (цена: 4.63 ₽)\n'
-            f'   ⭐️ Максимальное качество для тестирования\n\n'
-            f'🍌 <b>Nano Banana Pro</b> - 4K от Google\n'
-            f'   💰 Безлимит (1K/2K: 6.95 ₽, 4K: 9.27 ₽)\n'
-            f'   🎯 Профессиональная генерация 2K/4K\n\n'
-            f'🎥 <b>Sora 2</b> - Видео от OpenAI\n'
-            f'   💰 Безлимит (цена: 11.58 ₽) за 10-секундное видео\n'
-            f'   🎬 Кинематографические видео с аудио\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'⚙️ <b>АДМИНИСТРАТИВНЫЕ ВОЗМОЖНОСТИ:</b>\n\n'
-            f'📈 Просмотр статистики и аналитики\n'
-            f'👥 Управление пользователями\n'
-            f'🎁 Управление промокодами\n'
-            f'🧪 Тестирование OCR системы\n'
-            f'💼 Полный контроль над ботом\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'💫 <b>НАЧНИТЕ УПРАВЛЕНИЕ ИЛИ ТЕСТИРОВАНИЕ!</b>'
-        )
+        # Admin menu - same as user menu but with admin badge and additional admin buttons
+        remaining_free = get_user_free_generations_remaining(user_id)
+        is_new = is_new_user(user_id)
+        referral_link = get_user_referral_link(user_id)
+        referrals_count = len(get_user_referrals(user_id))
         
-        # Admin keyboard - extended with generation types
+        if is_new:
+            # Enhanced marketing welcome for new users
+            online_count = get_fake_online_count()
+            
+            welcome_text = (
+                f'👋 <b>Привет, {user.mention_html()}!</b> Я твой AI-напарник! 🤖✨\n\n'
+                f'👑 <b>РЕЖИМ АДМИНИСТРАТОРА</b> - Безлимитный доступ\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'🎉 <b>ОТЛИЧНЫЕ НОВОСТИ!</b> Ты попал в самый крутой AI-генератор контента! 🚀\n\n'
+                f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
+                f'💡 <b>Я помогу тебе:</b>\n'
+                f'• 🎨 Создавать потрясающие изображения\n'
+                f'• 🎬 Генерировать крутые видео\n'
+                f'• ✨ Трансформировать и редактировать контент\n'
+                f'• 🎯 Делать все это БЕЗ VPN и по цене жвачки!\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'🏢 <b>НАШИ ПОСТАВЩИКИ:</b>\n\n'
+                f'🤖 OpenAI • Google • Black Forest Labs\n'
+                f'🎬 ByteDance • Ideogram • Qwen\n'
+                f'✨ Kling • Hailuo • Topaz\n'
+                f'🎨 Recraft • Grok (xAI) • Wan\n\n'
+                f'💎 <b>Только топовые нейросети 2025 года!</b>\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'🎁 <b>НАЧНИ БЕСПЛАТНО ПРЯМО СЕЙЧАС!</b>\n\n'
+                f'✨ <b>У тебя есть:</b>\n'
+                f'• 🎁 <b>{remaining_free if remaining_free > 0 else FREE_GENERATIONS_PER_DAY} бесплатных генераций</b> Z-Image!\n'
+                f'• 💎 Каждый день обновляется\n'
+                f'• 🎯 Пригласи друга → получи <b>+{REFERRAL_BONUS_GENERATIONS} генераций</b>!\n\n'
+                f'🔗 <b>Твоя реферальная ссылка:</b>\n'
+                f'<code>{referral_link}</code>\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'💼 <b>ИДЕАЛЬНО ДЛЯ:</b>\n'
+                f'📊 Маркетологов • 🎨 Дизайнеров • 💻 Фрилансеров\n'
+                f'🚀 SMM-щиков • ✨ Креаторов • 🎬 Контент-мейкеров\n\n'
+                f'💰 <b>ГЕНЕРАЦИЯ ПО ЦЕНЕ ЖВАЧКИ!</b>\n'
+                f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'🎯 <b>ЧТО ДЕЛАТЬ ДАЛЬШЕ?</b>\n\n'
+                f'1️⃣ <b>Нажми кнопку "🎁 Генерировать бесплатно"</b> ниже\n'
+                f'   → Попробуй Z-Image прямо сейчас!\n\n'
+                f'2️⃣ <b>Или выбери формат генерации</b> из меню\n'
+                f'   → Я покажу все доступные нейросети\n\n'
+                f'3️⃣ <b>Создавай крутой контент!</b> 🎉\n\n'
+                f'💡 <b>Не знаешь с чего начать?</b>\n'
+                f'Нажми "❓ Как это работает?" - я все расскажу!'
+            )
+        else:
+            # Marketing welcome for existing users
+            online_count = get_fake_online_count()
+            referral_bonus_text = ""
+            if referrals_count > 0:
+                referral_bonus_text = (
+                    f"\n🎁 <b>Отлично!</b> Ты пригласил <b>{referrals_count}</b> друзей\n"
+                    f"   → Получено <b>+{referrals_count * REFERRAL_BONUS_GENERATIONS} генераций</b>! 🎉\n\n"
+                )
+            
+            welcome_text = (
+                f'👋 <b>С возвращением, {user.mention_html()}!</b> Рад тебя видеть! 🤖✨\n\n'
+                f'👑 <b>РЕЖИМ АДМИНИСТРАТОРА</b> - Безлимитный доступ\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
+            )
+            
+            if remaining_free > 0:
+                welcome_text += (
+                    f'🎁 <b>У ТЕБЯ ЕСТЬ БЕСПЛАТНЫЕ ГЕНЕРАЦИИ!</b>\n\n'
+                    f'✨ <b>{remaining_free} генераций Z-Image</b> доступно прямо сейчас!\n'
+                    f'💡 Нажми кнопку "🎁 Генерировать бесплатно" ниже\n\n'
+                )
+            
+            welcome_text += (
+                f'{referral_bonus_text}'
+                f'💰 <b>ГЕНЕРАЦИЯ ПО ЦЕНЕ ЖВАЧКИ!</b>\n'
+                f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
+                f'💡 <b>Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} генераций!</b>\n'
+                f'🔗 <code>{referral_link}</code>\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'💼 <b>ИДЕАЛЬНО ДЛЯ:</b>\n'
+                f'📊 Маркетологов • 🎨 Дизайнеров • 💻 Фрилансеров\n'
+                f'🚀 SMM-щиков • ✨ Креаторов • 🎬 Контент-мейкеров\n\n'
+                f'💎 <b>ДОСТУПНО:</b>\n'
+                f'• {len(generation_types)} типов генерации\n'
+                f'• {total_models} топовых нейросетей\n'
+                f'• Без VPN, прямо здесь!\n\n'
+                f'🎯 <b>Выбери формат генерации ниже</b> или начни с бесплатной генерации!'
+            )
+        
+        # Admin keyboard - same structure as user menu but with admin buttons
         keyboard = []
         
-        # All models button first
+        # Free generation button (prominent for new users)
+        if remaining_free > 0:
+            keyboard.append([
+                InlineKeyboardButton(f"🎁 Генерировать бесплатно ({remaining_free} осталось)", callback_data="select_model:z-image")
+            ])
+            keyboard.append([])  # Empty row for spacing
+        
+        # Generation types buttons (compact, 2 per row) - SAME AS USER MENU
+        gen_type_rows = []
+        for i, gen_type in enumerate(generation_types):
+            gen_info = get_generation_type_info(gen_type)
+            models_count = len(get_models_by_generation_type(gen_type))
+            button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
+            
+            if i % 2 == 0:
+                gen_type_rows.append([InlineKeyboardButton(button_text, callback_data=f"gen_type:{gen_type}")])
+            else:
+                if gen_type_rows:
+                    gen_type_rows[-1].append(InlineKeyboardButton(button_text, callback_data=f"gen_type:{gen_type}"))
+                else:
+                    gen_type_rows.append([InlineKeyboardButton(button_text, callback_data=f"gen_type:{gen_type}")])
+        
+        keyboard.extend(gen_type_rows)
+        keyboard.append([])  # Empty row
+        
+        # User functions (same as regular users)
         keyboard.append([
-            InlineKeyboardButton("📋 Все модели", callback_data="all_models")
+            InlineKeyboardButton("💰 Баланс", callback_data="check_balance"),
+            InlineKeyboardButton("📚 Мои генерации", callback_data="my_generations")
+        ])
+        keyboard.append([
+            InlineKeyboardButton("💳 Пополнить", callback_data="topup_balance"),
+            InlineKeyboardButton("🎁 Пригласить друга", callback_data="referral_info")
+        ])
+        keyboard.append([
+            InlineKeyboardButton("❓ Как это работает?", callback_data="help_menu"),
+            InlineKeyboardButton("💬 Поддержка", callback_data="support_contact")
         ])
         
-        keyboard.append([])  # Empty row for spacing
+        keyboard.append([])  # Empty row for admin section
         
-        # Generation types (new structure)
-        for gen_type in generation_types:
-            gen_info = get_generation_type_info(gen_type)
-            models_in_type = get_models_by_generation_type(gen_type)
-            gen_name = gen_info.get('name', gen_type)
-            keyboard.append([InlineKeyboardButton(
-                f"{gen_name} ({len(models_in_type)})",
-                callback_data=f"gen_type:{gen_type}"
-            )])
-        
-        keyboard.append([])  # Empty row for spacing
-        
-        # Admin functions row
+        # Admin functions (additional for admin)
         keyboard.append([
-            InlineKeyboardButton("💰 Баланс", callback_data="check_balance")
+            InlineKeyboardButton("👑 АДМИН ПАНЕЛЬ", callback_data="admin_stats")
         ])
         keyboard.append([
             InlineKeyboardButton("📊 Статистика", callback_data="admin_stats"),
@@ -1911,7 +2021,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append([
             InlineKeyboardButton("👤 Режим пользователя", callback_data="admin_user_mode")
         ])
-        keyboard.append([InlineKeyboardButton("🆘 Помощь", callback_data="help_menu")])
     else:
         # Regular user menu - premium compact version
         remaining_free = get_user_free_generations_remaining(user_id)
@@ -2246,26 +2355,42 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return ConversationHandler.END
         else:
-            # Switching back to admin mode - send new message directly
+            # Switching back to admin mode - send new message with full admin panel
             user_sessions[user_id]['admin_user_mode'] = False
             await query.answer("Возврат в админ-панель")
             user = update.effective_user
-            categories = get_categories()
+            generation_types = get_generation_types()
             total_models = len(KIE_MODELS)
             
             welcome_text = (
-                f'👑 <b>Панель администратора</b>\n\n'
+                f'👑 ✨ <b>ПАНЕЛЬ АДМИНИСТРАТОРА</b> ✨\n\n'
                 f'Привет, {user.mention_html()}! 👋\n\n'
-                f'🚀 <b>Расширенное меню управления</b>\n\n'
-                f'📊 <b>Статистика:</b>\n'
-                f'✅ <b>{total_models} моделей</b> доступно\n'
-                f'✅ <b>{len(categories)} категорий</b>\n\n'
-                f'🎨 <b>Популярные модели:</b>\n\n'
-                f'🖼️ <b>Z-Image</b> - Фотореалистичные изображения\n'
-                f'   {get_model_price_text("z-image", None, True)}\n\n'
-                f'🍌 <b>Nano Banana Pro</b> - 2K/4K от Google DeepMind\n'
-                f'   {get_model_price_text("nano-banana-pro", None, True)}\n\n'
-                f'⚙️ <b>Административные функции доступны</b>'
+                f'🎯 <b>ПОЛНЫЙ КОНТРОЛЬ НАД AI MARKETPLACE</b>\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'📊 <b>СТАТИСТИКА СИСТЕМЫ:</b>\n\n'
+                f'✅ <b>{total_models} премиум моделей</b> в арсенале\n'
+                f'✅ <b>{len(generation_types)} категорий</b> контента\n'
+                f'✅ Безлимитный доступ ко всем генерациям\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'🔥 <b>ТОПОВЫЕ МОДЕЛИ В СИСТЕМЕ:</b>\n\n'
+                f'🎨 <b>Google Imagen 4 Ultra</b> - Флагман от Google DeepMind\n'
+                f'   💰 Безлимит (цена: 4.63 ₽)\n'
+                f'   ⭐️ Максимальное качество для тестирования\n\n'
+                f'🍌 <b>Nano Banana Pro</b> - 4K от Google\n'
+                f'   💰 Безлимит (1K/2K: 6.95 ₽, 4K: 9.27 ₽)\n'
+                f'   🎯 Профессиональная генерация 2K/4K\n\n'
+                f'🎥 <b>Sora 2</b> - Видео от OpenAI\n'
+                f'   💰 Безлимит (цена: 11.58 ₽) за 10-секундное видео\n'
+                f'   🎬 Кинематографические видео с аудио\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'⚙️ <b>АДМИНИСТРАТИВНЫЕ ВОЗМОЖНОСТИ:</b>\n\n'
+                f'📈 Просмотр статистики и аналитики\n'
+                f'👥 Управление пользователями\n'
+                f'🎁 Управление промокодами\n'
+                f'🧪 Тестирование OCR системы\n'
+                f'💼 Полный контроль над ботом\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'💫 <b>НАЧНИТЕ УПРАВЛЕНИЕ ИЛИ ТЕСТИРОВАНИЕ!</b>'
             )
             
             keyboard = []
@@ -2389,43 +2514,146 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             is_admin = False
         
-        categories = get_categories()
+        generation_types = get_generation_types()
         total_models = len(KIE_MODELS)
         
         if is_admin:
-            welcome_text = (
-                f'👑 <b>Панель администратора</b>\n\n'
-                f'Привет, {user.mention_html()}! 👋\n\n'
-                f'🚀 <b>Расширенное меню управления</b>\n\n'
-                f'📊 <b>Статистика:</b>\n'
-                f'✅ <b>{total_models} моделей</b> доступно\n'
-                f'✅ <b>{len(categories)} категорий</b>\n\n'
-                f'🎨 <b>Популярные модели:</b>\n\n'
-                f'🖼️ <b>Z-Image</b> - Фотореалистичные изображения\n'
-                f'   {get_model_price_text("z-image", None, True)}\n\n'
-                f'🍌 <b>Nano Banana Pro</b> - 2K/4K от Google DeepMind\n'
-                f'   {get_model_price_text("nano-banana-pro", None, True)}\n\n'
-                f'⚙️ <b>Административные функции доступны</b>'
-            )
+            # Admin menu - same structure as user menu
+            remaining_free = get_user_free_generations_remaining(user_id)
+            is_new = is_new_user(user_id)
+            referral_link = get_user_referral_link(user_id)
+            referrals_count = len(get_user_referrals(user_id))
+            
+            if is_new:
+                online_count = get_fake_online_count()
+                welcome_text = (
+                    f'👋 <b>Привет, {user.mention_html()}!</b> Я твой AI-напарник! 🤖✨\n\n'
+                    f'👑 <b>РЕЖИМ АДМИНИСТРАТОРА</b> - Безлимитный доступ\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'🎉 <b>ОТЛИЧНЫЕ НОВОСТИ!</b> Ты попал в самый крутой AI-генератор контента! 🚀\n\n'
+                    f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
+                    f'💡 <b>Я помогу тебе:</b>\n'
+                    f'• 🎨 Создавать потрясающие изображения\n'
+                    f'• 🎬 Генерировать крутые видео\n'
+                    f'• ✨ Трансформировать и редактировать контент\n'
+                    f'• 🎯 Делать все это БЕЗ VPN и по цене жвачки!\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'🏢 <b>НАШИ ПОСТАВЩИКИ:</b>\n\n'
+                    f'🤖 OpenAI • Google • Black Forest Labs\n'
+                    f'🎬 ByteDance • Ideogram • Qwen\n'
+                    f'✨ Kling • Hailuo • Topaz\n'
+                    f'🎨 Recraft • Grok (xAI) • Wan\n\n'
+                    f'💎 <b>Только топовые нейросети 2025 года!</b>\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'🎁 <b>НАЧНИ БЕСПЛАТНО ПРЯМО СЕЙЧАС!</b>\n\n'
+                    f'✨ <b>У тебя есть:</b>\n'
+                    f'• 🎁 <b>{remaining_free if remaining_free > 0 else FREE_GENERATIONS_PER_DAY} бесплатных генераций</b> Z-Image!\n'
+                    f'• 💎 Каждый день обновляется\n'
+                    f'• 🎯 Пригласи друга → получи <b>+{REFERRAL_BONUS_GENERATIONS} генераций</b>!\n\n'
+                    f'🔗 <b>Твоя реферальная ссылка:</b>\n'
+                    f'<code>{referral_link}</code>\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'💼 <b>ИДЕАЛЬНО ДЛЯ:</b>\n'
+                    f'📊 Маркетологов • 🎨 Дизайнеров • 💻 Фрилансеров\n'
+                    f'🚀 SMM-щиков • ✨ Креаторов • 🎬 Контент-мейкеров\n\n'
+                    f'💰 <b>ГЕНЕРАЦИЯ ПО ЦЕНЕ ЖВАЧКИ!</b>\n'
+                    f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'🎯 <b>ЧТО ДЕЛАТЬ ДАЛЬШЕ?</b>\n\n'
+                    f'1️⃣ <b>Нажми кнопку "🎁 Генерировать бесплатно"</b> ниже\n'
+                    f'   → Попробуй Z-Image прямо сейчас!\n\n'
+                    f'2️⃣ <b>Или выбери формат генерации</b> из меню\n'
+                    f'   → Я покажу все доступные нейросети\n\n'
+                    f'3️⃣ <b>Создавай крутой контент!</b> 🎉\n\n'
+                    f'💡 <b>Не знаешь с чего начать?</b>\n'
+                    f'Нажми "❓ Как это работает?" - я все расскажу!'
+                )
+            else:
+                online_count = get_fake_online_count()
+                referral_bonus_text = ""
+                if referrals_count > 0:
+                    referral_bonus_text = (
+                        f"\n🎁 <b>Отлично!</b> Ты пригласил <b>{referrals_count}</b> друзей\n"
+                        f"   → Получено <b>+{referrals_count * REFERRAL_BONUS_GENERATIONS} генераций</b>! 🎉\n\n"
+                    )
+                
+                welcome_text = (
+                    f'👋 <b>С возвращением, {user.mention_html()}!</b> Рад тебя видеть! 🤖✨\n\n'
+                    f'👑 <b>РЕЖИМ АДМИНИСТРАТОРА</b> - Безлимитный доступ\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
+                )
+                
+                if remaining_free > 0:
+                    welcome_text += (
+                        f'🎁 <b>У ТЕБЯ ЕСТЬ БЕСПЛАТНЫЕ ГЕНЕРАЦИИ!</b>\n\n'
+                        f'✨ <b>{remaining_free} генераций Z-Image</b> доступно прямо сейчас!\n'
+                        f'💡 Нажми кнопку "🎁 Генерировать бесплатно" ниже\n\n'
+                    )
+                
+                welcome_text += (
+                    f'{referral_bonus_text}'
+                    f'💰 <b>ГЕНЕРАЦИЯ ПО ЦЕНЕ ЖВАЧКИ!</b>\n'
+                    f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
+                    f'💡 <b>Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} генераций!</b>\n'
+                    f'🔗 <code>{referral_link}</code>\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'💼 <b>ИДЕАЛЬНО ДЛЯ:</b>\n'
+                    f'📊 Маркетологов • 🎨 Дизайнеров • 💻 Фрилансеров\n'
+                    f'🚀 SMM-щиков • ✨ Креаторов • 🎬 Контент-мейкеров\n\n'
+                    f'💎 <b>ДОСТУПНО:</b>\n'
+                    f'• {len(generation_types)} типов генерации\n'
+                    f'• {total_models} топовых нейросетей\n'
+                    f'• Без VPN, прямо здесь!\n\n'
+                    f'🎯 <b>Выбери формат генерации ниже</b> или начни с бесплатной генерации!'
+                )
             
             keyboard = []
-            # All models button first
+            
+            # Free generation button
+            if remaining_free > 0:
+                keyboard.append([
+                    InlineKeyboardButton(f"🎁 Генерировать бесплатно ({remaining_free} осталось)", callback_data="select_model:z-image")
+                ])
+                keyboard.append([])
+            
+            # Generation types (same as user menu)
+            gen_type_rows = []
+            for i, gen_type in enumerate(generation_types):
+                gen_info = get_generation_type_info(gen_type)
+                models_count = len(get_models_by_generation_type(gen_type))
+                button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
+                
+                if i % 2 == 0:
+                    gen_type_rows.append([InlineKeyboardButton(button_text, callback_data=f"gen_type:{gen_type}")])
+                else:
+                    if gen_type_rows:
+                        gen_type_rows[-1].append(InlineKeyboardButton(button_text, callback_data=f"gen_type:{gen_type}"))
+                    else:
+                        gen_type_rows.append([InlineKeyboardButton(button_text, callback_data=f"gen_type:{gen_type}")])
+            
+            keyboard.extend(gen_type_rows)
+            keyboard.append([])
+            
+            # User functions (same as regular users)
             keyboard.append([
-                InlineKeyboardButton("📋 Все модели", callback_data="all_models")
+                InlineKeyboardButton("💰 Баланс", callback_data="check_balance"),
+                InlineKeyboardButton("📚 Мои генерации", callback_data="my_generations")
+            ])
+            keyboard.append([
+                InlineKeyboardButton("💳 Пополнить", callback_data="topup_balance"),
+                InlineKeyboardButton("🎁 Пригласить друга", callback_data="referral_info")
+            ])
+            keyboard.append([
+                InlineKeyboardButton("❓ Как это работает?", callback_data="help_menu"),
+                InlineKeyboardButton("💬 Поддержка", callback_data="support_contact")
             ])
             
-            keyboard.append([])
-            for category in categories:
-                models_in_category = get_models_by_category(category)
-                emoji = models_in_category[0]["emoji"] if models_in_category else "📦"
-                keyboard.append([InlineKeyboardButton(
-                    f"{emoji} {category} ({len(models_in_category)})",
-                    callback_data=f"category:{category}"
-                )])
+            keyboard.append([])  # Empty row for admin section
             
+            # Admin functions (additional)
             keyboard.append([
-                InlineKeyboardButton("📋 Все модели", callback_data="all_models"),
-                InlineKeyboardButton("💰 Баланс", callback_data="check_balance")
+                InlineKeyboardButton("👑 АДМИН ПАНЕЛЬ", callback_data="admin_stats")
             ])
             keyboard.append([
                 InlineKeyboardButton("📊 Статистика", callback_data="admin_stats"),
@@ -2441,7 +2669,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard.append([
                 InlineKeyboardButton("👤 Режим пользователя", callback_data="admin_user_mode")
             ])
-            keyboard.append([InlineKeyboardButton("🆘 Помощь", callback_data="help_menu")])
         else:
             remaining_free = get_user_free_generations_remaining(user_id)
             free_info = ""
@@ -3158,21 +3385,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         current_balance = get_user_balance(user_id)
         balance_str = f"{current_balance:.2f}".rstrip('0').rstrip('.')
         
-        # Calculate what user can generate with different amounts
-        examples_50 = int(50 / 0.62)  # Z-Image price
-        examples_100 = int(100 / 0.62)
-        examples_150 = int(150 / 0.62)
-        
         await query.edit_message_text(
             f'💳 <b>ПОПОЛНЕНИЕ БАЛАНСА</b> 💳\n\n'
             f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
             f'💰 <b>Твой текущий баланс:</b> {balance_str} ₽\n\n'
             f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'🎯 <b>ЧТО МОЖНО СДЕЛАТЬ:</b>\n\n'
-            f'💎 <b>50 ₽</b> → ~{examples_50} изображений Z-Image\n'
-            f'💎 <b>100 ₽</b> → ~{examples_100} изображений Z-Image\n'
-            f'💎 <b>150 ₽</b> → ~{examples_150} изображений Z-Image\n\n'
-            f'💡 <b>Или попробуй другие модели:</b>\n'
+            f'💡 <b>Доступные модели:</b>\n'
             f'• От 3.86 ₽ за видео\n'
             f'• От 0.62 ₽ за изображение\n'
             f'• Редактирование от 0.5 ₽\n\n'
@@ -3233,13 +3451,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f'💰 <b>ВВЕДИ СВОЮ СУММУ</b> 💰\n\n'
             f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
             f'📝 <b>Просто отправь число</b> (например: 250)\n\n'
-            f'💡 <b>РЕКОМЕНДУЕМ:</b>\n'
-            f'• 50 ₽ → ~80 изображений\n'
-            f'• 100 ₽ → ~160 изображений\n'
-            f'• 150 ₽ → ~240 изображений\n'
-            f'• 200 ₽ → ~320 изображений\n'
-            f'• 300 ₽ → ~480 изображений\n'
-            f'• 500 ₽ → ~800 изображений\n\n'
+            f'💡 <b>Доступные модели:</b>\n'
+            f'• От 3.86 ₽ за видео\n'
+            f'• От 0.62 ₽ за изображение\n'
+            f'• Редактирование от 0.5 ₽\n\n'
             f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
             f'📋 <b>Ограничения:</b>\n'
             f'• Минимум: 50 ₽\n'
