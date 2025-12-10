@@ -2362,20 +2362,20 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if data == "back_to_menu":
             # Return to start menu - recreate the same menu as /start
             try:
-            user = update.effective_user
-            user_id = user.id
-            is_admin = (user_id == ADMIN_ID)
-            
-            generation_types = get_generation_types()
-            total_models = len(KIE_MODELS)
-            remaining_free = get_user_free_generations_remaining(user_id)
-            is_new = is_new_user(user_id)
-            referral_link = get_user_referral_link(user_id)
-            referrals_count = len(get_user_referrals(user_id))
-            
-            if is_new:
-                online_count = get_fake_online_count()
-                welcome_text = (
+                user = update.effective_user
+                user_id = user.id
+                is_admin = (user_id == ADMIN_ID)
+                
+                generation_types = get_generation_types()
+                total_models = len(KIE_MODELS)
+                remaining_free = get_user_free_generations_remaining(user_id)
+                is_new = is_new_user(user_id)
+                referral_link = get_user_referral_link(user_id)
+                referrals_count = len(get_user_referrals(user_id))
+                
+                if is_new:
+                    online_count = get_fake_online_count()
+                    welcome_text = (
                     f'🎉 <b>ПРИВЕТ, {user.mention_html()}!</b> 🎉\n\n'
                     f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
                     f'🔥 <b>У ТЕБЯ ЕСТЬ {remaining_free if remaining_free > 0 else FREE_GENERATIONS_PER_DAY} БЕСПЛАТНЫХ ГЕНЕРАЦИЙ!</b> 🔥\n\n'
@@ -2417,8 +2417,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
                     f'💰 <b>После бесплатных генераций:</b>\n'
                     f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео'
-                )
-            else:
+                    )
+                else:
                 online_count = get_fake_online_count()
                 referral_bonus_text = ""
                 if referrals_count > 0:
@@ -2464,78 +2464,90 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f'💡 <b>Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} бесплатных генераций!</b>\n'
                     f'🔗 <code>{referral_link}</code>\n\n'
                     f'🎯 <b>Выбери формат генерации ниже или начни с бесплатной!</b>'
-                )
-            
-            # Common keyboard for both admin and regular users
-            keyboard = []
-            
-            # Free generation button (ALWAYS prominent - biggest button)
-            if remaining_free > 0:
-                keyboard.append([
-                    InlineKeyboardButton(f"🎁 ГЕНЕРИРОВАТЬ БЕСПЛАТНО ({remaining_free} осталось)", callback_data="select_model:z-image")
-                ])
-                keyboard.append([])  # Empty row for spacing
-            
-            # Generation types buttons (compact, 2 per row)
-            gen_type_rows = []
-            for i, gen_type in enumerate(generation_types):
-                gen_info = get_generation_type_info(gen_type)
-                models_count = len(get_models_by_generation_type(gen_type))
-                button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
+                    )
                 
-                if i % 2 == 0:
-                    gen_type_rows.append([InlineKeyboardButton(
-                        button_text,
-                        callback_data=f"gen_type:{gen_type}"
-                    )])
-                else:
-                    if gen_type_rows:
-                        gen_type_rows[-1].append(InlineKeyboardButton(
-                            button_text,
-                            callback_data=f"gen_type:{gen_type}"
-                        ))
-                    else:
+                # Common keyboard for both admin and regular users
+                keyboard = []
+                
+                # Free generation button (ALWAYS prominent - biggest button)
+                if remaining_free > 0:
+                    keyboard.append([
+                        InlineKeyboardButton(f"🎁 ГЕНЕРИРОВАТЬ БЕСПЛАТНО ({remaining_free} осталось)", callback_data="select_model:z-image")
+                    ])
+                    keyboard.append([])  # Empty row for spacing
+                
+                # Generation types buttons (compact, 2 per row)
+                gen_type_rows = []
+                for i, gen_type in enumerate(generation_types):
+                    gen_info = get_generation_type_info(gen_type)
+                    models_count = len(get_models_by_generation_type(gen_type))
+                    button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
+                    
+                    if i % 2 == 0:
                         gen_type_rows.append([InlineKeyboardButton(
                             button_text,
                             callback_data=f"gen_type:{gen_type}"
                         )])
-            
-            keyboard.extend(gen_type_rows)
-            
-            # Bottom action buttons
-            keyboard.append([])  # Empty row for spacing
-            keyboard.append([
-                InlineKeyboardButton("💰 Баланс", callback_data="check_balance"),
-                InlineKeyboardButton("📚 Мои генерации", callback_data="my_generations")
-            ])
-            keyboard.append([
-                InlineKeyboardButton("💳 Пополнить", callback_data="topup_balance"),
-                InlineKeyboardButton("🎁 Пригласить друга", callback_data="referral_info")
-            ])
-            
-            # Add tutorial button for new users
-            if is_new:
+                    else:
+                        if gen_type_rows:
+                            gen_type_rows[-1].append(InlineKeyboardButton(
+                                button_text,
+                                callback_data=f"gen_type:{gen_type}"
+                            ))
+                        else:
+                            gen_type_rows.append([InlineKeyboardButton(
+                                button_text,
+                                callback_data=f"gen_type:{gen_type}"
+                            )])
+                
+                keyboard.extend(gen_type_rows)
+                
+                # Bottom action buttons
+                keyboard.append([])  # Empty row for spacing
                 keyboard.append([
-                    InlineKeyboardButton("❓ Как это работает?", callback_data="tutorial_start")
+                    InlineKeyboardButton("💰 Баланс", callback_data="check_balance"),
+                    InlineKeyboardButton("📚 Мои генерации", callback_data="my_generations")
                 ])
-            
-            keyboard.append([
-                InlineKeyboardButton("🆘 Помощь", callback_data="help_menu"),
-                InlineKeyboardButton("💬 Поддержка", callback_data="support_contact")
-            ])
-            
-            # Add admin panel button ONLY for admin (at the end)
-            if is_admin:
-                keyboard.append([])  # Empty row for admin section
                 keyboard.append([
-                    InlineKeyboardButton("👑 АДМИН ПАНЕЛЬ", callback_data="admin_stats")
+                    InlineKeyboardButton("💳 Пополнить", callback_data="topup_balance"),
+                    InlineKeyboardButton("🎁 Пригласить друга", callback_data="referral_info")
                 ])
-            
-            await query.edit_message_text(
-                welcome_text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
+                
+                # Add tutorial button for new users
+                if is_new:
+                    keyboard.append([
+                        InlineKeyboardButton("❓ Как это работает?", callback_data="tutorial_start")
+                    ])
+                
+                keyboard.append([
+                    InlineKeyboardButton("🆘 Помощь", callback_data="help_menu"),
+                    InlineKeyboardButton("💬 Поддержка", callback_data="support_contact")
+                ])
+                
+                # Add admin panel button ONLY for admin (at the end)
+                if is_admin:
+                    keyboard.append([])  # Empty row for admin section
+                    keyboard.append([
+                        InlineKeyboardButton("👑 АДМИН ПАНЕЛЬ", callback_data="admin_stats")
+                    ])
+                
+                try:
+                    await query.edit_message_text(
+                        welcome_text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                except Exception as edit_error:
+                    logger.warning(f"Could not edit message in back_to_menu: {edit_error}, sending new message")
+                    try:
+                        await query.message.reply_text(
+                            welcome_text,
+                            reply_markup=InlineKeyboardMarkup(keyboard),
+                            parse_mode='HTML'
+                        )
+                    except Exception as send_error:
+                        logger.error(f"Could not send new message in back_to_menu: {send_error}", exc_info=True)
+                        await query.answer("❌ Ошибка. Попробуйте /start", show_alert=True)
         except Exception as e:
             logger.error(f"Error in back_to_menu: {e}", exc_info=True)
             try:
