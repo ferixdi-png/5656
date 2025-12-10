@@ -2559,109 +2559,420 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return ConversationHandler.END
         
     
-    # OLD back_to_menu code removed - now using start() function directly
-    if False:  # This block is now disabled
-        if is_admin:
-            # Admin menu - same structure as user menu
-            remaining_free = get_user_free_generations_remaining(user_id)
-            is_new = is_new_user(user_id)
-            referral_link = get_user_referral_link(user_id)
-            referrals_count = len(get_user_referrals(user_id))
+        if data == "generate_again":
+            # Generate again - restore model and show model info, then ask for new prompt
+            await query.answer()  # Acknowledge the callback
             
-            if is_new:
-                online_count = get_fake_online_count()
-                welcome_text = (
-                    f'👋 <b>Привет, {user.mention_html()}!</b> Я твой AI-напарник! 🤖✨\n\n'
-                    f'👑 <b>РЕЖИМ АДМИНИСТРАТОРА</b> - Безлимитный доступ\n\n'
-                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                    f'🎉 <b>ОТЛИЧНЫЕ НОВОСТИ!</b> Ты попал в самый крутой AI-генератор контента! 🚀\n\n'
-                    f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
-                    f'💡 <b>Я помогу тебе:</b>\n'
-                    f'• 🎨 Создавать потрясающие изображения\n'
-                    f'• 🎬 Генерировать крутые видео\n'
-                    f'• ✨ Трансформировать и редактировать контент\n'
-                    f'• 🎯 Делать все это БЕЗ VPN и по цене жвачки!\n\n'
-                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                    f'🏢 <b>НАШИ ПОСТАВЩИКИ:</b>\n\n'
-                    f'🤖 OpenAI • Google • Black Forest Labs\n'
-                    f'🎬 ByteDance • Ideogram • Qwen\n'
-                    f'✨ Kling • Hailuo • Topaz\n'
-                    f'🎨 Recraft • Grok (xAI) • Wan\n\n'
-                    f'💎 <b>Только топовые нейросети 2025 года!</b>\n\n'
-                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                    f'🎁 <b>НАЧНИ БЕСПЛАТНО ПРЯМО СЕЙЧАС!</b>\n\n'
-                    f'✨ <b>У тебя есть:</b>\n'
-                    f'• 🎁 <b>{remaining_free if remaining_free > 0 else FREE_GENERATIONS_PER_DAY} бесплатных генераций</b> Z-Image!\n'
-                    f'• 💎 Каждый день обновляется\n'
-                    f'• 🎯 Пригласи друга → получи <b>+{REFERRAL_BONUS_GENERATIONS} генераций</b>!\n\n'
-                    f'🔗 <b>Твоя реферальная ссылка:</b>\n'
-                    f'<code>{referral_link}</code>\n\n'
-                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                    f'💼 <b>ИДЕАЛЬНО ДЛЯ:</b>\n'
-                    f'📊 Маркетологов • 🎨 Дизайнеров • 💻 Фрилансеров\n'
-                    f'🚀 SMM-щиков • ✨ Креаторов • 🎬 Контент-мейкеров\n\n'
-                    f'💰 <b>ГЕНЕРАЦИЯ ПО ЦЕНЕ ЖВАЧКИ!</b>\n'
-                    f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
-                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                    f'🎯 <b>ЧТО ДЕЛАТЬ ДАЛЬШЕ?</b>\n\n'
-                    f'1️⃣ <b>Нажми кнопку "🎁 Генерировать бесплатно"</b> ниже\n'
-                    f'   → Попробуй Z-Image прямо сейчас!\n\n'
-                    f'2️⃣ <b>Или выбери формат генерации</b> из меню\n'
-                    f'   → Я покажу все доступные нейросети\n\n'
-                    f'3️⃣ <b>Создавай крутой контент!</b> 🎉\n\n'
-                    f'💡 <b>Не знаешь с чего начать?</b>\n'
-                    f'Нажми "❓ Как это работает?" - я все расскажу!'
+            logger.info(f"Generate again requested by user {user_id}")
+            
+            if user_id not in saved_generations:
+                logger.warning(f"No saved generation data for user {user_id}")
+                await query.edit_message_text(
+                    "❌ <b>Данные для повторной генерации не найдены</b>\n\n"
+                    "Начните новую генерацию через меню.",
+                    parse_mode='HTML'
                 )
+                return ConversationHandler.END
+            
+            saved_data = saved_generations[user_id]
+            logger.info(f"Restoring generation data for user {user_id}, model: {saved_data.get('model_id')}")
+            
+            # Restore session with model info, but clear params to start fresh
+            if user_id not in user_sessions:
+                user_sessions[user_id] = {}
+            
+            model_id = saved_data['model_id']
+            model_info = saved_data['model_info']
+            
+            # Restore model info but clear params - user will enter new prompt
+            user_sessions[user_id].update({
+                'model_id': model_id,
+                'model_info': model_info,
+                'properties': saved_data['properties'].copy(),
+                'required': saved_data['required'].copy(),
+                'params': {}  # Clear params - start fresh
+            })
+            
+            # Get user balance and calculate available generations (same as select_model)
+            user_balance = get_user_balance(user_id)
+            is_admin = get_is_admin(user_id)
+            
+            # Calculate price for default parameters (minimum price)
+            default_params = {}
+            if model_id == "nano-banana-pro":
+                default_params = {"resolution": "1K"}  # Cheapest option
+            elif model_id == "seedream/4.5-text-to-image" or model_id == "seedream/4.5-edit":
+                default_params = {"quality": "basic"}  # Basic quality (same price, but for consistency)
+            
+            min_price = calculate_price_rub(model_id, default_params, is_admin)
+            price_text = format_price_rub(min_price, is_admin)
+            
+            # Calculate how many generations available
+            if is_admin:
+                available_count = "Безлимит"
+            elif user_balance >= min_price:
+                available_count = int(user_balance / min_price)
             else:
-                online_count = get_fake_online_count()
-                referral_bonus_text = ""
-                if referrals_count > 0:
-                    referral_bonus_text = (
-                        f"\n🎁 <b>Отлично!</b> Ты пригласил <b>{referrals_count}</b> друзей\n"
-                        f"   → Получено <b>+{referrals_count * REFERRAL_BONUS_GENERATIONS} генераций</b>! 🎉\n\n"
+                available_count = 0
+            
+            # Show model info with price and available generations (same format as select_model)
+            model_name = model_info.get('name', model_id)
+            model_emoji = model_info.get('emoji', '🤖')
+            model_desc = model_info.get('description', '')
+            
+            model_info_text = (
+                f"{model_emoji} <b>{model_name}</b>\n\n"
+                f"{model_desc}\n\n"
+                f"💰 <b>Цена генерации:</b> {price_text} ₽\n"
+            )
+            
+            if is_admin:
+                model_info_text += f"✅ <b>Доступно:</b> Безлимит\n\n"
+            else:
+                if available_count > 0:
+                    model_info_text += f"✅ <b>Доступно генераций:</b> {available_count}\n"
+                    model_info_text += f"💳 <b>Ваш баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n\n"
+                else:
+                    # Not enough balance - show warning
+                    model_info_text += (
+                        f"❌ <b>Недостаточно средств</b>\n"
+                        f"💳 <b>Ваш баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n"
+                        f"💵 <b>Требуется:</b> {price_text} ₽\n\n"
+                        f"Пополните баланс для генерации."
                     )
+                    
+                    keyboard = [
+                        [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
+                        [InlineKeyboardButton("◀️ Назад к моделям", callback_data="back_to_menu")]
+                    ]
+                    
+                    await query.edit_message_text(
+                        model_info_text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                    return ConversationHandler.END
+            
+            # Check balance before starting generation
+            if not is_admin and user_balance < min_price:
+                keyboard = [
+                    [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
+                    [InlineKeyboardButton("◀️ Назад к моделям", callback_data="back_to_menu")]
+                ]
                 
-                welcome_text = (
-                    f'👋 <b>С возвращением, {user.mention_html()}!</b> Рад тебя видеть! 🤖✨\n\n'
-                    f'👑 <b>РЕЖИМ АДМИНИСТРАТОРА</b> - Безлимитный доступ\n\n'
-                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                    f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
+                await query.edit_message_text(
+                    f"❌ <b>Недостаточно средств для генерации</b>\n\n"
+                    f"💳 <b>Ваш баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n"
+                    f"💵 <b>Требуется минимум:</b> {price_text} ₽\n\n"
+                    f"Пополните баланс, чтобы начать генерацию.",
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+                return ConversationHandler.END
+            
+            # Get input parameters from model info
+            input_params = model_info.get('input_params', {})
+            
+            if not input_params:
+                # If no params defined, ask for simple text input
+                await query.edit_message_text(
+                    f"{model_info_text}"
+                    f"Введите текст для генерации:",
+                    parse_mode='HTML'
+                )
+                user_sessions[user_id]['params'] = {}
+                user_sessions[user_id]['waiting_for'] = 'text'
+                return INPUTTING_PARAMS
+            
+            # Store session data
+            user_sessions[user_id]['params'] = {}
+            user_sessions[user_id]['properties'] = input_params
+            user_sessions[user_id]['required'] = [p for p, info in input_params.items() if info.get('required', False)]
+            user_sessions[user_id]['current_param'] = None
+            
+            # Start with prompt parameter first
+            if 'prompt' in input_params:
+                # Check if model supports image input (image_input or image_urls)
+                has_image_input = 'image_input' in input_params or 'image_urls' in input_params
+                
+                prompt_text = (
+                    f"{model_info_text}"
                 )
                 
-                if remaining_free > 0:
-                    welcome_text += (
-                        f'🎁 <b>У ТЕБЯ ЕСТЬ БЕСПЛАТНЫЕ ГЕНЕРАЦИИ!</b>\n\n'
-                        f'✨ <b>{remaining_free} генераций Z-Image</b> доступно прямо сейчас!\n'
-                        f'💡 Нажми кнопку "🎁 Генерировать бесплатно" ниже\n\n'
+                if has_image_input:
+                    prompt_text += (
+                        f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
+                        f"Опишите изображение, которое хотите сгенерировать.\n\n"
+                        f"💡 <i>После ввода промпта вы сможете добавить изображение (опционально)</i>"
+                    )
+                else:
+                    prompt_text += (
+                        f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
+                        f"Опишите изображение, которое хотите сгенерировать:"
                     )
                 
-                welcome_text += (
-                    f'{referral_bonus_text}'
-                    f'💰 <b>ГЕНЕРАЦИЯ ПО ЦЕНЕ ЖВАЧКИ!</b>\n'
-                    f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
-                    f'💡 <b>Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} генераций!</b>\n'
-                    f'🔗 <code>{referral_link}</code>\n\n'
-                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                    f'💼 <b>ИДЕАЛЬНО ДЛЯ:</b>\n'
-                    f'📊 Маркетологов • 🎨 Дизайнеров • 💻 Фрилансеров\n'
-                    f'🚀 SMM-щиков • ✨ Креаторов • 🎬 Контент-мейкеров\n\n'
-                    f'💎 <b>ДОСТУПНО:</b>\n'
-                    f'• {len(generation_types)} типов генерации\n'
-                    f'• {total_models} топовых нейросетей\n'
-                    f'• Без VPN, прямо здесь!\n\n'
-                    f'🎯 <b>Выбери формат генерации ниже</b> или начни с бесплатной генерации!'
+                await query.edit_message_text(
+                    prompt_text,
+                    parse_mode='HTML'
                 )
+                user_sessions[user_id]['current_param'] = 'prompt'
+                user_sessions[user_id]['waiting_for'] = 'prompt'
+                user_sessions[user_id]['has_image_input'] = has_image_input
+            else:
+                # If no prompt, start with first required parameter
+                await start_next_parameter(update, context, user_id)
+            
+            return INPUTTING_PARAMS
+        
+        if data == "cancel":
+            if user_id in user_sessions:
+                del user_sessions[user_id]
+            await query.edit_message_text("❌ Операция отменена.")
+            return ConversationHandler.END
+        
+        # Handle category selection (can be called from main menu)
+        if data.startswith("gen_type:"):
+            # User selected a generation type
+            gen_type = data.split(":", 1)[1]
+            gen_info = get_generation_type_info(gen_type)
+            models = get_models_by_generation_type(gen_type)
+            
+            if not models:
+                await query.edit_message_text(
+                    f"❌ Модели для этого типа генерации не найдены.",
+                    parse_mode='HTML'
+                )
+                return ConversationHandler.END
+            
+            # Show generation type info and models with marketing text
+            remaining_free = get_user_free_generations_remaining(user_id)
+            
+            gen_type_text = (
+                f"🎨 <b>{gen_info.get('name', gen_type)}</b>\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"📝 <b>Описание:</b>\n"
+                f"{gen_info.get('description', '')}\n\n"
+            )
+            
+            if remaining_free > 0 and gen_type == "text-to-image":
+                gen_type_text += (
+                    f"🎁 <b>БЕСПЛАТНО:</b> {remaining_free} генераций Z-Image доступно!\n"
+                    f"💡 Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} генераций\n\n"
+                )
+            
+            gen_type_text += (
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"🤖 <b>Доступные нейросети ({len(models)}):</b>\n\n"
+                f"💡 <b>Выберите модель ниже</b>"
+            )
+            
+            # Create keyboard with models (2 per row for compact display)
+            keyboard = []
+            
+            # Free generation button if available and this is text-to-image
+            if remaining_free > 0 and gen_type == "text-to-image":
+                keyboard.append([
+                    InlineKeyboardButton(f"🎁 Генерировать бесплатно ({remaining_free} осталось)", callback_data="select_model:z-image")
+                ])
+                keyboard.append([])  # Empty row
+            
+            # Show models in compact format with prices (2 per row)
+            model_rows = []
+            for i, model in enumerate(models):
+                model_name = model.get('name', model.get('id', 'Unknown'))
+                model_emoji = model.get('emoji', '🤖')
+                model_id = model.get('id')
+                
+                # Calculate price for display
+                default_params = {}
+                if model_id == "nano-banana-pro":
+                    default_params = {"resolution": "1K"}
+                elif model_id in ["seedream/4.5-text-to-image", "seedream/4.5-edit"]:
+                    default_params = {"quality": "basic"}
+                
+                min_price = calculate_price_rub(model_id, default_params, is_admin)
+                price_text = get_model_price_text(model_id, default_params, is_admin, user_id)
+                
+                # Extract price number from price_text for compact display
+                import re
+                price_match = re.search(r'(\d+\.?\d*)\s*₽', price_text)
+                if price_match:
+                    price_display = price_match.group(1)
+                    # Check if it's "От" (from) or fixed price
+                    if "От" in price_text or "от" in price_text.lower():
+                        price_display = f"от {price_display} ₽"
+                    else:
+                        price_display = f"{price_display} ₽"
+                elif "БЕСПЛАТНО" in price_text or "Бесплатно" in price_text:
+                    price_display = "бесплатно"
+                else:
+                    # Fallback: show calculated price
+                    price_display = f"{min_price:.2f} ₽"
+                
+                # Compact button text (shorten if too long)
+                button_text = f"{model_emoji} {model_name}"
+                if len(button_text) > 30:
+                    # Truncate model name if too long
+                    button_text = f"{model_emoji} {model_name[:25]}..."
+                
+                button_text_with_price = f"{button_text} • {price_display}"
+                
+                if i % 2 == 0:
+                    # First button in row
+                    model_rows.append([InlineKeyboardButton(
+                        button_text_with_price,
+                        callback_data=f"select_model:{model_id}"
+                    )])
+                else:
+                    # Second button in row - add to last row
+                    if model_rows:
+                        model_rows[-1].append(InlineKeyboardButton(
+                            button_text_with_price,
+                            callback_data=f"select_model:{model_id}"
+                        ))
+                    else:
+                        model_rows.append([InlineKeyboardButton(
+                            button_text_with_price,
+                            callback_data=f"select_model:{model_id}"
+                        )])
+            
+            keyboard.extend(model_rows)
+            keyboard.append([InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")])
+            
+            try:
+                await query.edit_message_text(
+                    gen_type_text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.error(f"Error editing message in gen_type: {e}", exc_info=True)
+                try:
+                    await query.message.reply_text(
+                        gen_type_text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                except Exception as e2:
+                    logger.error(f"Error sending new message in gen_type: {e2}", exc_info=True)
+                    await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
+            
+            return ConversationHandler.END
+        
+        if data.startswith("category:"):
+            category = data.split(":", 1)[1]
+            models = get_models_by_category(category)
+            
+            if not models:
+                await query.edit_message_text(f"❌ В категории {category} нет моделей.")
+                return ConversationHandler.END
+            
+            # Get user balance for showing available generations
+            user_balance = get_user_balance(user_id)
+            is_admin = get_is_admin(user_id)
+            
+            keyboard = []
+            for model in models:
+                # Calculate price for display
+                default_params = {}
+                if model['id'] == "nano-banana-pro":
+                    default_params = {"resolution": "1K"}
+                elif model['id'] in ["seedream/4.5-text-to-image", "seedream/4.5-edit"]:
+                    default_params = {"quality": "basic"}
+                
+                min_price = calculate_price_rub(model['id'], default_params, is_admin)
+                price_text = get_model_price_text(model['id'], default_params, is_admin, user_id)
+                
+                # Extract price number from price_text for compact display
+                import re
+                price_match = re.search(r'(\d+\.?\d*)\s*₽', price_text)
+                if price_match:
+                    price_display = price_match.group(1)
+                    # Check if it's "От" (from) or fixed price
+                    if "От" in price_text or "от" in price_text.lower():
+                        price_display = f"от {price_display} ₽"
+                    else:
+                        price_display = f"{price_display} ₽"
+                elif "БЕСПЛАТНО" in price_text or "Бесплатно" in price_text:
+                    price_display = "бесплатно"
+                else:
+                    # Fallback: show calculated price
+                    price_display = f"{min_price:.2f} ₽"
+                
+                # Compact button text with price
+                button_text = f"{model['emoji']} {model['name']} • {price_display}"
+                
+                keyboard.append([InlineKeyboardButton(
+                    button_text,
+                    callback_data=f"select_model:{model['id']}"
+                )])
+            keyboard.append([InlineKeyboardButton("◀️ Назад к категориям", callback_data="show_models")])
+            keyboard.append([InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")])
+            
+            # Premium formatted header
+            category_emoji = {
+                "Видео": "🎬",
+                "Изображения": "🖼️",
+                "Редактирование": "✏️"
+            }.get(category, "📁")
+            
+            models_text = (
+                f"✨ <b>ПРЕМИУМ КАТАЛОГ</b> ✨\n\n"
+                f"{category_emoji} <b>Категория: {category}</b>\n"
+                f"📦 <b>Доступно моделей:</b> {len(models)}\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"💡 <i>Выберите модель из списка ниже</i>\n"
+                f"<i>Подробная информация отобразится при выборе</i>"
+            )
+            
+            await query.edit_message_text(
+                models_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return SELECTING_MODEL
+        
+        if data == "show_models" or data == "all_models":
+            # Show generation types instead of all models with marketing text
+            generation_types = get_generation_types()
+            remaining_free = get_user_free_generations_remaining(user_id)
+            
+            models_text = (
+                f"🎨 <b>ВЫБЕРИТЕ ФОРМАТ ГЕНЕРАЦИИ</b>\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"💰 <b>ГЕНЕРАЦИЯ ПО ЦЕНЕ ЖВАЧКИ!</b>\n\n"
+                f"💼 <b>ИДЕАЛЬНО ДЛЯ:</b>\n"
+                f"• Маркетологов • SMM-щиков • Дизайнеров\n"
+                f"• Фрилансеров • Креаторов • Контент-мейкеров\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"💡 <b>КАК ЭТО РАБОТАЕТ:</b>\n"
+                f"1️⃣ Выберите формат генерации\n"
+                f"2️⃣ Выберите одну из предложенных нейросетей\n"
+                f"3️⃣ Создавайте крутой контент! 🚀\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            )
+            
+            if remaining_free > 0:
+                models_text += (
+                    f"🎁 <b>БЕСПЛАТНО:</b> {remaining_free} генераций Z-Image доступно!\n"
+                    f"💡 Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} генераций\n\n"
+                )
+            
+            models_text += (
+                f"📦 <b>Доступно:</b> {len(generation_types)} типов генерации\n"
+                f"🤖 <b>Моделей:</b> {len(KIE_MODELS)} топовых нейросетей"
+            )
             
             keyboard = []
             
-            # Free generation button
+            # Free generation button if available
             if remaining_free > 0:
                 keyboard.append([
                     InlineKeyboardButton(f"🎁 Генерировать бесплатно ({remaining_free} осталось)", callback_data="select_model:z-image")
                 ])
-                keyboard.append([])
+                keyboard.append([])  # Empty row
             
-            # Generation types (same as user menu)
+            # Generation types buttons (2 per row for compact display)
             gen_type_rows = []
             for i, gen_type in enumerate(generation_types):
                 gen_info = get_generation_type_info(gen_type)
@@ -2669,636 +2980,112 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
                 
                 if i % 2 == 0:
-                    gen_type_rows.append([InlineKeyboardButton(button_text, callback_data=f"gen_type:{gen_type}")])
-                else:
-                    if gen_type_rows:
-                        gen_type_rows[-1].append(InlineKeyboardButton(button_text, callback_data=f"gen_type:{gen_type}"))
-                    else:
-                        gen_type_rows.append([InlineKeyboardButton(button_text, callback_data=f"gen_type:{gen_type}")])
-            
-            keyboard.extend(gen_type_rows)
-            keyboard.append([])
-            
-            # User functions (same as regular users)
-            keyboard.append([
-                InlineKeyboardButton("💰 Баланс", callback_data="check_balance"),
-                InlineKeyboardButton("📚 Мои генерации", callback_data="my_generations")
-            ])
-            keyboard.append([
-                InlineKeyboardButton("💳 Пополнить", callback_data="topup_balance"),
-                InlineKeyboardButton("🎁 Пригласить друга", callback_data="referral_info")
-            ])
-            keyboard.append([
-                InlineKeyboardButton("❓ Как это работает?", callback_data="help_menu"),
-                InlineKeyboardButton("💬 Поддержка", callback_data="support_contact")
-            ])
-            
-            keyboard.append([])  # Empty row for admin section
-            
-            # Admin functions (additional)
-            keyboard.append([
-                InlineKeyboardButton("👑 АДМИН ПАНЕЛЬ", callback_data="admin_stats")
-            ])
-            keyboard.append([
-                InlineKeyboardButton("📊 Статистика", callback_data="admin_stats"),
-                InlineKeyboardButton("⚙️ Настройки", callback_data="admin_settings")
-            ])
-            keyboard.append([
-                InlineKeyboardButton("🔍 Поиск", callback_data="admin_search"),
-                InlineKeyboardButton("📝 Добавить", callback_data="admin_add")
-            ])
-            keyboard.append([
-                InlineKeyboardButton("🧪 Тест OCR", callback_data="admin_test_ocr")
-            ])
-            keyboard.append([
-                InlineKeyboardButton("👤 Режим пользователя", callback_data="admin_user_mode")
-            ])
-        else:
-            remaining_free = get_user_free_generations_remaining(user_id)
-            free_info = ""
-            if remaining_free > 0:
-                free_info = f"\n🎁 <b>Бесплатно:</b> {remaining_free} генераций Z-Image\n"
-            
-            welcome_text = (
-                f'✨ <b>ПРЕМИУМ AI MARKETPLACE</b> ✨\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'👋 Привет, {user.mention_html()}!\n\n'
-                f'🚀 <b>Топовые нейросети без VPN</b>\n'
-                f'📦 <b>{total_models} моделей</b> | <b>{len(categories)} категорий</b>{free_info}\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'💎 <b>Преимущества:</b>\n'
-                f'• Прямой доступ к мировым AI\n'
-                f'• Профессиональное качество 2K/4K\n'
-                f'• Мгновенная генерация\n\n'
-                f'🎯 <b>Выберите категорию или все модели</b>'
-            )
-            
-            keyboard = []
-            
-            # All models button first
-            keyboard.append([
-                InlineKeyboardButton("📋 Все модели", callback_data="all_models")
-            ])
-            
-            keyboard.append([])
-            for category in categories:
-                models_in_category = get_models_by_category(category)
-                emoji = models_in_category[0]["emoji"] if models_in_category else "📦"
-                keyboard.append([InlineKeyboardButton(
-                    f"{emoji} {category} ({len(models_in_category)})",
-                    callback_data=f"category:{category}"
-                )])
-            
-            keyboard.append([
-                InlineKeyboardButton("💰 Баланс", callback_data="check_balance")
-            ])
-            keyboard.append([
-                InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")
-            ])
-            # Add admin back button if admin is in user mode
-            if user_id == ADMIN_ID and user_id in user_sessions and user_sessions[user_id].get('admin_user_mode', False):
-                keyboard.append([
-                    InlineKeyboardButton("🔙 Вернуться в админ-панель", callback_data="admin_back_to_admin")
-                ])
-            keyboard.append([
-                InlineKeyboardButton("🆘 Помощь", callback_data="help_menu"),
-                InlineKeyboardButton("💬 Поддержка", callback_data="support_contact")
-            ])
-        
-        await query.message.reply_text(
-            welcome_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-            return ConversationHandler.END
-        
-        if data == "generate_again":
-        # Generate again - restore model and show model info, then ask for new prompt
-        await query.answer()  # Acknowledge the callback
-        
-        logger.info(f"Generate again requested by user {user_id}")
-        
-        if user_id not in saved_generations:
-            logger.warning(f"No saved generation data for user {user_id}")
-            await query.edit_message_text(
-                "❌ <b>Данные для повторной генерации не найдены</b>\n\n"
-                "Начните новую генерацию через меню.",
-                parse_mode='HTML'
-            )
-            return ConversationHandler.END
-        
-        saved_data = saved_generations[user_id]
-        logger.info(f"Restoring generation data for user {user_id}, model: {saved_data.get('model_id')}")
-        
-        # Restore session with model info, but clear params to start fresh
-        if user_id not in user_sessions:
-            user_sessions[user_id] = {}
-        
-        model_id = saved_data['model_id']
-        model_info = saved_data['model_info']
-        
-        # Restore model info but clear params - user will enter new prompt
-        user_sessions[user_id].update({
-            'model_id': model_id,
-            'model_info': model_info,
-            'properties': saved_data['properties'].copy(),
-            'required': saved_data['required'].copy(),
-            'params': {}  # Clear params - start fresh
-        })
-        
-        # Get user balance and calculate available generations (same as select_model)
-        user_balance = get_user_balance(user_id)
-        is_admin = get_is_admin(user_id)
-        
-        # Calculate price for default parameters (minimum price)
-        default_params = {}
-        if model_id == "nano-banana-pro":
-            default_params = {"resolution": "1K"}  # Cheapest option
-        elif model_id == "seedream/4.5-text-to-image" or model_id == "seedream/4.5-edit":
-            default_params = {"quality": "basic"}  # Basic quality (same price, but for consistency)
-        
-        min_price = calculate_price_rub(model_id, default_params, is_admin)
-        price_text = format_price_rub(min_price, is_admin)
-        
-        # Calculate how many generations available
-        if is_admin:
-            available_count = "Безлимит"
-        elif user_balance >= min_price:
-            available_count = int(user_balance / min_price)
-        else:
-            available_count = 0
-        
-        # Show model info with price and available generations (same format as select_model)
-        model_name = model_info.get('name', model_id)
-        model_emoji = model_info.get('emoji', '🤖')
-        model_desc = model_info.get('description', '')
-        
-        model_info_text = (
-            f"{model_emoji} <b>{model_name}</b>\n\n"
-            f"{model_desc}\n\n"
-            f"💰 <b>Цена генерации:</b> {price_text} ₽\n"
-        )
-        
-        if is_admin:
-            model_info_text += f"✅ <b>Доступно:</b> Безлимит\n\n"
-        else:
-            if available_count > 0:
-                model_info_text += f"✅ <b>Доступно генераций:</b> {available_count}\n"
-                model_info_text += f"💳 <b>Ваш баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n\n"
-            else:
-                # Not enough balance - show warning
-                model_info_text += (
-                    f"❌ <b>Недостаточно средств</b>\n"
-                    f"💳 <b>Ваш баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n"
-                    f"💵 <b>Требуется:</b> {price_text} ₽\n\n"
-                    f"Пополните баланс для генерации."
-                )
-                
-                keyboard = [
-                    [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
-                    [InlineKeyboardButton("◀️ Назад к моделям", callback_data="back_to_menu")]
-                ]
-                
-                await query.edit_message_text(
-                    model_info_text,
-                    reply_markup=InlineKeyboardMarkup(keyboard),
-                    parse_mode='HTML'
-                )
-                return ConversationHandler.END
-        
-        # Check balance before starting generation
-        if not is_admin and user_balance < min_price:
-            keyboard = [
-                [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
-                [InlineKeyboardButton("◀️ Назад к моделям", callback_data="back_to_menu")]
-            ]
-            
-            await query.edit_message_text(
-                f"❌ <b>Недостаточно средств для генерации</b>\n\n"
-                f"💳 <b>Ваш баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n"
-                f"💵 <b>Требуется минимум:</b> {price_text} ₽\n\n"
-                f"Пополните баланс, чтобы начать генерацию.",
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
-            return ConversationHandler.END
-        
-        # Get input parameters from model info
-        input_params = model_info.get('input_params', {})
-        
-        if not input_params:
-            # If no params defined, ask for simple text input
-            await query.edit_message_text(
-                f"{model_info_text}"
-                f"Введите текст для генерации:",
-                parse_mode='HTML'
-            )
-            user_sessions[user_id]['params'] = {}
-            user_sessions[user_id]['waiting_for'] = 'text'
-            return INPUTTING_PARAMS
-        
-        # Store session data
-        user_sessions[user_id]['params'] = {}
-        user_sessions[user_id]['properties'] = input_params
-        user_sessions[user_id]['required'] = [p for p, info in input_params.items() if info.get('required', False)]
-        user_sessions[user_id]['current_param'] = None
-        
-        # Start with prompt parameter first
-        if 'prompt' in input_params:
-            # Check if model supports image input (image_input or image_urls)
-            has_image_input = 'image_input' in input_params or 'image_urls' in input_params
-            
-            prompt_text = (
-                f"{model_info_text}"
-            )
-            
-            if has_image_input:
-                prompt_text += (
-                    f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
-                    f"Опишите изображение, которое хотите сгенерировать.\n\n"
-                    f"💡 <i>После ввода промпта вы сможете добавить изображение (опционально)</i>"
-                )
-            else:
-                prompt_text += (
-                    f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
-                    f"Опишите изображение, которое хотите сгенерировать:"
-                )
-            
-            await query.edit_message_text(
-                prompt_text,
-                parse_mode='HTML'
-            )
-            user_sessions[user_id]['current_param'] = 'prompt'
-            user_sessions[user_id]['waiting_for'] = 'prompt'
-            user_sessions[user_id]['has_image_input'] = has_image_input
-        else:
-            # If no prompt, start with first required parameter
-            await start_next_parameter(update, context, user_id)
-        
-        return INPUTTING_PARAMS
-        
-        if data == "cancel":
-        if user_id in user_sessions:
-            del user_sessions[user_id]
-        await query.edit_message_text("❌ Операция отменена.")
-        return ConversationHandler.END
-        
-        # Handle category selection (can be called from main menu)
-        if data.startswith("gen_type:"):
-        # User selected a generation type
-        gen_type = data.split(":", 1)[1]
-        gen_info = get_generation_type_info(gen_type)
-        models = get_models_by_generation_type(gen_type)
-        
-        if not models:
-            await query.edit_message_text(
-                f"❌ Модели для этого типа генерации не найдены.",
-                parse_mode='HTML'
-            )
-            return ConversationHandler.END
-        
-        # Show generation type info and models with marketing text
-        remaining_free = get_user_free_generations_remaining(user_id)
-        
-        gen_type_text = (
-            f"🎨 <b>{gen_info.get('name', gen_type)}</b>\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📝 <b>Описание:</b>\n"
-            f"{gen_info.get('description', '')}\n\n"
-        )
-        
-        if remaining_free > 0 and gen_type == "text-to-image":
-            gen_type_text += (
-                f"🎁 <b>БЕСПЛАТНО:</b> {remaining_free} генераций Z-Image доступно!\n"
-                f"💡 Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} генераций\n\n"
-            )
-        
-        gen_type_text += (
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"🤖 <b>Доступные нейросети ({len(models)}):</b>\n\n"
-            f"💡 <b>Выберите модель ниже</b>"
-        )
-        
-        # Create keyboard with models (2 per row for compact display)
-        keyboard = []
-        
-        # Free generation button if available and this is text-to-image
-        if remaining_free > 0 and gen_type == "text-to-image":
-            keyboard.append([
-                InlineKeyboardButton(f"🎁 Генерировать бесплатно ({remaining_free} осталось)", callback_data="select_model:z-image")
-            ])
-            keyboard.append([])  # Empty row
-        
-        # Show models in compact format with prices (2 per row)
-        model_rows = []
-        for i, model in enumerate(models):
-            model_name = model.get('name', model.get('id', 'Unknown'))
-            model_emoji = model.get('emoji', '🤖')
-            model_id = model.get('id')
-            
-            # Calculate price for display
-            default_params = {}
-            if model_id == "nano-banana-pro":
-                default_params = {"resolution": "1K"}
-            elif model_id in ["seedream/4.5-text-to-image", "seedream/4.5-edit"]:
-                default_params = {"quality": "basic"}
-            
-            min_price = calculate_price_rub(model_id, default_params, is_admin_user)
-            price_text = get_model_price_text(model_id, default_params, is_admin_user, user_id)
-            
-            # Extract price number from price_text for compact display
-            import re
-            price_match = re.search(r'(\d+\.?\d*)\s*₽', price_text)
-            if price_match:
-                price_display = price_match.group(1)
-                # Check if it's "От" (from) or fixed price
-                if "От" in price_text or "от" in price_text.lower():
-                    price_display = f"от {price_display} ₽"
-                else:
-                    price_display = f"{price_display} ₽"
-            elif "БЕСПЛАТНО" in price_text or "Бесплатно" in price_text:
-                price_display = "бесплатно"
-            else:
-                # Fallback: show calculated price
-                price_display = f"{min_price:.2f} ₽"
-            
-            # Compact button text (shorten if too long)
-            button_text = f"{model_emoji} {model_name}"
-            if len(button_text) > 30:
-                # Truncate model name if too long
-                button_text = f"{model_emoji} {model_name[:25]}..."
-            
-            button_text_with_price = f"{button_text} • {price_display}"
-            
-            if i % 2 == 0:
-                # First button in row
-                model_rows.append([InlineKeyboardButton(
-                    button_text_with_price,
-                    callback_data=f"select_model:{model_id}"
-                )])
-            else:
-                # Second button in row - add to last row
-                if model_rows:
-                    model_rows[-1].append(InlineKeyboardButton(
-                        button_text_with_price,
-                        callback_data=f"select_model:{model_id}"
-                    ))
-                else:
-                    model_rows.append([InlineKeyboardButton(
-                        button_text_with_price,
-                        callback_data=f"select_model:{model_id}"
-                    )])
-        
-        keyboard.extend(model_rows)
-        keyboard.append([InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")])
-        
-        try:
-            await query.edit_message_text(
-                gen_type_text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
-        except Exception as e:
-            logger.error(f"Error editing message in gen_type: {e}", exc_info=True)
-            try:
-                await query.message.reply_text(
-                    gen_type_text,
-                    reply_markup=InlineKeyboardMarkup(keyboard),
-                    parse_mode='HTML'
-                )
-            except Exception as e2:
-                logger.error(f"Error sending new message in gen_type: {e2}", exc_info=True)
-                await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
-        
-        return ConversationHandler.END
-        
-        if data.startswith("category:"):
-        category = data.split(":", 1)[1]
-        models = get_models_by_category(category)
-        
-        if not models:
-            await query.edit_message_text(f"❌ В категории {category} нет моделей.")
-            return ConversationHandler.END
-        
-        # Get user balance for showing available generations
-        user_balance = get_user_balance(user_id)
-        is_admin = get_is_admin(user_id)
-        
-        keyboard = []
-        for model in models:
-            # Calculate price for display
-            default_params = {}
-            if model['id'] == "nano-banana-pro":
-                default_params = {"resolution": "1K"}
-            elif model['id'] in ["seedream/4.5-text-to-image", "seedream/4.5-edit"]:
-                default_params = {"quality": "basic"}
-            
-            min_price = calculate_price_rub(model['id'], default_params, is_admin)
-            price_text = get_model_price_text(model['id'], default_params, is_admin, user_id)
-            
-            # Extract price number from price_text for compact display
-            import re
-            price_match = re.search(r'(\d+\.?\d*)\s*₽', price_text)
-            if price_match:
-                price_display = price_match.group(1)
-                # Check if it's "От" (from) or fixed price
-                if "От" in price_text or "от" in price_text.lower():
-                    price_display = f"от {price_display} ₽"
-                else:
-                    price_display = f"{price_display} ₽"
-            elif "БЕСПЛАТНО" in price_text or "Бесплатно" in price_text:
-                price_display = "бесплатно"
-            else:
-                # Fallback: show calculated price
-                price_display = f"{min_price:.2f} ₽"
-            
-            # Compact button text with price
-            button_text = f"{model['emoji']} {model['name']} • {price_display}"
-            
-            keyboard.append([InlineKeyboardButton(
-                button_text,
-                callback_data=f"select_model:{model['id']}"
-            )])
-        keyboard.append([InlineKeyboardButton("◀️ Назад к категориям", callback_data="show_models")])
-        keyboard.append([InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")])
-        
-        # Premium formatted header
-        category_emoji = {
-            "Видео": "🎬",
-            "Изображения": "🖼️",
-            "Редактирование": "✏️"
-        }.get(category, "📁")
-        
-        models_text = (
-            f"✨ <b>ПРЕМИУМ КАТАЛОГ</b> ✨\n\n"
-            f"{category_emoji} <b>Категория: {category}</b>\n"
-            f"📦 <b>Доступно моделей:</b> {len(models)}\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"💡 <i>Выберите модель из списка ниже</i>\n"
-            f"<i>Подробная информация отобразится при выборе</i>"
-        )
-        
-        await query.edit_message_text(
-            models_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-        return SELECTING_MODEL
-        
-        if data == "show_models" or data == "all_models":
-        # Show generation types instead of all models with marketing text
-        generation_types = get_generation_types()
-        remaining_free = get_user_free_generations_remaining(user_id)
-        
-        models_text = (
-            f"🎨 <b>ВЫБЕРИТЕ ФОРМАТ ГЕНЕРАЦИИ</b>\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"💰 <b>ГЕНЕРАЦИЯ ПО ЦЕНЕ ЖВАЧКИ!</b>\n\n"
-            f"💼 <b>ИДЕАЛЬНО ДЛЯ:</b>\n"
-            f"• Маркетологов • SMM-щиков • Дизайнеров\n"
-            f"• Фрилансеров • Креаторов • Контент-мейкеров\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"💡 <b>КАК ЭТО РАБОТАЕТ:</b>\n"
-            f"1️⃣ Выберите формат генерации\n"
-            f"2️⃣ Выберите одну из предложенных нейросетей\n"
-            f"3️⃣ Создавайте крутой контент! 🚀\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        )
-        
-        if remaining_free > 0:
-            models_text += (
-                f"🎁 <b>БЕСПЛАТНО:</b> {remaining_free} генераций Z-Image доступно!\n"
-                f"💡 Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} генераций\n\n"
-            )
-        
-        models_text += (
-            f"📦 <b>Доступно:</b> {len(generation_types)} типов генерации\n"
-            f"🤖 <b>Моделей:</b> {len(KIE_MODELS)} топовых нейросетей"
-        )
-        
-        keyboard = []
-        
-        # Free generation button if available
-        if remaining_free > 0:
-            keyboard.append([
-                InlineKeyboardButton(f"🎁 Генерировать бесплатно ({remaining_free} осталось)", callback_data="select_model:z-image")
-            ])
-            keyboard.append([])  # Empty row
-        
-        # Generation types buttons (2 per row for compact display)
-        gen_type_rows = []
-        for i, gen_type in enumerate(generation_types):
-            gen_info = get_generation_type_info(gen_type)
-            models_count = len(get_models_by_generation_type(gen_type))
-            button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
-            
-            if i % 2 == 0:
-                # First button in row
-                gen_type_rows.append([InlineKeyboardButton(
-                    button_text,
-                    callback_data=f"gen_type:{gen_type}"
-                )])
-            else:
-                # Second button in row - add to last row
-                if gen_type_rows:
-                    gen_type_rows[-1].append(InlineKeyboardButton(
-                        button_text,
-                        callback_data=f"gen_type:{gen_type}"
-                    ))
-                else:
+                    # First button in row
                     gen_type_rows.append([InlineKeyboardButton(
                         button_text,
                         callback_data=f"gen_type:{gen_type}"
                     )])
-        
-        keyboard.extend(gen_type_rows)
-        keyboard.append([InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")])
-        
-        await query.edit_message_text(
-            models_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-        return SELECTING_MODEL
+                else:
+                    # Second button in row - add to last row
+                    if gen_type_rows:
+                        gen_type_rows[-1].append(InlineKeyboardButton(
+                            button_text,
+                            callback_data=f"gen_type:{gen_type}"
+                        ))
+                    else:
+                        gen_type_rows.append([InlineKeyboardButton(
+                            button_text,
+                            callback_data=f"gen_type:{gen_type}"
+                        )])
+            
+            keyboard.extend(gen_type_rows)
+            keyboard.append([InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")])
+            
+            await query.edit_message_text(
+                models_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return SELECTING_MODEL
         
         if data == "add_image":
-        await query.edit_message_text(
-            "📷 <b>Загрузите изображение</b>\n\n"
-            "Отправьте фото, которое хотите использовать как референс или для трансформации.\n"
-            "Можно загрузить до 8 изображений.",
-            parse_mode='HTML'
-        )
-        session = user_sessions.get(user_id, {})
-        # Determine which parameter name to use (image_input or image_urls)
-        model_info = session.get('model_info', {})
-        input_params = model_info.get('input_params', {})
-        if 'image_urls' in input_params:
-            image_param_name = 'image_urls'
-        else:
-            image_param_name = 'image_input'
-        session['waiting_for'] = image_param_name
-        session[image_param_name] = []  # Initialize as array
-        return INPUTTING_PARAMS
+            await query.edit_message_text(
+                "📷 <b>Загрузите изображение</b>\n\n"
+                "Отправьте фото, которое хотите использовать как референс или для трансформации.\n"
+                "Можно загрузить до 8 изображений.",
+                parse_mode='HTML'
+            )
+            session = user_sessions.get(user_id, {})
+            # Determine which parameter name to use (image_input or image_urls)
+            model_info = session.get('model_info', {})
+            input_params = model_info.get('input_params', {})
+            if 'image_urls' in input_params:
+                image_param_name = 'image_urls'
+            else:
+                image_param_name = 'image_input'
+            session['waiting_for'] = image_param_name
+            session[image_param_name] = []  # Initialize as array
+            return INPUTTING_PARAMS
         
         if data == "image_done":
-        session = user_sessions.get(user_id, {})
-        image_param_name = session.get('waiting_for', 'image_input')
-        if image_param_name in session and session[image_param_name]:
-            session['params'][image_param_name] = session[image_param_name]
-            await query.edit_message_text(
-                f"✅ Добавлено изображений: {len(session[image_param_name])}\n\n"
-                f"Продолжаю..."
-            )
-        session['waiting_for'] = None
-        
-        # Move to next parameter
-        try:
-            next_param_result = await start_next_parameter(update, context, user_id)
-            if next_param_result:
-                return next_param_result
-            else:
-                # All parameters collected
-                model_name = session.get('model_info', {}).get('name', 'Unknown')
-                params = session.get('params', {})
-                params_text = "\n".join([f"  • {k}: {str(v)[:50]}..." for k, v in params.items()])
-                
-                keyboard = [
-                    [InlineKeyboardButton("✅ Генерировать", callback_data="confirm_generate")],
-                    [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
-                ]
-                
+            session = user_sessions.get(user_id, {})
+            image_param_name = session.get('waiting_for', 'image_input')
+            if image_param_name in session and session[image_param_name]:
+                session['params'][image_param_name] = session[image_param_name]
                 await query.edit_message_text(
-                    f"📋 <b>Подтверждение:</b>\n\n"
-                    f"Модель: <b>{model_name}</b>\n"
-                    f"Параметры:\n{params_text}\n\n"
-                    f"Продолжить генерацию?",
-                    reply_markup=InlineKeyboardMarkup(keyboard),
-                    parse_mode='HTML'
+                    f"✅ Добавлено изображений: {len(session[image_param_name])}\n\n"
+                    f"Продолжаю..."
                 )
-                return CONFIRMING_GENERATION
-        except Exception as e:
-            logger.error(f"Error after image done: {e}")
-            await query.edit_message_text("❌ Ошибка при переходе к следующему параметру.")
-            return INPUTTING_PARAMS
+            session['waiting_for'] = None
+            
+            # Move to next parameter
+            try:
+                next_param_result = await start_next_parameter(update, context, user_id)
+                if next_param_result:
+                    return next_param_result
+                else:
+                    # All parameters collected
+                    model_name = session.get('model_info', {}).get('name', 'Unknown')
+                    params = session.get('params', {})
+                    params_text = "\n".join([f"  • {k}: {str(v)[:50]}..." for k, v in params.items()])
+                    
+                    keyboard = [
+                        [InlineKeyboardButton("✅ Генерировать", callback_data="confirm_generate")],
+                        [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
+                    ]
+                    
+                    await query.edit_message_text(
+                        f"📋 <b>Подтверждение:</b>\n\n"
+                        f"Модель: <b>{model_name}</b>\n"
+                        f"Параметры:\n{params_text}\n\n"
+                        f"Продолжить генерацию?",
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                    return CONFIRMING_GENERATION
+            except Exception as e:
+                logger.error(f"Error after image done: {e}")
+                await query.edit_message_text("❌ Ошибка при переходе к следующему параметру.")
+                return INPUTTING_PARAMS
         
         if data == "skip_image":
-        await query.answer("Изображение пропущено")
-        # Move to next parameter
-        try:
-            next_param_result = await start_next_parameter(update, context, user_id)
-            if next_param_result:
-                return next_param_result
-            else:
-                # All parameters collected
-                session = user_sessions[user_id]
-                model_name = session.get('model_info', {}).get('name', 'Unknown')
-                params = session.get('params', {})
-                params_text = "\n".join([f"  • {k}: {str(v)[:50]}..." for k, v in params.items()])
-                
-                keyboard = [
-                    [InlineKeyboardButton("✅ Генерировать", callback_data="confirm_generate")],
-                    [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
-                ]
+            await query.answer("Изображение пропущено")
+            # Move to next parameter
+            try:
+                next_param_result = await start_next_parameter(update, context, user_id)
+                if next_param_result:
+                    return next_param_result
+                else:
+                    # All parameters collected
+                    session = user_sessions[user_id]
+                    model_name = session.get('model_info', {}).get('name', 'Unknown')
+                    params = session.get('params', {})
+                    params_text = "\n".join([f"  • {k}: {str(v)[:50]}..." for k, v in params.items()])
+                    
+                    keyboard = [
+                        [InlineKeyboardButton("✅ Генерировать", callback_data="confirm_generate")],
+                        [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
+                    ]
                 
                 await query.edit_message_text(
                     f"📋 <b>Подтверждение:</b>\n\n"
@@ -3309,244 +3096,236 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     parse_mode='HTML'
                 )
                 return CONFIRMING_GENERATION
-        except Exception as e:
-            logger.error(f"Error after skipping image: {e}")
-            await query.edit_message_text("❌ Ошибка при переходе к следующему параметру.")
-            return INPUTTING_PARAMS
+            except Exception as e:
+                logger.error(f"Error after skipping image: {e}")
+                await query.edit_message_text("❌ Ошибка при переходе к следующему параметру.")
+                return INPUTTING_PARAMS
         
         if data.startswith("set_param:"):
-        # Handle parameter setting via button
-        parts = data.split(":", 2)
-        if len(parts) == 3:
-            param_name = parts[1]
-            param_value = parts[2]
-            
-            if user_id not in user_sessions:
-                await query.edit_message_text("❌ Сессия не найдена.")
-                return ConversationHandler.END
-            
-            session = user_sessions[user_id]
-            properties = session.get('properties', {})
-            param_info = properties.get(param_name, {})
-            param_type = param_info.get('type', 'string')
-            
-            # Convert boolean string to actual boolean
-            if param_type == 'boolean':
-                if param_value.lower() == 'true':
-                    param_value = True
-                elif param_value.lower() == 'false':
-                    param_value = False
+            # Handle parameter setting via button
+            parts = data.split(":", 2)
+            if len(parts) == 3:
+                param_name = parts[1]
+                param_value = parts[2]
+                
+                if user_id not in user_sessions:
+                    await query.edit_message_text("❌ Сессия не найдена.")
+                    return ConversationHandler.END
+                
+                session = user_sessions[user_id]
+                properties = session.get('properties', {})
+                param_info = properties.get(param_name, {})
+                param_type = param_info.get('type', 'string')
+                
+                # Convert boolean string to actual boolean
+                if param_type == 'boolean':
+                    if param_value.lower() == 'true':
+                        param_value = True
+                    elif param_value.lower() == 'false':
+                        param_value = False
+                    else:
+                        # Use default if invalid
+                        param_value = param_info.get('default', True)
+                
+                session['params'][param_name] = param_value
+                session['current_param'] = None
+                
+                # Check if there are more parameters
+                required = session.get('required', [])
+                params = session.get('params', {})
+                missing = [p for p in required if p not in params]
+                
+                if missing:
+                    await query.edit_message_text(f"✅ {param_name} установлен: {param_value}")
+                    # Move to next parameter
+                    try:
+                        next_param_result = await start_next_parameter(update, context, user_id)
+                        if next_param_result:
+                            return next_param_result
+                    except Exception as e:
+                        logger.error(f"Error starting next parameter: {e}")
+                        await query.edit_message_text("❌ Ошибка при переходе к следующему параметру.")
+                        return INPUTTING_PARAMS
                 else:
-                    # Use default if invalid
-                    param_value = param_info.get('default', True)
-            
-            session['params'][param_name] = param_value
-            session['current_param'] = None
-            
-            # Check if there are more parameters
-            required = session.get('required', [])
-            params = session.get('params', {})
-            missing = [p for p in required if p not in params]
-            
-            if missing:
-                await query.edit_message_text(f"✅ {param_name} установлен: {param_value}")
-                # Move to next parameter
-                try:
-                    next_param_result = await start_next_parameter(update, context, user_id)
-                    if next_param_result:
-                        return next_param_result
-                except Exception as e:
-                    logger.error(f"Error starting next parameter: {e}")
-                    await query.edit_message_text("❌ Ошибка при переходе к следующему параметру.")
-                    return INPUTTING_PARAMS
-            else:
-                # All parameters collected
-                model_name = session.get('model_info', {}).get('name', 'Unknown')
-                params_text = "\n".join([f"  • {k}: {v}" for k, v in params.items()])
-                
-                keyboard = [
-                    [InlineKeyboardButton("✅ Генерировать", callback_data="confirm_generate")],
-                    [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
-                ]
-                
-                await query.edit_message_text(
-                    f"📋 <b>Подтверждение:</b>\n\n"
-                    f"Модель: <b>{model_name}</b>\n"
-                    f"Параметры:\n{params_text}\n\n"
-                    f"Продолжить генерацию?",
-                    reply_markup=InlineKeyboardMarkup(keyboard),
-                    parse_mode='HTML'
-                )
-                return CONFIRMING_GENERATION
+                    # All parameters collected
+                    model_name = session.get('model_info', {}).get('name', 'Unknown')
+                    params_text = "\n".join([f"  • {k}: {v}" for k, v in params.items()])
+                    
+                    keyboard = [
+                        [InlineKeyboardButton("✅ Генерировать", callback_data="confirm_generate")],
+                        [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
+                    ]
+                    
+                    await query.edit_message_text(
+                        f"📋 <b>Подтверждение:</b>\n\n"
+                        f"Модель: <b>{model_name}</b>\n"
+                        f"Параметры:\n{params_text}\n\n"
+                        f"Продолжить генерацию?",
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                    return CONFIRMING_GENERATION
         
         if data == "check_balance":
-        # Check user's personal balance (NOT KIE balance)
-        user_balance = get_user_balance(user_id)
-        balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
-        is_admin = get_is_admin(user_id)
-        
-        keyboard = [
-            [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
-            [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
-        ]
-        
-        balance_text = (
-            f'💳 <b>ВАШ БАЛАНС</b> 💳\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'💰 <b>Доступно:</b> {balance_str} ₽\n\n'
-        )
-        
-        if is_admin:
-            balance_text += (
-                f'👑 <b>Статус:</b> Администратор\n'
-                f'✅ Безлимитный доступ ко всем моделям\n\n'
+            # Check user's personal balance (NOT KIE balance)
+            user_balance = get_user_balance(user_id)
+            balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
+            is_admin = get_is_admin(user_id)
+            
+            keyboard = [
+                [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
+                [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
+            ]
+            
+            balance_text = (
+                f'💳 <b>ВАШ БАЛАНС</b> 💳\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'💰 <b>Доступно:</b> {balance_str} ₽\n\n'
             )
-        else:
-            if user_balance > 0:
+            
+            if is_admin:
                 balance_text += (
-                    f'💡 <b>Доступно для генерации:</b>\n'
-                    f'• ~{int(user_balance / 0.62)} изображений (Z-Image)\n'
-                    f'• ~{int(user_balance / 3.86)} видео (базовая модель)\n\n'
+                    f'👑 <b>Статус:</b> Администратор\n'
+                    f'✅ Безлимитный доступ ко всем моделям\n\n'
                 )
             else:
-                balance_text += (
-                    f'💡 <b>Пополните баланс для генерации контента</b>\n\n'
-                )
-        
-        balance_text += (
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'🎁 <b>Не забудьте:</b> У вас есть бесплатные генерации Z-Image!'
-        )
-        
-        await query.edit_message_text(
-            balance_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-        return ConversationHandler.END
-        
-        if data == "topup_balance":
-        # Check if user is blocked
-        if is_user_blocked(user_id):
+                if user_balance > 0:
+                    balance_text += (
+                        f'💡 <b>Доступно для генерации:</b>\n'
+                        f'• ~{int(user_balance / 0.62)} изображений (Z-Image)\n'
+                        f'• ~{int(user_balance / 3.86)} видео (базовая модель)\n\n'
+                    )
+                else:
+                    balance_text += (
+                        f'💡 <b>Пополните баланс для генерации контента</b>\n\n'
+                    )
+            
+            balance_text += (
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'🎁 <b>Не забудьте:</b> У вас есть бесплатные генерации Z-Image!'
+            )
+            
             await query.edit_message_text(
-                "❌ <b>Ваш аккаунт заблокирован</b>\n\n"
-                "Обратитесь к администратору для разблокировки.",
+                balance_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='HTML'
             )
             return ConversationHandler.END
         
-        # Show amount selection - focus on small amounts with marketing
-        keyboard = [
-            [
-                InlineKeyboardButton("💎 50 ₽", callback_data="topup_amount:50"),
-                InlineKeyboardButton("💎 100 ₽", callback_data="topup_amount:100"),
-                InlineKeyboardButton("💎 150 ₽", callback_data="topup_amount:150")
-            ],
-            [
-                InlineKeyboardButton("💰 Своя сумма", callback_data="topup_custom")
-            ],
-            [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
-        ]
-        
-        current_balance = get_user_balance(user_id)
-        balance_str = f"{current_balance:.2f}".rstrip('0').rstrip('.')
-        
-        await query.edit_message_text(
-            f'💳 <b>ПОПОЛНЕНИЕ БАЛАНСА</b> 💳\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'💰 <b>Твой текущий баланс:</b> {balance_str} ₽\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'💡 <b>Доступные модели:</b>\n'
-            f'• От 3.86 ₽ за видео\n'
-            f'• От 0.62 ₽ за изображение\n'
-            f'• Редактирование от 0.5 ₽\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'🚀 <b>ВЫБЕРИ СУММУ:</b>\n'
-            f'• Быстрый выбор: 50, 100, 150 ₽\n'
-            f'• Или укажи свою сумму\n\n'
-            f'📝 <b>Ограничения:</b>\n'
-            f'Минимум: 50 ₽ | Максимум: 50000 ₽',
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-        return SELECTING_AMOUNT
+        if data == "topup_balance":
+            # Check if user is blocked
+            if is_user_blocked(user_id):
+                await query.edit_message_text(
+                    "❌ <b>Ваш аккаунт заблокирован</b>\n\n"
+                    "Обратитесь к администратору для разблокировки.",
+                    parse_mode='HTML'
+                )
+                return ConversationHandler.END
+            
+            # Show amount selection - focus on small amounts with marketing
+            keyboard = [
+                [
+                    InlineKeyboardButton("💎 50 ₽", callback_data="topup_amount:50"),
+                    InlineKeyboardButton("💎 100 ₽", callback_data="topup_amount:100"),
+                    InlineKeyboardButton("💎 150 ₽", callback_data="topup_amount:150")
+                ],
+                [
+                    InlineKeyboardButton("💰 Своя сумма", callback_data="topup_custom")
+                ],
+                [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
+            ]
+            
+            current_balance = get_user_balance(user_id)
+            balance_str = f"{current_balance:.2f}".rstrip('0').rstrip('.')
+            
+            await query.edit_message_text(
+                f'💳 <b>ПОПОЛНЕНИЕ БАЛАНСА</b> 💳\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'💰 <b>Твой текущий баланс:</b> {balance_str} ₽\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'💡 <b>Доступные модели:</b>\n'
+                f'• От 3.86 ₽ за видео\n'
+                f'• От 0.62 ₽ за изображение\n'
+                f'• Редактирование от 0.5 ₽\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'🚀 <b>ВЫБЕРИ СУММУ:</b>\n'
+                f'• Быстрый выбор: 50, 100, 150 ₽\n'
+                f'• Или укажи свою сумму\n\n'
+                f'📝 <b>Ограничения:</b>\n'
+                f'Минимум: 50 ₽ | Максимум: 50000 ₽',
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return SELECTING_AMOUNT
         
         if data.startswith("topup_amount:"):
-        # User selected a preset amount
-        amount = float(data.split(":")[1])
-        user_sessions[user_id] = {
-            'topup_amount': amount,
-            'waiting_for': 'payment_screenshot'
-        }
-        
-        payment_details = get_payment_details()
-        
-        # Calculate what user can generate
-        examples_count = int(amount / 0.62)  # Z-Image price
-        video_count = int(amount / 3.86)  # Basic video price
-        
-        keyboard = [
-            [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
-        ]
-        
-        await query.edit_message_text(
-            f'💳 <b>ОПЛАТА {amount:.0f} ₽</b> 💳\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'{payment_details}\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'💵 <b>Сумма к оплате:</b> {amount:.2f} ₽\n\n'
-            f'🎯 <b>ЧТО ТЫ ПОЛУЧИШЬ:</b>\n'
-            f'• ~{examples_count} изображений Z-Image\n'
-            f'• ~{video_count} видео (базовая модель)\n'
-            f'• Или комбинацию разных моделей!\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'📸 <b>КАК ОПЛАТИТЬ:</b>\n'
-            f'1️⃣ Переведи {amount:.2f} ₽ по реквизитам выше\n'
-            f'2️⃣ Сделай скриншот перевода\n'
-            f'3️⃣ Отправь скриншот сюда\n'
-            f'4️⃣ Баланс начислится автоматически! ⚡\n\n'
-            f'✅ <b>Все просто и быстро!</b>',
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-        return WAITING_PAYMENT_SCREENSHOT
+            # User selected a preset amount
+            amount = float(data.split(":")[1])
+            user_sessions[user_id] = {
+                'topup_amount': amount,
+                'waiting_for': 'payment_screenshot'
+            }
+            
+            payment_details = get_payment_details()
+            
+            # Calculate what user can generate
+            examples_count = int(amount / 0.62)  # Z-Image price
+            video_count = int(amount / 3.86)  # Basic video price
+            
+            keyboard = [
+                [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
+            ]
+            
+            await query.edit_message_text(
+                f'💳 <b>ОПЛАТА {amount:.0f} ₽</b> 💳\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'{payment_details}\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'💵 <b>Сумма к оплате:</b> {amount:.2f} ₽\n\n'
+                f'🎯 <b>ЧТО ТЫ ПОЛУЧИШЬ:</b>\n'
+                f'• ~{examples_count} изображений Z-Image\n'
+                f'• ~{video_count} видео (базовая модель)\n'
+                f'• Или комбинацию разных моделей!\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'📸 <b>КАК ОПЛАТИТЬ:</b>\n'
+                f'1️⃣ Переведи {amount:.2f} ₽ по реквизитам выше\n'
+                f'2️⃣ Сделай скриншот перевода\n'
+                f'3️⃣ Отправь скриншот сюда\n'
+                f'4️⃣ Баланс начислится автоматически! ⚡\n\n'
+                f'✅ <b>Все просто и быстро!</b>',
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return WAITING_PAYMENT_SCREENSHOT
         
         if data == "topup_custom":
-        # User wants to enter custom amount
-        await query.edit_message_text(
-            f'💰 <b>ВВЕДИ СВОЮ СУММУ</b> 💰\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'📝 <b>Просто отправь число</b> (например: 250)\n\n'
-            f'💡 <b>Доступные модели:</b>\n'
-            f'• От 3.86 ₽ за видео\n'
-            f'• От 0.62 ₽ за изображение\n'
-            f'• Редактирование от 0.5 ₽\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'📋 <b>Ограничения:</b>\n'
-            f'• Минимум: 50 ₽\n'
-            f'• Максимум: 50000 ₽\n\n'
-            f'💬 <b>Отправь сумму цифрами</b> (например: 250)',
-            parse_mode='HTML'
-        )
-        user_sessions[user_id] = {
-            'waiting_for': 'topup_amount_input'
-        }
-        return SELECTING_AMOUNT
-    
-    # If we get here and no handler matched, log and return END
-    logger.warning(f"Unhandled callback data: {data} from user {user_id}")
-    try:
-        await query.answer("❌ Неизвестная команда. Используйте /start", show_alert=True)
-    except:
-        pass
-    return ConversationHandler.END
-    
-    # Admin functions (only for admin)
-    if user_id == ADMIN_ID:
-        if data == "admin_stats":
-            # Show full admin panel menu
-            generation_types = get_generation_types()
-            total_models = len(KIE_MODELS)
+            # User wants to enter custom amount
+            await query.edit_message_text(
+                f'💰 <b>ВВЕДИ СВОЮ СУММУ</b> 💰\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'📝 <b>Просто отправь число</b> (например: 250)\n\n'
+                f'💡 <b>Доступные модели:</b>\n'
+                f'• От 3.86 ₽ за видео\n'
+                f'• От 0.62 ₽ за изображение\n'
+                f'• Редактирование от 0.5 ₽\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'📋 <b>Ограничения:</b>\n'
+                f'• Минимум: 50 ₽\n'
+                f'• Максимум: 50000 ₽\n\n'
+                f'💬 <b>Отправь сумму цифрами</b> (например: 250)',
+                parse_mode='HTML'
+            )
+            user_sessions[user_id] = {
+                'waiting_for': 'topup_amount_input'
+            }
+            return SELECTING_AMOUNT
+        
+        # Admin functions (only for admin)
+        if user_id == ADMIN_ID:
+            if data == "admin_stats":
+                # Show full admin panel menu
+                generation_types = get_generation_types()
+                total_models = len(KIE_MODELS)
             
             # Get KIE API balance (for admin info only)
             kie_balance_info = ""
@@ -3862,8 +3641,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ADMIN_TEST_OCR
         
         if data == "tutorial_start":
-        # Interactive tutorial for new users
-        tutorial_text = (
+            # Interactive tutorial for new users
+            tutorial_text = (
             '🎓 <b>ИНТЕРАКТИВНЫЙ ТУТОРИАЛ</b>\n\n'
             '━━━━━━━━━━━━━━━━━━━━\n\n'
             '👋 Добро пожаловать! Давайте разберемся, как пользоваться ботом.\n\n'
@@ -3888,36 +3667,36 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
         
         if data == "tutorial_step1":
-        tutorial_text = (
-            '📖 <b>ШАГ 1: Что такое AI-генерация?</b>\n\n'
-            '━━━━━━━━━━━━━━━━━━━━\n\n'
-            '🤖 <b>Искусственный интеллект</b> может создавать:\n\n'
-            '🎨 <b>Изображения</b>\n'
-            'Опишите картинку словами, и AI создаст её!\n'
-            'Пример: "Кот в космосе, пиксель-арт"\n\n'
-            '🎬 <b>Видео</b>\n'
-            'Создавайте короткие видео из текста\n'
-            'Пример: "Летящий дракон над городом"\n\n'
-            '🖼️ <b>Улучшение качества</b>\n'
-            'Увеличивайте разрешение фото в 4-8 раз\n\n'
-            '💡 <b>Все это без VPN!</b> Прямой доступ к лучшим AI-моделям.'
-        )
-        
-        keyboard = [
-            [InlineKeyboardButton("▶️ Далее", callback_data="tutorial_step2")],
-            [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_start")],
-            [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
-        ]
-        
-        await query.edit_message_text(
-            tutorial_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-        return ConversationHandler.END
+            tutorial_text = (
+                '📖 <b>ШАГ 1: Что такое AI-генерация?</b>\n\n'
+                '━━━━━━━━━━━━━━━━━━━━\n\n'
+                '🤖 <b>Искусственный интеллект</b> может создавать:\n\n'
+                '🎨 <b>Изображения</b>\n'
+                'Опишите картинку словами, и AI создаст её!\n'
+                'Пример: "Кот в космосе, пиксель-арт"\n\n'
+                '🎬 <b>Видео</b>\n'
+                'Создавайте короткие видео из текста\n'
+                'Пример: "Летящий дракон над городом"\n\n'
+                '🖼️ <b>Улучшение качества</b>\n'
+                'Увеличивайте разрешение фото в 4-8 раз\n\n'
+                '💡 <b>Все это без VPN!</b> Прямой доступ к лучшим AI-моделям.'
+            )
+            
+            keyboard = [
+                [InlineKeyboardButton("▶️ Далее", callback_data="tutorial_step2")],
+                [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_start")],
+                [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+            ]
+            
+            await query.edit_message_text(
+                tutorial_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
         
         if data == "tutorial_step2":
-        categories = get_categories()
+            categories = get_categories()
         total_models = len(KIE_MODELS)
         tutorial_text = (
             f'📖 <b>ШАГ 2: Как выбрать модель?</b>\n\n'
@@ -3947,7 +3726,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
         
         if data == "tutorial_step3":
-        tutorial_text = (
+            tutorial_text = (
             '📖 <b>ШАГ 3: Как создать контент?</b>\n\n'
             '━━━━━━━━━━━━━━━━━━━━\n\n'
             '📝 <b>Простой процесс:</b>\n\n'
@@ -3976,7 +3755,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
         
         if data == "tutorial_step4":
-        remaining_free = get_user_free_generations_remaining(user_id)
+            remaining_free = get_user_free_generations_remaining(user_id)
         tutorial_text = (
             '📖 <b>ШАГ 4: Баланс и оплата</b>\n\n'
             '━━━━━━━━━━━━━━━━━━━━\n\n'
@@ -4006,7 +3785,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
         
         if data == "tutorial_complete":
-        tutorial_text = (
+            tutorial_text = (
             '🎉 <b>ТУТОРИАЛ ЗАВЕРШЕН!</b>\n\n'
             '━━━━━━━━━━━━━━━━━━━━\n\n'
             '✅ Теперь вы знаете:\n'
@@ -4034,7 +3813,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
         
         if data == "help_menu":
-        is_new = is_new_user(user_id)
+            is_new = is_new_user(user_id)
         
         if is_new:
             help_text = (
@@ -4105,7 +3884,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
         
         if data == "support_contact":
-        support_info = get_support_contact()
+            support_info = get_support_contact()
         keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]]
         
         await query.edit_message_text(
@@ -4116,10 +3895,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
         
         if data == "referral_info":
-        # Show referral information
-        referral_link = get_user_referral_link(user_id)
-        referrals_count = len(get_user_referrals(user_id))
-        remaining_free = get_user_free_generations_remaining(user_id)
+            # Show referral information
+            referral_link = get_user_referral_link(user_id)
+            referrals_count = len(get_user_referrals(user_id))
+            remaining_free = get_user_free_generations_remaining(user_id)
         
         referral_text = (
             f'🎁 <b>РЕФЕРАЛЬНАЯ СИСТЕМА</b> 🎁\n\n'
@@ -4153,459 +3932,459 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
         
         if data == "my_generations":
-        # Show user's generation history
-        history = get_user_generations_history(user_id, limit=20)
-        
-        if not history:
-            keyboard = [[InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]]
+            # Show user's generation history
+            history = get_user_generations_history(user_id, limit=20)
+            
+            if not history:
+                keyboard = [[InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]]
+                await query.edit_message_text(
+                    "📚 <b>Мои генерации</b>\n\n"
+                    "❌ У вас пока нет сохраненных генераций.\n\n"
+                    "💡 После создания контента все ваши работы будут сохранены здесь.",
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+                return ConversationHandler.END
+            
+            # Show first generation with navigation
+            from datetime import datetime
+            
+            gen = history[0]
+            timestamp = gen.get('timestamp', 0)
+            if timestamp:
+                date_str = datetime.fromtimestamp(timestamp).strftime('%d.%m.%Y %H:%M')
+            else:
+                date_str = 'Неизвестно'
+            
+            model_name = gen.get('model_name', gen.get('model_id', 'Unknown'))
+            result_urls = gen.get('result_urls', [])
+            price = gen.get('price', 0)
+            is_free = gen.get('is_free', False)
+            
+            history_text = (
+                f"📚 <b>Мои генерации</b>\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"📊 <b>Всего:</b> {len(history)} генераций\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"🎨 <b>Генерация #{gen.get('id', 1)}</b>\n"
+                f"📅 <b>Дата:</b> {date_str}\n"
+                f"🤖 <b>Модель:</b> {model_name}\n"
+                f"💰 <b>Стоимость:</b> {'🎁 Бесплатно' if is_free else f'{price:.2f} ₽'}\n"
+                f"📦 <b>Результатов:</b> {len(result_urls)}\n\n"
+            )
+            
+            if len(history) > 1:
+                history_text += f"💡 <b>Показана последняя генерация</b>\n"
+                history_text += f"Используйте кнопки для навигации\n\n"
+            
+            keyboard = []
+            
+            # Navigation buttons if more than 1 generation
+            if len(history) > 1:
+                keyboard.append([
+                    InlineKeyboardButton("◀️ Предыдущая", callback_data=f"gen_history:{gen.get('id', 1)}:prev"),
+                    InlineKeyboardButton("Следующая ▶️", callback_data=f"gen_history:{gen.get('id', 1)}:next")
+                ])
+            
+            # Action buttons
+            if result_urls:
+                keyboard.append([
+                    InlineKeyboardButton("👁️ Показать результат", callback_data=f"gen_view:{gen.get('id', 1)}")
+                ])
+                keyboard.append([
+                    InlineKeyboardButton("🔄 Повторить", callback_data=f"gen_repeat:{gen.get('id', 1)}")
+                ])
+            
+            keyboard.append([InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")])
+            
             await query.edit_message_text(
-                "📚 <b>Мои генерации</b>\n\n"
-                "❌ У вас пока нет сохраненных генераций.\n\n"
-                "💡 После создания контента все ваши работы будут сохранены здесь.",
+                history_text,
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='HTML'
             )
             return ConversationHandler.END
         
-        # Show first generation with navigation
-        from datetime import datetime
+        if data.startswith("gen_view:"):
+            # View specific generation result
+            gen_id = int(data.split(":")[1])
+            gen = get_generation_by_id(user_id, gen_id)
+            
+            if not gen:
+                await query.answer("❌ Генерация не найдена", show_alert=True)
+                return ConversationHandler.END
+            
+            result_urls = gen.get('result_urls', [])
+            if not result_urls:
+                await query.answer("❌ Результаты не найдены", show_alert=True)
+                return ConversationHandler.END
+            
+            # Send media
+            for i, url in enumerate(result_urls[:5]):
+                try:
+                    async with aiohttp.ClientSession() as session_http:
+                        async with session_http.get(url, timeout=aiohttp.ClientTimeout(total=60)) as resp:
+                            if resp.status == 200:
+                                media_data = await resp.read()
+                                
+                                is_last = (i == len(result_urls[:5]) - 1)
+                                is_video = gen.get('model_id', '') in ['sora-2-text-to-video', 'sora-watermark-remover', 'kling-2.6/image-to-video', 'kling-2.6/text-to-video', 'kling/v2-5-turbo-text-to-video-pro', 'kling/v2-5-turbo-image-to-video-pro', 'wan/2-5-image-to-video', 'wan/2-5-text-to-video', 'wan/2-2-animate-move', 'wan/2-2-animate-replace', 'hailuo/02-text-to-video-pro', 'hailuo/02-image-to-video-pro', 'hailuo/02-text-to-video-standard', 'hailuo/02-image-to-video-standard']
+                                
+                                keyboard = []
+                                if is_last:
+                                    keyboard = [
+                                        [InlineKeyboardButton("◀️ Назад к истории", callback_data="my_generations")],
+                                        [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+                                    ]
+                                
+                                if is_video:
+                                    video_file = io.BytesIO(media_data)
+                                    video_file.name = f"generated_video_{i+1}.mp4"
+                                    await context.bot.send_video(
+                                        chat_id=update.effective_chat.id,
+                                        video=video_file,
+                                        reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
+                                    )
+                                else:
+                                    photo_file = io.BytesIO(media_data)
+                                    photo_file.name = f"generated_image_{i+1}.png"
+                                    await context.bot.send_photo(
+                                        chat_id=update.effective_chat.id,
+                                        photo=photo_file,
+                                        reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
+                                    )
+                except Exception as e:
+                    logger.error(f"Error sending generation result: {e}")
+            
+            await query.answer("✅ Результаты отправлены")
+            return ConversationHandler.END
         
-        gen = history[0]
-        timestamp = gen.get('timestamp', 0)
-        if timestamp:
-            date_str = datetime.fromtimestamp(timestamp).strftime('%d.%m.%Y %H:%M')
-        else:
-            date_str = 'Неизвестно'
+        if data.startswith("gen_repeat:"):
+            # Repeat generation with same parameters
+            gen_id = int(data.split(":")[1])
+            gen = get_generation_by_id(user_id, gen_id)
+            
+            if not gen:
+                await query.answer("❌ Генерация не найдена", show_alert=True)
+                return ConversationHandler.END
+            
+            # Restore session from history
+            model_id = gen.get('model_id')
+            params = gen.get('params', {})
+            model_info = get_model_by_id(model_id)
+            
+            if not model_info:
+                await query.answer("❌ Модель не найдена", show_alert=True)
+                return ConversationHandler.END
+            
+            user_sessions[user_id] = {
+                'model_id': model_id,
+                'model_info': model_info,
+                'params': params.copy(),
+                'properties': model_info.get('input_params', {}),
+                'required': []
+            }
+            
+            # Go directly to confirmation
+            await query.answer("✅ Параметры восстановлены")
+            await query.edit_message_text(
+                "🔄 <b>Повторная генерация</b>\n\n"
+                f"Модель: <b>{model_info.get('name', model_id)}</b>\n"
+                f"Параметры восстановлены из истории.\n\n"
+                "Подтвердите генерацию:",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("✅ Генерировать", callback_data="confirm_generate")],
+                    [InlineKeyboardButton("◀️ Назад к истории", callback_data="my_generations")],
+                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+                ]),
+                parse_mode='HTML'
+            )
+            return CONFIRMING_GENERATION
         
-        model_name = gen.get('model_name', gen.get('model_id', 'Unknown'))
-        result_urls = gen.get('result_urls', [])
-        price = gen.get('price', 0)
-        is_free = gen.get('is_free', False)
-        
-        history_text = (
-            f"📚 <b>Мои генерации</b>\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📊 <b>Всего:</b> {len(history)} генераций\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"🎨 <b>Генерация #{gen.get('id', 1)}</b>\n"
-            f"📅 <b>Дата:</b> {date_str}\n"
-            f"🤖 <b>Модель:</b> {model_name}\n"
-            f"💰 <b>Стоимость:</b> {'🎁 Бесплатно' if is_free else f'{price:.2f} ₽'}\n"
-            f"📦 <b>Результатов:</b> {len(result_urls)}\n\n"
-        )
-        
-        if len(history) > 1:
-            history_text += f"💡 <b>Показана последняя генерация</b>\n"
-            history_text += f"Используйте кнопки для навигации\n\n"
-        
-        keyboard = []
-        
-        # Navigation buttons if more than 1 generation
-        if len(history) > 1:
+        if data.startswith("gen_history:"):
+            # Navigate through generation history
+            parts = data.split(":")
+            if len(parts) < 3:
+                await query.answer("❌ Ошибка навигации", show_alert=True)
+                return ConversationHandler.END
+            
+            current_gen_id = int(parts[1])
+            direction = parts[2]  # prev or next
+            
+            history = get_user_generations_history(user_id, limit=100)
+            if not history:
+                await query.answer("❌ История пуста", show_alert=True)
+                return ConversationHandler.END
+            
+            # Find current generation index
+            current_index = -1
+            for i, gen in enumerate(history):
+                if gen.get('id') == current_gen_id:
+                    current_index = i
+                    break
+            
+            if current_index == -1:
+                await query.answer("❌ Генерация не найдена", show_alert=True)
+                return ConversationHandler.END
+            
+            # Navigate
+            if direction == 'prev' and current_index < len(history) - 1:
+                new_index = current_index + 1
+            elif direction == 'next' and current_index > 0:
+                new_index = current_index - 1
+            else:
+                await query.answer("⚠️ Это первая/последняя генерация", show_alert=True)
+                return ConversationHandler.END
+            
+            gen = history[new_index]
+            from datetime import datetime
+            
+            timestamp = gen.get('timestamp', 0)
+            if timestamp:
+                date_str = datetime.fromtimestamp(timestamp).strftime('%d.%m.%Y %H:%M')
+            else:
+                date_str = 'Неизвестно'
+            
+            model_name = gen.get('model_name', gen.get('model_id', 'Unknown'))
+            result_urls = gen.get('result_urls', [])
+            price = gen.get('price', 0)
+            is_free = gen.get('is_free', False)
+            
+            history_text = (
+                f"📚 <b>Мои генерации</b>\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"📊 <b>Всего:</b> {len(history)} генераций\n"
+                f"📍 <b>Показана:</b> {new_index + 1} из {len(history)}\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"🎨 <b>Генерация #{gen.get('id', 1)}</b>\n"
+                f"📅 <b>Дата:</b> {date_str}\n"
+                f"🤖 <b>Модель:</b> {model_name}\n"
+                f"💰 <b>Стоимость:</b> {'🎁 Бесплатно' if is_free else f'{price:.2f} ₽'}\n"
+                f"📦 <b>Результатов:</b> {len(result_urls)}\n\n"
+            )
+            
+            keyboard = []
+            
+            # Navigation buttons
             keyboard.append([
                 InlineKeyboardButton("◀️ Предыдущая", callback_data=f"gen_history:{gen.get('id', 1)}:prev"),
                 InlineKeyboardButton("Следующая ▶️", callback_data=f"gen_history:{gen.get('id', 1)}:next")
             ])
-        
-        # Action buttons
-        if result_urls:
-            keyboard.append([
-                InlineKeyboardButton("👁️ Показать результат", callback_data=f"gen_view:{gen.get('id', 1)}")
-            ])
-            keyboard.append([
-                InlineKeyboardButton("🔄 Повторить", callback_data=f"gen_repeat:{gen.get('id', 1)}")
-            ])
-        
-        keyboard.append([InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")])
-        
-        await query.edit_message_text(
-            history_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-        return ConversationHandler.END
-        
-        if data.startswith("gen_view:"):
-        # View specific generation result
-        gen_id = int(data.split(":")[1])
-        gen = get_generation_by_id(user_id, gen_id)
-        
-        if not gen:
-            await query.answer("❌ Генерация не найдена", show_alert=True)
+            
+            # Action buttons
+            if result_urls:
+                keyboard.append([
+                    InlineKeyboardButton("👁️ Показать результат", callback_data=f"gen_view:{gen.get('id', 1)}")
+                ])
+                keyboard.append([
+                    InlineKeyboardButton("🔄 Повторить", callback_data=f"gen_repeat:{gen.get('id', 1)}")
+                ])
+            
+            keyboard.append([InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")])
+            
+            await query.edit_message_text(
+                history_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
             return ConversationHandler.END
-        
-        result_urls = gen.get('result_urls', [])
-        if not result_urls:
-            await query.answer("❌ Результаты не найдены", show_alert=True)
-            return ConversationHandler.END
-        
-        # Send media
-        for i, url in enumerate(result_urls[:5]):
-            try:
-                async with aiohttp.ClientSession() as session_http:
-                    async with session_http.get(url, timeout=aiohttp.ClientTimeout(total=60)) as resp:
-                        if resp.status == 200:
-                            media_data = await resp.read()
-                            
-                            is_last = (i == len(result_urls[:5]) - 1)
-                            is_video = gen.get('model_id', '') in ['sora-2-text-to-video', 'sora-watermark-remover', 'kling-2.6/image-to-video', 'kling-2.6/text-to-video', 'kling/v2-5-turbo-text-to-video-pro', 'kling/v2-5-turbo-image-to-video-pro', 'wan/2-5-image-to-video', 'wan/2-5-text-to-video', 'wan/2-2-animate-move', 'wan/2-2-animate-replace', 'hailuo/02-text-to-video-pro', 'hailuo/02-image-to-video-pro', 'hailuo/02-text-to-video-standard', 'hailuo/02-image-to-video-standard']
-                            
-                            keyboard = []
-                            if is_last:
-                                keyboard = [
-                                    [InlineKeyboardButton("◀️ Назад к истории", callback_data="my_generations")],
-                                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
-                                ]
-                            
-                            if is_video:
-                                video_file = io.BytesIO(media_data)
-                                video_file.name = f"generated_video_{i+1}.mp4"
-                                await context.bot.send_video(
-                                    chat_id=update.effective_chat.id,
-                                    video=video_file,
-                                    reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
-                                )
-                            else:
-                                photo_file = io.BytesIO(media_data)
-                                photo_file.name = f"generated_image_{i+1}.png"
-                                await context.bot.send_photo(
-                                    chat_id=update.effective_chat.id,
-                                    photo=photo_file,
-                                    reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
-                                )
-            except Exception as e:
-                logger.error(f"Error sending generation result: {e}")
-        
-        await query.answer("✅ Результаты отправлены")
-        return ConversationHandler.END
-        
-        if data.startswith("gen_repeat:"):
-        # Repeat generation with same parameters
-        gen_id = int(data.split(":")[1])
-        gen = get_generation_by_id(user_id, gen_id)
-        
-        if not gen:
-            await query.answer("❌ Генерация не найдена", show_alert=True)
-            return ConversationHandler.END
-        
-        # Restore session from history
-        model_id = gen.get('model_id')
-        params = gen.get('params', {})
-        model_info = get_model_by_id(model_id)
-        
-        if not model_info:
-            await query.answer("❌ Модель не найдена", show_alert=True)
-            return ConversationHandler.END
-        
-        user_sessions[user_id] = {
-            'model_id': model_id,
-            'model_info': model_info,
-            'params': params.copy(),
-            'properties': model_info.get('input_params', {}),
-            'required': []
-        }
-        
-        # Go directly to confirmation
-        await query.answer("✅ Параметры восстановлены")
-        await query.edit_message_text(
-            "🔄 <b>Повторная генерация</b>\n\n"
-            f"Модель: <b>{model_info.get('name', model_id)}</b>\n"
-            f"Параметры восстановлены из истории.\n\n"
-            "Подтвердите генерацию:",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Генерировать", callback_data="confirm_generate")],
-                [InlineKeyboardButton("◀️ Назад к истории", callback_data="my_generations")],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
-            ]),
-            parse_mode='HTML'
-        )
-        return CONFIRMING_GENERATION
-        
-        if data.startswith("gen_history:"):
-        # Navigate through generation history
-        parts = data.split(":")
-        if len(parts) < 3:
-            await query.answer("❌ Ошибка навигации", show_alert=True)
-            return ConversationHandler.END
-        
-        current_gen_id = int(parts[1])
-        direction = parts[2]  # prev or next
-        
-        history = get_user_generations_history(user_id, limit=100)
-        if not history:
-            await query.answer("❌ История пуста", show_alert=True)
-            return ConversationHandler.END
-        
-        # Find current generation index
-        current_index = -1
-        for i, gen in enumerate(history):
-            if gen.get('id') == current_gen_id:
-                current_index = i
-                break
-        
-        if current_index == -1:
-            await query.answer("❌ Генерация не найдена", show_alert=True)
-            return ConversationHandler.END
-        
-        # Navigate
-        if direction == 'prev' and current_index < len(history) - 1:
-            new_index = current_index + 1
-        elif direction == 'next' and current_index > 0:
-            new_index = current_index - 1
-        else:
-            await query.answer("⚠️ Это первая/последняя генерация", show_alert=True)
-            return ConversationHandler.END
-        
-        gen = history[new_index]
-        from datetime import datetime
-        
-        timestamp = gen.get('timestamp', 0)
-        if timestamp:
-            date_str = datetime.fromtimestamp(timestamp).strftime('%d.%m.%Y %H:%M')
-        else:
-            date_str = 'Неизвестно'
-        
-        model_name = gen.get('model_name', gen.get('model_id', 'Unknown'))
-        result_urls = gen.get('result_urls', [])
-        price = gen.get('price', 0)
-        is_free = gen.get('is_free', False)
-        
-        history_text = (
-            f"📚 <b>Мои генерации</b>\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📊 <b>Всего:</b> {len(history)} генераций\n"
-            f"📍 <b>Показана:</b> {new_index + 1} из {len(history)}\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"🎨 <b>Генерация #{gen.get('id', 1)}</b>\n"
-            f"📅 <b>Дата:</b> {date_str}\n"
-            f"🤖 <b>Модель:</b> {model_name}\n"
-            f"💰 <b>Стоимость:</b> {'🎁 Бесплатно' if is_free else f'{price:.2f} ₽'}\n"
-            f"📦 <b>Результатов:</b> {len(result_urls)}\n\n"
-        )
-        
-        keyboard = []
-        
-        # Navigation buttons
-        keyboard.append([
-            InlineKeyboardButton("◀️ Предыдущая", callback_data=f"gen_history:{gen.get('id', 1)}:prev"),
-            InlineKeyboardButton("Следующая ▶️", callback_data=f"gen_history:{gen.get('id', 1)}:next")
-        ])
-        
-        # Action buttons
-        if result_urls:
-            keyboard.append([
-                InlineKeyboardButton("👁️ Показать результат", callback_data=f"gen_view:{gen.get('id', 1)}")
-            ])
-            keyboard.append([
-                InlineKeyboardButton("🔄 Повторить", callback_data=f"gen_repeat:{gen.get('id', 1)}")
-            ])
-        
-        keyboard.append([InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")])
-        
-        await query.edit_message_text(
-            history_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-        return ConversationHandler.END
         
         if data.startswith("select_model:"):
-        model_id = data.split(":", 1)[1]
-        
-        # Get model from static list
-        model_info = get_model_by_id(model_id)
-        
-        if not model_info:
-            await query.edit_message_text(f"❌ Модель {model_id} не найдена.")
-            return
-        
-        # Check user balance and calculate available generations
-        user_balance = get_user_balance(user_id)
-        is_admin = get_is_admin(user_id)
-        
-        # Calculate price for default parameters (minimum price)
-        default_params = {}
-        if model_id == "nano-banana-pro":
-            default_params = {"resolution": "1K"}  # Cheapest option
-        elif model_id == "seedream/4.5-text-to-image" or model_id == "seedream/4.5-edit":
-            default_params = {"quality": "basic"}  # Basic quality (same price, but for consistency)
-        elif model_id == "topaz/image-upscale":
-            default_params = {"upscale_factor": "1"}  # Cheapest option (1x = ≤2K)
-        
-        min_price = calculate_price_rub(model_id, default_params, is_admin)
-        price_text = get_model_price_text(model_id, default_params, is_admin, user_id)
-        
-        # Check for free generations for z-image
-        is_free_available = is_free_generation_available(user_id, model_id)
-        remaining_free = get_user_free_generations_remaining(user_id) if model_id == FREE_MODEL_ID else 0
-        
-        # Calculate how many generations available
-        if is_admin:
-            available_count = "Безлимит"
-        elif is_free_available:
-            # For z-image with free generations, show free count
-            available_count = f"🎁 {remaining_free} бесплатно в день"
-        elif user_balance >= min_price:
-            available_count = int(user_balance / min_price)
-        else:
-            available_count = 0
-        
-        # Show model info with premium formatting
-        model_name = model_info.get('name', model_id)
-        model_emoji = model_info.get('emoji', '🤖')
-        model_desc = model_info.get('description', '')
-        model_category = model_info.get('category', 'Общее')
-        
-        # Check if new user for hints
-        is_new = is_new_user(user_id)
-        
-        # Premium formatted model info
-        model_info_text = (
-            f"✨ <b>ПРЕМИУМ МОДЕЛЬ</b> ✨\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"{model_emoji} <b>{model_name}</b>\n"
-            f"📁 <b>Категория:</b> {model_category}\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📝 <b>Описание:</b>\n"
-            f"<i>{model_desc}</i>\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n\n"
-        )
-        
-        # Format price text properly (remove duplicate emoji and formatting)
-        price_display = price_text
-        if price_text.startswith("💰"):
-            price_display = price_text.replace("💰", "").strip()
-        # Remove HTML tags if present but keep the content
-        import re
-        price_display = re.sub(r'<b>(.*?)</b>', r'\1', price_display)
-        price_display = price_display.strip()
-        
-        model_info_text += f"💰 <b>Стоимость:</b> {price_display}\n"
-        
-        # Add hint for new users
-        if is_new and model_id == FREE_MODEL_ID:
-            model_info_text += (
-                f"\n💡 <b>Отлично для начала!</b>\n"
-                f"Эта модель бесплатна для первых {FREE_GENERATIONS_PER_DAY} генераций в день.\n"
-                f"Просто опишите, что хотите создать, и нажмите \"Генерировать\"!\n\n"
+            model_id = data.split(":", 1)[1]
+            
+            # Get model from static list
+            model_info = get_model_by_id(model_id)
+            
+            if not model_info:
+                await query.edit_message_text(f"❌ Модель {model_id} не найдена.")
+                return
+            
+            # Check user balance and calculate available generations
+            user_balance = get_user_balance(user_id)
+            is_admin = get_is_admin(user_id)
+            
+            # Calculate price for default parameters (minimum price)
+            default_params = {}
+            if model_id == "nano-banana-pro":
+                default_params = {"resolution": "1K"}  # Cheapest option
+            elif model_id == "seedream/4.5-text-to-image" or model_id == "seedream/4.5-edit":
+                default_params = {"quality": "basic"}  # Basic quality (same price, but for consistency)
+            elif model_id == "topaz/image-upscale":
+                default_params = {"upscale_factor": "1"}  # Cheapest option (1x = ≤2K)
+            
+            min_price = calculate_price_rub(model_id, default_params, is_admin)
+            price_text = get_model_price_text(model_id, default_params, is_admin, user_id)
+            
+            # Check for free generations for z-image
+            is_free_available = is_free_generation_available(user_id, model_id)
+            remaining_free = get_user_free_generations_remaining(user_id) if model_id == FREE_MODEL_ID else 0
+            
+            # Calculate how many generations available
+            if is_admin:
+                available_count = "Безлимит"
+            elif is_free_available:
+                # For z-image with free generations, show free count
+                available_count = f"🎁 {remaining_free} бесплатно в день"
+            elif user_balance >= min_price:
+                available_count = int(user_balance / min_price)
+            else:
+                available_count = 0
+            
+            # Show model info with premium formatting
+            model_name = model_info.get('name', model_id)
+            model_emoji = model_info.get('emoji', '🤖')
+            model_desc = model_info.get('description', '')
+            model_category = model_info.get('category', 'Общее')
+            
+            # Check if new user for hints
+            is_new = is_new_user(user_id)
+            
+            # Premium formatted model info
+            model_info_text = (
+                f"✨ <b>ПРЕМИУМ МОДЕЛЬ</b> ✨\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"{model_emoji} <b>{model_name}</b>\n"
+                f"📁 <b>Категория:</b> {model_category}\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"📝 <b>Описание:</b>\n"
+                f"<i>{model_desc}</i>\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n\n"
             )
-        
-        if is_admin:
-            model_info_text += (
-                f"✅ <b>Доступ:</b> <b>Безлимит</b>\n"
-                f"👑 <b>Статус:</b> Администратор\n\n"
-            )
-        else:
-            if is_free_available:
+            
+            # Format price text properly (remove duplicate emoji and formatting)
+            price_display = price_text
+            if price_text.startswith("💰"):
+                price_display = price_text.replace("💰", "").strip()
+            # Remove HTML tags if present but keep the content
+            import re
+            price_display = re.sub(r'<b>(.*?)</b>', r'\1', price_display)
+            price_display = price_display.strip()
+            
+            model_info_text += f"💰 <b>Стоимость:</b> {price_display}\n"
+            
+            # Add hint for new users
+            if is_new and model_id == FREE_MODEL_ID:
                 model_info_text += (
-                    f"🎁 <b>Бесплатно:</b> {remaining_free}/{FREE_GENERATIONS_PER_DAY} в день\n"
+                    f"\n💡 <b>Отлично для начала!</b>\n"
+                    f"Эта модель бесплатна для первых {FREE_GENERATIONS_PER_DAY} генераций в день.\n"
+                    f"Просто опишите, что хотите создать, и нажмите \"Генерировать\"!\n\n"
                 )
-                if user_balance >= min_price:
-                    paid_count = int(user_balance / min_price)
-                    model_info_text += f"💳 <b>Платных:</b> {paid_count} генераций\n"
-                model_info_text += f"💵 <b>Баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n\n"
-            elif available_count > 0:
+            
+            if is_admin:
                 model_info_text += (
-                    f"✅ <b>Доступно:</b> {available_count} генераций\n"
-                    f"💵 <b>Баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n\n"
+                    f"✅ <b>Доступ:</b> <b>Безлимит</b>\n"
+                    f"👑 <b>Статус:</b> Администратор\n\n"
                 )
             else:
-                # Not enough balance - show warning
-                model_info_text += (
-                    f"\n❌ <b>Недостаточно средств</b>\n\n"
-                    f"💵 <b>Ваш баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n"
-                    f"💰 <b>Требуется:</b> {format_price_rub(min_price, is_admin)} ₽\n\n"
-                    f"💡 Пополните баланс для генерации"
-                )
-                
+                if is_free_available:
+                    model_info_text += (
+                        f"🎁 <b>Бесплатно:</b> {remaining_free}/{FREE_GENERATIONS_PER_DAY} в день\n"
+                    )
+                    if user_balance >= min_price:
+                        paid_count = int(user_balance / min_price)
+                        model_info_text += f"💳 <b>Платных:</b> {paid_count} генераций\n"
+                    model_info_text += f"💵 <b>Баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n\n"
+                elif available_count > 0:
+                    model_info_text += (
+                        f"✅ <b>Доступно:</b> {available_count} генераций\n"
+                        f"💵 <b>Баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n\n"
+                    )
+                else:
+                    # Not enough balance - show warning
+                    model_info_text += (
+                        f"\n❌ <b>Недостаточно средств</b>\n\n"
+                        f"💵 <b>Ваш баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n"
+                        f"💰 <b>Требуется:</b> {format_price_rub(min_price, is_admin)} ₽\n\n"
+                        f"💡 Пополните баланс для генерации"
+                    )
+                    
+                    keyboard = [
+                        [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
+                        [InlineKeyboardButton("◀️ Назад к моделям", callback_data="back_to_menu")]
+                    ]
+                    
+                    await query.edit_message_text(
+                        model_info_text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                    return ConversationHandler.END
+            
+            # Check balance before starting generation (but allow free generations)
+            if not is_admin and not is_free_available and user_balance < min_price:
                 keyboard = [
                     [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
                     [InlineKeyboardButton("◀️ Назад к моделям", callback_data="back_to_menu")]
                 ]
                 
                 await query.edit_message_text(
-                    model_info_text,
+                    f"❌ <b>Недостаточно средств для генерации</b>\n\n"
+                    f"💳 <b>Ваш баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n"
+                    f"💵 <b>Требуется минимум:</b> {price_text} ₽\n\n"
+                    f"Пополните баланс, чтобы начать генерацию.",
                     reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
                 )
                 return ConversationHandler.END
-        
-        # Check balance before starting generation (but allow free generations)
-        if not is_admin and not is_free_available and user_balance < min_price:
-            keyboard = [
-                [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
-                [InlineKeyboardButton("◀️ Назад к моделям", callback_data="back_to_menu")]
-            ]
             
-            await query.edit_message_text(
-                f"❌ <b>Недостаточно средств для генерации</b>\n\n"
-                f"💳 <b>Ваш баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n"
-                f"💵 <b>Требуется минимум:</b> {price_text} ₽\n\n"
-                f"Пополните баланс, чтобы начать генерацию.",
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
-            return ConversationHandler.END
-        
-        # Store selected model
-        if user_id not in user_sessions:
-            user_sessions[user_id] = {}
-        user_sessions[user_id]['model_id'] = model_id
-        user_sessions[user_id]['model_info'] = model_info
-        
-        # Get input parameters from static definition
-        input_params = model_info.get('input_params', {})
-        
-        if not input_params:
-            # If no params defined, ask for simple text input
-            await query.edit_message_text(
-                f"{model_info_text}"
-                f"Введите текст для генерации:",
-                parse_mode='HTML'
-            )
+            # Store selected model
+            if user_id not in user_sessions:
+                user_sessions[user_id] = {}
+            user_sessions[user_id]['model_id'] = model_id
+            user_sessions[user_id]['model_info'] = model_info
+            
+            # Get input parameters from static definition
+            input_params = model_info.get('input_params', {})
+            
+            if not input_params:
+                # If no params defined, ask for simple text input
+                await query.edit_message_text(
+                    f"{model_info_text}"
+                    f"Введите текст для генерации:",
+                    parse_mode='HTML'
+                )
+                user_sessions[user_id]['params'] = {}
+                user_sessions[user_id]['waiting_for'] = 'text'
+                return INPUTTING_PARAMS
+            
+            # Store session data
             user_sessions[user_id]['params'] = {}
-            user_sessions[user_id]['waiting_for'] = 'text'
-            return INPUTTING_PARAMS
-        
-        # Store session data
-        user_sessions[user_id]['params'] = {}
-        user_sessions[user_id]['properties'] = input_params
-        user_sessions[user_id]['required'] = [p for p, info in input_params.items() if info.get('required', False)]
-        user_sessions[user_id]['current_param'] = None
-        
-        # Start with prompt parameter first
-        if 'prompt' in input_params:
-            # Check if model supports image input (image_input or image_urls)
-            has_image_input = 'image_input' in input_params or 'image_urls' in input_params
+            user_sessions[user_id]['properties'] = input_params
+            user_sessions[user_id]['required'] = [p for p, info in input_params.items() if info.get('required', False)]
+            user_sessions[user_id]['current_param'] = None
             
-            prompt_text = (
-                f"{model_info_text}"
-            )
-            
-            if has_image_input:
-                prompt_text += (
-                    f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
-                    f"Опишите изображение, которое хотите сгенерировать.\n\n"
-                    f"💡 <i>После ввода промпта вы сможете добавить изображение (опционально)</i>"
+            # Start with prompt parameter first
+            if 'prompt' in input_params:
+                # Check if model supports image input (image_input or image_urls)
+                has_image_input = 'image_input' in input_params or 'image_urls' in input_params
+                
+                prompt_text = (
+                    f"{model_info_text}"
                 )
+                
+                if has_image_input:
+                    prompt_text += (
+                        f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
+                        f"Опишите изображение, которое хотите сгенерировать.\n\n"
+                        f"💡 <i>После ввода промпта вы сможете добавить изображение (опционально)</i>"
+                    )
+                else:
+                    prompt_text += (
+                        f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
+                        f"Опишите изображение, которое хотите сгенерировать:"
+                    )
+                
+                await query.edit_message_text(
+                    prompt_text,
+                    parse_mode='HTML'
+                )
+                user_sessions[user_id]['current_param'] = 'prompt'
+                user_sessions[user_id]['waiting_for'] = 'prompt'
+                user_sessions[user_id]['has_image_input'] = has_image_input
             else:
-                prompt_text += (
-                    f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
-                    f"Опишите изображение, которое хотите сгенерировать:"
-                )
+                # If no prompt, start with first required parameter
+                await start_next_parameter(update, context, user_id)
             
-            await query.edit_message_text(
-                prompt_text,
-                parse_mode='HTML'
-            )
-            user_sessions[user_id]['current_param'] = 'prompt'
-            user_sessions[user_id]['waiting_for'] = 'prompt'
-            user_sessions[user_id]['has_image_input'] = has_image_input
-        else:
-            # If no prompt, start with first required parameter
-            await start_next_parameter(update, context, user_id)
-        
-        return INPUTTING_PARAMS
+            return INPUTTING_PARAMS
     
     # If we get here and no handler matched, log and return END
     except Exception as e:
