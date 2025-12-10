@@ -15,13 +15,18 @@ import os
 from dotenv import load_dotenv
 from knowledge_storage import KnowledgeStorage
 from kie_client import get_client
-from kie_models import KIE_MODELS, get_model_by_id, get_models_by_category, get_categories
+from kie_models import (
+    KIE_MODELS, get_model_by_id, get_models_by_category, get_categories,
+    get_generation_types, get_models_by_generation_type, get_generation_type_info
+)
 import json
 import aiohttp
 import io
 from io import BytesIO
 import re
 import platform
+import random
+import time
 
 # Load environment variables FIRST
 load_dotenv()
@@ -49,9 +54,7 @@ try:
     
     # Try to set Tesseract path
     # On Windows, check common installation paths
-    # On Linux (Render), Tesseract should be in PATH
-    tesseract_found = False  # Initialize variable for all platforms
-    
+    # On Linux (Timeweb), Tesseract should be in PATH
     if platform.system() == 'Windows':
         # Common Tesseract installation paths on Windows
         possible_paths = [
@@ -59,6 +62,7 @@ try:
             r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
             r'C:\Users\{}\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'.format(os.getenv('USERNAME', '')),
         ]
+        tesseract_found = False
         for path in possible_paths:
             if os.path.exists(path):
                 pytesseract.pytesseract.tesseract_cmd = path
@@ -200,73 +204,303 @@ def calculate_price_rub(model_id: str, params: dict = None, is_admin: bool = Fal
     elif model_id == "seedream/4.5-text-to-image" or model_id == "seedream/4.5-edit":
         # Both Seedream models cost 6.5 credits per image
         base_credits = 6.5
-    elif model_id == "google/nano-banana" or model_id == "google/nano-banana-edit":
-        # Google Nano Banana and Edit both cost 4 credits per image
-        base_credits = 4
-    elif model_id == "google/imagen4-ultra":
-        # Google Imagen 4 Ultra costs 12 credits per image
-        base_credits = 12
-    elif model_id == "google/imagen4-fast":
-        # Google Imagen 4 Fast costs 4 credits per image
-        # Price multiplies by num_images if specified
-        base_credits = 4
-        if params and 'num_images' in params:
-            num_images = int(params.get('num_images', '1'))
-            base_credits = 4 * num_images
-    elif model_id == "google/imagen4":
-        # Google Imagen 4 costs 8 credits per image
-        # Price multiplies by num_images if specified
-        base_credits = 8
-        if params and 'num_images' in params:
-            num_images = int(params.get('num_images', '1'))
-            base_credits = 8 * num_images
     elif model_id == "sora-watermark-remover":
         # Sora watermark remover costs 10 credits per use
         base_credits = 10
     elif model_id == "sora-2-text-to-video":
         # Sora 2 text-to-video costs 30 credits per 10-second video with audio
         base_credits = 30
-    elif model_id == "bytedance/v1-pro-fast-image-to-video":
-        # ByteDance V1 Pro Fast: 16 credits (720p 5s) / 36 credits (720p 10s) / 36 credits (1080p 5s) / 72 credits (1080p 10s)
-        # Default to 720p 5s (16 credits)
-        resolution = params.get('resolution', '720p') if params else '720p'
-        duration = params.get('duration', '5') if params else '5'
-        if resolution == '1080p':
-            base_credits = 36 if duration == '5' else 72
+    elif model_id == "kling-2.6/image-to-video" or model_id == "kling-2.6/text-to-video":
+        # Kling 2.6 pricing (same for both image-to-video and text-to-video):
+        # 5s no-audio: 55 credits
+        # 10s no-audio: 110 credits
+        # 5s with audio: 110 credits
+        # 10s with audio: 220 credits
+        duration = params.get("duration", "5")
+        sound = params.get("sound", False)
+        
+        if duration == "5":
+            if sound:
+                base_credits = 110  # 5s with audio
+            else:
+                base_credits = 55  # 5s no-audio
+        else:  # duration == "10"
+            if sound:
+                base_credits = 220  # 10s with audio
+            else:
+                base_credits = 110  # 10s no-audio
+    elif model_id == "kling/v2-5-turbo-text-to-video-pro" or model_id == "kling/v2-5-turbo-image-to-video-pro":
+        # Kling 2.5 Turbo pricing (same for both text-to-video and image-to-video):
+        # 5s: 42 credits
+        # 10s: 84 credits
+        duration = params.get("duration", "5")
+        if duration == "10":
+            base_credits = 84
+        else:  # duration == "5"
+            base_credits = 42
+    elif model_id == "wan/2-5-image-to-video" or model_id == "wan/2-5-text-to-video":
+        # WAN 2.5 pricing (same for both image-to-video and text-to-video):
+        # 720p: 12 credits per second
+        # 1080p: 20 credits per second
+        duration = params.get("duration", "5")
+        resolution = params.get("resolution", "720p")
+        
+        duration_int = int(duration)
+        if resolution == "1080p":
+            base_credits = 20 * duration_int  # 20 credits per second
         else:  # 720p
-            base_credits = 16 if duration == '5' else 36
-    elif model_id == "grok-imagine/image-to-video":
-        # Grok Imagine image-to-video costs 20 credits per 6-second video
-        base_credits = 20
-    elif model_id == "grok-imagine/text-to-video":
-        # Grok Imagine text-to-video costs 20 credits per 6-second video
-        base_credits = 20
-    elif model_id == "grok-imagine/text-to-image":
-        # Grok Imagine text-to-image costs 4 credits per generation (6 images)
+            base_credits = 12 * duration_int  # 12 credits per second
+    elif model_id == "wan/2-2-animate-move" or model_id == "wan/2-2-animate-replace":
+        # WAN 2.2 Animate pricing (same for both move and replace):
+        # 480p: 6 credits per second
+        # 580p: 9.5 credits per second
+        # 720p: 12.5 credits per second
+        # Note: Duration is determined by input video length (up to 30 seconds)
+        # For pricing calculation, we'll use a default of 5 seconds as minimum
+        resolution = params.get("resolution", "480p")
+        
+        # Default duration for pricing (actual duration comes from video)
+        default_duration = 5
+        
+        if resolution == "720p":
+            base_credits = 12.5 * default_duration  # 12.5 credits per second
+        elif resolution == "580p":
+            base_credits = 9.5 * default_duration  # 9.5 credits per second
+        else:  # 480p
+            base_credits = 6 * default_duration  # 6 credits per second
+    elif model_id == "hailuo/02-text-to-video-pro" or model_id == "hailuo/02-image-to-video-pro":
+        # Hailuo 02 Pro pricing:
+        # 9.5 credits per second for 1080p
+        # One generation yields a 6-second 1080p video
+        # So: 9.5 * 6 = 57 credits per generation
+        base_credits = 57  # Fixed price for 6-second 1080p video
+    elif model_id == "hailuo/02-image-to-video-standard":
+        # Hailuo 02 Standard image-to-video pricing:
+        # 512P: 2 credits per second
+        # 768P: 5 credits per second
+        resolution = params.get("resolution", "768P")
+        duration = params.get("duration", "6")
+        duration_int = int(duration)
+        
+        if resolution == "768P":
+            base_credits = 5 * duration_int  # 5 credits per second
+        else:  # 512P
+            base_credits = 2 * duration_int  # 2 credits per second
+    elif model_id == "hailuo/02-text-to-video-standard":
+        # Hailuo 02 Standard text-to-video pricing:
+        # 768P: 5 credits per second
+        duration = params.get("duration", "6")
+        duration_int = int(duration)
+        base_credits = 5 * duration_int  # 5 credits per second for 768P
+    elif model_id == "topaz/video-upscale":
+        # Topaz Video Upscale pricing:
+        # 12 credits per second
+        # Note: Duration is determined by input video length
+        # For pricing calculation, we'll use a default of 5 seconds as minimum
+        default_duration = 5
+        base_credits = 12 * default_duration  # 12 credits per second
+    elif model_id == "kling/v1-avatar-standard":
+        # Kling Avatar Standard pricing:
+        # 8 credits per second for 720P
+        # Up to 15 seconds per generation
+        # For pricing calculation, we'll use a default of 5 seconds as minimum
+        default_duration = 5
+        base_credits = 8 * default_duration  # 8 credits per second for 720P
+    elif model_id == "kling/ai-avatar-v1-pro":
+        # Kling Avatar Pro pricing:
+        # 16 credits per second for 1080P
+        # Up to 15 seconds per generation
+        # For pricing calculation, we'll use a default of 5 seconds as minimum
+        default_duration = 5
+        base_credits = 16 * default_duration  # 16 credits per second for 1080P
+    elif model_id == "bytedance/seedream-v4-text-to-image" or model_id == "bytedance/seedream-v4-edit":
+        # Seedream V4 pricing:
+        # 5 credits per image
+        # Price is independent of resolution, determined by number of images returned
+        max_images = params.get("max_images", 1) if params else 1
+        base_credits = 5 * max_images  # 5 credits per image
+    elif model_id == "infinitalk/from-audio":
+        # InfiniteTalk pricing:
+        # 480P: 3 credits per second
+        # 720P: 12 credits per second
+        # Up to 15 seconds per generation
+        # For pricing calculation, we'll use a default of 5 seconds as minimum
+        resolution = params.get("resolution", "480p")
+        default_duration = 5
+        
+        if resolution == "720p":
+            base_credits = 12 * default_duration  # 12 credits per second
+        else:  # 480p
+            base_credits = 3 * default_duration  # 3 credits per second
+    elif model_id == "recraft/remove-background":
+        # Recraft Remove Background pricing:
+        # 1 credit per image
+        base_credits = 1
+    elif model_id == "recraft/crisp-upscale":
+        # Recraft Crisp Upscale pricing:
+        # 0.5 credits per upscale
+        base_credits = 0.5
+    elif model_id == "ideogram/v3-reframe" or model_id == "ideogram/v3-text-to-image" or model_id == "ideogram/v3-edit" or model_id == "ideogram/v3-remix":
+        # Ideogram V3 pricing (same for all variants):
+        # TURBO: 3.5 credits per image
+        # BALANCED: 7 credits per image
+        # QUALITY: 10 credits per image
+        rendering_speed = params.get("rendering_speed", "BALANCED") if params else "BALANCED"
+        num_images = int(params.get("num_images", "1")) if params else 1
+        
+        if rendering_speed == "TURBO":
+            credits_per_image = 3.5
+        elif rendering_speed == "QUALITY":
+            credits_per_image = 10
+        else:  # BALANCED
+            credits_per_image = 7
+        
+        base_credits = credits_per_image * num_images
+    elif model_id == "wan/2-2-a14b-speech-to-video-turbo":
+        # WAN 2.2 Speech-to-Video pricing:
+        # 480P: 12 credits per second
+        # 580P: 18 credits per second
+        # 720P: 24 credits per second
+        # Note: Duration is determined by audio length
+        # For pricing calculation, we'll use a default of 5 seconds as minimum
+        resolution = params.get("resolution", "480p")
+        default_duration = 5
+        
+        if resolution == "720p":
+            base_credits = 24 * default_duration  # 24 credits per second
+        elif resolution == "580p":
+            base_credits = 18 * default_duration  # 18 credits per second
+        else:  # 480p
+            base_credits = 12 * default_duration  # 12 credits per second
+    elif model_id == "wan/2-2-a14b-text-to-video-turbo" or model_id == "wan/2-2-a14b-image-to-video-turbo":
+        # WAN 2.2 A14B Turbo pricing:
+        # 480p: 8 credits per second
+        # 580p: 12 credits per second
+        # 720p: 16 credits per second
+        # For pricing calculation, we'll use a default of 5 seconds as minimum
+        resolution = params.get("resolution", "720p") if params else "720p"
+        default_duration = 5
+        
+        if resolution == "720p":
+            base_credits = 16 * default_duration  # 16 credits per second
+        elif resolution == "580p":
+            base_credits = 12 * default_duration  # 12 credits per second
+        else:  # 480p
+            base_credits = 8 * default_duration  # 8 credits per second
+    elif model_id == "bytedance/seedream":
+        # Seedream 3.0 pricing:
+        # 3.5 credits per image
+        base_credits = 3.5
+    elif model_id == "qwen/text-to-image":
+        # Qwen Image pricing:
+        # 4 credits per megapixel
+        # Need to calculate megapixels based on image_size
+        # Approximate resolutions:
+        # square: 512x512 = 0.26 MP
+        # square_hd: 1024x1024 = 1.05 MP
+        # portrait_4_3: 768x1024 = 0.79 MP
+        # portrait_16_9: 1024x1792 = 1.84 MP
+        # landscape_4_3: 1024x768 = 0.79 MP
+        # landscape_16_9: 1792x1024 = 1.84 MP
+        image_size = params.get("image_size", "square_hd") if params else "square_hd"
+        
+        # Calculate megapixels based on image size
+        mp_map = {
+            "square": 0.26,  # 512x512
+            "square_hd": 1.05,  # 1024x1024
+            "portrait_4_3": 0.79,  # 768x1024
+            "portrait_16_9": 1.84,  # 1024x1792
+            "landscape_4_3": 0.79,  # 1024x768
+            "landscape_16_9": 1.84  # 1792x1024
+        }
+        
+        megapixels = mp_map.get(image_size, 1.05)  # Default to square_hd
+        base_credits = 4 * megapixels  # 4 credits per megapixel
+    elif model_id == "qwen/image-to-image":
+        # Qwen Image-to-Image pricing:
+        # 4 credits per image
         base_credits = 4
-    elif model_id == "grok-imagine/upscale":
-        # Grok Imagine upscale costs 10 credits per upscale
-        base_credits = 10
-    elif model_id == "hailuo/2-3-image-to-video-pro":
-        # Hailuo 2.3 Pro: 45 credits (Pro 6s 768P) / 90 credits (Pro 10s 768P) / 80 credits (Pro 6s 1080P)
-        # Note: 10s videos are not supported for 1080P
-        resolution = params.get('resolution', '768P') if params else '768P'
-        duration = params.get('duration', '6') if params else '6'
-        if resolution == '1080P':
-            # Only 6s supported for 1080P
-            base_credits = 80
-        else:  # 768P
-            base_credits = 45 if duration == '6' else 90
-    elif model_id == "hailuo/2-3-image-to-video-standard":
-        # Hailuo 2.3 Standard: 30 credits (Standard 6s 768P) / 50 credits (Standard 10s 768P) / 50 credits (Standard 6s 1080P)
-        # Note: 10s videos are not supported for 1080P
-        resolution = params.get('resolution', '768P') if params else '768P'
-        duration = params.get('duration', '6') if params else '6'
-        if resolution == '1080P':
-            # Only 6s supported for 1080P
-            base_credits = 50
-        else:  # 768P
-            base_credits = 30 if duration == '6' else 50
+    elif model_id == "qwen/image-edit":
+        # Qwen Image Edit pricing:
+        # ≈ $0.03 per megapixel, depending on image aspect ratio
+        # Need to calculate megapixels based on image_size
+        # Use same mapping as qwen/text-to-image
+        image_size = params.get("image_size", "landscape_4_3") if params else "landscape_4_3"
+        num_images = int(params.get("num_images", "1")) if params else 1
+        
+        # Calculate megapixels based on image size (same as qwen/text-to-image)
+        mp_map = {
+            "square": 0.26,  # 512x512
+            "square_hd": 1.05,  # 1024x1024
+            "portrait_4_3": 0.79,  # 768x1024
+            "portrait_16_9": 1.84,  # 1024x1792
+            "landscape_4_3": 0.79,  # 1024x768
+            "landscape_16_9": 1.84  # 1792x1024
+        }
+        
+        megapixels = mp_map.get(image_size, 0.79)  # Default to landscape_4_3
+        # $0.03 per MP ≈ 6 credits per MP (assuming $0.005 per credit)
+        base_credits = 6 * megapixels * num_images
+    elif model_id == "google/imagen4-ultra":
+        # Google Imagen 4 Ultra pricing:
+        # 12 credits per image
+        base_credits = 12
+    elif model_id == "google/imagen4-fast":
+        # Google Imagen 4 Fast pricing:
+        # 4 credits per image
+        num_images = int(params.get("num_images", "1")) if params else 1
+        base_credits = 4 * num_images
+    elif model_id == "google/imagen4":
+        # Google Imagen 4 pricing:
+        # 8 credits per image
+        num_images = int(params.get("num_images", "1")) if params else 1
+        base_credits = 8 * num_images
+    elif model_id == "ideogram/character-edit" or model_id == "ideogram/character-remix" or model_id == "ideogram/character":
+        # Ideogram Character pricing (same for edit, remix, and base):
+        # TURBO: 12 credits
+        # BALANCED: 18 credits
+        # QUALITY: 24 credits
+        rendering_speed = params.get("rendering_speed", "BALANCED") if params else "BALANCED"
+        num_images = int(params.get("num_images", "1")) if params else 1
+        
+        if rendering_speed == "TURBO":
+            credits_per_image = 12
+        elif rendering_speed == "QUALITY":
+            credits_per_image = 24
+        else:  # BALANCED
+            credits_per_image = 18
+        
+        base_credits = credits_per_image * num_images
+    elif model_id == "flux-2/pro-image-to-image" or model_id == "flux-2/pro-text-to-image":
+        # Flux 2 Pro pricing (same for both image-to-image and text-to-image):
+        # 1K: 5 credits
+        # 2K: 7 credits
+        resolution = params.get("resolution", "1K")
+        if resolution == "2K":
+            base_credits = 7
+        else:  # 1K
+            base_credits = 5
+    elif model_id == "flux-2/flex-image-to-image" or model_id == "flux-2/flex-text-to-image":
+        # Flux 2 Flex pricing (same for both image-to-image and text-to-image):
+        # 1K: 14 credits
+        # 2K: 24 credits
+        resolution = params.get("resolution", "1K")
+        if resolution == "2K":
+            base_credits = 24
+        else:  # 1K
+            base_credits = 14
+    elif model_id == "topaz/image-upscale":
+        # Topaz Image Upscale pricing:
+        # 1x (≤2K): 10 credits
+        # 2x/4x (4K): 20 credits
+        # 8x (8K): 40 credits
+        upscale_factor = params.get("upscale_factor", "2")
+        if upscale_factor == "8":
+            base_credits = 40  # 8K
+        elif upscale_factor in ["2", "4"]:
+            base_credits = 20  # 4K
+        else:  # upscale_factor == "1"
+            base_credits = 10  # ≤2K
     else:
         # Default fallback
         base_credits = 1.0
@@ -297,14 +531,13 @@ def format_price_rub(price: float, is_admin: bool = False) -> str:
 def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = False, user_id: int = None) -> str:
     """Get formatted price text for a model."""
     if model_id == "z-image":
+        price = calculate_price_rub(model_id, params, is_admin)
         if not is_admin and user_id is not None:
             # Check if user has free generations available
             remaining = get_user_free_generations_remaining(user_id)
             if remaining > 0:
-                price = calculate_price_rub(model_id, params, is_admin)
                 price_str = f"{round(price, 2):.2f}"
                 return f"🎁 <b>БЕСПЛАТНО</b> ({remaining}/{FREE_GENERATIONS_PER_DAY} в день) или {price_str} ₽"
-        price = calculate_price_rub(model_id, params, is_admin)
         return format_price_rub(price, is_admin) + " за изображение"
     elif model_id == "nano-banana-pro":
         price_1k = calculate_price_rub(model_id, {"resolution": "1K"}, is_admin)
@@ -322,33 +555,282 @@ def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = Fa
     elif model_id == "sora-2-text-to-video":
         price = calculate_price_rub(model_id, params, is_admin)
         return format_price_rub(price, is_admin) + " за 10-секундное видео"
-    elif model_id == "bytedance/v1-pro-fast-image-to-video":
+    elif model_id == "kling-2.6/image-to-video" or model_id == "kling-2.6/text-to-video":
+        # Show price range based on duration and sound
+        duration = params.get("duration", "5") if params else "5"
+        sound = params.get("sound", False) if params else False
+        
+        if duration == "5":
+            if sound:
+                price = calculate_price_rub(model_id, {"duration": "5", "sound": True}, is_admin)
+                return format_price_rub(price, is_admin) + " за 5с видео (со звуком)"
+            else:
+                price = calculate_price_rub(model_id, {"duration": "5", "sound": False}, is_admin)
+                return format_price_rub(price, is_admin) + " за 5с видео (без звука)"
+        else:  # duration == "10"
+            if sound:
+                price = calculate_price_rub(model_id, {"duration": "10", "sound": True}, is_admin)
+                return format_price_rub(price, is_admin) + " за 10с видео (со звуком)"
+            else:
+                price = calculate_price_rub(model_id, {"duration": "10", "sound": False}, is_admin)
+                return format_price_rub(price, is_admin) + " за 10с видео (без звука)"
+    elif model_id == "kling/v2-5-turbo-text-to-video-pro" or model_id == "kling/v2-5-turbo-image-to-video-pro":
+        # Show price based on duration
+        duration = params.get("duration", "5") if params else "5"
+        price_5s = calculate_price_rub(model_id, {"duration": "5"}, is_admin)
+        price_10s = calculate_price_rub(model_id, {"duration": "10"}, is_admin)
+        price_5s_str = f"{round(price_5s, 2):.2f}"
+        price_10s_str = f"{round(price_10s, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> (5с: {price_5s_str} ₽, 10с: {price_10s_str} ₽)"
+        else:
+            return f"💰 <b>От {price_5s_str} ₽</b> (5с: {price_5s_str} ₽, 10с: {price_10s_str} ₽)"
+    elif model_id == "wan/2-5-image-to-video" or model_id == "wan/2-5-text-to-video":
+        # Show price based on duration and resolution
+        duration = params.get("duration", "5") if params else "5"
+        resolution = params.get("resolution", "720p") if params else "720p"
+        price_720p_5s = calculate_price_rub(model_id, {"duration": "5", "resolution": "720p"}, is_admin)
+        price_1080p_5s = calculate_price_rub(model_id, {"duration": "5", "resolution": "1080p"}, is_admin)
+        price_720p_10s = calculate_price_rub(model_id, {"duration": "10", "resolution": "720p"}, is_admin)
+        price_1080p_10s = calculate_price_rub(model_id, {"duration": "10", "resolution": "1080p"}, is_admin)
+        price_720p_5s_str = f"{round(price_720p_5s, 2):.2f}"
+        price_1080p_5s_str = f"{round(price_1080p_5s, 2):.2f}"
+        price_720p_10s_str = f"{round(price_720p_10s, 2):.2f}"
+        price_1080p_10s_str = f"{round(price_1080p_10s, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> (720p: {price_720p_5s_str}₽/5с, {price_720p_10s_str}₽/10с | 1080p: {price_1080p_5s_str}₽/5с, {price_1080p_10s_str}₽/10с)"
+        else:
+            return f"💰 <b>От {price_720p_5s_str} ₽</b> (720p: {price_720p_5s_str}₽/5с, {price_720p_10s_str}₽/10с | 1080p: {price_1080p_5s_str}₽/5с, {price_1080p_10s_str}₽/10с)"
+    elif model_id == "wan/2-2-animate-move" or model_id == "wan/2-2-animate-replace":
+        # Show price based on resolution
+        resolution = params.get("resolution", "480p") if params else "480p"
+        price_480p = calculate_price_rub(model_id, {"resolution": "480p"}, is_admin)
+        price_580p = calculate_price_rub(model_id, {"resolution": "580p"}, is_admin)
+        price_720p = calculate_price_rub(model_id, {"resolution": "720p"}, is_admin)
+        price_480p_str = f"{round(price_480p, 2):.2f}"
+        price_580p_str = f"{round(price_580p, 2):.2f}"
+        price_720p_str = f"{round(price_720p, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> (480p: {price_480p_str}₽/5с, 580p: {price_580p_str}₽/5с, 720p: {price_720p_str}₽/5с)"
+        else:
+            return f"💰 <b>От {price_480p_str} ₽</b> (480p: {price_480p_str}₽/5с, 580p: {price_580p_str}₽/5с, 720p: {price_720p_str}₽/5с)"
+    elif model_id == "hailuo/02-text-to-video-pro" or model_id == "hailuo/02-image-to-video-pro":
+        # Show fixed price for 6-second 1080p video
         price = calculate_price_rub(model_id, params, is_admin)
-        resolution = params.get('resolution', '720p') if params else '720p'
-        duration = params.get('duration', '5') if params else '5'
-        return format_price_rub(price, is_admin) + f" за {duration}с видео ({resolution})"
-    elif model_id == "grok-imagine/image-to-video":
-        price = calculate_price_rub(model_id, params, is_admin)
-        return format_price_rub(price, is_admin) + " за 6-секундное видео"
-    elif model_id == "grok-imagine/text-to-video":
-        price = calculate_price_rub(model_id, params, is_admin)
-        return format_price_rub(price, is_admin) + " за 6-секундное видео"
-    elif model_id == "grok-imagine/text-to-image":
-        price = calculate_price_rub(model_id, params, is_admin)
-        return format_price_rub(price, is_admin) + " за генерацию (6 изображений)"
-    elif model_id == "grok-imagine/upscale":
-        price = calculate_price_rub(model_id, params, is_admin)
-        return format_price_rub(price, is_admin) + " за улучшение качества"
-    elif model_id == "hailuo/2-3-image-to-video-pro":
-        price = calculate_price_rub(model_id, params, is_admin)
-        resolution = params.get('resolution', '768P') if params else '768P'
-        duration = params.get('duration', '6') if params else '6'
-        return format_price_rub(price, is_admin) + f" за {duration}с видео Pro ({resolution})"
-    elif model_id == "hailuo/2-3-image-to-video-standard":
-        price = calculate_price_rub(model_id, params, is_admin)
-        resolution = params.get('resolution', '768P') if params else '768P'
-        duration = params.get('duration', '6') if params else '6'
-        return format_price_rub(price, is_admin) + f" за {duration}с видео Standard ({resolution})"
+        price_str = f"{round(price, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> ({price_str} ₽ за 6с 1080p видео)"
+        else:
+            return f"💰 <b>{price_str} ₽</b> за 6с 1080p видео"
+    elif model_id == "hailuo/02-image-to-video-standard":
+        # Show price based on resolution and duration
+        resolution = params.get("resolution", "768P") if params else "768P"
+        duration = params.get("duration", "6") if params else "6"
+        price_512p_6s = calculate_price_rub(model_id, {"resolution": "512P", "duration": "6"}, is_admin)
+        price_768p_6s = calculate_price_rub(model_id, {"resolution": "768P", "duration": "6"}, is_admin)
+        price_512p_10s = calculate_price_rub(model_id, {"resolution": "512P", "duration": "10"}, is_admin)
+        price_768p_10s = calculate_price_rub(model_id, {"resolution": "768P", "duration": "10"}, is_admin)
+        price_512p_6s_str = f"{round(price_512p_6s, 2):.2f}"
+        price_768p_6s_str = f"{round(price_768p_6s, 2):.2f}"
+        price_512p_10s_str = f"{round(price_512p_10s, 2):.2f}"
+        price_768p_10s_str = f"{round(price_768p_10s, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> (512P: {price_512p_6s_str}₽/6с, {price_512p_10s_str}₽/10с | 768P: {price_768p_6s_str}₽/6с, {price_768p_10s_str}₽/10с)"
+        else:
+            return f"💰 <b>От {price_512p_6s_str} ₽</b> (512P: {price_512p_6s_str}₽/6с, {price_512p_10s_str}₽/10с | 768P: {price_768p_6s_str}₽/6с, {price_768p_10s_str}₽/10с)"
+    elif model_id == "hailuo/02-text-to-video-standard":
+        # Show price based on duration (fixed 768P)
+        duration = params.get("duration", "6") if params else "6"
+        price_6s = calculate_price_rub(model_id, {"duration": "6"}, is_admin)
+        price_10s = calculate_price_rub(model_id, {"duration": "10"}, is_admin)
+        price_6s_str = f"{round(price_6s, 2):.2f}"
+        price_10s_str = f"{round(price_10s, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> (768P: {price_6s_str}₽/6с, {price_10s_str}₽/10с)"
+        else:
+            return f"💰 <b>От {price_6s_str} ₽</b> (768P: {price_6s_str}₽/6с, {price_10s_str}₽/10с)"
+    elif model_id == "topaz/video-upscale":
+        # Show price per second
+        price_per_sec = calculate_price_rub(model_id, {}, is_admin) / 5  # Divide by default 5 seconds
+        price_per_sec_str = f"{round(price_per_sec, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> ({price_per_sec_str} ₽/сек)"
+        else:
+            return f"💰 <b>{price_per_sec_str} ₽/сек</b>"
+    elif model_id == "kling/v1-avatar-standard":
+        # Show price per second for 720P
+        price_per_sec = calculate_price_rub(model_id, {}, is_admin) / 5  # Divide by default 5 seconds
+        price_per_sec_str = f"{round(price_per_sec, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> ({price_per_sec_str} ₽/сек, 720P, до 15с)"
+        else:
+            return f"💰 <b>{price_per_sec_str} ₽/сек</b> (720P, до 15с)"
+    elif model_id == "kling/ai-avatar-v1-pro":
+        # Show price per second for 1080P
+        price_per_sec = calculate_price_rub(model_id, {}, is_admin) / 5  # Divide by default 5 seconds
+        price_per_sec_str = f"{round(price_per_sec, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> ({price_per_sec_str} ₽/сек, 1080P, до 15с)"
+        else:
+            return f"💰 <b>{price_per_sec_str} ₽/сек</b> (1080P, до 15с)"
+    elif model_id == "bytedance/seedream-v4-text-to-image" or model_id == "bytedance/seedream-v4-edit":
+        # Show price per image
+        max_images = params.get("max_images", 1) if params else 1
+        price_per_image = calculate_price_rub(model_id, {"max_images": 1}, is_admin)
+        price_total = calculate_price_rub(model_id, {"max_images": max_images}, is_admin)
+        price_per_image_str = f"{round(price_per_image, 2):.2f}"
+        price_total_str = f"{round(price_total, 2):.2f}"
+        if is_admin:
+            if max_images > 1:
+                return f"💰 <b>Безлимит</b> ({price_per_image_str} ₽/изображение, до {max_images} изображений = {price_total_str} ₽)"
+            else:
+                return f"💰 <b>Безлимит</b> ({price_per_image_str} ₽/изображение)"
+        else:
+            if max_images > 1:
+                return f"💰 <b>{price_per_image_str} ₽/изображение</b> (до {max_images} изображений = {price_total_str} ₽)"
+            else:
+                return f"💰 <b>{price_per_image_str} ₽/изображение</b>"
+    elif model_id == "infinitalk/from-audio":
+        # Show price per second based on resolution
+        resolution = params.get("resolution", "480p") if params else "480p"
+        price_per_sec_480p = calculate_price_rub(model_id, {"resolution": "480p"}, is_admin) / 5
+        price_per_sec_720p = calculate_price_rub(model_id, {"resolution": "720p"}, is_admin) / 5
+        price_per_sec_480p_str = f"{round(price_per_sec_480p, 2):.2f}"
+        price_per_sec_720p_str = f"{round(price_per_sec_720p, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> (480P: {price_per_sec_480p_str}₽/сек, 720P: {price_per_sec_720p_str}₽/сек, до 15с)"
+        else:
+            return f"💰 <b>От {price_per_sec_480p_str} ₽/сек</b> (480P: {price_per_sec_480p_str}₽/сек, 720P: {price_per_sec_720p_str}₽/сек, до 15с)"
+    elif model_id == "recraft/remove-background":
+        # Show fixed price per image
+        price = calculate_price_rub(model_id, {}, is_admin)
+        price_str = f"{round(price, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> ({price_str} ₽ за изображение)"
+        else:
+            return f"💰 <b>{price_str} ₽</b> за изображение"
+    elif model_id == "recraft/crisp-upscale":
+        # Show fixed price per upscale
+        price = calculate_price_rub(model_id, {}, is_admin)
+        price_str = f"{round(price, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> ({price_str} ₽ за апскейл)"
+        else:
+            return f"💰 <b>{price_str} ₽</b> за апскейл"
+    elif model_id == "ideogram/v3-reframe" or model_id == "ideogram/v3-text-to-image" or model_id == "ideogram/v3-edit" or model_id == "ideogram/v3-remix":
+        # Show price based on rendering speed (same for all Ideogram V3 models)
+        rendering_speed = params.get("rendering_speed", "BALANCED") if params else "BALANCED"
+        price_turbo = calculate_price_rub(model_id, {"rendering_speed": "TURBO", "num_images": "1"}, is_admin)
+        price_balanced = calculate_price_rub(model_id, {"rendering_speed": "BALANCED", "num_images": "1"}, is_admin)
+        price_quality = calculate_price_rub(model_id, {"rendering_speed": "QUALITY", "num_images": "1"}, is_admin)
+        price_turbo_str = f"{round(price_turbo, 2):.2f}"
+        price_balanced_str = f"{round(price_balanced, 2):.2f}"
+        price_quality_str = f"{round(price_quality, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> (Turbo: {price_turbo_str}₽, Balanced: {price_balanced_str}₽, Quality: {price_quality_str}₽)"
+        else:
+            return f"💰 <b>От {price_turbo_str} ₽</b> (Turbo: {price_turbo_str}₽, Balanced: {price_balanced_str}₽, Quality: {price_quality_str}₽)"
+    elif model_id == "wan/2-2-a14b-speech-to-video-turbo":
+        # Show price per second based on resolution
+        resolution = params.get("resolution", "480p") if params else "480p"
+        price_per_sec_480p = calculate_price_rub(model_id, {"resolution": "480p"}, is_admin) / 5
+        price_per_sec_580p = calculate_price_rub(model_id, {"resolution": "580p"}, is_admin) / 5
+        price_per_sec_720p = calculate_price_rub(model_id, {"resolution": "720p"}, is_admin) / 5
+        price_per_sec_480p_str = f"{round(price_per_sec_480p, 2):.2f}"
+        price_per_sec_580p_str = f"{round(price_per_sec_580p, 2):.2f}"
+        price_per_sec_720p_str = f"{round(price_per_sec_720p, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> (480P: {price_per_sec_480p_str}₽/сек, 580P: {price_per_sec_580p_str}₽/сек, 720P: {price_per_sec_720p_str}₽/сек)"
+        else:
+            return f"💰 <b>От {price_per_sec_480p_str} ₽/сек</b> (480P: {price_per_sec_480p_str}₽/сек, 580P: {price_per_sec_580p_str}₽/сек, 720P: {price_per_sec_720p_str}₽/сек)"
+    elif model_id == "bytedance/seedream":
+        # Show fixed price per image
+        price = calculate_price_rub(model_id, {}, is_admin)
+        price_str = f"{round(price, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> ({price_str} ₽ за изображение)"
+        else:
+            return f"💰 <b>{price_str} ₽</b> за изображение"
+    elif model_id == "qwen/text-to-image":
+        # Show price range based on image size (megapixels)
+        price_square = calculate_price_rub(model_id, {"image_size": "square"}, is_admin)
+        price_square_hd = calculate_price_rub(model_id, {"image_size": "square_hd"}, is_admin)
+        price_portrait = calculate_price_rub(model_id, {"image_size": "portrait_16_9"}, is_admin)
+        price_square_str = f"{round(price_square, 2):.2f}"
+        price_square_hd_str = f"{round(price_square_hd, 2):.2f}"
+        price_portrait_str = f"{round(price_portrait, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> (от {price_square_str}₽, зависит от разрешения: 4 кредита/МП)"
+        else:
+            return f"💰 <b>От {price_square_str} ₽</b> (зависит от разрешения: 4 кредита/МП)"
+    elif model_id == "qwen/image-to-image":
+        # Show fixed price per image
+        price = calculate_price_rub(model_id, {}, is_admin)
+        price_str = f"{round(price, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> ({price_str} ₽ за изображение)"
+        else:
+            return f"💰 <b>{price_str} ₽</b> за изображение"
+    elif model_id == "qwen/image-edit":
+        # Show price range based on image size (megapixels)
+        price_square = calculate_price_rub(model_id, {"image_size": "square", "num_images": "1"}, is_admin)
+        price_landscape = calculate_price_rub(model_id, {"image_size": "landscape_4_3", "num_images": "1"}, is_admin)
+        price_portrait = calculate_price_rub(model_id, {"image_size": "portrait_16_9", "num_images": "1"}, is_admin)
+        price_square_str = f"{round(price_square, 2):.2f}"
+        price_landscape_str = f"{round(price_landscape, 2):.2f}"
+        price_portrait_str = f"{round(price_portrait, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> (от {price_square_str}₽, зависит от разрешения: ≈6 кредитов/МП)"
+        else:
+            return f"💰 <b>От {price_square_str} ₽</b> (зависит от разрешения: ≈6 кредитов/МП)"
+    elif model_id == "ideogram/character-edit" or model_id == "ideogram/character-remix" or model_id == "ideogram/character":
+        # Show price based on rendering speed
+        rendering_speed = params.get("rendering_speed", "BALANCED") if params else "BALANCED"
+        price_turbo = calculate_price_rub(model_id, {"rendering_speed": "TURBO", "num_images": "1"}, is_admin)
+        price_balanced = calculate_price_rub(model_id, {"rendering_speed": "BALANCED", "num_images": "1"}, is_admin)
+        price_quality = calculate_price_rub(model_id, {"rendering_speed": "QUALITY", "num_images": "1"}, is_admin)
+        price_turbo_str = f"{round(price_turbo, 2):.2f}"
+        price_balanced_str = f"{round(price_balanced, 2):.2f}"
+        price_quality_str = f"{round(price_quality, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> (Turbo: {price_turbo_str}₽, Balanced: {price_balanced_str}₽, Quality: {price_quality_str}₽)"
+        else:
+            return f"💰 <b>От {price_turbo_str} ₽</b> (Turbo: {price_turbo_str}₽, Balanced: {price_balanced_str}₽, Quality: {price_quality_str}₽)"
+    elif model_id == "flux-2/pro-image-to-image" or model_id == "flux-2/pro-text-to-image":
+        # Show price based on resolution
+        resolution = params.get("resolution", "1K") if params else "1K"
+        price_1k = calculate_price_rub(model_id, {"resolution": "1K"}, is_admin)
+        price_2k = calculate_price_rub(model_id, {"resolution": "2K"}, is_admin)
+        price_1k_str = f"{round(price_1k, 2):.2f}"
+        price_2k_str = f"{round(price_2k, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> (1K: {price_1k_str} ₽, 2K: {price_2k_str} ₽)"
+        else:
+            return f"💰 <b>От {price_1k_str} ₽</b> (1K: {price_1k_str} ₽, 2K: {price_2k_str} ₽)"
+    elif model_id == "flux-2/flex-image-to-image" or model_id == "flux-2/flex-text-to-image":
+        # Show price based on resolution
+        resolution = params.get("resolution", "1K") if params else "1K"
+        price_1k = calculate_price_rub(model_id, {"resolution": "1K"}, is_admin)
+        price_2k = calculate_price_rub(model_id, {"resolution": "2K"}, is_admin)
+        price_1k_str = f"{round(price_1k, 2):.2f}"
+        price_2k_str = f"{round(price_2k, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> (1K: {price_1k_str} ₽, 2K: {price_2k_str} ₽)"
+        else:
+            return f"💰 <b>От {price_1k_str} ₽</b> (1K: {price_1k_str} ₽, 2K: {price_2k_str} ₽)"
+    elif model_id == "topaz/image-upscale":
+        # Show price based on upscale factor
+        upscale_factor = params.get("upscale_factor", "2") if params else "2"
+        price_1x = calculate_price_rub(model_id, {"upscale_factor": "1"}, is_admin)
+        price_2x = calculate_price_rub(model_id, {"upscale_factor": "2"}, is_admin)
+        price_8x = calculate_price_rub(model_id, {"upscale_factor": "8"}, is_admin)
+        price_1x_str = f"{round(price_1x, 2):.2f}"
+        price_2x_str = f"{round(price_2x, 2):.2f}"
+        price_8x_str = f"{round(price_8x, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> (1x: {price_1x_str} ₽, 2x/4x: {price_2x_str} ₽, 8x: {price_8x_str} ₽)"
+        else:
+            return f"💰 <b>От {price_1x_str} ₽</b> (1x: {price_1x_str} ₽, 2x/4x: {price_2x_str} ₽, 8x: {price_8x_str} ₽)"
     else:
         price = calculate_price_rub(model_id, params, is_admin)
         return format_price_rub(price, is_admin)
@@ -358,7 +840,12 @@ SELECTING_MODEL, INPUTTING_PARAMS, CONFIRMING_GENERATION = range(3)
 
 # Payment states
 SELECTING_AMOUNT, WAITING_PAYMENT_SCREENSHOT = range(3, 5)
-WAITING_PROMOCODE = 5  # State for entering promo code
+
+# Admin test OCR state
+ADMIN_TEST_OCR = 5
+
+# Broadcast states
+WAITING_BROADCAST_MESSAGE = 6
 
 # Admin test OCR state
 ADMIN_TEST_OCR = 5
@@ -369,200 +856,19 @@ user_sessions = {}
 # Store saved generation data for "generate again" feature
 saved_generations = {}
 
-# Rate limiting for flood protection
-user_request_times = {}  # {user_id: [timestamps]}
-FLOOD_LIMIT = 10  # Max requests per time window
-FLOOD_WINDOW = 60  # Time window in seconds (1 minute)
-FLOOD_COOLDOWN = 300  # Cooldown period in seconds (5 minutes) if limit exceeded
-
-
-def check_flood_protection(user_id: int) -> dict:
-    """
-    Check if user is flooding/spamming requests.
-    Returns: {'allowed': bool, 'message': str, 'cooldown_remaining': int}
-    """
-    import time
-    current_time = time.time()
-    
-    # Initialize user request times if not exists
-    if user_id not in user_request_times:
-        user_request_times[user_id] = []
-    
-    # Clean old requests outside the time window
-    user_request_times[user_id] = [
-        t for t in user_request_times[user_id] 
-        if current_time - t < FLOOD_WINDOW
-    ]
-    
-    # Check if user is in cooldown (stored in user_sessions)
-    if user_id in user_sessions:
-        cooldown_until = user_sessions[user_id].get('flood_cooldown_until', 0)
-        if cooldown_until > current_time:
-            remaining = int(cooldown_until - current_time)
-            minutes = remaining // 60
-            seconds = remaining % 60
-            time_str = f"{minutes} мин {seconds} сек" if minutes > 0 else f"{seconds} сек"
-            return {
-                'allowed': False,
-                'message': f'⏳ <b>Слишком много запросов!</b>\n\n'
-                          f'Пожалуйста, подождите <b>{time_str}</b> перед следующим запросом.\n\n'
-                          f'💡 <b>Что это значит?</b>\n'
-                          f'Система защищает от спама и перегрузки. Это временная пауза для стабильной работы бота.',
-                'cooldown_remaining': remaining
-            }
-    
-    # Check current request count
-    request_count = len(user_request_times[user_id])
-    
-    if request_count >= FLOOD_LIMIT:
-        # User exceeded limit - set cooldown
-        if user_id not in user_sessions:
-            user_sessions[user_id] = {}
-        user_sessions[user_id]['flood_cooldown_until'] = current_time + FLOOD_COOLDOWN
-        
-        return {
-            'allowed': False,
-            'message': f'⚠️ <b>Обнаружено слишком много запросов!</b>\n\n'
-                      f'Пожалуйста, <b>не флудите</b>. Подождите <b>{FLOOD_COOLDOWN // 60} минут</b> перед следующим запросом.\n\n'
-                      f'💡 <b>Что это значит?</b>\n'
-                      f'Вы отправили слишком много запросов за короткое время ({FLOOD_LIMIT} запросов за {FLOOD_WINDOW} секунд).\n'
-                      f'Это защита от спама и перегрузки сервера.\n\n'
-                      f'✅ <b>Рекомендация:</b>\n'
-                      f'Делайте паузы между запросами (минимум 6 секунд), чтобы избежать этой блокировки.',
-            'cooldown_remaining': FLOOD_COOLDOWN
-        }
-    
-    # Add current request
-    user_request_times[user_id].append(current_time)
-    
-    return {'allowed': True, 'message': '', 'cooldown_remaining': 0}
-
-
-def get_user_friendly_param_description(param_name: str, param_info: dict, model_id: str = None) -> str:
-    """
-    Get user-friendly description for a parameter with explanations.
-    """
-    base_desc = param_info.get('description', '')
-    
-    # Add explanations for common parameters
-    explanations = {
-        'prompt': {
-            'text': '💬 <b>Что это?</b>\n'
-                   'Текстовое описание того, что вы хотите создать. Чем подробнее описание, тем лучше результат!\n\n'
-                   '💡 <b>Совет:</b>\n'
-                   'Опишите детали: стиль, цвета, композицию, настроение. Например: "Фотореалистичный портрет женщины в стиле 80-х, яркие цвета, ретро атмосфера"',
-            'video': '💬 <b>Что это?</b>\n'
-                    'Текстовое описание движения и сцены для видео. Опишите, что должно происходить в кадре.\n\n'
-                    '💡 <b>Совет:</b>\n'
-                    'Опишите движение, камеру, освещение. Например: "Плавное движение камеры вокруг объекта, мягкое освещение, кинематографический стиль"'
-        },
-        'aspect_ratio': '📐 <b>Что это?</b>\n'
-                       'Соотношение сторон (ширина:высота) вашего изображения/видео.\n\n'
-                       '💡 <b>Выбор:</b>\n'
-                       '• <b>1:1</b> - Квадрат (Instagram, профили)\n'
-                       '• <b>16:9</b> - Широкоформатное (YouTube, презентации)\n'
-                       '• <b>9:16</b> - Вертикальное (Stories, TikTok)\n'
-                       '• <b>3:4</b> - Портретное (вертикальные посты)\n'
-                       '• <b>4:3</b> - Классическое (горизонтальные посты)',
-        'resolution': '🎬 <b>Что это?</b>\n'
-                     'Разрешение (качество) видео или изображения.\n\n'
-                     '💡 <b>Выбор:</b>\n'
-                     '• <b>720p/768P</b> - Хорошее качество, быстрее генерируется\n'
-                     '• <b>1080P</b> - Высокое качество, дольше генерируется\n'
-                     '• <b>1K/2K</b> - Стандартное качество\n'
-                     '• <b>4K</b> - Максимальное качество для печати и профессионального использования',
-        'duration': '⏱️ <b>Что это?</b>\n'
-                   'Длительность видео в секундах.\n\n'
-                   '💡 <b>Выбор:</b>\n'
-                   '• <b>5-6 секунд</b> - Короткое видео, быстрее генерируется\n'
-                   '• <b>10-15 секунд</b> - Длиннее видео, больше деталей\n\n'
-                   '⚠️ <b>Важно:</b> Некоторые разрешения не поддерживают длинные видео.',
-        'negative_prompt': '🚫 <b>Что это?</b>\n'
-                          'Опишите, чего НЕ должно быть в результате.\n\n'
-                          '💡 <b>Примеры:</b>\n'
-                          '• "размытие, низкое качество, артефакты"\n'
-                          '• "текст, водяные знаки, логотипы"\n'
-                          '• "искажения, деформации"\n\n'
-                          'Это поможет улучшить результат, исключив нежелательные элементы.',
-        'num_images': '🖼️ <b>Что это?</b>\n'
-                     'Количество изображений для генерации за один раз.\n\n'
-                     '💡 <b>Выбор:</b>\n'
-                     '• <b>1</b> - Одно изображение (быстрее)\n'
-                     '• <b>2-4</b> - Несколько вариантов (больше выбор)\n\n'
-                     '⚠️ <b>Важно:</b> Цена умножается на количество изображений.',
-        'remove_watermark': '🔍 <b>Что это?</b>\n'
-                          'Удаление водяного знака с видео.\n\n'
-                          '💡 <b>Выбор:</b>\n'
-                          '• <b>Да</b> - Видео без водяного знака (рекомендуется)\n'
-                          '• <b>Нет</b> - Видео с водяным знаком (быстрее, но с меткой)',
-        'mode': '🎨 <b>Что это?</b>\n'
-               'Режим генерации, влияющий на стиль и качество.\n\n'
-               '💡 <b>Выбор:</b>\n'
-               '• <b>normal</b> - Стандартный режим (рекомендуется)\n'
-               '• <b>fun</b> - Более креативный и необычный стиль\n'
-               '• <b>spicy</b> - Расширенные возможности (не для всех моделей)',
-        'quality': '⭐ <b>Что это?</b>\n'
-                  'Уровень качества генерации.\n\n'
-                  '💡 <b>Выбор:</b>\n'
-                  '• <b>basic</b> - Базовое качество (2K, быстрее)\n'
-                  '• <b>high</b> - Высокое качество (4K, дольше, дороже)',
-        'output_format': '📄 <b>Что это?</b>\n'
-                        'Формат файла результата.\n\n'
-                        '💡 <b>Выбор:</b>\n'
-                        '• <b>png</b> - Лучшее качество, прозрачность (больше размер)\n'
-                        '• <b>jpeg/jpg</b> - Меньше размер, хорошее качество',
-        'seed': '🎲 <b>Что это?</b>\n'
-               'Случайное число для воспроизводимости результатов.\n\n'
-               '💡 <b>Как использовать:</b>\n'
-               'Если вы хотите получить похожий результат, используйте тот же seed.\n'
-               'Если не указать, будет случайный результат каждый раз.',
-        'image_url': '🖼️ <b>Что это?</b>\n'
-                    'Ссылка на изображение для обработки.\n\n'
-                    '💡 <b>Как получить:</b>\n'
-                    '1. Загрузите изображение в бот\n'
-                    '2. Бот автоматически получит ссылку\n'
-                    '3. Или укажите публичную ссылку на изображение',
-        'image_urls': '🖼️ <b>Что это?</b>\n'
-                     'Список ссылок на изображения (до 10 штук).\n\n'
-                     '💡 <b>Как использовать:</b>\n'
-                     'Можно загрузить несколько изображений для обработки или редактирования.',
-        'n_frames': '🎬 <b>Что это?</b>\n'
-                   'Количество кадров (длительность) видео.\n\n'
-                   '💡 <b>Выбор:</b>\n'
-                   '• <b>10</b> - 10 секунд видео\n'
-                   '• <b>15</b> - 15 секунд видео (дольше генерируется)'
-    }
-    
-    # Get specific explanation if available
-    explanation = explanations.get(param_name, '')
-    
-    # For prompt, check if it's for video or image
-    if param_name == 'prompt':
-        if model_id and any(v in model_id for v in ['video', 'sora', 'hailuo', 'grok-imagine/image-to-video', 'grok-imagine/text-to-video']):
-            explanation = explanations['prompt']['video']
-        else:
-            explanation = explanations['prompt']['text']
-    
-    # Combine base description with explanation
-    if explanation:
-        return f"{base_desc}\n\n{explanation}"
-    else:
-        return base_desc
-
-# Rate limiting for flood protection
-user_request_times = {}  # {user_id: [timestamps]}
-FLOOD_LIMIT = 10  # Max requests per time window
-FLOOD_WINDOW = 60  # Time window in seconds (1 minute)
-FLOOD_COOLDOWN = 300  # Cooldown period in seconds (5 minutes) if limit exceeded
+# Store saved generation data for "generate again" feature
+saved_generations = {}
 
 # Payment data files
 BALANCES_FILE = "user_balances.json"
 ADMIN_LIMITS_FILE = "admin_limits.json"  # File to store admins with spending limits
 PAYMENTS_FILE = "payments.json"
 BLOCKED_USERS_FILE = "blocked_users.json"
-PROMOCODES_FILE = "promocodes.json"  # File to store promo codes
 FREE_GENERATIONS_FILE = "daily_free_generations.json"  # File to store daily free generations
+PROMOCODES_FILE = "promocodes.json"  # File to store promo codes
 REFERRALS_FILE = "referrals.json"  # File to store referral data
+BROADCASTS_FILE = "broadcasts.json"  # File to store broadcast statistics
+GENERATIONS_HISTORY_FILE = "generations_history.json"  # File to store user generation history
 
 # Free generation settings
 FREE_MODEL_ID = "z-image"  # Model that is free for users
@@ -625,128 +931,7 @@ def subtract_user_balance(user_id: int, amount: float) -> bool:
     return False
 
 
-def is_user_blocked(user_id: int) -> bool:
-    """Check if user is blocked."""
-    blocked = load_json_file(BLOCKED_USERS_FILE, {})
-    return blocked.get(str(user_id), False)
-
-
-def block_user(user_id: int):
-    """Block a user."""
-    blocked = load_json_file(BLOCKED_USERS_FILE, {})
-    blocked[str(user_id)] = True
-    save_json_file(BLOCKED_USERS_FILE, blocked)
-
-
-def unblock_user(user_id: int):
-    """Unblock a user."""
-    blocked = load_json_file(BLOCKED_USERS_FILE, {})
-    if str(user_id) in blocked:
-        del blocked[str(user_id)]
-        save_json_file(BLOCKED_USERS_FILE, blocked)
-
-
-def check_duplicate_payment(screenshot_file_id: str) -> bool:
-    """Check if this screenshot was already used for payment."""
-    if not screenshot_file_id:
-        return False
-    payments = load_json_file(PAYMENTS_FILE, {})
-    for payment in payments.values():
-        if payment.get('screenshot_file_id') == screenshot_file_id:
-            return True
-    return False
-
-
-def add_payment(user_id: int, amount: float, screenshot_file_id: str = None) -> dict:
-    """Add a payment record. Returns payment dict with id, timestamp, etc."""
-    payments = load_json_file(PAYMENTS_FILE, {})
-    payment_id = len(payments) + 1
-    import time
-    payment = {
-        "id": payment_id,
-        "user_id": user_id,
-        "amount": amount,
-        "timestamp": time.time(),
-        "screenshot_file_id": screenshot_file_id,
-        "status": "completed"  # Auto-completed
-    }
-    payments[str(payment_id)] = payment
-    save_json_file(PAYMENTS_FILE, payments)
-    
-    # Auto-add balance
-    add_user_balance(user_id, amount)
-    
-    return payment
-
-
-def get_all_payments() -> list:
-    """Get all payments sorted by timestamp (newest first)."""
-    payments = load_json_file(PAYMENTS_FILE, {})
-    payment_list = list(payments.values())
-    payment_list.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
-    return payment_list
-
-
-def get_user_payments(user_id: int) -> list:
-    """Get all payments for a specific user."""
-    all_payments = get_all_payments()
-    return [p for p in all_payments if p.get("user_id") == user_id]
-
-
-def get_payment_stats() -> dict:
-    """Get payment statistics."""
-    payments = get_all_payments()
-    total_amount = sum(p.get("amount", 0) for p in payments)
-    total_count = len(payments)
-    return {
-        "total_amount": total_amount,
-        "total_count": total_count,
-        "payments": payments
-    }
-
-
-def get_payment_details() -> str:
-    """Get payment details from .env (СБП - Система быстрых платежей)."""
-    # Reload environment variables to ensure latest values
-    from dotenv import load_dotenv
-    load_dotenv()
-    
-    card_holder = os.getenv('PAYMENT_CARD_HOLDER', '').strip()
-    phone = os.getenv('PAYMENT_PHONE', '').strip()
-    bank = os.getenv('PAYMENT_BANK', '').strip()
-    
-    details = "💳 <b>Реквизиты для оплаты (СБП):</b>\n\n"
-    
-    # Check if any payment details are configured
-    has_details = False
-    
-    if phone and phone != '':
-        details += f"📱 <b>Номер телефона:</b> <code>{phone}</code>\n"
-        has_details = True
-    else:
-        details += "📱 <b>Номер телефона:</b> <i>Не указан в настройках</i>\n"
-    
-    if bank and bank != '':
-        details += f"🏦 <b>Банк:</b> {bank}\n"
-        has_details = True
-    else:
-        details += "🏦 <b>Банк:</b> <i>Не указан в настройках</i>\n"
-    
-    if card_holder and card_holder != '':
-        details += f"👤 <b>Получатель:</b> {card_holder}\n"
-        has_details = True
-    else:
-        details += "👤 <b>Получатель:</b> <i>Не указан в настройках</i>\n"
-    
-    if not has_details:
-        details += "\n⚠️ <b>ВНИМАНИЕ:</b> Реквизиты не настроены!\n"
-        details += "Администратору необходимо указать PAYMENT_PHONE, PAYMENT_BANK и PAYMENT_CARD_HOLDER в файле .env\n\n"
-    
-    details += "\n⚠️ <b>Важно:</b> После оплаты отправьте скриншот перевода в этот чат.\n\n"
-    details += "✅ <b>Баланс начислится автоматически</b> после отправки скриншота."
-    
-    return details
-
+# ==================== Free Generations System ====================
 
 def get_free_generations_data() -> dict:
     """Get daily free generations data."""
@@ -837,35 +1022,7 @@ def is_free_generation_available(user_id: int, model_id: str) -> bool:
     return remaining > 0
 
 
-def get_support_contact() -> str:
-    """Get support contact information from .env (only Telegram)."""
-    # Reload environment variables to ensure latest values
-    from dotenv import load_dotenv
-    load_dotenv()
-    
-    support_telegram = os.getenv('SUPPORT_TELEGRAM', '').strip()
-    support_text = os.getenv('SUPPORT_TEXT', '').strip()
-    
-    contact = "🆘 <b>Поддержка</b>\n\n"
-    
-    if support_text:
-        contact += f"{support_text}\n\n"
-    else:
-        contact += "Если у вас возникли вопросы или проблемы, свяжитесь с нами:\n\n"
-    
-    if support_telegram:
-        telegram_username = support_telegram.replace('@', '').strip()
-        if telegram_username:
-            contact += f"💬 <b>Telegram:</b> @{telegram_username}\n"
-        else:
-            contact += "⚠️ Контактная информация не настроена.\n"
-            contact += "Обратитесь к администратору."
-    else:
-        contact += "⚠️ Контактная информация не настроена.\n"
-        contact += "Обратитесь к администратору."
-    
-    return contact
-
+# ==================== Referral System ====================
 
 def get_referrals_data() -> dict:
     """Get referrals data."""
@@ -953,6 +1110,410 @@ def get_user_referral_link(user_id: int, bot_username: str = None) -> str:
     if bot_username is None:
         bot_username = "Ferixdi_bot_ai_bot"
     return f"https://t.me/{bot_username}?start=ref_{user_id}"
+
+
+def get_fake_online_count() -> int:
+    """Generate dynamic fake online user count."""
+    # Base number around 500
+    base = 500
+    # Random variation ±50
+    variation = random.randint(-50, 50)
+    # Time-based variation (slight changes based on time of day)
+    current_hour = time.localtime().tm_hour
+    # More activity during day hours (9-22)
+    if 9 <= current_hour <= 22:
+        time_multiplier = random.randint(0, 30)
+    else:
+        time_multiplier = random.randint(-20, 10)
+    
+    count = base + variation + time_multiplier
+    # Ensure reasonable bounds
+    return max(350, min(650, count))
+
+
+# ==================== Promocodes System ====================
+
+def load_promocodes() -> list:
+    """Load promocodes from file."""
+    data = load_json_file(PROMOCODES_FILE, {})
+    return data.get('promocodes', [])
+
+
+def save_promocodes(promocodes: list):
+    """Save promocodes to file."""
+    data = {'promocodes': promocodes}
+    save_json_file(PROMOCODES_FILE, data)
+
+
+def get_active_promocode() -> dict:
+    """Get the currently active promocode."""
+    promocodes = load_promocodes()
+    for promo in promocodes:
+        if promo.get('active', False):
+            return promo
+    return None
+
+
+# ==================== Broadcast System ====================
+
+def get_all_users() -> list:
+    """Get list of all user IDs from various sources."""
+    user_ids = set()
+    
+    # From user balances
+    balances = load_json_file(BALANCES_FILE, {})
+    user_ids.update([int(uid) for uid in balances.keys() if uid.isdigit()])
+    
+    # From payments
+    payments = load_json_file(PAYMENTS_FILE, {})
+    for payment in payments.values():
+        if 'user_id' in payment:
+            user_ids.add(payment['user_id'])
+    
+    # From referrals
+    referrals = get_referrals_data()
+    for user_key in referrals.keys():
+        if user_key.isdigit():
+            user_ids.add(int(user_key))
+        # Also get referred users
+        referred_users = referrals.get(user_key, {}).get('referred_users', [])
+        user_ids.update(referred_users)
+    
+    # From free generations
+    free_gens = get_free_generations_data()
+    for user_key in free_gens.keys():
+        if user_key.isdigit():
+            user_ids.add(int(user_key))
+    
+    return sorted(list(user_ids))
+
+
+def save_broadcast(broadcast_data: dict):
+    """Save broadcast statistics."""
+    broadcasts = load_json_file(BROADCASTS_FILE, {})
+    broadcast_id = broadcast_data.get('id', len(broadcasts) + 1)
+    broadcasts[str(broadcast_id)] = broadcast_data
+    save_json_file(BROADCASTS_FILE, broadcasts)
+    return broadcast_id
+
+
+def get_broadcasts() -> dict:
+    """Get all broadcasts."""
+    return load_json_file(BROADCASTS_FILE, {})
+
+
+def get_broadcast(broadcast_id: int) -> dict:
+    """Get specific broadcast by ID."""
+    broadcasts = get_broadcasts()
+    return broadcasts.get(str(broadcast_id), {})
+
+
+# ==================== Generations History System ====================
+
+def save_generation_to_history(user_id: int, model_id: str, model_name: str, params: dict, result_urls: list, task_id: str, price: float = 0.0, is_free: bool = False):
+    """Save generation to user history."""
+    import time
+    history = load_json_file(GENERATIONS_HISTORY_FILE, {})
+    user_key = str(user_id)
+    
+    if user_key not in history:
+        history[user_key] = []
+    
+    generation_entry = {
+        'id': len(history[user_key]) + 1,
+        'timestamp': int(time.time()),
+        'model_id': model_id,
+        'model_name': model_name,
+        'params': params.copy(),
+        'result_urls': result_urls.copy(),
+        'task_id': task_id,
+        'price': price,
+        'is_free': is_free
+    }
+    
+    history[user_key].append(generation_entry)
+    
+    # Keep only last 100 generations per user
+    if len(history[user_key]) > 100:
+        history[user_key] = history[user_key][-100:]
+    
+    save_json_file(GENERATIONS_HISTORY_FILE, history)
+    return generation_entry['id']
+
+
+def get_user_generations_history(user_id: int, limit: int = 20) -> list:
+    """Get user's generation history."""
+    history = load_json_file(GENERATIONS_HISTORY_FILE, {})
+    user_key = str(user_id)
+    
+    if user_key not in history:
+        return []
+    
+    # Return last N generations, sorted by timestamp (newest first)
+    user_history = history[user_key]
+    user_history.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
+    return user_history[:limit]
+
+
+def get_generation_by_id(user_id: int, generation_id: int) -> dict:
+    """Get specific generation by ID."""
+    history = load_json_file(GENERATIONS_HISTORY_FILE, {})
+    user_key = str(user_id)
+    
+    if user_key not in history:
+        return None
+    
+    for gen in history[user_key]:
+        if gen.get('id') == generation_id:
+            return gen
+    
+    return None
+
+
+def is_new_user(user_id: int) -> bool:
+    """Check if user is new (no balance, no history, no payments)."""
+    # Check balance
+    balance = get_user_balance(user_id)
+    if balance > 0:
+        return False
+    
+    # Check history
+    history = get_user_generations_history(user_id, limit=1)
+    if history:
+        return False
+    
+    # Check payments
+    payments = get_user_payments(user_id)
+    if payments:
+        return False
+    
+    return True
+
+
+async def send_broadcast(context: ContextTypes.DEFAULT_TYPE, broadcast_id: int, user_ids: list, message_text: str = None, message_photo=None):
+    """Send broadcast message to all users."""
+    sent = 0
+    delivered = 0
+    failed = 0
+    
+    for user_id in user_ids:
+        try:
+            # Skip blocked users
+            if is_user_blocked(user_id):
+                continue
+            
+            # Send message
+            if message_photo:
+                # Send photo with caption
+                try:
+                    await context.bot.send_photo(
+                        chat_id=user_id,
+                        photo=message_photo.file_id,
+                        caption=message_text,
+                        parse_mode='HTML'
+                    )
+                    delivered += 1
+                except Exception as e:
+                    logger.error(f"Error sending broadcast photo to {user_id}: {e}")
+                    failed += 1
+            else:
+                # Send text message
+                try:
+                    await context.bot.send_message(
+                        chat_id=user_id,
+                        text=message_text,
+                        parse_mode='HTML'
+                    )
+                    delivered += 1
+                except Exception as e:
+                    logger.error(f"Error sending broadcast message to {user_id}: {e}")
+                    failed += 1
+            
+            sent += 1
+            
+            # Small delay to avoid rate limiting
+            await asyncio.sleep(0.05)  # 50ms delay between messages
+            
+        except Exception as e:
+            logger.error(f"Error in broadcast to {user_id}: {e}")
+            failed += 1
+            sent += 1
+    
+    # Update broadcast statistics
+    broadcasts = get_broadcasts()
+    if str(broadcast_id) in broadcasts:
+        broadcasts[str(broadcast_id)]['sent'] = sent
+        broadcasts[str(broadcast_id)]['delivered'] = delivered
+        broadcasts[str(broadcast_id)]['failed'] = failed
+        save_json_file(BROADCASTS_FILE, broadcasts)
+        
+        # Notify admin
+        try:
+            admin_id = ADMIN_ID
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=(
+                    f"✅ <b>Рассылка #{broadcast_id} завершена!</b>\n\n"
+                    f"📊 <b>Статистика:</b>\n"
+                    f"✅ Отправлено: {sent}\n"
+                    f"📬 Доставлено: {delivered}\n"
+                    f"❌ Ошибок: {failed}\n\n"
+                    f"📈 <b>Успешность:</b> {(delivered/sent*100) if sent > 0 else 0:.1f}%"
+                ),
+                parse_mode='HTML'
+            )
+        except Exception as e:
+            logger.error(f"Error notifying admin about broadcast: {e}")
+
+
+def is_user_blocked(user_id: int) -> bool:
+    """Check if user is blocked."""
+    blocked = load_json_file(BLOCKED_USERS_FILE, {})
+    return blocked.get(str(user_id), False)
+
+
+def block_user(user_id: int):
+    """Block a user."""
+    blocked = load_json_file(BLOCKED_USERS_FILE, {})
+    blocked[str(user_id)] = True
+    save_json_file(BLOCKED_USERS_FILE, blocked)
+
+
+def unblock_user(user_id: int):
+    """Unblock a user."""
+    blocked = load_json_file(BLOCKED_USERS_FILE, {})
+    if str(user_id) in blocked:
+        del blocked[str(user_id)]
+        save_json_file(BLOCKED_USERS_FILE, blocked)
+
+
+def check_duplicate_payment(screenshot_file_id: str) -> bool:
+    """Check if this screenshot was already used for payment."""
+    if not screenshot_file_id:
+        return False
+    payments = load_json_file(PAYMENTS_FILE, {})
+    for payment in payments.values():
+        if payment.get('screenshot_file_id') == screenshot_file_id:
+            return True
+    return False
+
+
+def add_payment(user_id: int, amount: float, screenshot_file_id: str = None) -> dict:
+    """Add a payment record. Returns payment dict with id, timestamp, etc."""
+    payments = load_json_file(PAYMENTS_FILE, {})
+    payment_id = len(payments) + 1
+    import time
+    payment = {
+        "id": payment_id,
+        "user_id": user_id,
+        "amount": amount,
+        "timestamp": time.time(),
+        "screenshot_file_id": screenshot_file_id,
+        "status": "completed"  # Auto-completed
+    }
+    payments[str(payment_id)] = payment
+    save_json_file(PAYMENTS_FILE, payments)
+    
+    # Auto-add balance
+    add_user_balance(user_id, amount)
+    
+    return payment
+
+
+def get_all_payments() -> list:
+    """Get all payments sorted by timestamp (newest first)."""
+    payments = load_json_file(PAYMENTS_FILE, {})
+    payment_list = list(payments.values())
+    payment_list.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
+    return payment_list
+
+
+def get_user_payments(user_id: int) -> list:
+    """Get all payments for a specific user."""
+    all_payments = get_all_payments()
+    return [p for p in all_payments if p.get("user_id") == user_id]
+
+
+def get_payment_stats() -> dict:
+    """Get payment statistics."""
+    payments = get_all_payments()
+    total_amount = sum(p.get("amount", 0) for p in payments)
+    total_count = len(payments)
+    return {
+        "total_amount": total_amount,
+        "total_count": total_count,
+        "payments": payments
+    }
+
+
+def get_payment_details() -> str:
+    """Get payment details from .env (СБП - Система быстрых платежей)."""
+    # Reload .env to ensure latest values are loaded
+    # On Render, environment variables are set via dashboard, not .env file
+    # But we still try to load .env for local development
+    try:
+        load_dotenv(override=True)
+    except Exception as e:
+        logger.debug(f"Could not reload .env: {e}")
+    
+    # Get from environment (works both for .env and Render Environment Variables)
+    card_holder = os.getenv('PAYMENT_CARD_HOLDER', '').strip()
+    phone = os.getenv('PAYMENT_PHONE', '').strip()
+    bank = os.getenv('PAYMENT_BANK', '').strip()
+    
+    # Debug logging (only in development)
+    if not phone and not bank and not card_holder:
+        logger.warning("Payment details not found in environment variables!")
+        logger.debug(f"PAYMENT_PHONE: {repr(phone)}, PAYMENT_BANK: {repr(bank)}, PAYMENT_CARD_HOLDER: {repr(card_holder)}")
+    
+    details = "💳 <b>Реквизиты для оплаты (СБП):</b>\n\n"
+    
+    if phone:
+        details += f"📱 <b>Номер телефона:</b> <code>{phone}</code>\n"
+    if bank:
+        details += f"🏦 <b>Банк:</b> {bank}\n"
+    if card_holder:
+        details += f"👤 <b>Получатель:</b> {card_holder}\n"
+    
+    if not phone and not bank and not card_holder:
+        details += "⚠️ <b>ВНИМАНИЕ: Реквизиты не настроены!</b>\n\n"
+        details += "Администратору необходимо указать следующие переменные окружения:\n"
+        details += "• <code>PAYMENT_PHONE</code> - номер телефона для СБП\n"
+        details += "• <code>PAYMENT_BANK</code> - название банка\n"
+        details += "• <code>PAYMENT_CARD_HOLDER</code> - имя получателя\n\n"
+        details += "На Render: добавьте их в разделе Environment Variables\n"
+        details += "Локально: добавьте в файл .env\n\n"
+    
+    details += "\n⚠️ <b>Важно:</b> После оплаты отправьте скриншот перевода в этот чат.\n\n"
+    details += "✅ <b>Баланс начислится автоматически</b> после отправки скриншота."
+    
+    return details
+
+
+def get_support_contact() -> str:
+    """Get support contact information from .env (only Telegram)."""
+    # Reload .env to ensure latest values are loaded
+    load_dotenv(override=True)
+    
+    support_telegram = os.getenv('SUPPORT_TELEGRAM', '')
+    support_text = os.getenv('SUPPORT_TEXT', '')
+    
+    contact = "🆘 <b>Поддержка</b>\n\n"
+    
+    if support_text:
+        contact += f"{support_text}\n\n"
+    else:
+        contact += "Если у вас возникли вопросы или проблемы, свяжитесь с нами:\n\n"
+    
+    if support_telegram:
+        telegram_username = support_telegram.replace('@', '')
+        contact += f"💬 <b>Telegram:</b> @{telegram_username}\n"
+    else:
+        contact += "⚠️ <b>Контактная информация не настроена.</b>\n\n"
+        contact += "Администратору необходимо указать SUPPORT_TELEGRAM в файле .env или в настройках Render (Environment Variables).\n\n"
+        contact += "Обратитесь к администратору."
+    
+    return contact
 
 
 async def analyze_payment_screenshot(image_data: bytes, expected_amount: float, expected_phone: str = None) -> dict:
@@ -1082,12 +1643,9 @@ async def analyze_payment_screenshot(image_data: bytes, expected_amount: float, 
                 if phone_found:
                     break
         
-        # Determine if screenshot is valid
-        # Improved logic: more flexible for legitimate payments, but still secure
-        
-        # Score-based validation (more reliable)
+        # Improved validation with scoring system
         score = 0
-        max_score = 3
+        max_score = 4
         
         # Amount match: +2 points (most important)
         if amount_found:
@@ -1110,13 +1668,10 @@ async def analyze_payment_screenshot(image_data: bytes, expected_amount: float, 
         # Payment keywords: +1 point (required for security)
         if has_payment_keywords:
             score += 1
-        else:
-            # If no keywords but amount matches perfectly, still allow (OCR might miss keywords)
-            if amount_found and abs(found_amount - expected_amount) < 0.5:
-                score += 0.5  # Partial credit
         
-        # Initialize message parts
-        message_parts = []
+        # Additional checks for better validation
+        # Check for duplicate screenshots (by file_id if available)
+        # This will be checked in the payment handler
         
         # Validation: Need at least 2.5 points (flexible but secure)
         # This means: (amount + keywords) OR (amount + phone) OR (amount perfect match)
@@ -1125,7 +1680,6 @@ async def analyze_payment_screenshot(image_data: bytes, expected_amount: float, 
         # Additional security: if no amount found at all, reject (unless OCR failed)
         if not all_found_amounts and not has_payment_keywords:
             valid = False
-            message_parts.append("❌ Не удалось найти сумму или признаки платежа в скриншоте")
         
         # Additional check: if amount is found but way off, be more strict
         if amount_found and found_amount:
@@ -1135,7 +1689,8 @@ async def analyze_payment_screenshot(image_data: bytes, expected_amount: float, 
                 # Require both phone and keywords if amount is way off
                 if not (phone_found and has_payment_keywords):
                     valid = False
-                    message_parts.append("⚠️ Сумма значительно отличается от ожидаемой. Требуется дополнительная проверка.")
+        
+        message_parts = []
         if amount_found:
             message_parts.append(f"✅ Сумма найдена: {found_amount:.2f} ₽")
         else:
@@ -1271,15 +1826,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
     
-    # Check flood protection
-    flood_check = check_flood_protection(user_id)
-    if not flood_check['allowed']:
-        await update.message.reply_text(
-            flood_check['message'],
-            parse_mode='HTML'
-        )
-        return
-    
     # Check if admin is in user mode (viewing as regular user)
     if user_id == ADMIN_ID:
         if user_id in user_sessions and user_sessions[user_id].get('admin_user_mode', False):
@@ -1294,32 +1840,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     total_models = len(KIE_MODELS)
     
     if is_admin:
-        # Admin menu - extended version with marketing appeal
+        # Admin menu - extended version
         welcome_text = (
-            f'👑 <b>✨ ПАНЕЛЬ АДМИНИСТРАТОРА ✨</b>\n\n'
+            f'👑 <b>Панель администратора</b>\n\n'
             f'Привет, {user.mention_html()}! 👋\n\n'
-            f'🎯 <b>ПОЛНЫЙ КОНТРОЛЬ НАД AI MARKETPLACE</b>\n\n'
-            f'📊 <b>СТАТИСТИКА СИСТЕМЫ:</b>\n'
-            f'✅ <b>{total_models} премиум моделей</b> в арсенале\n'
-            f'✅ <b>{len(categories)} категорий</b> контента\n'
-            f'✅ <b>Безлимитный доступ</b> ко всем генерациям\n\n'
-            f'🔥 <b>ТОПОВЫЕ МОДЕЛИ В СИСТЕМЕ:</b>\n\n'
-            f'🎨 <b>Google Imagen 4 Ultra</b> - Флагман от Google DeepMind\n'
-            f'   {get_model_price_text("google/imagen4-ultra", None, True)}\n'
-            f'   ⭐ Максимальное качество для тестирования\n\n'
-            f'🍌 <b>Nano Banana Pro</b> - 4K от Google\n'
-            f'   {get_model_price_text("nano-banana-pro", None, True)}\n'
-            f'   🎯 Профессиональная генерация 2K/4K\n\n'
-            f'🎥 <b>Sora 2</b> - Видео от OpenAI\n'
-            f'   {get_model_price_text("sora-2-text-to-video", None, True)}\n'
-            f'   🎬 Кинематографические видео с аудио\n\n'
-            f'⚙️ <b>АДМИНИСТРАТИВНЫЕ ВОЗМОЖНОСТИ:</b>\n'
-            f'📈 Просмотр статистики и аналитики\n'
-            f'👥 Управление пользователями\n'
-            f'🎁 Управление промокодами\n'
-            f'🧪 Тестирование OCR системы\n'
-            f'💼 Полный контроль над ботом\n\n'
-            f'💫 <b>НАЧНИТЕ УПРАВЛЕНИЕ ИЛИ ТЕСТИРОВАНИЕ!</b>'
+            f'🚀 <b>Расширенное меню управления</b>\n\n'
+            f'📊 <b>Статистика:</b>\n'
+            f'✅ <b>{total_models} моделей</b> доступно\n'
+            f'✅ <b>{len(categories)} категорий</b>\n\n'
+            f'⚙️ <b>Административные функции доступны</b>'
         )
         
         # Admin keyboard - extended
@@ -1361,80 +1890,166 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ])
         keyboard.append([InlineKeyboardButton("🆘 Помощь", callback_data="help_menu")])
     else:
-        # Regular user menu - ultra marketing version
-        welcome_text = (
-            f'🚀 <b>✨ ДОСТУП К ЛУЧШИМ AI-МОДЕЛЯМ МИРА БЕЗ VPN! ✨</b>\n\n'
-            f'Привет, {user.mention_html()}! 👋\n\n'
-            f'🎯 <b>ДОСТУП К ТОПОВЫМ НЕЙРОСЕТЯМ 2025!</b>\n\n'
-            f'🌟 <b>ЧТО ВАС ЖДЕТ:</b>\n'
-            f'🔥 <b>Google Imagen 4 Ultra</b> - только что представлена на Google I/O 2025!\n'
-            f'🔥 <b>OpenAI Sora 2</b> - революция в видео-генерации!\n'
-            f'🔥 <b>Google Nano Banana</b> - новейшая модель от DeepMind!\n'
-            f'🔥 <b>Grok Imagine</b> - от создателей ChatGPT (xAI)!\n'
-            f'🔥 <b>ByteDance Seedream</b> - профессиональная 4K генерация!\n\n'
-            f'💎 <b>ПРЕИМУЩЕСТВА:</b>\n'
-            f'✅ <b>БЕЗ VPN</b> - прямой доступ к мировым AI-моделям\n'
-            f'✅ <b>ТОПОВЫЕ МОДЕЛИ</b> - только лучшие нейросети 2025 года\n'
-            f'✅ <b>4K КАЧЕСТВО</b> - профессиональная генерация для бизнеса\n'
-            f'✅ <b>МГНОВЕННАЯ СКОРОСТЬ</b> - результаты за секунды\n'
-            f'✅ <b>ДОСТУПНЫЕ ЦЕНЫ</b> - от 0.8 кредита за изображение\n\n'
-            f'🎬 <b>СОЗДАВАЙТЕ:</b>\n'
-            f'📸 Фотореалистичные изображения для рекламы\n'
-            f'🎥 Кинематографические видео для YouTube\n'
-            f'🎨 Художественные иллюстрации для портфолио\n'
-            f'📱 Контент для Instagram, TikTok, VK\n'
-            f'🎯 Рекламные материалы для бизнеса\n'
-            f'💼 Профессиональные визуалы для презентаций\n\n'
-            f'🔥 <b>ТОП-3 МОДЕЛИ ПРЯМО СЕЙЧАС:</b>\n\n'
-            f'🥇 <b>Google Imagen 4 Ultra</b> - Флагман 2025\n'
-            f'   {get_model_price_text("google/imagen4-ultra", None, is_admin)}\n'
-            f'   ⭐ Максимальное качество • Google I/O 2025\n\n'
-            f'🥈 <b>OpenAI Sora 2</b> - Видео нового поколения\n'
-            f'   {get_model_price_text("sora-2-text-to-video", None, is_admin)}\n'
-            f'   🎬 Кинематография • Реалистичная физика\n\n'
-            f'🥉 <b>Google Nano Banana Pro</b> - 4K от DeepMind\n'
-            f'   {get_model_price_text("nano-banana-pro", None, is_admin)}\n'
-            f'   🎯 Профессиональная генерация 2K/4K\n\n'
-            f'🎁 <b>БЕСПЛАТНЫЕ ГЕНЕРАЦИИ!</b>\n'
-            f'✨ <b>Z-Image</b> - {FREE_GENERATIONS_PER_DAY} бесплатных генераций в день!\n'
-            f'   Попробуйте без пополнения баланса\n\n'
-            f'💫 <b>НАЧНИТЕ СОЗДАВАТЬ ПРЯМО СЕЙЧАС!</b>\n\n'
-            f'Выберите категорию или посмотрите все {total_models} моделей:'
-        )
+        # Regular user menu - premium compact version
+        remaining_free = get_user_free_generations_remaining(user_id)
+        free_info = ""
+        if remaining_free > 0:
+            free_info = f"\n🎁 <b>Бесплатно:</b> {remaining_free} генераций Z-Image\n"
         
-        # Regular user keyboard - simple
+        # Check if new user
+        is_new = is_new_user(user_id)
+        
+        # Get generation types
+        generation_types = get_generation_types()
+        
+        # Get referral link
+        referral_link = get_user_referral_link(user_id)
+        referrals_count = len(get_user_referrals(user_id))
+        
+        if is_new:
+            # Enhanced marketing welcome for new users - харизматичный AI-помощник
+            online_count = get_fake_online_count()
+            
+            welcome_text = (
+                f'👋 <b>Привет, {user.mention_html()}!</b> Я твой AI-напарник! 🤖✨\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'🎉 <b>ОТЛИЧНЫЕ НОВОСТИ!</b> Ты попал в самый крутой AI-генератор контента! 🚀\n\n'
+                f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
+                f'💡 <b>Я помогу тебе:</b>\n'
+                f'• 🎨 Создавать потрясающие изображения\n'
+                f'• 🎬 Генерировать крутые видео\n'
+                f'• ✨ Трансформировать и редактировать контент\n'
+                f'• 🎯 Делать все это БЕЗ VPN и по цене жвачки!\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'🏢 <b>НАШИ ПОСТАВЩИКИ:</b>\n\n'
+                f'🤖 OpenAI • Google • Black Forest Labs\n'
+                f'🎬 ByteDance • Ideogram • Qwen\n'
+                f'✨ Kling • Hailuo • Topaz\n'
+                f'🎨 Recraft • Grok (xAI) • Wan\n\n'
+                f'💎 <b>Только топовые нейросети 2025 года!</b>\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'🎁 <b>НАЧНИ БЕСПЛАТНО ПРЯМО СЕЙЧАС!</b>\n\n'
+                f'✨ <b>У тебя есть:</b>\n'
+                f'• 🎁 <b>{remaining_free if remaining_free > 0 else FREE_GENERATIONS_PER_DAY} бесплатных генераций</b> Z-Image!\n'
+                f'• 💎 Каждый день обновляется\n'
+                f'• 🎯 Пригласи друга → получи <b>+{REFERRAL_BONUS_GENERATIONS} генераций</b>!\n\n'
+                f'🔗 <b>Твоя реферальная ссылка:</b>\n'
+                f'<code>{referral_link}</code>\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'💼 <b>ИДЕАЛЬНО ДЛЯ:</b>\n'
+                f'📊 Маркетологов • 🎨 Дизайнеров • 💻 Фрилансеров\n'
+                f'🚀 SMM-щиков • ✨ Креаторов • 🎬 Контент-мейкеров\n\n'
+                f'💰 <b>ГЕНЕРАЦИЯ ПО ЦЕНЕ ЖВАЧКИ!</b>\n'
+                f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'🎯 <b>ЧТО ДЕЛАТЬ ДАЛЬШЕ?</b>\n\n'
+                f'1️⃣ <b>Нажми кнопку "🎁 Генерировать бесплатно"</b> ниже\n'
+                f'   → Попробуй Z-Image прямо сейчас!\n\n'
+                f'2️⃣ <b>Или выбери формат генерации</b> из меню\n'
+                f'   → Я покажу все доступные нейросети\n\n'
+                f'3️⃣ <b>Создавай крутой контент!</b> 🎉\n\n'
+                f'💡 <b>Не знаешь с чего начать?</b>\n'
+                f'Нажми "❓ Как это работает?" - я все расскажу!'
+            )
+        else:
+            # Marketing welcome for existing users - харизматичный AI-помощник
+            online_count = get_fake_online_count()
+            referral_bonus_text = ""
+            if referrals_count > 0:
+                referral_bonus_text = (
+                    f"\n🎁 <b>Отлично!</b> Ты пригласил <b>{referrals_count}</b> друзей\n"
+                    f"   → Получено <b>+{referrals_count * REFERRAL_BONUS_GENERATIONS} генераций</b>! 🎉\n\n"
+                )
+            
+            welcome_text = (
+                f'👋 <b>С возвращением, {user.mention_html()}!</b> Рад тебя видеть! 🤖✨\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
+            )
+            
+            if remaining_free > 0:
+                welcome_text += (
+                    f'🎁 <b>У ТЕБЯ ЕСТЬ БЕСПЛАТНЫЕ ГЕНЕРАЦИИ!</b>\n\n'
+                    f'✨ <b>{remaining_free} генераций Z-Image</b> доступно прямо сейчас!\n'
+                    f'💡 Нажми кнопку "🎁 Генерировать бесплатно" ниже\n\n'
+                )
+            
+            welcome_text += (
+                f'{referral_bonus_text}'
+                f'💰 <b>ГЕНЕРАЦИЯ ПО ЦЕНЕ ЖВАЧКИ!</b>\n'
+                f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
+                f'💡 <b>Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} генераций!</b>\n'
+                f'🔗 <code>{referral_link}</code>\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'💼 <b>ИДЕАЛЬНО ДЛЯ:</b>\n'
+                f'📊 Маркетологов • 🎨 Дизайнеров • 💻 Фрилансеров\n'
+                f'🚀 SMM-щиков • ✨ Креаторов • 🎬 Контент-мейкеров\n\n'
+                f'💎 <b>ДОСТУПНО:</b>\n'
+                f'• {len(generation_types)} типов генерации\n'
+                f'• {total_models} топовых нейросетей\n'
+                f'• Без VPN, прямо здесь!\n\n'
+                f'🎯 <b>Выбери формат генерации ниже</b> или начни с бесплатной генерации!'
+            )
+        
+        # Regular user keyboard - by generation types with marketing buttons
         keyboard = []
         
-        # All models button first
-        keyboard.append([
-            InlineKeyboardButton("📋 Все модели", callback_data="all_models")
-        ])
+        # Free generation button (prominent for new users)
+        if remaining_free > 0:
+            keyboard.append([
+                InlineKeyboardButton(f"🎁 Генерировать бесплатно ({remaining_free} осталось)", callback_data="select_model:z-image")
+            ])
+            keyboard.append([])  # Empty row for spacing
         
+        # Generation types buttons (compact, 2 per row)
+        gen_type_rows = []
+        for i, gen_type in enumerate(generation_types):
+            gen_info = get_generation_type_info(gen_type)
+            models_count = len(get_models_by_generation_type(gen_type))
+            button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
+            
+            if i % 2 == 0:
+                # First button in row
+                gen_type_rows.append([InlineKeyboardButton(
+                    button_text,
+                    callback_data=f"gen_type:{gen_type}"
+                )])
+            else:
+                # Second button in row - add to last row
+                if gen_type_rows:
+                    gen_type_rows[-1].append(InlineKeyboardButton(
+                        button_text,
+                        callback_data=f"gen_type:{gen_type}"
+                    ))
+                else:
+                    gen_type_rows.append([InlineKeyboardButton(
+                        button_text,
+                        callback_data=f"gen_type:{gen_type}"
+                    )])
+        
+        keyboard.extend(gen_type_rows)
+        
+        # Bottom action buttons
         keyboard.append([])  # Empty row for spacing
+        keyboard.append([
+            InlineKeyboardButton("💰 Баланс", callback_data="check_balance"),
+            InlineKeyboardButton("📚 Мои генерации", callback_data="my_generations")
+        ])
+        keyboard.append([
+            InlineKeyboardButton("💳 Пополнить", callback_data="topup_balance"),
+            InlineKeyboardButton("🎁 Пригласить друга", callback_data="referral_info")
+        ])
         
-        # Categories
-        for category in categories:
-            models_in_category = get_models_by_category(category)
-            emoji = models_in_category[0]["emoji"] if models_in_category else "📦"
-            keyboard.append([InlineKeyboardButton(
-                f"{emoji} {category} ({len(models_in_category)})",
-                callback_data=f"category:{category}"
-            )])
+        # Add tutorial button for new users
+        if is_new:
+            keyboard.append([
+                InlineKeyboardButton("❓ Как это работает?", callback_data="tutorial_start")
+            ])
         
-        # Bottom row
         keyboard.append([
-            InlineKeyboardButton("💰 Баланс", callback_data="check_balance")
+            InlineKeyboardButton("🆘 Помощь", callback_data="help_menu"),
+            InlineKeyboardButton("💬 Поддержка", callback_data="support_contact")
         ])
-        keyboard.append([
-            InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")
-        ])
-        keyboard.append([
-            InlineKeyboardButton("🎁 Активировать промокод", callback_data="activate_promo")
-        ])
-        keyboard.append([
-            InlineKeyboardButton("👥 Пригласить друга", callback_data="invite_friend")
-        ])
-        keyboard.append([InlineKeyboardButton("🆘 Помощь", callback_data="help_menu")])
     
     await update.message.reply_html(
         welcome_text,
@@ -1444,53 +2059,25 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /help is issued."""
-    user_id = update.effective_user.id
-    is_admin_user = get_is_admin(user_id)
-    
-    if is_admin_user:
-        # Admin help
-        help_text = (
-            '📋 <b>Доступные команды:</b>\n\n'
-            '/start - Главное меню\n'
-            '/models - Показать модели\n'
-            '/balance - Проверить баланс\n'
-            '/generate - Начать генерацию\n'
-            '/help - Справка\n\n'
-            '👑 <b>Административные команды:</b>\n'
-            '/search - Поиск в базе знаний\n'
-            '/add - Добавление знаний\n'
-            '/payments - Просмотр платежей\n'
-            '/block_user - Заблокировать пользователя\n'
-            '/unblock_user - Разблокировать пользователя\n'
-            '/user_balance - Баланс пользователя\n'
-            '/add_admin - Добавить администратора\n\n'
-            '💡 <b>Как использовать:</b>\n'
-            '1. Используйте /models чтобы увидеть доступные модели\n'
-            '2. Используйте /balance чтобы проверить баланс\n'
-            '3. Используйте /generate чтобы начать генерацию\n'
-            '4. Выберите модель из списка\n'
-            '5. Введите необходимые параметры\n'
-            '6. Получите результат!'
-        )
-    else:
-        # Regular user help
-        help_text = (
-            '📋 <b>Доступные команды:</b>\n\n'
-            '/start - Главное меню\n'
-            '/models - Показать модели\n'
-            '/balance - Проверить баланс\n'
-            '/generate - Начать генерацию\n'
-            '/help - Справка\n\n'
-            '💡 <b>Как использовать:</b>\n'
-            '1. Используйте /models чтобы увидеть доступные модели\n'
-            '2. Используйте /balance чтобы проверить баланс\n'
-            '3. Используйте /generate чтобы начать генерацию\n'
-            '4. Выберите модель из списка\n'
-            '5. Введите необходимые параметры\n'
-            '6. Получите результат!'
-        )
-    
-    await update.message.reply_text(help_text, parse_mode='HTML')
+    await update.message.reply_text(
+        '📋 <b>Доступные команды:</b>\n\n'
+        '/start - Начать работу с ботом\n'
+        '/models - Показать список доступных моделей\n'
+        '/generate - Начать генерацию контента\n'
+        '/balance - Проверить баланс\n'
+        '/cancel - Отменить текущую операцию\n'
+        '/search [запрос] - Поиск в базе знаний\n'
+        '/ask [вопрос] - Задать вопрос\n'
+        '/add [знание] - Добавить знание в базу\n\n'
+        '💡 <b>Как использовать:</b>\n'
+        '1. Используйте /models чтобы увидеть доступные модели\n'
+        '2. Используйте /balance чтобы проверить баланс\n'
+        '3. Используйте /generate чтобы начать генерацию\n'
+        '4. Выберите модель из списка\n'
+        '5. Введите необходимые параметры\n'
+        '6. Получите результат!',
+        parse_mode='HTML'
+    )
 
 
 async def list_models(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1535,7 +2122,7 @@ async def start_generation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Check if KIE API is configured
     if not kie.api_key:
         await update.message.reply_text(
-            '❌ API не настроен. Укажите KIE_API_KEY в файле .env'
+            '❌ API не настроен. Укажите API ключ в файле .env'
         )
         return
     
@@ -1578,22 +2165,23 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             categories = get_categories()
             total_models = len(KIE_MODELS)
             
+            remaining_free = get_user_free_generations_remaining(user_id)
+            free_info = ""
+            if remaining_free > 0:
+                free_info = f"\n🎁 <b>Бесплатно:</b> {remaining_free} генераций Z-Image\n"
+            
             welcome_text = (
-                f'🚀 <b>✨ ДОСТУП К ЛУЧШИМ AI-МОДЕЛЯМ МИРА БЕЗ VPN! ✨</b>\n\n'
-                f'Привет, {user.mention_html()}! 👋\n\n'
-                f'🎯 <b>ДОСТУП К ТОПОВЫМ НЕЙРОСЕТЯМ 2025!</b>\n\n'
-                f'🌟 <b>ЧТО ВАС ЖДЕТ:</b>\n'
-                f'🔥 <b>Google Imagen 4 Ultra</b> - только что представлена на Google I/O 2025!\n'
-                f'🔥 <b>OpenAI Sora 2</b> - революция в видео-генерации!\n'
-                f'🔥 <b>Google Nano Banana</b> - новейшая модель от DeepMind!\n'
-                f'🔥 <b>Grok Imagine</b> - от создателей ChatGPT (xAI)!\n\n'
-                f'💎 <b>ПРЕИМУЩЕСТВА:</b>\n'
-                f'✅ <b>БЕЗ VPN</b> - прямой доступ к мировым AI-моделям\n'
-                f'✅ <b>ТОПОВЫЕ МОДЕЛИ</b> - только лучшие нейросети 2025 года\n'
-                f'✅ <b>4K КАЧЕСТВО</b> - профессиональная генерация\n'
-                f'✅ <b>МГНОВЕННАЯ СКОРОСТЬ</b> - результаты за секунды\n\n'
-                f'💫 <b>НАЧНИТЕ СОЗДАВАТЬ ПРЯМО СЕЙЧАС!</b>\n\n'
-                f'Выберите категорию или посмотрите все модели:'
+                f'✨ <b>ПРЕМИУМ AI MARKETPLACE</b> ✨\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'👋 Привет, {user.mention_html()}!\n\n'
+                f'🚀 <b>Топовые нейросети без VPN</b>\n'
+                f'📦 <b>{total_models} моделей</b> | <b>{len(categories)} категорий</b>{free_info}\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'💎 <b>Преимущества:</b>\n'
+                f'• Прямой доступ к мировым AI\n'
+                f'• Профессиональное качество 2K/4K\n'
+                f'• Мгновенная генерация\n\n'
+                f'🎯 <b>Выберите категорию или все модели</b>'
             )
             
             keyboard = []
@@ -1618,9 +2206,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")
             ])
             keyboard.append([
-                InlineKeyboardButton("🎁 Активировать промокод", callback_data="activate_promo")
-            ])
-            keyboard.append([
                 InlineKeyboardButton("🔙 Вернуться в админ-панель", callback_data="admin_back_to_admin")
             ])
             keyboard.append([
@@ -1643,30 +2228,18 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             total_models = len(KIE_MODELS)
             
             welcome_text = (
-                f'👑 <b>✨ ПАНЕЛЬ АДМИНИСТРАТОРА ✨</b>\n\n'
+                f'👑 <b>Панель администратора</b>\n\n'
                 f'Привет, {user.mention_html()}! 👋\n\n'
-                f'🎯 <b>ПОЛНЫЙ КОНТРОЛЬ НАД AI MARKETPLACE</b>\n\n'
-                f'📊 <b>СТАТИСТИКА СИСТЕМЫ:</b>\n'
-                f'✅ <b>{total_models} премиум моделей</b> в арсенале\n'
-                f'✅ <b>{len(categories)} категорий</b> контента\n'
-                f'✅ <b>Безлимитный доступ</b> ко всем генерациям\n\n'
-                f'🔥 <b>ТОПОВЫЕ МОДЕЛИ В СИСТЕМЕ:</b>\n\n'
-                f'🎨 <b>Google Imagen 4 Ultra</b> - Флагман от Google DeepMind\n'
-                f'   {get_model_price_text("google/imagen4-ultra", None, True)}\n'
-                f'   ⭐ Максимальное качество для тестирования\n\n'
-                f'🍌 <b>Nano Banana Pro</b> - 4K от Google\n'
-                f'   {get_model_price_text("nano-banana-pro", None, True)}\n'
-                f'   🎯 Профессиональная генерация 2K/4K\n\n'
-                f'🎥 <b>Sora 2</b> - Видео от OpenAI\n'
-                f'   {get_model_price_text("sora-2-text-to-video", None, True)}\n'
-                f'   🎬 Кинематографические видео с аудио\n\n'
-                f'⚙️ <b>АДМИНИСТРАТИВНЫЕ ВОЗМОЖНОСТИ:</b>\n'
-                f'📈 Просмотр статистики и аналитики\n'
-                f'👥 Управление пользователями\n'
-                f'🎁 Управление промокодами\n'
-                f'🧪 Тестирование OCR системы\n'
-                f'💼 Полный контроль над ботом\n\n'
-                f'💫 <b>НАЧНИТЕ УПРАВЛЕНИЕ ИЛИ ТЕСТИРОВАНИЕ!</b>'
+                f'🚀 <b>Расширенное меню управления</b>\n\n'
+                f'📊 <b>Статистика:</b>\n'
+                f'✅ <b>{total_models} моделей</b> доступно\n'
+                f'✅ <b>{len(categories)} категорий</b>\n\n'
+                f'🎨 <b>Популярные модели:</b>\n\n'
+                f'🖼️ <b>Z-Image</b> - Фотореалистичные изображения\n'
+                f'   {get_model_price_text("z-image", None, True)}\n\n'
+                f'🍌 <b>Nano Banana Pro</b> - 2K/4K от Google DeepMind\n'
+                f'   {get_model_price_text("nano-banana-pro", None, True)}\n\n'
+                f'⚙️ <b>Административные функции доступны</b>'
             )
             
             keyboard = []
@@ -1725,30 +2298,13 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         total_models = len(KIE_MODELS)
         
         welcome_text = (
-            f'👑 <b>✨ ПАНЕЛЬ АДМИНИСТРАТОРА ✨</b>\n\n'
+            f'👑 <b>Панель администратора</b>\n\n'
             f'Привет, {user.mention_html()}! 👋\n\n'
-            f'🎯 <b>ПОЛНЫЙ КОНТРОЛЬ НАД AI MARKETPLACE</b>\n\n'
-            f'📊 <b>СТАТИСТИКА СИСТЕМЫ:</b>\n'
-            f'✅ <b>{total_models} премиум моделей</b> в арсенале\n'
-            f'✅ <b>{len(categories)} категорий</b> контента\n'
-            f'✅ <b>Безлимитный доступ</b> ко всем генерациям\n\n'
-            f'🔥 <b>ТОПОВЫЕ МОДЕЛИ В СИСТЕМЕ:</b>\n\n'
-            f'🎨 <b>Google Imagen 4 Ultra</b> - Флагман от Google DeepMind\n'
-            f'   {get_model_price_text("google/imagen4-ultra", None, True)}\n'
-            f'   ⭐ Максимальное качество для тестирования\n\n'
-            f'🍌 <b>Nano Banana Pro</b> - 4K от Google\n'
-            f'   {get_model_price_text("nano-banana-pro", None, True)}\n'
-            f'   🎯 Профессиональная генерация 2K/4K\n\n'
-            f'🎥 <b>Sora 2</b> - Видео от OpenAI\n'
-            f'   {get_model_price_text("sora-2-text-to-video", None, True)}\n'
-            f'   🎬 Кинематографические видео с аудио\n\n'
-            f'⚙️ <b>АДМИНИСТРАТИВНЫЕ ВОЗМОЖНОСТИ:</b>\n'
-            f'📈 Просмотр статистики и аналитики\n'
-            f'👥 Управление пользователями\n'
-            f'🎁 Управление промокодами\n'
-            f'🧪 Тестирование OCR системы\n'
-            f'💼 Полный контроль над ботом\n\n'
-            f'💫 <b>НАЧНИТЕ УПРАВЛЕНИЕ ИЛИ ТЕСТИРОВАНИЕ!</b>'
+            f'🚀 <b>Расширенное меню управления</b>\n\n'
+            f'📊 <b>Статистика:</b>\n'
+            f'✅ <b>{total_models} моделей</b> доступно\n'
+            f'✅ <b>{len(categories)} категорий</b>\n\n'
+            f'⚙️ <b>Административные функции доступны</b>'
         )
         
         keyboard = []
@@ -1812,30 +2368,18 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if is_admin:
             welcome_text = (
-                f'👑 <b>✨ ПАНЕЛЬ АДМИНИСТРАТОРА ✨</b>\n\n'
+                f'👑 <b>Панель администратора</b>\n\n'
                 f'Привет, {user.mention_html()}! 👋\n\n'
-                f'🎯 <b>ПОЛНЫЙ КОНТРОЛЬ НАД AI MARKETPLACE</b>\n\n'
-                f'📊 <b>СТАТИСТИКА СИСТЕМЫ:</b>\n'
-                f'✅ <b>{total_models} премиум моделей</b> в арсенале\n'
-                f'✅ <b>{len(categories)} категорий</b> контента\n'
-                f'✅ <b>Безлимитный доступ</b> ко всем генерациям\n\n'
-                f'🔥 <b>ТОПОВЫЕ МОДЕЛИ В СИСТЕМЕ:</b>\n\n'
-                f'🎨 <b>Google Imagen 4 Ultra</b> - Флагман от Google DeepMind\n'
-                f'   {get_model_price_text("google/imagen4-ultra", None, True)}\n'
-                f'   ⭐ Максимальное качество для тестирования\n\n'
-                f'🍌 <b>Nano Banana Pro</b> - 4K от Google\n'
-                f'   {get_model_price_text("nano-banana-pro", None, True)}\n'
-                f'   🎯 Профессиональная генерация 2K/4K\n\n'
-                f'🎥 <b>Sora 2</b> - Видео от OpenAI\n'
-                f'   {get_model_price_text("sora-2-text-to-video", None, True)}\n'
-                f'   🎬 Кинематографические видео с аудио\n\n'
-                f'⚙️ <b>АДМИНИСТРАТИВНЫЕ ВОЗМОЖНОСТИ:</b>\n'
-                f'📈 Просмотр статистики и аналитики\n'
-                f'👥 Управление пользователями\n'
-                f'🎁 Управление промокодами\n'
-                f'🧪 Тестирование OCR системы\n'
-                f'💼 Полный контроль над ботом\n\n'
-                f'💫 <b>НАЧНИТЕ УПРАВЛЕНИЕ ИЛИ ТЕСТИРОВАНИЕ!</b>'
+                f'🚀 <b>Расширенное меню управления</b>\n\n'
+                f'📊 <b>Статистика:</b>\n'
+                f'✅ <b>{total_models} моделей</b> доступно\n'
+                f'✅ <b>{len(categories)} категорий</b>\n\n'
+                f'🎨 <b>Популярные модели:</b>\n\n'
+                f'🖼️ <b>Z-Image</b> - Фотореалистичные изображения\n'
+                f'   {get_model_price_text("z-image", None, True)}\n\n'
+                f'🍌 <b>Nano Banana Pro</b> - 2K/4K от Google DeepMind\n'
+                f'   {get_model_price_text("nano-banana-pro", None, True)}\n\n'
+                f'⚙️ <b>Административные функции доступны</b>'
             )
             
             keyboard = []
@@ -1873,22 +2417,23 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ])
             keyboard.append([InlineKeyboardButton("🆘 Помощь", callback_data="help_menu")])
         else:
+            remaining_free = get_user_free_generations_remaining(user_id)
+            free_info = ""
+            if remaining_free > 0:
+                free_info = f"\n🎁 <b>Бесплатно:</b> {remaining_free} генераций Z-Image\n"
+            
             welcome_text = (
-                f'🚀 <b>✨ ДОСТУП К ЛУЧШИМ AI-МОДЕЛЯМ МИРА БЕЗ VPN! ✨</b>\n\n'
-                f'Привет, {user.mention_html()}! 👋\n\n'
-                f'🎯 <b>ДОСТУП К ТОПОВЫМ НЕЙРОСЕТЯМ 2025!</b>\n\n'
-                f'🌟 <b>ЧТО ВАС ЖДЕТ:</b>\n'
-                f'🔥 <b>Google Imagen 4 Ultra</b> - только что представлена на Google I/O 2025!\n'
-                f'🔥 <b>OpenAI Sora 2</b> - революция в видео-генерации!\n'
-                f'🔥 <b>Google Nano Banana</b> - новейшая модель от DeepMind!\n'
-                f'🔥 <b>Grok Imagine</b> - от создателей ChatGPT (xAI)!\n\n'
-                f'💎 <b>ПРЕИМУЩЕСТВА:</b>\n'
-                f'✅ <b>БЕЗ VPN</b> - прямой доступ к мировым AI-моделям\n'
-                f'✅ <b>ТОПОВЫЕ МОДЕЛИ</b> - только лучшие нейросети 2025 года\n'
-                f'✅ <b>4K КАЧЕСТВО</b> - профессиональная генерация\n'
-                f'✅ <b>МГНОВЕННАЯ СКОРОСТЬ</b> - результаты за секунды\n\n'
-                f'💫 <b>НАЧНИТЕ СОЗДАВАТЬ ПРЯМО СЕЙЧАС!</b>\n\n'
-                f'Выберите категорию или посмотрите все модели:'
+                f'✨ <b>ПРЕМИУМ AI MARKETPLACE</b> ✨\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'👋 Привет, {user.mention_html()}!\n\n'
+                f'🚀 <b>Топовые нейросети без VPN</b>\n'
+                f'📦 <b>{total_models} моделей</b> | <b>{len(categories)} категорий</b>{free_info}\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'💎 <b>Преимущества:</b>\n'
+                f'• Прямой доступ к мировым AI\n'
+                f'• Профессиональное качество 2K/4K\n'
+                f'• Мгновенная генерация\n\n'
+                f'🎯 <b>Выберите категорию или все модели</b>'
             )
             
             keyboard = []
@@ -2102,6 +2647,121 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
     
     # Handle category selection (can be called from main menu)
+    if data.startswith("gen_type:"):
+        # User selected a generation type
+        gen_type = data.split(":", 1)[1]
+        gen_info = get_generation_type_info(gen_type)
+        models = get_models_by_generation_type(gen_type)
+        
+        if not models:
+            await query.edit_message_text(
+                f"❌ Модели для этого типа генерации не найдены.",
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
+        
+        # Show generation type info and models with marketing text
+        remaining_free = get_user_free_generations_remaining(user_id)
+        
+        gen_type_text = (
+            f"🎨 <b>{gen_info.get('name', gen_type)}</b>\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📝 <b>Описание:</b>\n"
+            f"{gen_info.get('description', '')}\n\n"
+        )
+        
+        if remaining_free > 0 and gen_type == "text-to-image":
+            gen_type_text += (
+                f"🎁 <b>БЕСПЛАТНО:</b> {remaining_free} генераций Z-Image доступно!\n"
+                f"💡 Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} генераций\n\n"
+            )
+        
+        gen_type_text += (
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"🤖 <b>Доступные нейросети ({len(models)}):</b>\n\n"
+            f"💡 <b>Выберите модель ниже</b>"
+        )
+        
+        # Create keyboard with models (2 per row for compact display)
+        keyboard = []
+        
+        # Free generation button if available and this is text-to-image
+        if remaining_free > 0 and gen_type == "text-to-image":
+            keyboard.append([
+                InlineKeyboardButton(f"🎁 Генерировать бесплатно ({remaining_free} осталось)", callback_data="select_model:z-image")
+            ])
+            keyboard.append([])  # Empty row
+        
+        # Show models in compact format with prices (2 per row)
+        model_rows = []
+        for i, model in enumerate(models):
+            model_name = model.get('name', model.get('id', 'Unknown'))
+            model_emoji = model.get('emoji', '🤖')
+            model_id = model.get('id')
+            
+            # Calculate price for display
+            default_params = {}
+            if model_id == "nano-banana-pro":
+                default_params = {"resolution": "1K"}
+            elif model_id in ["seedream/4.5-text-to-image", "seedream/4.5-edit"]:
+                default_params = {"quality": "basic"}
+            
+            min_price = calculate_price_rub(model_id, default_params, is_admin_user)
+            price_text = get_model_price_text(model_id, default_params, is_admin_user, user_id)
+            
+            # Extract price number from price_text for compact display
+            import re
+            price_match = re.search(r'(\d+\.?\d*)\s*₽', price_text)
+            if price_match:
+                price_display = price_match.group(1)
+                # Check if it's "От" (from) or fixed price
+                if "От" in price_text or "от" in price_text.lower():
+                    price_display = f"от {price_display} ₽"
+                else:
+                    price_display = f"{price_display} ₽"
+            elif "БЕСПЛАТНО" in price_text or "Бесплатно" in price_text:
+                price_display = "бесплатно"
+            else:
+                # Fallback: show calculated price
+                price_display = f"{min_price:.2f} ₽"
+            
+            # Compact button text (shorten if too long)
+            button_text = f"{model_emoji} {model_name}"
+            if len(button_text) > 30:
+                # Truncate model name if too long
+                button_text = f"{model_emoji} {model_name[:25]}..."
+            
+            button_text_with_price = f"{button_text} • {price_display}"
+            
+            if i % 2 == 0:
+                # First button in row
+                model_rows.append([InlineKeyboardButton(
+                    button_text_with_price,
+                    callback_data=f"select_model:{model_id}"
+                )])
+            else:
+                # Second button in row - add to last row
+                if model_rows:
+                    model_rows[-1].append(InlineKeyboardButton(
+                        button_text_with_price,
+                        callback_data=f"select_model:{model_id}"
+                    ))
+                else:
+                    model_rows.append([InlineKeyboardButton(
+                        button_text_with_price,
+                        callback_data=f"select_model:{model_id}"
+                    )])
+        
+        keyboard.extend(model_rows)
+        keyboard.append([InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")])
+        
+        await query.edit_message_text(
+            gen_type_text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    
     if data.startswith("category:"):
         category = data.split(":", 1)[1]
         models = get_models_by_category(category)
@@ -2116,62 +2776,57 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         keyboard = []
         for model in models:
-            # Calculate price and available count
+            # Calculate price for display
             default_params = {}
             if model['id'] == "nano-banana-pro":
                 default_params = {"resolution": "1K"}
-            min_price = calculate_price_rub(model['id'], default_params, is_admin)
+            elif model['id'] in ["seedream/4.5-text-to-image", "seedream/4.5-edit"]:
+                default_params = {"quality": "basic"}
             
-            if is_admin:
-                button_text = f"{model['emoji']} {model['name']} (Безлимит)"
-            else:
-                if user_balance >= min_price:
-                    available = int(user_balance / min_price)
-                    button_text = f"{model['emoji']} {model['name']} ({available} шт)"
+            min_price = calculate_price_rub(model['id'], default_params, is_admin)
+            price_text = get_model_price_text(model['id'], default_params, is_admin, user_id)
+            
+            # Extract price number from price_text for compact display
+            import re
+            price_match = re.search(r'(\d+\.?\d*)\s*₽', price_text)
+            if price_match:
+                price_display = price_match.group(1)
+                # Check if it's "От" (from) or fixed price
+                if "От" in price_text or "от" in price_text.lower():
+                    price_display = f"от {price_display} ₽"
                 else:
-                    button_text = f"{model['emoji']} {model['name']} (0 шт)"
+                    price_display = f"{price_display} ₽"
+            elif "БЕСПЛАТНО" in price_text or "Бесплатно" in price_text:
+                price_display = "бесплатно"
+            else:
+                # Fallback: show calculated price
+                price_display = f"{min_price:.2f} ₽"
+            
+            # Compact button text with price
+            button_text = f"{model['emoji']} {model['name']} • {price_display}"
             
             keyboard.append([InlineKeyboardButton(
                 button_text,
                 callback_data=f"select_model:{model['id']}"
             )])
-        keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")])
-        keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data="cancel")])
+        keyboard.append([InlineKeyboardButton("◀️ Назад к категориям", callback_data="show_models")])
+        keyboard.append([InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")])
         
-        models_text = f"📋 <b>Модели категории {category}:</b>\n\n"
-        for model in models:
-            default_params = {}
-            if model['id'] == "nano-banana-pro":
-                default_params = {"resolution": "1K"}
-            min_price = calculate_price_rub(model['id'], default_params, is_admin)
-            
-            if is_admin:
-                available_text = "Безлимит"
-            else:
-                # Check for free generations for z-image
-                if model['id'] == FREE_MODEL_ID:
-                    remaining = get_user_free_generations_remaining(user_id)
-                    if remaining > 0:
-                        available_text = f"🎁 {remaining} бесплатно в день"
-                    elif user_balance >= min_price:
-                        available = int(user_balance / min_price)
-                        available_text = f"{available} генераций"
-                    else:
-                        available_text = "0 генераций"
-                elif user_balance >= min_price:
-                    available = int(user_balance / min_price)
-                    available_text = f"{available} генераций"
-                else:
-                    available_text = "0 генераций"
-            
-            # Get price text with free generation info
-            price_display = get_model_price_text(model['id'], default_params, is_admin, user_id)
-            
-            models_text += (
-                f"{model['emoji']} <b>{model['name']}</b>\n"
-                f"{model['description']}\n"
-                f"💰 Цена: {price_display} | ✅ Доступно: {available_text}\n\n"
-            )
+        # Premium formatted header
+        category_emoji = {
+            "Видео": "🎬",
+            "Изображения": "🖼️",
+            "Редактирование": "✏️"
+        }.get(category, "📁")
+        
+        models_text = (
+            f"✨ <b>ПРЕМИУМ КАТАЛОГ</b> ✨\n\n"
+            f"{category_emoji} <b>Категория: {category}</b>\n"
+            f"📦 <b>Доступно моделей:</b> {len(models)}\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"💡 <i>Выберите модель из списка ниже</i>\n"
+            f"<i>Подробная информация отобразится при выборе</i>"
+        )
         
         await query.edit_message_text(
             models_text,
@@ -2181,69 +2836,73 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return SELECTING_MODEL
     
     if data == "show_models" or data == "all_models":
-        # Show all models
-        # Get user balance for showing available generations
-        user_balance = get_user_balance(user_id)
-        is_admin = get_is_admin(user_id)
+        # Show generation types instead of all models with marketing text
+        generation_types = get_generation_types()
+        remaining_free = get_user_free_generations_remaining(user_id)
+        
+        models_text = (
+            f"🎨 <b>ВЫБЕРИТЕ ФОРМАТ ГЕНЕРАЦИИ</b>\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"💰 <b>ГЕНЕРАЦИЯ ПО ЦЕНЕ ЖВАЧКИ!</b>\n\n"
+            f"💼 <b>ИДЕАЛЬНО ДЛЯ:</b>\n"
+            f"• Маркетологов • SMM-щиков • Дизайнеров\n"
+            f"• Фрилансеров • Креаторов • Контент-мейкеров\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"💡 <b>КАК ЭТО РАБОТАЕТ:</b>\n"
+            f"1️⃣ Выберите формат генерации\n"
+            f"2️⃣ Выберите одну из предложенных нейросетей\n"
+            f"3️⃣ Создавайте крутой контент! 🚀\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        )
+        
+        if remaining_free > 0:
+            models_text += (
+                f"🎁 <b>БЕСПЛАТНО:</b> {remaining_free} генераций Z-Image доступно!\n"
+                f"💡 Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} генераций\n\n"
+            )
+        
+        models_text += (
+            f"📦 <b>Доступно:</b> {len(generation_types)} типов генерации\n"
+            f"🤖 <b>Моделей:</b> {len(KIE_MODELS)} топовых нейросетей"
+        )
         
         keyboard = []
-        for model in KIE_MODELS:
-            # Calculate price and available count
-            default_params = {}
-            if model['id'] == "nano-banana-pro":
-                default_params = {"resolution": "1K"}
-            min_price = calculate_price_rub(model['id'], default_params, is_admin)
-            
-            if is_admin:
-                button_text = f"{model['emoji']} {model['name']} (Безлимит)"
-            else:
-                if user_balance >= min_price:
-                    available = int(user_balance / min_price)
-                    button_text = f"{model['emoji']} {model['name']} ({available} шт)"
-                else:
-                    button_text = f"{model['emoji']} {model['name']} (0 шт)"
-            
-            keyboard.append([InlineKeyboardButton(
-                button_text,
-                callback_data=f"select_model:{model['id']}"
-            )])
-        keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")])
-        keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data="cancel")])
         
-        models_text = "📋 <b>Все доступные модели:</b>\n\n"
-        for model in KIE_MODELS:
-            default_params = {}
-            if model['id'] == "nano-banana-pro":
-                default_params = {"resolution": "1K"}
-            min_price = calculate_price_rub(model['id'], default_params, is_admin)
+        # Free generation button if available
+        if remaining_free > 0:
+            keyboard.append([
+                InlineKeyboardButton(f"🎁 Генерировать бесплатно ({remaining_free} осталось)", callback_data="select_model:z-image")
+            ])
+            keyboard.append([])  # Empty row
+        
+        # Generation types buttons (2 per row for compact display)
+        gen_type_rows = []
+        for i, gen_type in enumerate(generation_types):
+            gen_info = get_generation_type_info(gen_type)
+            models_count = len(get_models_by_generation_type(gen_type))
+            button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
             
-            if is_admin:
-                available_text = "Безлимит"
+            if i % 2 == 0:
+                # First button in row
+                gen_type_rows.append([InlineKeyboardButton(
+                    button_text,
+                    callback_data=f"gen_type:{gen_type}"
+                )])
             else:
-                # Check for free generations for z-image
-                if model['id'] == FREE_MODEL_ID:
-                    remaining = get_user_free_generations_remaining(user_id)
-                    if remaining > 0:
-                        available_text = f"🎁 {remaining} бесплатно в день"
-                    elif user_balance >= min_price:
-                        available = int(user_balance / min_price)
-                        available_text = f"{available} генераций"
-                    else:
-                        available_text = "0 генераций"
-                elif user_balance >= min_price:
-                    available = int(user_balance / min_price)
-                    available_text = f"{available} генераций"
+                # Second button in row - add to last row
+                if gen_type_rows:
+                    gen_type_rows[-1].append(InlineKeyboardButton(
+                        button_text,
+                        callback_data=f"gen_type:{gen_type}"
+                    ))
                 else:
-                    available_text = "0 генераций"
-            
-            # Get price text with free generation info
-            price_display = get_model_price_text(model['id'], default_params, is_admin, user_id)
-            
-            models_text += (
-                f"{model['emoji']} <b>{model['name']}</b>\n"
-                f"{model['description']}\n"
-                f"💰 Цена: {price_display} | ✅ Доступно: {available_text}\n\n"
-            )
+                    gen_type_rows.append([InlineKeyboardButton(
+                        button_text,
+                        callback_data=f"gen_type:{gen_type}"
+                    )])
+        
+        keyboard.extend(gen_type_rows)
+        keyboard.append([InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")])
         
         await query.edit_message_text(
             models_text,
@@ -2290,22 +2949,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 # All parameters collected
                 model_name = session.get('model_info', {}).get('name', 'Unknown')
-                model_id = session.get('model_id', '')
                 params = session.get('params', {})
                 params_text = "\n".join([f"  • {k}: {str(v)[:50]}..." for k, v in params.items()])
-                
-                # Check for free generation
-                is_admin_user = get_is_admin(user_id)
-                is_free = is_free_generation_available(user_id, model_id)
-                free_info = ""
-                if is_free:
-                    remaining = get_user_free_generations_remaining(user_id)
-                    free_info = f"\n\n🎁 <b>БЕСПЛАТНАЯ ГЕНЕРАЦИЯ!</b>\n"
-                    free_info += f"Осталось бесплатных: {remaining}/{FREE_GENERATIONS_PER_DAY} в день"
-                else:
-                    price = calculate_price_rub(model_id, params, is_admin_user)
-                    price_str = f"{price:.2f}".rstrip('0').rstrip('.')
-                    free_info = f"\n\n💰 <b>Стоимость:</b> {price_str} ₽"
                 
                 keyboard = [
                     [InlineKeyboardButton("✅ Генерировать", callback_data="confirm_generate")],
@@ -2315,7 +2960,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.edit_message_text(
                     f"📋 <b>Подтверждение:</b>\n\n"
                     f"Модель: <b>{model_name}</b>\n"
-                    f"Параметры:\n{params_text}{free_info}\n\n"
+                    f"Параметры:\n{params_text}\n\n"
                     f"Продолжить генерацию?",
                     reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
@@ -2426,81 +3071,38 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if data == "check_balance":
         # Check balance
-        is_admin_user = get_is_admin(user_id)
-        is_main_admin = (user_id == ADMIN_ID)
+        await query.edit_message_text('💳 Проверяю баланс...')
         
-        if is_main_admin:
-            # Main admin - show KIE API balance
-            await query.edit_message_text('💳 Проверяю баланс...')
-            try:
-                result = await kie.get_credits()
+        try:
+            result = await kie.get_credits()
+            
+            if result.get('ok'):
+                credits = result.get('credits', 0)
+                # Convert credits to rubles (no rounding)
+                credits_rub = credits * CREDIT_TO_USD * USD_TO_RUB
+                credits_rub_str = f"{credits_rub:.2f}".rstrip('0').rstrip('.')
                 
-                if result.get('ok'):
-                    credits = result.get('credits', 0)
-                    # Convert credits to rubles (no rounding)
-                    credits_rub = credits * CREDIT_TO_USD * USD_TO_RUB
-                    credits_rub_str = f"{credits_rub:.2f}".rstrip('0').rstrip('.')
-                    
-                    keyboard = [
-                        [InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]
-                    ]
-                    
-                    await query.edit_message_text(
-                        f'💳 <b>Баланс KIE API:</b> {credits_rub_str} ₽\n'
-                        f'<i>({credits} кредитов)</i>\n\n'
-                        f'👑 <b>Безлимитный доступ</b> ко всем генерациям.',
-                        reply_markup=InlineKeyboardMarkup(keyboard),
-                        parse_mode='HTML'
-                    )
-                else:
-                    error = result.get('error', 'Unknown error')
-                    await query.edit_message_text(
-                        f'❌ <b>Ошибка проверки баланса:</b>\n{error}',
-                        parse_mode='HTML'
-                    )
-            except Exception as e:
-                logger.error(f"Error checking balance: {e}")
-                await query.edit_message_text(f'❌ Ошибка: {str(e)}')
-        elif is_admin_user:
-            # Limited admin - show limit info
-            limit = get_admin_limit(user_id)
-            spent = get_admin_spent(user_id)
-            remaining = get_admin_remaining(user_id)
-            keyboard = [
-                [InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]
-            ]
-            
-            await query.edit_message_text(
-                f'👑 <b>Баланс администратора:</b>\n\n'
-                f'💳 <b>Лимит:</b> {limit:.2f} ₽\n'
-                f'💸 <b>Потрачено:</b> {spent:.2f} ₽\n'
-                f'✅ <b>Осталось:</b> {remaining:.2f} ₽',
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
-        else:
-            # Regular user - show user balance from user_balances.json
-            user_balance = get_user_balance(user_id)
-            balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
-            
-            # Check for free generations
-            remaining_free = get_user_free_generations_remaining(user_id)
-            total_free = FREE_GENERATIONS_PER_DAY + get_free_generations_data().get(str(user_id), {}).get('bonus', 0)
-            free_info = ""
-            if remaining_free > 0:
-                free_info = f"\n\n🎁 <b>Бесплатные генерации:</b> {remaining_free}/{total_free} в день"
-            
-            keyboard = [
-                [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
-                [InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]
-            ]
-            
-            await query.edit_message_text(
-                f'💳 <b>Баланс:</b> {balance_str} ₽{free_info}\n\n'
-                f'Доступно для генерации контента.',
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
+                keyboard = [
+                    [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
+                    [InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]
+                ]
+                
+                await query.edit_message_text(
+                    f'💳 <b>Баланс:</b> {credits_rub_str} ₽\n'
+                    f'<i>({credits} кредитов)</i>\n\n'
+                    f'Доступно для генерации контента.',
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+            else:
+                error = result.get('error', 'Unknown error')
+                await query.edit_message_text(
+                    f'❌ <b>Ошибка проверки баланса:</b>\n{error}',
+                    parse_mode='HTML'
+                )
+        except Exception as e:
+            logger.error(f"Error checking balance: {e}")
+            await query.edit_message_text(f'❌ Ошибка: {str(e)}')
         
         return ConversationHandler.END
     
@@ -2514,60 +3116,50 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return ConversationHandler.END
         
-        # Show amount selection
+        # Show amount selection - focus on small amounts with marketing
         keyboard = [
             [
-                InlineKeyboardButton("100 ₽", callback_data="topup_amount:100"),
-                InlineKeyboardButton("500 ₽", callback_data="topup_amount:500")
+                InlineKeyboardButton("💎 50 ₽", callback_data="topup_amount:50"),
+                InlineKeyboardButton("💎 100 ₽", callback_data="topup_amount:100"),
+                InlineKeyboardButton("💎 150 ₽", callback_data="topup_amount:150")
             ],
             [
-                InlineKeyboardButton("1000 ₽", callback_data="topup_amount:1000"),
-                InlineKeyboardButton("2000 ₽", callback_data="topup_amount:2000")
+                InlineKeyboardButton("💰 Своя сумма", callback_data="topup_custom")
             ],
-            [
-                InlineKeyboardButton("5000 ₽", callback_data="topup_amount:5000"),
-                InlineKeyboardButton("Другая сумма", callback_data="topup_custom")
-            ],
-            [InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]
+            [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
         ]
         
         current_balance = get_user_balance(user_id)
         balance_str = f"{current_balance:.2f}".rstrip('0').rstrip('.')
         
+        # Calculate what user can generate with different amounts
+        examples_50 = int(50 / 0.62)  # Z-Image price
+        examples_100 = int(100 / 0.62)
+        examples_150 = int(150 / 0.62)
+        
         await query.edit_message_text(
-            f"💳 <b>Пополнение баланса</b>\n\n"
-            f"💰 <b>Текущий баланс:</b> {balance_str} ₽\n\n"
-            f"Выберите сумму для пополнения:",
+            f'💳 <b>ПОПОЛНЕНИЕ БАЛАНСА</b> 💳\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'💰 <b>Твой текущий баланс:</b> {balance_str} ₽\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'🎯 <b>ЧТО МОЖНО СДЕЛАТЬ:</b>\n\n'
+            f'💎 <b>50 ₽</b> → ~{examples_50} изображений Z-Image\n'
+            f'💎 <b>100 ₽</b> → ~{examples_100} изображений Z-Image\n'
+            f'💎 <b>150 ₽</b> → ~{examples_150} изображений Z-Image\n\n'
+            f'💡 <b>Или попробуй другие модели:</b>\n'
+            f'• От 3.86 ₽ за видео\n'
+            f'• От 0.62 ₽ за изображение\n'
+            f'• Редактирование от 0.5 ₽\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'🚀 <b>ВЫБЕРИ СУММУ:</b>\n'
+            f'• Быстрый выбор: 50, 100, 150 ₽\n'
+            f'• Или укажи свою сумму\n\n'
+            f'📝 <b>Ограничения:</b>\n'
+            f'Минимум: 50 ₽ | Максимум: 50000 ₽',
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
         return SELECTING_AMOUNT
-    
-    if data == "activate_promo":
-        # Activate promo code - show beautiful notification
-        if user_id not in user_sessions:
-            user_sessions[user_id] = {}
-        
-        # Set waiting state for promo code
-        user_sessions[user_id]['waiting_for'] = 'promocode'
-        
-        keyboard = [
-            [InlineKeyboardButton("❌ Отмена", callback_data="back_to_menu")]
-        ]
-        
-        await query.edit_message_text(
-            f"🎁 <b>✨ АКТИВАЦИЯ ПРОМОКОДА ✨</b>\n\n"
-            f"💎 <b>Введите промокод для получения бонусов!</b>\n\n"
-            f"📝 <b>Как использовать:</b>\n"
-            f"1. Введите промокод в следующем сообщении\n"
-            f"2. Бонусы будут начислены автоматически\n"
-            f"3. Проверьте баланс после активации\n\n"
-            f"💡 <i>Промокоды обновляются ежедневно</i>\n\n"
-            f"🔤 <b>Введите промокод сейчас:</b>",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-        return WAITING_PROMOCODE
     
     if data.startswith("topup_amount:"):
         # User selected a preset amount
@@ -2579,15 +3171,31 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         payment_details = get_payment_details()
         
+        # Calculate what user can generate
+        examples_count = int(amount / 0.62)  # Z-Image price
+        video_count = int(amount / 3.86)  # Basic video price
+        
         keyboard = [
             [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
         ]
         
         await query.edit_message_text(
-            f"{payment_details}\n\n"
-            f"💵 <b>Сумма к оплате:</b> {amount:.2f} ₽\n\n"
-            f"После оплаты отправьте скриншот перевода в этот чат.\n\n"
-            f"✅ <b>Баланс начислится автоматически</b> после отправки скриншота.",
+            f'💳 <b>ОПЛАТА {amount:.0f} ₽</b> 💳\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'{payment_details}\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'💵 <b>Сумма к оплате:</b> {amount:.2f} ₽\n\n'
+            f'🎯 <b>ЧТО ТЫ ПОЛУЧИШЬ:</b>\n'
+            f'• ~{examples_count} изображений Z-Image\n'
+            f'• ~{video_count} видео (базовая модель)\n'
+            f'• Или комбинацию разных моделей!\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'📸 <b>КАК ОПЛАТИТЬ:</b>\n'
+            f'1️⃣ Переведи {amount:.2f} ₽ по реквизитам выше\n'
+            f'2️⃣ Сделай скриншот перевода\n'
+            f'3️⃣ Отправь скриншот сюда\n'
+            f'4️⃣ Баланс начислится автоматически! ⚡\n\n'
+            f'✅ <b>Все просто и быстро!</b>',
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
@@ -2596,10 +3204,21 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "topup_custom":
         # User wants to enter custom amount
         await query.edit_message_text(
-            "💳 <b>Введите сумму пополнения</b>\n\n"
-            "Отправьте число (например: 1500)\n"
-            "Минимальная сумма: 50 ₽\n"
-            "Максимальная сумма: 50000 ₽",
+            f'💰 <b>ВВЕДИ СВОЮ СУММУ</b> 💰\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'📝 <b>Просто отправь число</b> (например: 250)\n\n'
+            f'💡 <b>РЕКОМЕНДУЕМ:</b>\n'
+            f'• 50 ₽ → ~80 изображений\n'
+            f'• 100 ₽ → ~160 изображений\n'
+            f'• 150 ₽ → ~240 изображений\n'
+            f'• 200 ₽ → ~320 изображений\n'
+            f'• 300 ₽ → ~480 изображений\n'
+            f'• 500 ₽ → ~800 изображений\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'📋 <b>Ограничения:</b>\n'
+            f'• Минимум: 50 ₽\n'
+            f'• Максимум: 50000 ₽\n\n'
+            f'💬 <b>Отправь сумму цифрами</b> (например: 250)',
             parse_mode='HTML'
         )
         user_sessions[user_id] = {
@@ -2675,6 +3294,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             
             keyboard = [
+                [InlineKeyboardButton("📢 Рассылка", callback_data="admin_broadcast")],
                 [InlineKeyboardButton("🎁 Промокоды", callback_data="admin_promocodes")],
                 [InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]
             ]
@@ -2709,57 +3329,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 promocodes_text += "❌ <b>Нет активного промокода</b>\n\n"
             
-            promocodes_text += "💡 <b>Доступные действия:</b>\n"
-            promocodes_text += "• Создать новый промокод\n"
-            promocodes_text += "• Просмотреть все промокоды\n"
-            promocodes_text += "• Управление промокодами\n"
-            
-            keyboard = [
-                [InlineKeyboardButton("🆕 Создать новый промокод", callback_data="admin_create_promo")],
-                [InlineKeyboardButton("📋 Просмотреть все промокоды", callback_data="admin_list_promos")],
-                [InlineKeyboardButton("🔄 Обновить", callback_data="admin_promocodes")],
-                [InlineKeyboardButton("◀️ Назад", callback_data="admin_settings")]
-            ]
-            
-            await query.edit_message_text(
-                promocodes_text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
-            return ConversationHandler.END
-        
-        if data == "admin_create_promo":
-            # Generate new daily promo code
-            new_promo = generate_daily_promocode()
-            promo_code = new_promo.get('code', 'N/A')
-            promo_value = new_promo.get('value', 0)
-            promo_expires = new_promo.get('expires', 'N/A')
-            
-            keyboard = [
-                [InlineKeyboardButton("🎁 Промокоды", callback_data="admin_promocodes")],
-                [InlineKeyboardButton("◀️ Назад", callback_data="admin_settings")]
-            ]
-            
-            await query.edit_message_text(
-                f"✅ <b>Новый промокод создан!</b>\n\n"
-                f"🔑 <b>Код:</b> <code>{promo_code}</code>\n"
-                f"💰 <b>Значение:</b> {promo_value} ₽\n"
-                f"📅 <b>Действителен до:</b> {promo_expires}\n\n"
-                f"💡 Промокод автоматически обновляется каждый день.",
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
-            return ConversationHandler.END
-        
-        if data == "admin_list_promos":
-            # List all promocodes
-            promocodes = load_promocodes()
-            
-            promocodes_text = "📋 <b>Все промокоды:</b>\n\n"
-            
-            if not promocodes or len(promocodes) == 0:
-                promocodes_text += "❌ <b>Нет созданных промокодов</b>\n\n"
-            else:
+            # Show all promocodes
+            if promocodes:
+                promocodes_text += f"📋 <b>Все промокоды ({len(promocodes)}):</b>\n\n"
                 for i, promo in enumerate(promocodes, 1):
                     promo_code = promo.get('code', 'N/A')
                     promo_value = promo.get('value', 0)
@@ -2775,15 +3347,138 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         f"   💰 {promo_value} ₽ | 👥 {promo_used} использований\n"
                         f"   📅 До: {promo_expires}\n\n"
                     )
+            else:
+                promocodes_text += "📋 <b>Нет созданных промокодов</b>\n\n"
+            
+            promocodes_text += "💡 <b>Доступные действия:</b>\n"
+            promocodes_text += "• Просмотр всех промокодов\n"
+            promocodes_text += "• Информация об активном промокоде\n"
             
             keyboard = [
-                [InlineKeyboardButton("🔄 Обновить", callback_data="admin_list_promos")],
-                [InlineKeyboardButton("🎁 Промокоды", callback_data="admin_promocodes")],
+                [InlineKeyboardButton("🔄 Обновить", callback_data="admin_promocodes")],
                 [InlineKeyboardButton("◀️ Назад", callback_data="admin_settings")]
             ]
             
             await query.edit_message_text(
                 promocodes_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
+        
+        if data == "admin_broadcast":
+            # Show broadcast menu
+            broadcasts = get_broadcasts()
+            total_users = len(get_all_users())
+            
+            broadcast_text = "📢 <b>Рассылка сообщений</b>\n\n"
+            broadcast_text += f"👥 <b>Всего пользователей:</b> {total_users}\n\n"
+            
+            if broadcasts:
+                broadcast_text += f"📋 <b>История рассылок ({len(broadcasts)}):</b>\n\n"
+                # Show last 5 broadcasts
+                sorted_broadcasts = sorted(
+                    broadcasts.items(),
+                    key=lambda x: x[1].get('created_at', 0),
+                    reverse=True
+                )[:5]
+                
+                for broadcast_id, broadcast in sorted_broadcasts:
+                    created_at = broadcast.get('created_at', 0)
+                    sent = broadcast.get('sent', 0)
+                    delivered = broadcast.get('delivered', 0)
+                    failed = broadcast.get('failed', 0)
+                    message_preview = broadcast.get('message', '')[:30] + '...' if len(broadcast.get('message', '')) > 30 else broadcast.get('message', '')
+                    
+                    from datetime import datetime
+                    if created_at:
+                        date_str = datetime.fromtimestamp(created_at).strftime('%Y-%m-%d %H:%M')
+                    else:
+                        date_str = 'N/A'
+                    
+                    broadcast_text += (
+                        f"📨 <b>#{broadcast_id}</b> ({date_str})\n"
+                        f"   📝 {message_preview}\n"
+                        f"   ✅ Отправлено: {sent} | 📬 Доставлено: {delivered} | ❌ Ошибок: {failed}\n\n"
+                    )
+            else:
+                broadcast_text += "📋 <b>Нет истории рассылок</b>\n\n"
+            
+            broadcast_text += "💡 <b>Создать новую рассылку:</b>\n"
+            broadcast_text += "Нажмите кнопку ниже и отправьте сообщение для рассылки."
+            
+            keyboard = [
+                [InlineKeyboardButton("📢 Создать рассылку", callback_data="admin_create_broadcast")],
+                [InlineKeyboardButton("📊 Статистика", callback_data="admin_broadcast_stats")],
+                [InlineKeyboardButton("◀️ Назад", callback_data="admin_settings")]
+            ]
+            
+            await query.edit_message_text(
+                broadcast_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
+        
+        if data == "admin_create_broadcast":
+            # Start broadcast creation
+            await query.edit_message_text(
+                "📢 <b>Создание рассылки</b>\n\n"
+                "Отправьте сообщение, которое хотите разослать всем пользователям.\n\n"
+                "💡 <b>Поддерживается:</b>\n"
+                "• Текст\n"
+                "• HTML форматирование\n"
+                "• Изображения\n\n"
+                "Или нажмите /cancel для отмены.",
+                parse_mode='HTML'
+            )
+            user_sessions[user_id] = {
+                'waiting_for': 'broadcast_message'
+            }
+            return WAITING_BROADCAST_MESSAGE
+        
+        if data == "admin_broadcast_stats":
+            # Show detailed broadcast statistics
+            broadcasts = get_broadcasts()
+            total_users = len(get_all_users())
+            
+            if not broadcasts:
+                await query.edit_message_text(
+                    "📊 <b>Статистика рассылок</b>\n\n"
+                    "❌ Нет истории рассылок",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("◀️ Назад", callback_data="admin_broadcast")]
+                    ]),
+                    parse_mode='HTML'
+                )
+                return ConversationHandler.END
+            
+            # Calculate totals
+            total_sent = sum(b.get('sent', 0) for b in broadcasts.values())
+            total_delivered = sum(b.get('delivered', 0) for b in broadcasts.values())
+            total_failed = sum(b.get('failed', 0) for b in broadcasts.values())
+            
+            stats_text = (
+                f"📊 <b>Статистика рассылок</b>\n\n"
+                f"👥 <b>Всего пользователей:</b> {total_users}\n"
+                f"📨 <b>Всего рассылок:</b> {len(broadcasts)}\n\n"
+                f"📈 <b>Общая статистика:</b>\n"
+                f"✅ Отправлено: {total_sent}\n"
+                f"📬 Доставлено: {total_delivered}\n"
+                f"❌ Ошибок: {total_failed}\n\n"
+            )
+            
+            if total_sent > 0:
+                success_rate = (total_delivered / total_sent) * 100
+                stats_text += f"📊 <b>Успешность доставки:</b> {success_rate:.1f}%\n"
+            
+            keyboard = [
+                [InlineKeyboardButton("🔄 Обновить", callback_data="admin_broadcast_stats")],
+                [InlineKeyboardButton("◀️ Назад", callback_data="admin_broadcast")]
+            ]
+            
+            await query.edit_message_text(
+                stats_text,
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='HTML'
             )
@@ -2865,51 +3560,241 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }
             return ADMIN_TEST_OCR
     
-    if data == "help_menu":
-        is_admin_user = get_is_admin(user_id)
+    if data == "tutorial_start":
+        # Interactive tutorial for new users
+        tutorial_text = (
+            '🎓 <b>ИНТЕРАКТИВНЫЙ ТУТОРИАЛ</b>\n\n'
+            '━━━━━━━━━━━━━━━━━━━━\n\n'
+            '👋 Добро пожаловать! Давайте разберемся, как пользоваться ботом.\n\n'
+            '📚 <b>Что вы узнаете:</b>\n'
+            '• Что такое AI-генерация\n'
+            '• Как выбрать модель\n'
+            '• Как создать контент\n'
+            '• Как пополнить баланс\n\n'
+            '💡 <b>Это займет 2 минуты!</b>'
+        )
         
-        if is_admin_user:
-            # Admin help
+        keyboard = [
+            [InlineKeyboardButton("▶️ Начать туториал", callback_data="tutorial_step1")],
+            [InlineKeyboardButton("⏭️ Пропустить", callback_data="back_to_menu")]
+        ]
+        
+        await query.edit_message_text(
+            tutorial_text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    
+    if data == "tutorial_step1":
+        tutorial_text = (
+            '📖 <b>ШАГ 1: Что такое AI-генерация?</b>\n\n'
+            '━━━━━━━━━━━━━━━━━━━━\n\n'
+            '🤖 <b>Искусственный интеллект</b> может создавать:\n\n'
+            '🎨 <b>Изображения</b>\n'
+            'Опишите картинку словами, и AI создаст её!\n'
+            'Пример: "Кот в космосе, пиксель-арт"\n\n'
+            '🎬 <b>Видео</b>\n'
+            'Создавайте короткие видео из текста\n'
+            'Пример: "Летящий дракон над городом"\n\n'
+            '🖼️ <b>Улучшение качества</b>\n'
+            'Увеличивайте разрешение фото в 4-8 раз\n\n'
+            '💡 <b>Все это без VPN!</b> Прямой доступ к лучшим AI-моделям.'
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("▶️ Далее", callback_data="tutorial_step2")],
+            [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_start")],
+            [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+        ]
+        
+        await query.edit_message_text(
+            tutorial_text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    
+    if data == "tutorial_step2":
+        categories = get_categories()
+        total_models = len(KIE_MODELS)
+        tutorial_text = (
+            f'📖 <b>ШАГ 2: Как выбрать модель?</b>\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'🎯 <b>У нас {total_models} моделей в {len(categories)} категориях:</b>\n\n'
+            f'🖼️ <b>Изображения</b>\n'
+            f'• Z-Image - быстрая генерация (бесплатно 5 раз в день!)\n'
+            f'• Nano Banana Pro - качество 2K/4K\n'
+            f'• Imagen 4 Ultra - новейшая от Google\n\n'
+            f'🎬 <b>Видео</b>\n'
+            f'• Sora 2 - реалистичные видео\n'
+            f'• Grok Imagine - мультимодальная модель\n\n'
+            f'💡 <b>Совет:</b> Начните с Z-Image - она бесплатная!'
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("▶️ Далее", callback_data="tutorial_step3")],
+            [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_step1")],
+            [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+        ]
+        
+        await query.edit_message_text(
+            tutorial_text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    
+    if data == "tutorial_step3":
+        tutorial_text = (
+            '📖 <b>ШАГ 3: Как создать контент?</b>\n\n'
+            '━━━━━━━━━━━━━━━━━━━━\n\n'
+            '📝 <b>Простой процесс:</b>\n\n'
+            '1️⃣ Нажмите "📋 Все модели"\n'
+            '2️⃣ Выберите модель (например, Z-Image)\n'
+            '3️⃣ Введите описание (промпт)\n'
+            '   Пример: "Красивый закат над океаном"\n'
+            '4️⃣ Выберите параметры (размер, стиль и т.д.)\n'
+            '5️⃣ Нажмите "✅ Генерировать"\n'
+            '6️⃣ Подождите 10-60 секунд\n'
+            '7️⃣ Получите результат! 🎉\n\n'
+            '💡 <b>Совет:</b> Чем подробнее описание, тем лучше результат!'
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("▶️ Далее", callback_data="tutorial_step4")],
+            [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_step2")],
+            [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+        ]
+        
+        await query.edit_message_text(
+            tutorial_text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    
+    if data == "tutorial_step4":
+        remaining_free = get_user_free_generations_remaining(user_id)
+        tutorial_text = (
+            '📖 <b>ШАГ 4: Баланс и оплата</b>\n\n'
+            '━━━━━━━━━━━━━━━━━━━━\n\n'
+            '💰 <b>Как это работает:</b>\n\n'
+            '🎁 <b>Бесплатно:</b>\n'
+            f'• {remaining_free if remaining_free > 0 else FREE_GENERATIONS_PER_DAY} генераций Z-Image в день\n'
+            '• Пригласите друга - получите +5 генераций!\n\n'
+            '💳 <b>Пополнение баланса:</b>\n'
+            '• Минимальная сумма: 50 ₽\n'
+            '• Быстрый выбор: 50, 100, 150 ₽\n'
+            '• Или укажите свою сумму\n'
+            '• Оплата через СБП (Система быстрых платежей)\n\n'
+            '💡 <b>Совет:</b> Начните с бесплатных генераций!'
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("▶️ Завершить", callback_data="tutorial_complete")],
+            [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_step3")],
+            [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+        ]
+        
+        await query.edit_message_text(
+            tutorial_text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    
+    if data == "tutorial_complete":
+        tutorial_text = (
+            '🎉 <b>ТУТОРИАЛ ЗАВЕРШЕН!</b>\n\n'
+            '━━━━━━━━━━━━━━━━━━━━\n\n'
+            '✅ Теперь вы знаете:\n'
+            '• Что такое AI-генерация\n'
+            '• Как выбрать модель\n'
+            '• Как создать контент\n'
+            '• Как пополнить баланс\n\n'
+            '🚀 <b>Готовы начать?</b>\n\n'
+            '💡 <b>Рекомендация:</b>\n'
+            'Начните с бесплатной генерации Z-Image!\n'
+            'Просто выберите модель и опишите, что хотите создать.'
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("📋 Все модели", callback_data="all_models")],
+            [InlineKeyboardButton("🖼️ Z-Image (бесплатно)", callback_data="select_model:z-image")],
+            [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+        ]
+        
+        await query.edit_message_text(
+            tutorial_text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    
+    if data == "help_menu":
+        is_new = is_new_user(user_id)
+        
+        if is_new:
             help_text = (
-                '📋 <b>Доступные команды:</b>\n\n'
+                '📋 <b>ПОМОЩЬ ДЛЯ НОВЫХ ПОЛЬЗОВАТЕЛЕЙ</b>\n\n'
+                '━━━━━━━━━━━━━━━━━━━━\n\n'
+                '👋 <b>Добро пожаловать!</b>\n\n'
+                '🎯 <b>Быстрый старт:</b>\n'
+                '1. Нажмите "📋 Все модели"\n'
+                '2. Выберите "🖼️ Z-Image" (она бесплатная!)\n'
+                '3. Введите описание, например: "Кот в космосе"\n'
+                '4. Нажмите "✅ Генерировать"\n'
+                '5. Получите результат через 10-30 секунд!\n\n'
+                '━━━━━━━━━━━━━━━━━━━━\n\n'
+                '💡 <b>Полезные команды:</b>\n'
                 '/start - Главное меню\n'
-                '/models - Показать модели\n'
+                '/models - Показать все модели\n'
                 '/balance - Проверить баланс\n'
-                '/generate - Начать генерацию\n'
-                '/help - Справка\n\n'
-                '👑 <b>Административные команды:</b>\n'
-                '/search - Поиск в базе знаний\n'
-                '/add - Добавление знаний\n'
-                '/payments - Просмотр платежей\n'
-                '/block_user - Заблокировать пользователя\n'
-                '/unblock_user - Разблокировать пользователя\n'
-                '/user_balance - Баланс пользователя\n'
-                '/add_admin - Добавить администратора\n\n'
-                '💡 <b>Как использовать:</b>\n'
-                '1. Выберите модель из меню\n'
-                '2. Введите промпт (описание)\n'
-                '3. Выберите параметры через кнопки\n'
-                '4. Подтвердите генерацию\n'
-                '5. Получите результат!'
+                '/help - Эта справка\n\n'
+                '❓ <b>Нужна помощь?</b>\n'
+                'Нажмите "❓ Как это работает?" для интерактивного туториала!'
             )
         else:
-            # Regular user help
             help_text = (
-                '📋 <b>Доступные команды:</b>\n\n'
+                '📋 <b>ДОСТУПНЫЕ КОМАНДЫ</b>\n\n'
+                '━━━━━━━━━━━━━━━━━━━━\n\n'
+                '🔹 <b>Основные:</b>\n'
                 '/start - Главное меню\n'
                 '/models - Показать модели\n'
                 '/balance - Проверить баланс\n'
                 '/generate - Начать генерацию\n'
                 '/help - Справка\n\n'
+            )
+            
+            if user_id == ADMIN_ID:
+                help_text += (
+                    '👑 <b>Административные:</b>\n'
+                    '/search - Поиск в базе знаний\n'
+                    '/add - Добавление знаний\n'
+                    '/payments - Просмотр платежей\n'
+                    '/block_user - Заблокировать пользователя\n'
+                    '/unblock_user - Разблокировать пользователя\n'
+                    '/user_balance - Баланс пользователя\n\n'
+                )
+            
+            help_text += (
                 '💡 <b>Как использовать:</b>\n'
                 '1. Выберите модель из меню\n'
                 '2. Введите промпт (описание)\n'
                 '3. Выберите параметры через кнопки\n'
                 '4. Подтвердите генерацию\n'
-                '5. Получите результат!'
+                '5. Получите результат!\n\n'
+                '📚 <b>Полезные функции:</b>\n'
+                '• "📚 Мои генерации" - просмотр истории\n'
+                '• "🔄 Повторить" - создать с теми же параметрами\n'
+                '• "💳 Пополнить" - пополнение баланса'
             )
         
-        keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]]
+        keyboard = []
+        if is_new:
+            keyboard.append([InlineKeyboardButton("❓ Как это работает?", callback_data="tutorial_start")])
+        keyboard.append([InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")])
         
         await query.edit_message_text(
             help_text,
@@ -2924,6 +3809,300 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await query.edit_message_text(
             support_info,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    
+    if data == "referral_info":
+        # Show referral information
+        referral_link = get_user_referral_link(user_id)
+        referrals_count = len(get_user_referrals(user_id))
+        remaining_free = get_user_free_generations_remaining(user_id)
+        
+        referral_text = (
+            f'🎁 <b>РЕФЕРАЛЬНАЯ СИСТЕМА</b> 🎁\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'💡 <b>КАК ЭТО РАБОТАЕТ:</b>\n\n'
+            f'1️⃣ Пригласи друга по вашей ссылке\n'
+            f'2️⃣ Он зарегистрируется через бота\n'
+            f'3️⃣ Вы получите <b>+{REFERRAL_BONUS_GENERATIONS} бесплатных генераций</b>!\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'📊 <b>ВАША СТАТИСТИКА:</b>\n'
+            f'• Приглашено друзей: <b>{referrals_count}</b>\n'
+            f'• Получено бонусов: <b>{referrals_count * REFERRAL_BONUS_GENERATIONS}</b> генераций\n'
+            f'• Доступно бесплатно: <b>{remaining_free}</b> генераций\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'🔗 <b>ВАША РЕФЕРАЛЬНАЯ ССЫЛКА:</b>\n\n'
+            f'<code>{referral_link}</code>\n\n'
+            f'💬 <b>Отправьте эту ссылку другу!</b>\n'
+            f'После его регистрации вы получите бонус автоматически.'
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("📋 Скопировать ссылку", url=referral_link)],
+            [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
+        ]
+        
+        await query.edit_message_text(
+            referral_text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    
+    if data == "my_generations":
+        # Show user's generation history
+        history = get_user_generations_history(user_id, limit=20)
+        
+        if not history:
+            keyboard = [[InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]]
+            await query.edit_message_text(
+                "📚 <b>Мои генерации</b>\n\n"
+                "❌ У вас пока нет сохраненных генераций.\n\n"
+                "💡 После создания контента все ваши работы будут сохранены здесь.",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
+        
+        # Show first generation with navigation
+        from datetime import datetime
+        
+        gen = history[0]
+        timestamp = gen.get('timestamp', 0)
+        if timestamp:
+            date_str = datetime.fromtimestamp(timestamp).strftime('%d.%m.%Y %H:%M')
+        else:
+            date_str = 'Неизвестно'
+        
+        model_name = gen.get('model_name', gen.get('model_id', 'Unknown'))
+        result_urls = gen.get('result_urls', [])
+        price = gen.get('price', 0)
+        is_free = gen.get('is_free', False)
+        
+        history_text = (
+            f"📚 <b>Мои генерации</b>\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📊 <b>Всего:</b> {len(history)} генераций\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"🎨 <b>Генерация #{gen.get('id', 1)}</b>\n"
+            f"📅 <b>Дата:</b> {date_str}\n"
+            f"🤖 <b>Модель:</b> {model_name}\n"
+            f"💰 <b>Стоимость:</b> {'🎁 Бесплатно' if is_free else f'{price:.2f} ₽'}\n"
+            f"📦 <b>Результатов:</b> {len(result_urls)}\n\n"
+        )
+        
+        if len(history) > 1:
+            history_text += f"💡 <b>Показана последняя генерация</b>\n"
+            history_text += f"Используйте кнопки для навигации\n\n"
+        
+        keyboard = []
+        
+        # Navigation buttons if more than 1 generation
+        if len(history) > 1:
+            keyboard.append([
+                InlineKeyboardButton("◀️ Предыдущая", callback_data=f"gen_history:{gen.get('id', 1)}:prev"),
+                InlineKeyboardButton("Следующая ▶️", callback_data=f"gen_history:{gen.get('id', 1)}:next")
+            ])
+        
+        # Action buttons
+        if result_urls:
+            keyboard.append([
+                InlineKeyboardButton("👁️ Показать результат", callback_data=f"gen_view:{gen.get('id', 1)}")
+            ])
+            keyboard.append([
+                InlineKeyboardButton("🔄 Повторить", callback_data=f"gen_repeat:{gen.get('id', 1)}")
+            ])
+        
+        keyboard.append([InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")])
+        
+        await query.edit_message_text(
+            history_text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    
+    if data.startswith("gen_view:"):
+        # View specific generation result
+        gen_id = int(data.split(":")[1])
+        gen = get_generation_by_id(user_id, gen_id)
+        
+        if not gen:
+            await query.answer("❌ Генерация не найдена", show_alert=True)
+            return ConversationHandler.END
+        
+        result_urls = gen.get('result_urls', [])
+        if not result_urls:
+            await query.answer("❌ Результаты не найдены", show_alert=True)
+            return ConversationHandler.END
+        
+        # Send media
+        for i, url in enumerate(result_urls[:5]):
+            try:
+                async with aiohttp.ClientSession() as session_http:
+                    async with session_http.get(url, timeout=aiohttp.ClientTimeout(total=60)) as resp:
+                        if resp.status == 200:
+                            media_data = await resp.read()
+                            
+                            is_last = (i == len(result_urls[:5]) - 1)
+                            is_video = gen.get('model_id', '') in ['sora-2-text-to-video', 'sora-watermark-remover', 'kling-2.6/image-to-video', 'kling-2.6/text-to-video', 'kling/v2-5-turbo-text-to-video-pro', 'kling/v2-5-turbo-image-to-video-pro', 'wan/2-5-image-to-video', 'wan/2-5-text-to-video', 'wan/2-2-animate-move', 'wan/2-2-animate-replace', 'hailuo/02-text-to-video-pro', 'hailuo/02-image-to-video-pro', 'hailuo/02-text-to-video-standard', 'hailuo/02-image-to-video-standard']
+                            
+                            keyboard = []
+                            if is_last:
+                                keyboard = [
+                                    [InlineKeyboardButton("◀️ Назад к истории", callback_data="my_generations")],
+                                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+                                ]
+                            
+                            if is_video:
+                                video_file = io.BytesIO(media_data)
+                                video_file.name = f"generated_video_{i+1}.mp4"
+                                await context.bot.send_video(
+                                    chat_id=update.effective_chat.id,
+                                    video=video_file,
+                                    reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
+                                )
+                            else:
+                                photo_file = io.BytesIO(media_data)
+                                photo_file.name = f"generated_image_{i+1}.png"
+                                await context.bot.send_photo(
+                                    chat_id=update.effective_chat.id,
+                                    photo=photo_file,
+                                    reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
+                                )
+            except Exception as e:
+                logger.error(f"Error sending generation result: {e}")
+        
+        await query.answer("✅ Результаты отправлены")
+        return ConversationHandler.END
+    
+    if data.startswith("gen_repeat:"):
+        # Repeat generation with same parameters
+        gen_id = int(data.split(":")[1])
+        gen = get_generation_by_id(user_id, gen_id)
+        
+        if not gen:
+            await query.answer("❌ Генерация не найдена", show_alert=True)
+            return ConversationHandler.END
+        
+        # Restore session from history
+        model_id = gen.get('model_id')
+        params = gen.get('params', {})
+        model_info = get_model_by_id(model_id)
+        
+        if not model_info:
+            await query.answer("❌ Модель не найдена", show_alert=True)
+            return ConversationHandler.END
+        
+        user_sessions[user_id] = {
+            'model_id': model_id,
+            'model_info': model_info,
+            'params': params.copy(),
+            'properties': model_info.get('input_params', {}),
+            'required': []
+        }
+        
+        # Go directly to confirmation
+        await query.answer("✅ Параметры восстановлены")
+        await query.edit_message_text(
+            "🔄 <b>Повторная генерация</b>\n\n"
+            f"Модель: <b>{model_info.get('name', model_id)}</b>\n"
+            f"Параметры восстановлены из истории.\n\n"
+            "Подтвердите генерацию:",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Генерировать", callback_data="confirm_generate")],
+                [InlineKeyboardButton("◀️ Назад к истории", callback_data="my_generations")],
+                [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+            ]),
+            parse_mode='HTML'
+        )
+        return CONFIRMING_GENERATION
+    
+    if data.startswith("gen_history:"):
+        # Navigate through generation history
+        parts = data.split(":")
+        if len(parts) < 3:
+            await query.answer("❌ Ошибка навигации", show_alert=True)
+            return ConversationHandler.END
+        
+        current_gen_id = int(parts[1])
+        direction = parts[2]  # prev or next
+        
+        history = get_user_generations_history(user_id, limit=100)
+        if not history:
+            await query.answer("❌ История пуста", show_alert=True)
+            return ConversationHandler.END
+        
+        # Find current generation index
+        current_index = -1
+        for i, gen in enumerate(history):
+            if gen.get('id') == current_gen_id:
+                current_index = i
+                break
+        
+        if current_index == -1:
+            await query.answer("❌ Генерация не найдена", show_alert=True)
+            return ConversationHandler.END
+        
+        # Navigate
+        if direction == 'prev' and current_index < len(history) - 1:
+            new_index = current_index + 1
+        elif direction == 'next' and current_index > 0:
+            new_index = current_index - 1
+        else:
+            await query.answer("⚠️ Это первая/последняя генерация", show_alert=True)
+            return ConversationHandler.END
+        
+        gen = history[new_index]
+        from datetime import datetime
+        
+        timestamp = gen.get('timestamp', 0)
+        if timestamp:
+            date_str = datetime.fromtimestamp(timestamp).strftime('%d.%m.%Y %H:%M')
+        else:
+            date_str = 'Неизвестно'
+        
+        model_name = gen.get('model_name', gen.get('model_id', 'Unknown'))
+        result_urls = gen.get('result_urls', [])
+        price = gen.get('price', 0)
+        is_free = gen.get('is_free', False)
+        
+        history_text = (
+            f"📚 <b>Мои генерации</b>\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📊 <b>Всего:</b> {len(history)} генераций\n"
+            f"📍 <b>Показана:</b> {new_index + 1} из {len(history)}\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"🎨 <b>Генерация #{gen.get('id', 1)}</b>\n"
+            f"📅 <b>Дата:</b> {date_str}\n"
+            f"🤖 <b>Модель:</b> {model_name}\n"
+            f"💰 <b>Стоимость:</b> {'🎁 Бесплатно' if is_free else f'{price:.2f} ₽'}\n"
+            f"📦 <b>Результатов:</b> {len(result_urls)}\n\n"
+        )
+        
+        keyboard = []
+        
+        # Navigation buttons
+        keyboard.append([
+            InlineKeyboardButton("◀️ Предыдущая", callback_data=f"gen_history:{gen.get('id', 1)}:prev"),
+            InlineKeyboardButton("Следующая ▶️", callback_data=f"gen_history:{gen.get('id', 1)}:next")
+        ])
+        
+        # Action buttons
+        if result_urls:
+            keyboard.append([
+                InlineKeyboardButton("👁️ Показать результат", callback_data=f"gen_view:{gen.get('id', 1)}")
+            ])
+            keyboard.append([
+                InlineKeyboardButton("🔄 Повторить", callback_data=f"gen_repeat:{gen.get('id', 1)}")
+            ])
+        
+        keyboard.append([InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")])
+        
+        await query.edit_message_text(
+            history_text,
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
@@ -2949,42 +4128,93 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             default_params = {"resolution": "1K"}  # Cheapest option
         elif model_id == "seedream/4.5-text-to-image" or model_id == "seedream/4.5-edit":
             default_params = {"quality": "basic"}  # Basic quality (same price, but for consistency)
+        elif model_id == "topaz/image-upscale":
+            default_params = {"upscale_factor": "1"}  # Cheapest option (1x = ≤2K)
         
         min_price = calculate_price_rub(model_id, default_params, is_admin)
-        price_text = format_price_rub(min_price, is_admin)
+        price_text = get_model_price_text(model_id, default_params, is_admin, user_id)
+        
+        # Check for free generations for z-image
+        is_free_available = is_free_generation_available(user_id, model_id)
+        remaining_free = get_user_free_generations_remaining(user_id) if model_id == FREE_MODEL_ID else 0
         
         # Calculate how many generations available
         if is_admin:
             available_count = "Безлимит"
+        elif is_free_available:
+            # For z-image with free generations, show free count
+            available_count = f"🎁 {remaining_free} бесплатно в день"
         elif user_balance >= min_price:
             available_count = int(user_balance / min_price)
         else:
             available_count = 0
         
-        # Show model info with price and available generations
+        # Show model info with premium formatting
         model_name = model_info.get('name', model_id)
         model_emoji = model_info.get('emoji', '🤖')
         model_desc = model_info.get('description', '')
+        model_category = model_info.get('category', 'Общее')
         
+        # Check if new user for hints
+        is_new = is_new_user(user_id)
+        
+        # Premium formatted model info
         model_info_text = (
-            f"{model_emoji} <b>{model_name}</b>\n\n"
-            f"{model_desc}\n\n"
-            f"💰 <b>Цена генерации:</b> {price_text} ₽\n"
+            f"✨ <b>ПРЕМИУМ МОДЕЛЬ</b> ✨\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"{model_emoji} <b>{model_name}</b>\n"
+            f"📁 <b>Категория:</b> {model_category}\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📝 <b>Описание:</b>\n"
+            f"<i>{model_desc}</i>\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
         )
         
+        # Format price text properly (remove duplicate emoji and formatting)
+        price_display = price_text
+        if price_text.startswith("💰"):
+            price_display = price_text.replace("💰", "").strip()
+        # Remove HTML tags if present but keep the content
+        import re
+        price_display = re.sub(r'<b>(.*?)</b>', r'\1', price_display)
+        price_display = price_display.strip()
+        
+        model_info_text += f"💰 <b>Стоимость:</b> {price_display}\n"
+        
+        # Add hint for new users
+        if is_new and model_id == FREE_MODEL_ID:
+            model_info_text += (
+                f"\n💡 <b>Отлично для начала!</b>\n"
+                f"Эта модель бесплатна для первых {FREE_GENERATIONS_PER_DAY} генераций в день.\n"
+                f"Просто опишите, что хотите создать, и нажмите "Генерировать"!\n\n"
+            )
+        
         if is_admin:
-            model_info_text += f"✅ <b>Доступно:</b> Безлимит\n\n"
+            model_info_text += (
+                f"✅ <b>Доступ:</b> <b>Безлимит</b>\n"
+                f"👑 <b>Статус:</b> Администратор\n\n"
+            )
         else:
-            if available_count > 0:
-                model_info_text += f"✅ <b>Доступно генераций:</b> {available_count}\n"
-                model_info_text += f"💳 <b>Ваш баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n\n"
+            if is_free_available:
+                model_info_text += (
+                    f"🎁 <b>Бесплатно:</b> {remaining_free}/{FREE_GENERATIONS_PER_DAY} в день\n"
+                )
+                if user_balance >= min_price:
+                    paid_count = int(user_balance / min_price)
+                    model_info_text += f"💳 <b>Платных:</b> {paid_count} генераций\n"
+                model_info_text += f"💵 <b>Баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n\n"
+            elif available_count > 0:
+                model_info_text += (
+                    f"✅ <b>Доступно:</b> {available_count} генераций\n"
+                    f"💵 <b>Баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n\n"
+                )
             else:
                 # Not enough balance - show warning
                 model_info_text += (
-                    f"❌ <b>Недостаточно средств</b>\n"
-                    f"💳 <b>Ваш баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n"
-                    f"💵 <b>Требуется:</b> {price_text} ₽\n\n"
-                    f"Пополните баланс для генерации."
+                    f"\n❌ <b>Недостаточно средств</b>\n\n"
+                    f"💵 <b>Ваш баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n"
+                    f"💰 <b>Требуется:</b> {format_price_rub(min_price, is_admin)} ₽\n\n"
+                    f"💡 Пополните баланс для генерации"
                 )
                 
                 keyboard = [
@@ -2999,8 +4229,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 return ConversationHandler.END
         
-        # Check balance before starting generation
-        if not is_admin and user_balance < min_price:
+        # Check balance before starting generation (but allow free generations)
+        if not is_admin and not is_free_available and user_balance < min_price:
             keyboard = [
                 [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
                 [InlineKeyboardButton("◀️ Назад к моделям", callback_data="back_to_menu")]
@@ -3106,9 +4336,7 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                     [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
                 ]
                 
-                # Get model_id from session for better descriptions
-                model_id = session.get('model_id', '')
-                param_desc = get_user_friendly_param_description(param_name, param_info, model_id)
+                param_desc = param_info.get('description', '')
                 chat_id = None
                 if hasattr(update, 'effective_chat') and update.effective_chat:
                     chat_id = update.effective_chat.id
@@ -3123,7 +4351,7 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                 
                 await context.bot.send_message(
                     chat_id=chat_id,
-                    text=f"📝 <b>Выберите {param_name}:</b>\n\n{param_desc}\n\n💡 <b>По умолчанию:</b> {'Да' if default_value else 'Нет'}",
+                    text=f"📝 <b>Выберите {param_name}:</b>\n\n{param_desc}\n\nПо умолчанию: {'Да' if default_value else 'Нет'}",
                     reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
                 )
@@ -3146,9 +4374,7 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                     keyboard.append(row)
                 keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data="cancel")])
                 
-                # Get model_id from session for better descriptions
-                model_id = session.get('model_id', '')
-                param_desc = get_user_friendly_param_description(param_name, param_info, model_id)
+                param_desc = param_info.get('description', '')
                 # Get chat_id from update
                 chat_id = None
                 if hasattr(update, 'effective_chat') and update.effective_chat:
@@ -3171,11 +4397,9 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                 return INPUTTING_PARAMS
             else:
                 # Text input
-                # Get model_id from session for better descriptions
-                model_id = session.get('model_id', '')
-                param_desc = get_user_friendly_param_description(param_name, param_info, model_id)
+                param_desc = param_info.get('description', '')
                 max_length = param_info.get('max_length')
-                max_text = f"\n\n⚠️ <b>Максимум {max_length} символов.</b>" if max_length else ""
+                max_text = f"\n\nМаксимум {max_length} символов." if max_length else ""
                 
                 # Get chat_id from update
                 chat_id = None
@@ -3205,15 +4429,6 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
 async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle parameter input."""
     user_id = update.effective_user.id
-    
-    # Check flood protection
-    flood_check = check_flood_protection(user_id)
-    if not flood_check['allowed']:
-        await update.message.reply_text(
-            flood_check['message'],
-            parse_mode='HTML'
-        )
-        return ConversationHandler.END
     
     # Handle admin OCR test
     if user_id == ADMIN_ID and user_id in user_sessions and user_sessions[user_id].get('waiting_for') == 'admin_test_ocr':
@@ -3365,31 +4580,80 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return ADMIN_TEST_OCR
     
-    # Handle payment screenshot
-    # Handle promo code input
-    if user_id in user_sessions and user_sessions[user_id].get('waiting_for') == 'promocode':
-        promocode_text = update.message.text.strip()
+    # Handle broadcast message
+    if user_id == ADMIN_ID and user_id in user_sessions and user_sessions[user_id].get('waiting_for') == 'broadcast_message':
+        import time
+        from datetime import datetime
         
-        # Activate promo code
-        result = activate_promocode(user_id, promocode_text)
+        # Get message content
+        message_text = None
+        message_photo = None
         
-        keyboard = [
-            [InlineKeyboardButton("💰 Проверить баланс", callback_data="check_balance")],
-            [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
-        ]
+        if update.message.text:
+            message_text = update.message.text
+        elif update.message.caption:
+            message_text = update.message.caption
         
+        if update.message.photo:
+            message_photo = update.message.photo[-1]
+        
+        if not message_text and not message_photo:
+            await update.message.reply_text(
+                "❌ <b>Ошибка</b>\n\n"
+                "Отправьте текст или изображение для рассылки.\n\n"
+                "Или нажмите /cancel для отмены.",
+                parse_mode='HTML'
+            )
+            return WAITING_BROADCAST_MESSAGE
+        
+        # Get all users
+        all_users = get_all_users()
+        total_users = len(all_users)
+        
+        if total_users == 0:
+            await update.message.reply_text(
+                "❌ <b>Нет пользователей для рассылки</b>\n\n"
+                "В базе нет пользователей.",
+                parse_mode='HTML'
+            )
+            if user_id in user_sessions:
+                del user_sessions[user_id]['waiting_for']
+            return ConversationHandler.END
+        
+        # Create broadcast record
+        broadcast_data = {
+            'id': len(get_broadcasts()) + 1,
+            'message': message_text or '[Изображение]',
+            'created_at': int(time.time()),
+            'created_by': user_id,
+            'total_users': total_users,
+            'sent': 0,
+            'delivered': 0,
+            'failed': 0,
+            'user_ids': []
+        }
+        
+        broadcast_id = save_broadcast(broadcast_data)
+        
+        # Confirm and start sending
         await update.message.reply_text(
-            result['message'],
-            reply_markup=InlineKeyboardMarkup(keyboard),
+            f"📢 <b>Рассылка создана!</b>\n\n"
+            f"👥 <b>Получателей:</b> {total_users}\n"
+            f"📝 <b>Сообщение:</b> {message_text[:50] + '...' if message_text and len(message_text) > 50 else message_text or '[Изображение]'}\n\n"
+            f"⏳ Начинаю отправку...",
             parse_mode='HTML'
         )
         
         # Clear waiting state
         if user_id in user_sessions:
-            user_sessions[user_id]['waiting_for'] = None
+            del user_sessions[user_id]['waiting_for']
+        
+        # Start broadcast in background
+        asyncio.create_task(send_broadcast(context, broadcast_id, all_users, message_text, message_photo))
         
         return ConversationHandler.END
     
+    # Handle payment screenshot
     if user_id in user_sessions and user_sessions[user_id].get('waiting_for') == 'payment_screenshot':
         if update.message.photo:
             # User sent payment screenshot
@@ -3863,27 +5127,25 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             if user_balance < price:
                 price_str = f"{price:.2f}".rstrip('0').rstrip('.')
                 balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
-            
-            # Create keyboard with topup button
-            keyboard = [
-                [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
-                [InlineKeyboardButton("💰 Проверить баланс", callback_data="check_balance")],
-                [InlineKeyboardButton("◀️ Назад к моделям", callback_data="back_to_menu")]
-            ]
-            
-            await query.edit_message_text(
-                f"❌ <b>Недостаточно средств для генерации</b>\n\n"
-                f"💵 <b>Требуется:</b> {price_str} ₽\n"
-                f"💳 <b>Ваш баланс:</b> {balance_str} ₽\n\n"
-                f"⚠️ <b>Генерация не будет выполнена</b> до пополнения баланса.\n\n"
-                f"Пополните баланс, чтобы продолжить.",
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
-            # Clean up session to prevent generation
-            if user_id in user_sessions:
-                del user_sessions[user_id]
-            return ConversationHandler.END
+                remaining_free = get_user_free_generations_remaining(user_id)
+                
+                error_text = (
+                    f"❌ <b>Недостаточно средств</b>\n\n"
+                    f"💰 <b>Требуется:</b> {price_str} ₽\n"
+                    f"💳 <b>Ваш баланс:</b> {balance_str} ₽\n\n"
+                )
+                
+                if model_id == FREE_MODEL_ID and remaining_free > 0:
+                    error_text += f"🎁 <b>Но у вас есть {remaining_free} бесплатных генераций!</b>\n\n"
+                    error_text += "Попробуйте снова - бесплатная генерация будет использована автоматически."
+                else:
+                    error_text += "Пополните баланс для продолжения."
+                
+                await query.edit_message_text(
+                    error_text,
+                    parse_mode='HTML'
+                )
+                return ConversationHandler.END
     elif user_id != ADMIN_ID:
         # Limited admin - check limit
         remaining = get_admin_remaining(user_id)
@@ -3906,11 +5168,244 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await query.edit_message_text("🔄 Создаю задачу генерации... Пожалуйста, подождите.")
     
     try:
-        # Prepare params for API (convert image_input to image_urls if needed for seedream/4.5-edit)
+        # Prepare params for API (convert image_input to appropriate parameter name if needed)
         api_params = params.copy()
         if model_id == "seedream/4.5-edit" and 'image_input' in api_params:
             # Convert image_input to image_urls for seedream/4.5-edit
             api_params['image_urls'] = api_params.pop('image_input')
+        elif model_id == "kling-2.6/image-to-video" and 'image_input' in api_params:
+            # Convert image_input to image_urls for kling-2.6/image-to-video
+            api_params['image_urls'] = api_params.pop('image_input')
+        elif model_id == "flux-2/pro-image-to-image" and 'image_input' in api_params:
+            # Convert image_input to input_urls for flux-2/pro-image-to-image
+            api_params['input_urls'] = api_params.pop('image_input')
+        elif model_id == "flux-2/flex-image-to-image" and 'image_input' in api_params:
+            # Convert image_input to input_urls for flux-2/flex-image-to-image
+            api_params['input_urls'] = api_params.pop('image_input')
+        elif model_id == "topaz/image-upscale" and 'image_input' in api_params:
+            # Convert image_input to image_url for topaz/image-upscale (single image, not array)
+            image_input = api_params.pop('image_input')
+            if isinstance(image_input, list) and len(image_input) > 0:
+                api_params['image_url'] = image_input[0]  # Take first image
+            elif isinstance(image_input, str):
+                api_params['image_url'] = image_input
+        elif model_id == "kling/v2-5-turbo-image-to-video-pro" and 'image_input' in api_params:
+            # Convert image_input to image_url for kling/v2-5-turbo-image-to-video-pro
+            image_input = api_params.pop('image_input')
+            if isinstance(image_input, list) and len(image_input) > 0:
+                api_params['image_url'] = image_input[0]  # Take first image
+            elif isinstance(image_input, str):
+                api_params['image_url'] = image_input
+        elif model_id == "wan/2-5-image-to-video" and 'image_input' in api_params:
+            # Convert image_input to image_url for wan/2-5-image-to-video
+            image_input = api_params.pop('image_input')
+            if isinstance(image_input, list) and len(image_input) > 0:
+                api_params['image_url'] = image_input[0]  # Take first image
+            elif isinstance(image_input, str):
+                api_params['image_url'] = image_input
+        elif model_id == "hailuo/02-image-to-video-pro" and 'image_input' in api_params:
+            # Convert image_input to image_url for hailuo/02-image-to-video-pro
+            image_input = api_params.pop('image_input')
+            if isinstance(image_input, list) and len(image_input) > 0:
+                api_params['image_url'] = image_input[0]  # Take first image
+            elif isinstance(image_input, str):
+                api_params['image_url'] = image_input
+        elif model_id == "hailuo/02-image-to-video-standard" and 'image_input' in api_params:
+            # Convert image_input to image_url for hailuo/02-image-to-video-standard
+            image_input = api_params.pop('image_input')
+            if isinstance(image_input, list) and len(image_input) > 0:
+                api_params['image_url'] = image_input[0]  # Take first image
+            elif isinstance(image_input, str):
+                api_params['image_url'] = image_input
+        elif model_id == "bytedance/seedream-v4-edit" and 'image_input' in api_params:
+            # Convert image_input to image_urls for bytedance/seedream-v4-edit
+            api_params['image_urls'] = api_params.pop('image_input')
+        elif model_id == "topaz/video-upscale" and 'video_input' in api_params:
+            # Convert video_input to video_url for topaz/video-upscale
+            video_input = api_params.pop('video_input')
+            if isinstance(video_input, list) and len(video_input) > 0:
+                api_params['video_url'] = video_input[0]  # Take first video
+            elif isinstance(video_input, str):
+                api_params['video_url'] = video_input
+        elif model_id == "wan/2-2-animate-move" or model_id == "wan/2-2-animate-replace":
+            # Convert video_input and image_input for wan/2-2-animate models
+            if 'video_input' in api_params:
+                video_input = api_params.pop('video_input')
+                if isinstance(video_input, list) and len(video_input) > 0:
+                    api_params['video_url'] = video_input[0]
+                elif isinstance(video_input, str):
+                    api_params['video_url'] = video_input
+            if 'image_input' in api_params:
+                image_input = api_params.pop('image_input')
+                if isinstance(image_input, list) and len(image_input) > 0:
+                    api_params['image_url'] = image_input[0]
+                elif isinstance(image_input, str):
+                    api_params['image_url'] = image_input
+        elif model_id == "kling/v1-avatar-standard" or model_id == "kling/ai-avatar-v1-pro":
+            # Convert image_input and audio_input for kling avatar models
+            if 'image_input' in api_params:
+                image_input = api_params.pop('image_input')
+                if isinstance(image_input, list) and len(image_input) > 0:
+                    api_params['image_url'] = image_input[0]
+                elif isinstance(image_input, str):
+                    api_params['image_url'] = image_input
+            if 'audio_input' in api_params:
+                audio_input = api_params.pop('audio_input')
+                if isinstance(audio_input, list) and len(audio_input) > 0:
+                    api_params['audio_url'] = audio_input[0]
+                elif isinstance(audio_input, str):
+                    api_params['audio_url'] = audio_input
+        elif model_id == "infinitalk/from-audio":
+            # Convert image_input and audio_input for infinitalk/from-audio
+            if 'image_input' in api_params:
+                image_input = api_params.pop('image_input')
+                if isinstance(image_input, list) and len(image_input) > 0:
+                    api_params['image_url'] = image_input[0]
+                elif isinstance(image_input, str):
+                    api_params['image_url'] = image_input
+            if 'audio_input' in api_params:
+                audio_input = api_params.pop('audio_input')
+                if isinstance(audio_input, list) and len(audio_input) > 0:
+                    api_params['audio_url'] = audio_input[0]
+                elif isinstance(audio_input, str):
+                    api_params['audio_url'] = audio_input
+        elif model_id == "recraft/remove-background" and 'image_input' in api_params:
+            # Convert image_input to image for recraft/remove-background
+            image_input = api_params.pop('image_input')
+            if isinstance(image_input, list) and len(image_input) > 0:
+                api_params['image'] = image_input[0]
+            elif isinstance(image_input, str):
+                api_params['image'] = image_input
+        elif model_id == "recraft/crisp-upscale" and 'image_input' in api_params:
+            # Convert image_input to image for recraft/crisp-upscale
+            image_input = api_params.pop('image_input')
+            if isinstance(image_input, list) and len(image_input) > 0:
+                api_params['image'] = image_input[0]
+            elif isinstance(image_input, str):
+                api_params['image'] = image_input
+        elif model_id == "ideogram/v3-reframe" and 'image_input' in api_params:
+            # Convert image_input to image_url for ideogram/v3-reframe
+            image_input = api_params.pop('image_input')
+            if isinstance(image_input, list) and len(image_input) > 0:
+                api_params['image_url'] = image_input[0]
+            elif isinstance(image_input, str):
+                api_params['image_url'] = image_input
+        elif model_id == "ideogram/v3-edit":
+            # Convert image_input and mask_input for ideogram/v3-edit
+            if 'image_input' in api_params:
+                image_input = api_params.pop('image_input')
+                if isinstance(image_input, list) and len(image_input) > 0:
+                    api_params['image_url'] = image_input[0]
+                elif isinstance(image_input, str):
+                    api_params['image_url'] = image_input
+            if 'mask_input' in api_params:
+                mask_input = api_params.pop('mask_input')
+                if isinstance(mask_input, list) and len(mask_input) > 0:
+                    api_params['mask_url'] = mask_input[0]
+                elif isinstance(mask_input, str):
+                    api_params['mask_url'] = mask_input
+        elif model_id == "ideogram/v3-remix":
+            # Convert image_input to image_url for ideogram/v3-remix
+            if 'image_input' in api_params:
+                image_input = api_params.pop('image_input')
+                if isinstance(image_input, list) and len(image_input) > 0:
+                    api_params['image_url'] = image_input[0]
+                elif isinstance(image_input, str):
+                    api_params['image_url'] = image_input
+        elif model_id == "bytedance/v1-pro-fast-image-to-video":
+            # Convert image_input to image_url for bytedance/v1-pro-fast-image-to-video
+            if 'image_input' in api_params:
+                image_input = api_params.pop('image_input')
+                if isinstance(image_input, list) and len(image_input) > 0:
+                    api_params['image_url'] = image_input[0]
+                elif isinstance(image_input, str):
+                    api_params['image_url'] = image_input
+        elif model_id == "kling/v2-1-master-image-to-video" or model_id == "kling/v2-1-standard" or model_id == "kling/v2-1-pro":
+            # Convert image_input to image_url for kling/v2-1 models
+            if 'image_input' in api_params:
+                image_input = api_params.pop('image_input')
+                if isinstance(image_input, list) and len(image_input) > 0:
+                    api_params['image_url'] = image_input[0]
+                elif isinstance(image_input, str):
+                    api_params['image_url'] = image_input
+        elif model_id == "wan/2-2-a14b-image-to-video-turbo":
+            # Convert image_input to image_url for wan/2-2-a14b-image-to-video-turbo
+            if 'image_input' in api_params:
+                image_input = api_params.pop('image_input')
+                if isinstance(image_input, list) and len(image_input) > 0:
+                    api_params['image_url'] = image_input[0]
+                elif isinstance(image_input, str):
+                    api_params['image_url'] = image_input
+        elif model_id == "wan/2-2-a14b-speech-to-video-turbo":
+            # Convert image_input and audio_input for wan/2-2-a14b-speech-to-video-turbo
+            if 'image_input' in api_params:
+                image_input = api_params.pop('image_input')
+                if isinstance(image_input, list) and len(image_input) > 0:
+                    api_params['image_url'] = image_input[0]
+                elif isinstance(image_input, str):
+                    api_params['image_url'] = image_input
+            if 'audio_input' in api_params:
+                audio_input = api_params.pop('audio_input')
+                if isinstance(audio_input, list) and len(audio_input) > 0:
+                    api_params['audio_url'] = audio_input[0]
+                elif isinstance(audio_input, str):
+                    api_params['audio_url'] = audio_input
+        elif model_id == "qwen/image-to-image" and 'image_input' in api_params:
+            # Convert image_input to image_url for qwen/image-to-image
+            image_input = api_params.pop('image_input')
+            if isinstance(image_input, list) and len(image_input) > 0:
+                api_params['image_url'] = image_input[0]
+            elif isinstance(image_input, str):
+                api_params['image_url'] = image_input
+        elif model_id == "qwen/image-edit" and 'image_input' in api_params:
+            # Convert image_input to image_url for qwen/image-edit
+            image_input = api_params.pop('image_input')
+            if isinstance(image_input, list) and len(image_input) > 0:
+                api_params['image_url'] = image_input[0]
+            elif isinstance(image_input, str):
+                api_params['image_url'] = image_input
+        elif model_id == "ideogram/character-edit":
+            # Convert image_input, mask_input, and reference_image_input for ideogram/character-edit
+            if 'image_input' in api_params:
+                image_input = api_params.pop('image_input')
+                if isinstance(image_input, list) and len(image_input) > 0:
+                    api_params['image_url'] = image_input[0]
+                elif isinstance(image_input, str):
+                    api_params['image_url'] = image_input
+            if 'mask_input' in api_params:
+                mask_input = api_params.pop('mask_input')
+                if isinstance(mask_input, list) and len(mask_input) > 0:
+                    api_params['mask_url'] = mask_input[0]
+                elif isinstance(mask_input, str):
+                    api_params['mask_url'] = mask_input
+            if 'reference_image_input' in api_params:
+                reference_image_input = api_params.pop('reference_image_input')
+                if isinstance(reference_image_input, list):
+                    api_params['reference_image_urls'] = reference_image_input
+                elif isinstance(reference_image_input, str):
+                    api_params['reference_image_urls'] = [reference_image_input]
+        elif model_id == "ideogram/character-remix":
+            # Convert image_input and reference_image_input for ideogram/character-remix
+            if 'image_input' in api_params:
+                image_input = api_params.pop('image_input')
+                if isinstance(image_input, list) and len(image_input) > 0:
+                    api_params['image_url'] = image_input[0]
+                elif isinstance(image_input, str):
+                    api_params['image_url'] = image_input
+            if 'reference_image_input' in api_params:
+                reference_image_input = api_params.pop('reference_image_input')
+                if isinstance(reference_image_input, list):
+                    api_params['reference_image_urls'] = reference_image_input
+                elif isinstance(reference_image_input, str):
+                    api_params['reference_image_urls'] = [reference_image_input]
+        elif model_id == "ideogram/character":
+            # Convert reference_image_input for ideogram/character
+            if 'reference_image_input' in api_params:
+                reference_image_input = api_params.pop('reference_image_input')
+                if isinstance(reference_image_input, list):
+                    api_params['reference_image_urls'] = reference_image_input
+                elif isinstance(reference_image_input, str):
+                    api_params['reference_image_urls'] = [reference_image_input]
         
         # Create task (for async models like z-image)
         result = await kie.create_task(model_id, api_params)
@@ -3922,6 +5417,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             session['task_id'] = task_id
             session['poll_attempts'] = 0
             session['max_poll_attempts'] = 60  # Poll for up to 5 minutes (60 * 5 seconds)
+            session['is_free_generation'] = is_free  # Store if this is a free generation
             
             # Show Task ID only for admin
             if is_admin_user:
@@ -4011,9 +5507,8 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                     model_id = session.get('model_id', '')
                     params = session.get('params', {})
                     is_admin_user = get_is_admin(user_id)
+                    is_free = session.get('is_free_generation', False)
                     
-                    # Check if this is a free generation
-                    is_free = is_free_generation_available(user_id, model_id)
                     if is_free:
                         # Use free generation
                         if use_free_generation(user_id):
@@ -4034,29 +5529,7 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                             add_admin_spent(user_id, price)
                         else:
                             # Regular user - deduct from balance
-                            # Double-check balance before deducting (safety check)
-                            current_balance = get_user_balance(user_id)
-                            if current_balance >= price:
-                                success = subtract_user_balance(user_id, price)
-                                if not success:
-                                    logger.warning(f"Failed to deduct balance for user {user_id}. Balance: {current_balance}, Price: {price}")
-                                    await context.bot.send_message(
-                                        chat_id=update.effective_chat.id,
-                                        text=f"⚠️ <b>Ошибка списания баланса</b>\n\n"
-                                             f"Обратитесь к администратору.",
-                                        parse_mode='HTML'
-                                    )
-                            else:
-                                logger.warning(f"Insufficient balance for user {user_id}. Balance: {current_balance}, Price: {price}")
-                                await context.bot.send_message(
-                                    chat_id=update.effective_chat.id,
-                                    text=f"❌ <b>Недостаточно средств</b>\n\n"
-                                         f"💳 <b>Ваш баланс:</b> {format_price_rub(current_balance, False)} ₽\n"
-                                         f"💵 <b>Требуется:</b> {format_price_rub(price, False)} ₽\n\n"
-                                         f"Пополните баланс для получения результата.",
-                                    parse_mode='HTML'
-                                )
-                                return  # Don't send results if balance is insufficient
+                            subtract_user_balance(user_id, price)
                 
                 # Task completed successfully
                 result_json = status_result.get('resultJson', '{}')
@@ -4065,16 +5538,7 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                     result_data = json.loads(result_json)
                     
                     # Determine if this is a video model
-                    is_video_model = model_id in [
-                        'sora-2-text-to-video', 
-                        'sora-watermark-remover',
-                        'bytedance/v1-pro-fast-image-to-video',
-                        'grok-imagine/image-to-video',
-                        'grok-imagine/text-to-video',
-                        'grok-imagine/upscale',
-                        'hailuo/2-3-image-to-video-pro',
-                        'hailuo/2-3-image-to-video-standard'
-                    ]
+                    is_video_model = model_id in ['sora-2-text-to-video', 'sora-watermark-remover', 'kling-2.6/image-to-video', 'kling-2.6/text-to-video', 'kling/v2-5-turbo-text-to-video-pro', 'kling/v2-5-turbo-image-to-video-pro', 'wan/2-5-image-to-video', 'wan/2-5-text-to-video', 'wan/2-2-animate-move', 'wan/2-2-animate-replace', 'hailuo/02-text-to-video-pro', 'hailuo/02-image-to-video-pro', 'hailuo/02-text-to-video-standard', 'hailuo/02-image-to-video-standard', 'topaz/video-upscale', 'kling/v1-avatar-standard', 'kling/ai-avatar-v1-pro', 'infinitalk/from-audio', 'wan/2-2-a14b-speech-to-video-turbo', 'bytedance/v1-pro-fast-image-to-video', 'kling/v2-1-master-image-to-video', 'kling/v2-1-standard', 'kling/v2-1-pro', 'kling/v2-1-master-text-to-video', 'wan/2-2-a14b-text-to-video-turbo', 'wan/2-2-a14b-image-to-video-turbo']
                     
                     # For sora-2-text-to-video, check remove_watermark parameter
                     if model_id == 'sora-2-text-to-video':
@@ -4092,8 +5556,24 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                         # For other models, use resultUrls
                         result_urls = result_data.get('resultUrls', [])
                     
+                    # Save to history
+                    if result_urls and model_id:
+                        model_info = saved_session_data.get('model_info', {}) if saved_session_data else {}
+                        model_name = model_info.get('name', model_id)
+                        save_generation_to_history(
+                            user_id=user_id,
+                            model_id=model_id,
+                            model_name=model_name,
+                            params=params.copy(),
+                            result_urls=result_urls.copy(),
+                            task_id=task_id,
+                            price=price,
+                            is_free=is_free
+                        )
+                    
                     # Prepare buttons for last message
                     keyboard = [
+                        [InlineKeyboardButton("📚 Мои генерации", callback_data="my_generations")],
                         [InlineKeyboardButton("◀️ Вернуться в меню", callback_data="back_to_menu")]
                     ]
                     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -4355,60 +5835,81 @@ async def check_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_admin_user = get_is_admin(user_id)
     is_main_admin = (user_id == ADMIN_ID)
     
-    if is_main_admin:
-        # Main admin - show KIE API balance
-        try:
-            result = await kie.get_credits()
-            
-            if result.get('ok'):
-                credits = result.get('credits', 0)
-                # Convert credits to rubles (no rounding)
-                credits_rub = credits * CREDIT_TO_USD * USD_TO_RUB
-                credits_rub_str = f"{credits_rub:.2f}".rstrip('0').rstrip('.')
-                
-                await update.message.reply_text(
-                    f'💳 <b>Баланс KIE API:</b> {credits_rub_str} ₽\n'
-                    f'<i>({credits} кредитов)</i>\n\n'
-                    f'👑 <b>Безлимитный доступ</b> ко всем генерациям.',
-                    parse_mode='HTML'
-                )
-            else:
-                error = result.get('error', 'Unknown error')
-                await update.message.reply_text(
-                    f'❌ <b>Ошибка проверки баланса:</b>\n{error}',
-                    parse_mode='HTML'
-                )
-        except Exception as e:
-            logger.error(f"Error checking balance: {e}")
-            await update.message.reply_text(f'❌ Ошибка: {str(e)}')
-    elif is_admin_user:
+    # Get user balance
+    user_balance = get_user_balance(user_id)
+    
+    # Check if limited admin
+    is_limited_admin = is_admin(user_id) and not is_main_admin
+    balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
+    
+    if is_limited_admin:
         # Limited admin - show limit info
         limit = get_admin_limit(user_id)
         spent = get_admin_spent(user_id)
         remaining = get_admin_remaining(user_id)
+        keyboard = [
+            [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
+        ]
         
         await update.message.reply_text(
-            f'👑 <b>Баланс администратора:</b>\n\n'
+            f'👑 <b>Админ с лимитом</b>\n\n'
             f'💳 <b>Лимит:</b> {limit:.2f} ₽\n'
             f'💸 <b>Потрачено:</b> {spent:.2f} ₽\n'
-            f'✅ <b>Осталось:</b> {remaining:.2f} ₽',
+            f'✅ <b>Осталось:</b> {remaining:.2f} ₽\n\n'
+            f'💰 <b>Баланс пользователя:</b> {balance_str} ₽',
+            reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
+    elif is_main_admin:
+        # Main admin sees both user balance and KIE credits
+        try:
+            result = await kie.get_credits()
+            if result.get('ok'):
+                credits = result.get('credits', 0)
+                credits_rub = credits * CREDIT_TO_USD * USD_TO_RUB
+                credits_rub_str = f"{credits_rub:.2f}".rstrip('0').rstrip('.')
+                keyboard = [
+                    [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
+                    [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
+                ]
+                
+                await update.message.reply_text(
+                    f'💳 <b>Ваш баланс:</b> {balance_str} ₽\n\n'
+                    f'🔧 <b>API баланс:</b> {credits_rub_str} ₽\n'
+                    f'<i>({credits} кредитов)</i>',
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+            else:
+                await update.message.reply_text(
+                    f'💳 <b>Ваш баланс:</b> {balance_str} ₽\n\n'
+                    f'⚠️ API баланс недоступен',
+                    parse_mode='HTML'
+                )
+        except Exception as e:
+            logger.error(f"Error checking KIE balance: {e}")
+            await update.message.reply_text(
+                f'💳 <b>Ваш баланс:</b> {balance_str} ₽\n\n'
+                    f'⚠️ API баланс недоступен',
+                parse_mode='HTML'
+            )
     else:
-        # Regular user - show user balance from user_balances.json
-        user_balance = get_user_balance(user_id)
-        balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
-        
+        # Regular user sees only their balance
         # Check for free generations
         remaining_free = get_user_free_generations_remaining(user_id)
-        total_free = FREE_GENERATIONS_PER_DAY + get_free_generations_data().get(str(user_id), {}).get('bonus', 0)
         free_info = ""
         if remaining_free > 0:
-            free_info = f"\n\n🎁 <b>Бесплатные генерации:</b> {remaining_free}/{total_free} в день"
+            free_info = f"\n\n🎁 <b>Бесплатные генерации:</b> {remaining_free}/{FREE_GENERATIONS_PER_DAY} в день (модель Z-Image)"
+        
+        keyboard = [
+            [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
+            [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
+        ]
         
         await update.message.reply_text(
             f'💳 <b>Баланс:</b> {balance_str} ₽{free_info}\n\n'
             f'Доступно для генерации контента.',
+            reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
 
@@ -4472,7 +5973,7 @@ async def ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         output = result
                     response = f'Вопрос: {question}\n\nОтвет:\n{output}'
                 else:
-                    response = f'Вопрос: {question}\n\nОшибка KIE: {kie_resp.get("error")}'
+                    response = f'Вопрос: {question}\n\nОшибка API: {kie_resp.get("error")}'
             except Exception as e:
                 response = f'Вопрос: {question}\n\nОшибка: {e}'
         else:
@@ -4523,6 +6024,7 @@ def main():
             CallbackQueryHandler(button_callback, pattern='^show_models$'),
             CallbackQueryHandler(button_callback, pattern='^category:'),
             CallbackQueryHandler(button_callback, pattern='^all_models$'),
+            CallbackQueryHandler(button_callback, pattern='^gen_type:'),
             CallbackQueryHandler(button_callback, pattern='^check_balance$'),
             CallbackQueryHandler(button_callback, pattern='^help_menu$'),
             CallbackQueryHandler(button_callback, pattern='^support_contact$'),
@@ -4531,6 +6033,10 @@ def main():
             CallbackQueryHandler(button_callback, pattern='^admin_settings$'),
             CallbackQueryHandler(button_callback, pattern='^admin_search$'),
             CallbackQueryHandler(button_callback, pattern='^admin_add$'),
+            CallbackQueryHandler(button_callback, pattern='^admin_promocodes$'),
+            CallbackQueryHandler(button_callback, pattern='^admin_broadcast$'),
+            CallbackQueryHandler(button_callback, pattern='^admin_create_broadcast$'),
+            CallbackQueryHandler(button_callback, pattern='^admin_broadcast_stats$'),
             CallbackQueryHandler(button_callback, pattern='^admin_test_ocr$'),
             CallbackQueryHandler(button_callback, pattern='^admin_user_mode$'),
             CallbackQueryHandler(button_callback, pattern='^admin_back_to_admin$'),
@@ -4539,12 +6045,13 @@ def main():
             CallbackQueryHandler(button_callback, pattern='^topup_amount:'),
             CallbackQueryHandler(button_callback, pattern='^topup_custom$'),
             CallbackQueryHandler(button_callback, pattern='^generate_again$'),
-            CallbackQueryHandler(button_callback, pattern='^activate_promo$'),
-            CallbackQueryHandler(button_callback, pattern='^admin_promocodes$'),
-            CallbackQueryHandler(button_callback, pattern='^admin_create_promo$'),
-            CallbackQueryHandler(button_callback, pattern='^admin_list_promos$'),
-            CallbackQueryHandler(button_callback, pattern='^admin_delete_promo:'),
-            CallbackQueryHandler(button_callback, pattern='^admin_toggle_promo:')
+            CallbackQueryHandler(button_callback, pattern='^my_generations$'),
+            CallbackQueryHandler(button_callback, pattern='^gen_view:'),
+            CallbackQueryHandler(button_callback, pattern='^gen_repeat:'),
+            CallbackQueryHandler(button_callback, pattern='^gen_history:'),
+            CallbackQueryHandler(button_callback, pattern='^tutorial_start$'),
+            CallbackQueryHandler(button_callback, pattern='^tutorial_step'),
+            CallbackQueryHandler(button_callback, pattern='^tutorial_complete$')
         ],
         states={
             SELECTING_MODEL: [
@@ -4552,14 +6059,29 @@ def main():
                 CallbackQueryHandler(button_callback, pattern='^show_models$'),
                 CallbackQueryHandler(button_callback, pattern='^category:'),
                 CallbackQueryHandler(button_callback, pattern='^all_models$'),
+                CallbackQueryHandler(button_callback, pattern='^gen_type:'),
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
                 CallbackQueryHandler(button_callback, pattern='^generate_again$'),
+                CallbackQueryHandler(button_callback, pattern='^my_generations$'),
+                CallbackQueryHandler(button_callback, pattern='^gen_view:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_repeat:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_history:'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_start$'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_step'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_complete$'),
                 CallbackQueryHandler(button_callback, pattern='^cancel$')
             ],
             CONFIRMING_GENERATION: [
                 CallbackQueryHandler(confirm_generation, pattern='^confirm_generate$'),
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
                 CallbackQueryHandler(button_callback, pattern='^generate_again$'),
+                CallbackQueryHandler(button_callback, pattern='^my_generations$'),
+                CallbackQueryHandler(button_callback, pattern='^gen_view:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_repeat:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_history:'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_start$'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_step'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_complete$'),
                 CallbackQueryHandler(button_callback, pattern='^cancel$')
             ],
             INPUTTING_PARAMS: [
@@ -4571,6 +6093,13 @@ def main():
                 CallbackQueryHandler(button_callback, pattern='^image_done$'),
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
                 CallbackQueryHandler(button_callback, pattern='^generate_again$'),
+                CallbackQueryHandler(button_callback, pattern='^my_generations$'),
+                CallbackQueryHandler(button_callback, pattern='^gen_view:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_repeat:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_history:'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_start$'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_step'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_complete$'),
                 CallbackQueryHandler(button_callback, pattern='^cancel$')
             ],
             SELECTING_AMOUNT: [
@@ -4588,16 +6117,16 @@ def main():
                 CallbackQueryHandler(button_callback, pattern='^generate_again$'),
                 CallbackQueryHandler(button_callback, pattern='^cancel$')
             ],
-            WAITING_PROMOCODE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, input_parameters),
-                CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
-                CallbackQueryHandler(button_callback, pattern='^cancel$')
-            ],
             ADMIN_TEST_OCR: [
                 MessageHandler(filters.PHOTO, input_parameters),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, input_parameters),
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
                 CallbackQueryHandler(button_callback, pattern='^generate_again$'),
+                CallbackQueryHandler(button_callback, pattern='^cancel$')
+            ],
+            WAITING_BROADCAST_MESSAGE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, input_parameters),
+                MessageHandler(filters.PHOTO, input_parameters),
                 CallbackQueryHandler(button_callback, pattern='^cancel$')
             ]
         },
@@ -4688,8 +6217,7 @@ def main():
     
     async def admin_user_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Check user balance (admin only)."""
-        user_id = update.effective_user.id
-        if not get_is_admin(user_id):
+        if update.effective_user.id != ADMIN_ID:
             await update.message.reply_text("❌ Эта команда доступна только администратору.")
             return
         
@@ -4801,4 +6329,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 

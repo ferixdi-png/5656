@@ -8,8 +8,6 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     python3 \
     python3-pip \
     curl \
-    tesseract-ocr \
-    tesseract-ocr-rus \
     && rm -rf /var/lib/apt/lists/*
 
 # Create symlink for python command
@@ -19,14 +17,13 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 COPY package*.json ./
 
 # Install Node.js dependencies
-RUN npm install --omit=dev
+RUN npm ci --only=production
 
 # Copy Python requirements
 COPY requirements.txt ./
 
 # Install Python dependencies
-# Note: Running as root in Docker is safe and normal
-RUN pip3 install --no-cache-dir --break-system-packages --root-user-action=ignore -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Copy all application files
 COPY . .
