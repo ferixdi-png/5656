@@ -2419,54 +2419,54 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео'
                     )
                 else:
-                online_count = get_fake_online_count()
-                referral_bonus_text = ""
-                if referrals_count > 0:
-                    referral_bonus_text = (
-                        f"\n🎁 <b>Отлично!</b> Ты пригласил <b>{referrals_count}</b> друзей\n"
-                        f"   → Получено <b>+{referrals_count * REFERRAL_BONUS_GENERATIONS} бесплатных генераций</b>! 🎉\n\n"
+                    online_count = get_fake_online_count()
+                    referral_bonus_text = ""
+                    if referrals_count > 0:
+                        referral_bonus_text = (
+                            f"\n🎁 <b>Отлично!</b> Ты пригласил <b>{referrals_count}</b> друзей\n"
+                            f"   → Получено <b>+{referrals_count * REFERRAL_BONUS_GENERATIONS} бесплатных генераций</b>! 🎉\n\n"
+                        )
+                    
+                    welcome_text = (
+                        f'👋 <b>С возвращением, {user.mention_html()}!</b> 🤖✨\n\n'
+                        f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                        f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
                     )
-                
-                welcome_text = (
-                    f'👋 <b>С возвращением, {user.mention_html()}!</b> 🤖✨\n\n'
-                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                    f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
-                )
-                
-                if remaining_free > 0:
+                    
+                    if remaining_free > 0:
+                        welcome_text += (
+                            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                            f'🔥 <b>У ТЕБЯ ЕСТЬ {remaining_free} БЕСПЛАТНЫХ ГЕНЕРАЦИЙ!</b> 🔥\n\n'
+                            f'✨ <b>ПРЕМИУМ AI MARKETPLACE</b> ✨\n\n'
+                            f'🚀 <b>Что это за бот?</b>\n'
+                            f'• 📦 <b>{total_models} топовых нейросетей</b> в одном месте\n'
+                            f'• 🎯 <b>{len(generation_types)} типов генерации</b> контента\n'
+                            f'• 🌐 Прямой доступ БЕЗ VPN\n'
+                            f'• ⚡ Мгновенная генерация\n\n'
+                            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                            f'✨ <b>Z-Image - САМАЯ КРУТАЯ НЕЙРОСЕТЬ ДЛЯ ИЗОБРАЖЕНИЙ!</b> ✨\n\n'
+                            f'💎 <b>Почему Z-Image?</b>\n'
+                            f'• 🎨 Профессиональное качество изображений\n'
+                            f'• ⚡ Мгновенная генерация (10-30 секунд)\n'
+                            f'• 🎯 Работает БЕЗ VPN\n'
+                            f'• 💰 <b>ПОЛНОСТЬЮ БЕСПЛАТНО для тебя!</b>\n\n'
+                            f'💡 <b>Нажми кнопку "🎁 Генерировать бесплатно" ниже</b>\n\n'
+                        )
+                    
                     welcome_text += (
-                        f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                        f'🔥 <b>У ТЕБЯ ЕСТЬ {remaining_free} БЕСПЛАТНЫХ ГЕНЕРАЦИЙ!</b> 🔥\n\n'
-                        f'✨ <b>ПРЕМИУМ AI MARKETPLACE</b> ✨\n\n'
-                        f'🚀 <b>Что это за бот?</b>\n'
-                        f'• 📦 <b>{total_models} топовых нейросетей</b> в одном месте\n'
-                        f'• 🎯 <b>{len(generation_types)} типов генерации</b> контента\n'
-                        f'• 🌐 Прямой доступ БЕЗ VPN\n'
-                        f'• ⚡ Мгновенная генерация\n\n'
-                        f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                        f'✨ <b>Z-Image - САМАЯ КРУТАЯ НЕЙРОСЕТЬ ДЛЯ ИЗОБРАЖЕНИЙ!</b> ✨\n\n'
-                        f'💎 <b>Почему Z-Image?</b>\n'
-                        f'• 🎨 Профессиональное качество изображений\n'
-                        f'• ⚡ Мгновенная генерация (10-30 секунд)\n'
-                        f'• 🎯 Работает БЕЗ VPN\n'
-                        f'• 💰 <b>ПОЛНОСТЬЮ БЕСПЛАТНО для тебя!</b>\n\n'
-                        f'💡 <b>Нажми кнопку "🎁 Генерировать бесплатно" ниже</b>\n\n'
+                        f'{referral_bonus_text}'
+                        f'💎 <b>ДОСТУПНО:</b>\n'
+                        f'• {len(generation_types)} типов генерации\n'
+                        f'• {total_models} топовых нейросетей\n'
+                        f'• Без VPN, прямо здесь!\n\n'
+                        f'💰 <b>После бесплатных генераций:</b>\n'
+                        f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
+                        f'💡 <b>Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} бесплатных генераций!</b>\n'
+                        f'🔗 <code>{referral_link}</code>\n\n'
+                        f'🎯 <b>Выбери формат генерации ниже или начни с бесплатной!</b>'
                     )
                 
-                welcome_text += (
-                    f'{referral_bonus_text}'
-                    f'💎 <b>ДОСТУПНО:</b>\n'
-                    f'• {len(generation_types)} типов генерации\n'
-                    f'• {total_models} топовых нейросетей\n'
-                    f'• Без VPN, прямо здесь!\n\n'
-                    f'💰 <b>После бесплатных генераций:</b>\n'
-                    f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
-                    f'💡 <b>Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} бесплатных генераций!</b>\n'
-                    f'🔗 <code>{referral_link}</code>\n\n'
-                    f'🎯 <b>Выбери формат генерации ниже или начни с бесплатной!</b>'
-                    )
-                
-                # Common keyboard for both admin and regular users
+                # Common keyboard for both admin and regular users (inside try block)
                 keyboard = []
                 
                 # Free generation button (ALWAYS prominent - biggest button)
@@ -2548,13 +2548,16 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     except Exception as send_error:
                         logger.error(f"Could not send new message in back_to_menu: {send_error}", exc_info=True)
                         await query.answer("❌ Ошибка. Попробуйте /start", show_alert=True)
-        except Exception as e:
-            logger.error(f"Error in back_to_menu: {e}", exc_info=True)
-            try:
-                await query.answer("❌ Ошибка. Попробуйте /start", show_alert=True)
-            except:
-                pass
-        return ConversationHandler.END
+                
+                return ConversationHandler.END
+            except Exception as e:
+                logger.error(f"Error in back_to_menu: {e}", exc_info=True)
+                try:
+                    await query.answer("❌ Ошибка. Попробуйте /start", show_alert=True)
+                except:
+                    pass
+                return ConversationHandler.END
+        
     
     # OLD back_to_menu code removed - now using start() function directly
     if False:  # This block is now disabled
