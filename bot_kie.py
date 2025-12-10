@@ -1874,6 +1874,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f'🎉 <b>ПРИВЕТ, {user.mention_html()}!</b> 🎉\n\n'
             f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
             f'🔥 <b>У ТЕБЯ ЕСТЬ {remaining_free if remaining_free > 0 else FREE_GENERATIONS_PER_DAY} БЕСПЛАТНЫХ ГЕНЕРАЦИЙ!</b> 🔥\n\n'
+            f'✨ <b>ПРЕМИУМ AI MARKETPLACE</b> ✨\n\n'
+            f'🚀 <b>Что это за бот?</b>\n'
+            f'• 📦 <b>{total_models} топовых нейросетей</b> в одном месте\n'
+            f'• 🎯 <b>{len(generation_types)} типов генерации</b> контента\n'
+            f'• 🌐 Прямой доступ БЕЗ VPN\n'
+            f'• ⚡ Мгновенная генерация\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
             f'✨ <b>Z-Image - САМАЯ КРУТАЯ НЕЙРОСЕТЬ ДЛЯ ИЗОБРАЖЕНИЙ!</b> ✨\n\n'
             f'💎 <b>Почему Z-Image?</b>\n'
             f'• 🎨 Профессиональное качество изображений\n'
@@ -1924,11 +1931,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if remaining_free > 0:
             welcome_text += (
-                f'🔥 <b>У ТЕБЯ ЕСТЬ {remaining_free} БЕСПЛАТНЫХ ГЕНЕРАЦИЙ Z-IMAGE!</b> 🔥\n\n'
-                f'✨ <b>Z-Image - лучшая нейросеть для изображений!</b>\n'
-                f'• 🎨 Профессиональное качество\n'
-                f'• ⚡ Мгновенная генерация\n'
-                f'• 💰 <b>ПОЛНОСТЬЮ БЕСПЛАТНО!</b>\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'🔥 <b>У ТЕБЯ ЕСТЬ {remaining_free} БЕСПЛАТНЫХ ГЕНЕРАЦИЙ!</b> 🔥\n\n'
+                f'✨ <b>ПРЕМИУМ AI MARKETPLACE</b> ✨\n\n'
+                f'🚀 <b>Что это за бот?</b>\n'
+                f'• 📦 <b>{total_models} топовых нейросетей</b> в одном месте\n'
+                f'• 🎯 <b>{len(generation_types)} типов генерации</b> контента\n'
+                f'• 🌐 Прямой доступ БЕЗ VPN\n'
+                f'• ⚡ Мгновенная генерация\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'✨ <b>Z-Image - САМАЯ КРУТАЯ НЕЙРОСЕТЬ ДЛЯ ИЗОБРАЖЕНИЙ!</b> ✨\n\n'
+                f'💎 <b>Почему Z-Image?</b>\n'
+                f'• 🎨 Профессиональное качество изображений\n'
+                f'• ⚡ Мгновенная генерация (10-30 секунд)\n'
+                f'• 🎯 Работает БЕЗ VPN\n'
+                f'• 💰 <b>ПОЛНОСТЬЮ БЕСПЛАТНО для тебя!</b>\n\n'
                 f'💡 <b>Нажми кнопку "🎁 Генерировать бесплатно" ниже</b>\n\n'
             )
         
@@ -2101,11 +2118,30 @@ async def start_generation(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle button callbacks."""
-    query = update.callback_query
-    await query.answer()
+    try:
+        query = update.callback_query
+        if not query:
+            logger.error("No callback_query in update")
+            return ConversationHandler.END
+        
+        await query.answer()
+        
+        user_id = update.effective_user.id
+        data = query.data
+        
+        if not data:
+            logger.error("No data in callback_query")
+            try:
+                await query.answer("Ошибка: нет данных в запросе", show_alert=True)
+            except:
+                pass
+            return ConversationHandler.END
+    except Exception as e:
+        logger.error(f"Error in button_callback setup: {e}", exc_info=True)
+        return ConversationHandler.END
     
-    user_id = update.effective_user.id
-    data = query.data
+    # Wrap all callback handling in try-except for error handling
+    try:
     
     # Handle admin user mode toggle (MUST be first, before any other checks)
     if data == "admin_user_mode":
@@ -2315,10 +2351,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append([
             InlineKeyboardButton("🧪 Тест OCR", callback_data="admin_test_ocr")
         ])
-        keyboard.append([
-            InlineKeyboardButton("👤 Режим пользователя", callback_data="admin_user_mode")
-        ])
-        keyboard.append([InlineKeyboardButton("🆘 Помощь", callback_data="help_menu")])
+        keyboard.append([InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")])
         
         await query.message.reply_text(
             welcome_text,
@@ -2328,22 +2361,192 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
     
     if data == "back_to_menu":
-        # Return to start menu - send new message directly
-        user = update.effective_user
-        user_id = user.id
-        
-        # Check if admin is in user mode
-        if user_id == ADMIN_ID:
-            if user_id in user_sessions and user_sessions[user_id].get('admin_user_mode', False):
-                is_admin = False
+        # Return to start menu - recreate the same menu as /start
+        try:
+            user = update.effective_user
+            user_id = user.id
+            is_admin = (user_id == ADMIN_ID)
+            
+            generation_types = get_generation_types()
+            total_models = len(KIE_MODELS)
+            remaining_free = get_user_free_generations_remaining(user_id)
+            is_new = is_new_user(user_id)
+            referral_link = get_user_referral_link(user_id)
+            referrals_count = len(get_user_referrals(user_id))
+            
+            if is_new:
+                online_count = get_fake_online_count()
+                welcome_text = (
+                    f'🎉 <b>ПРИВЕТ, {user.mention_html()}!</b> 🎉\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'🔥 <b>У ТЕБЯ ЕСТЬ {remaining_free if remaining_free > 0 else FREE_GENERATIONS_PER_DAY} БЕСПЛАТНЫХ ГЕНЕРАЦИЙ!</b> 🔥\n\n'
+                    f'✨ <b>ПРЕМИУМ AI MARKETPLACE</b> ✨\n\n'
+                    f'🚀 <b>Что это за бот?</b>\n'
+                    f'• 📦 <b>{total_models} топовых нейросетей</b> в одном месте\n'
+                    f'• 🎯 <b>{len(generation_types)} типов генерации</b> контента\n'
+                    f'• 🌐 Прямой доступ БЕЗ VPN\n'
+                    f'• ⚡ Мгновенная генерация\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'✨ <b>Z-Image - САМАЯ КРУТАЯ НЕЙРОСЕТЬ ДЛЯ ИЗОБРАЖЕНИЙ!</b> ✨\n\n'
+                    f'💎 <b>Почему Z-Image?</b>\n'
+                    f'• 🎨 Профессиональное качество изображений\n'
+                    f'• ⚡ Мгновенная генерация (10-30 секунд)\n'
+                    f'• 🎯 Работает БЕЗ VPN\n'
+                    f'• 💰 <b>ПОЛНОСТЬЮ БЕСПЛАТНО для тебя!</b>\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
+                    f'🚀 <b>ЧТО МОЖНО ДЕЛАТЬ:</b>\n'
+                    f'• 🎨 Создавать изображения из текста\n'
+                    f'• 🎬 Генерировать видео\n'
+                    f'• ✨ Редактировать и трансформировать контент\n'
+                    f'• 🎯 Все это БЕЗ VPN и по цене жвачки!\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'🏢 <b>ТОПОВЫЕ НЕЙРОСЕТИ 2025:</b>\n\n'
+                    f'🤖 OpenAI • Google • Black Forest Labs\n'
+                    f'🎬 ByteDance • Ideogram • Qwen\n'
+                    f'✨ Kling • Hailuo • Topaz\n'
+                    f'🎨 Recraft • Grok (xAI) • Wan\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'🎁 <b>КАК НАЧАТЬ?</b>\n\n'
+                    f'1️⃣ <b>Нажми кнопку "🎁 Генерировать бесплатно"</b> ниже\n'
+                    f'   → Создай свое первое изображение за 30 секунд!\n\n'
+                    f'2️⃣ <b>Напиши что хочешь увидеть</b> (например: "Кот в космосе")\n'
+                    f'   → Z-Image создаст это для тебя!\n\n'
+                    f'3️⃣ <b>Получи результат и наслаждайся!</b> 🎉\n\n'
+                    f'💡 <b>Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} бесплатных генераций!</b>\n'
+                    f'🔗 <code>{referral_link}</code>\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'💰 <b>После бесплатных генераций:</b>\n'
+                    f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео'
+                )
             else:
-                is_admin = True
-        else:
-            is_admin = False
-        
-        generation_types = get_generation_types()
-        total_models = len(KIE_MODELS)
-        
+                online_count = get_fake_online_count()
+                referral_bonus_text = ""
+                if referrals_count > 0:
+                    referral_bonus_text = (
+                        f"\n🎁 <b>Отлично!</b> Ты пригласил <b>{referrals_count}</b> друзей\n"
+                        f"   → Получено <b>+{referrals_count * REFERRAL_BONUS_GENERATIONS} бесплатных генераций</b>! 🎉\n\n"
+                    )
+                
+                welcome_text = (
+                    f'👋 <b>С возвращением, {user.mention_html()}!</b> 🤖✨\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
+                )
+                
+                if remaining_free > 0:
+                    welcome_text += (
+                        f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                        f'🔥 <b>У ТЕБЯ ЕСТЬ {remaining_free} БЕСПЛАТНЫХ ГЕНЕРАЦИЙ!</b> 🔥\n\n'
+                        f'✨ <b>ПРЕМИУМ AI MARKETPLACE</b> ✨\n\n'
+                        f'🚀 <b>Что это за бот?</b>\n'
+                        f'• 📦 <b>{total_models} топовых нейросетей</b> в одном месте\n'
+                        f'• 🎯 <b>{len(generation_types)} типов генерации</b> контента\n'
+                        f'• 🌐 Прямой доступ БЕЗ VPN\n'
+                        f'• ⚡ Мгновенная генерация\n\n'
+                        f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                        f'✨ <b>Z-Image - САМАЯ КРУТАЯ НЕЙРОСЕТЬ ДЛЯ ИЗОБРАЖЕНИЙ!</b> ✨\n\n'
+                        f'💎 <b>Почему Z-Image?</b>\n'
+                        f'• 🎨 Профессиональное качество изображений\n'
+                        f'• ⚡ Мгновенная генерация (10-30 секунд)\n'
+                        f'• 🎯 Работает БЕЗ VPN\n'
+                        f'• 💰 <b>ПОЛНОСТЬЮ БЕСПЛАТНО для тебя!</b>\n\n'
+                        f'💡 <b>Нажми кнопку "🎁 Генерировать бесплатно" ниже</b>\n\n'
+                    )
+                
+                welcome_text += (
+                    f'{referral_bonus_text}'
+                    f'💎 <b>ДОСТУПНО:</b>\n'
+                    f'• {len(generation_types)} типов генерации\n'
+                    f'• {total_models} топовых нейросетей\n'
+                    f'• Без VPN, прямо здесь!\n\n'
+                    f'💰 <b>После бесплатных генераций:</b>\n'
+                    f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
+                    f'💡 <b>Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} бесплатных генераций!</b>\n'
+                    f'🔗 <code>{referral_link}</code>\n\n'
+                    f'🎯 <b>Выбери формат генерации ниже или начни с бесплатной!</b>'
+                )
+            
+            # Common keyboard for both admin and regular users
+            keyboard = []
+            
+            # Free generation button (ALWAYS prominent - biggest button)
+            if remaining_free > 0:
+                keyboard.append([
+                    InlineKeyboardButton(f"🎁 ГЕНЕРИРОВАТЬ БЕСПЛАТНО ({remaining_free} осталось)", callback_data="select_model:z-image")
+                ])
+                keyboard.append([])  # Empty row for spacing
+            
+            # Generation types buttons (compact, 2 per row)
+            gen_type_rows = []
+            for i, gen_type in enumerate(generation_types):
+                gen_info = get_generation_type_info(gen_type)
+                models_count = len(get_models_by_generation_type(gen_type))
+                button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
+                
+                if i % 2 == 0:
+                    gen_type_rows.append([InlineKeyboardButton(
+                        button_text,
+                        callback_data=f"gen_type:{gen_type}"
+                    )])
+                else:
+                    if gen_type_rows:
+                        gen_type_rows[-1].append(InlineKeyboardButton(
+                            button_text,
+                            callback_data=f"gen_type:{gen_type}"
+                        ))
+                    else:
+                        gen_type_rows.append([InlineKeyboardButton(
+                            button_text,
+                            callback_data=f"gen_type:{gen_type}"
+                        )])
+            
+            keyboard.extend(gen_type_rows)
+            
+            # Bottom action buttons
+            keyboard.append([])  # Empty row for spacing
+            keyboard.append([
+                InlineKeyboardButton("💰 Баланс", callback_data="check_balance"),
+                InlineKeyboardButton("📚 Мои генерации", callback_data="my_generations")
+            ])
+            keyboard.append([
+                InlineKeyboardButton("💳 Пополнить", callback_data="topup_balance"),
+                InlineKeyboardButton("🎁 Пригласить друга", callback_data="referral_info")
+            ])
+            
+            # Add tutorial button for new users
+            if is_new:
+                keyboard.append([
+                    InlineKeyboardButton("❓ Как это работает?", callback_data="tutorial_start")
+                ])
+            
+            keyboard.append([
+                InlineKeyboardButton("🆘 Помощь", callback_data="help_menu"),
+                InlineKeyboardButton("💬 Поддержка", callback_data="support_contact")
+            ])
+            
+            # Add admin panel button ONLY for admin (at the end)
+            if is_admin:
+                keyboard.append([])  # Empty row for admin section
+                keyboard.append([
+                    InlineKeyboardButton("👑 АДМИН ПАНЕЛЬ", callback_data="admin_stats")
+                ])
+            
+            await query.edit_message_text(
+                welcome_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+        except Exception as e:
+            logger.error(f"Error in back_to_menu: {e}", exc_info=True)
+            try:
+                await query.answer("❌ Ошибка. Попробуйте /start", show_alert=True)
+            except:
+                pass
+        return ConversationHandler.END
+    
+    # OLD back_to_menu code removed - now using start() function directly
+    if False:  # This block is now disabled
         if is_admin:
             # Admin menu - same structure as user menu
             remaining_free = get_user_free_generations_remaining(user_id)
@@ -2835,11 +3038,24 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.extend(model_rows)
         keyboard.append([InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")])
         
-        await query.edit_message_text(
-            gen_type_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
+        try:
+            await query.edit_message_text(
+                gen_type_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+        except Exception as e:
+            logger.error(f"Error editing message in gen_type: {e}", exc_info=True)
+            try:
+                await query.message.reply_text(
+                    gen_type_text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+            except Exception as e2:
+                logger.error(f"Error sending new message in gen_type: {e2}", exc_info=True)
+                await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
+        
         return ConversationHandler.END
     
     if data.startswith("category:"):
@@ -3150,40 +3366,49 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return CONFIRMING_GENERATION
     
     if data == "check_balance":
-        # Check balance
-        await query.edit_message_text('💳 Проверяю баланс...')
+        # Check user's personal balance (NOT KIE balance)
+        user_balance = get_user_balance(user_id)
+        balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
+        is_admin = get_is_admin(user_id)
         
-        try:
-            result = await kie.get_credits()
-            
-            if result.get('ok'):
-                credits = result.get('credits', 0)
-                # Convert credits to rubles (no rounding)
-                credits_rub = credits * CREDIT_TO_USD * USD_TO_RUB
-                credits_rub_str = f"{credits_rub:.2f}".rstrip('0').rstrip('.')
-                
-                keyboard = [
-                    [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
-                    [InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]
-                ]
-                
-                await query.edit_message_text(
-                    f'💳 <b>Баланс:</b> {credits_rub_str} ₽\n'
-                    f'<i>({credits} кредитов)</i>\n\n'
-                    f'Доступно для генерации контента.',
-                    reply_markup=InlineKeyboardMarkup(keyboard),
-                    parse_mode='HTML'
+        keyboard = [
+            [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
+            [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
+        ]
+        
+        balance_text = (
+            f'💳 <b>ВАШ БАЛАНС</b> 💳\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'💰 <b>Доступно:</b> {balance_str} ₽\n\n'
+        )
+        
+        if is_admin:
+            balance_text += (
+                f'👑 <b>Статус:</b> Администратор\n'
+                f'✅ Безлимитный доступ ко всем моделям\n\n'
+            )
+        else:
+            if user_balance > 0:
+                balance_text += (
+                    f'💡 <b>Доступно для генерации:</b>\n'
+                    f'• ~{int(user_balance / 0.62)} изображений (Z-Image)\n'
+                    f'• ~{int(user_balance / 3.86)} видео (базовая модель)\n\n'
                 )
             else:
-                error = result.get('error', 'Unknown error')
-                await query.edit_message_text(
-                    f'❌ <b>Ошибка проверки баланса:</b>\n{error}',
-                    parse_mode='HTML'
+                balance_text += (
+                    f'💡 <b>Пополните баланс для генерации контента</b>\n\n'
                 )
-        except Exception as e:
-            logger.error(f"Error checking balance: {e}")
-            await query.edit_message_text(f'❌ Ошибка: {str(e)}')
         
+        balance_text += (
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'🎁 <b>Не забудьте:</b> У вас есть бесплатные генерации Z-Image!'
+        )
+        
+        await query.edit_message_text(
+            balance_text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
         return ConversationHandler.END
     
     if data == "topup_balance":
@@ -3294,43 +3519,64 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         }
         return SELECTING_AMOUNT
     
+    # If we get here and no handler matched, log and return END
+    logger.warning(f"Unhandled callback data: {data} from user {user_id}")
+    try:
+        await query.answer("❌ Неизвестная команда. Используйте /start", show_alert=True)
+    except:
+        pass
+    return ConversationHandler.END
+    
     # Admin functions (only for admin)
     if user_id == ADMIN_ID:
         if data == "admin_stats":
-            # Get statistics
+            # Show full admin panel menu
+            generation_types = get_generation_types()
             total_models = len(KIE_MODELS)
-            categories = get_categories()
-            active_sessions = len(user_sessions)
             
-            # Try to get balance
-            balance_info = ""
+            # Get KIE API balance (for admin info only)
+            kie_balance_info = ""
             try:
                 balance_result = await kie.get_credits()
                 if balance_result.get('ok'):
                     balance = balance_result.get('credits', 0)
-                    # Convert credits to rubles (no rounding)
                     balance_rub = balance * CREDIT_TO_USD * USD_TO_RUB
                     balance_rub_str = f"{balance_rub:.2f}".rstrip('0').rstrip('.')
-                    balance_info = f"💰 <b>Баланс:</b> {balance_rub_str} ₽\n<i>({balance} кредитов)</i>\n"
-            except:
-                balance_info = "💰 <b>Баланс:</b> Недоступен\n"
+                    kie_balance_info = f"💰 <b>Баланс KIE API:</b> {balance_rub_str} ₽ ({balance} кредитов)\n\n"
+            except Exception as e:
+                logger.error(f"Error getting KIE balance: {e}")
+                kie_balance_info = "💰 <b>Баланс KIE API:</b> Недоступен\n\n"
             
-            stats_text = (
-                f'📊 <b>Статистика бота:</b>\n\n'
-                f'{balance_info}'
-                f'📦 <b>Моделей:</b> {total_models}\n'
-                f'📁 <b>Категорий:</b> {len(categories)}\n'
-                f'👥 <b>Активных сессий:</b> {active_sessions}\n\n'
-                f'🔄 Обновлено: {asyncio.get_event_loop().time():.0f}'
+            admin_text = (
+                f'👑 <b>ПАНЕЛЬ АДМИНИСТРАТОРА</b> 👑\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'{kie_balance_info}'
+                f'📊 <b>СТАТИСТИКА СИСТЕМЫ:</b>\n\n'
+                f'✅ <b>{total_models} премиум моделей</b> в арсенале\n'
+                f'✅ <b>{len(generation_types)} категорий</b> контента\n'
+                f'✅ Безлимитный доступ ко всем генерациям\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'⚙️ <b>АДМИНИСТРАТИВНЫЕ ФУНКЦИИ:</b>\n\n'
+                f'📈 Просмотр статистики и аналитики\n'
+                f'👥 Управление пользователями\n'
+                f'🎁 Управление промокодами\n'
+                f'🧪 Тестирование OCR системы\n'
+                f'💼 Полный контроль над ботом\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'💫 <b>ВЫБЕРИТЕ ДЕЙСТВИЕ:</b>'
             )
             
             keyboard = [
-                [InlineKeyboardButton("🔄 Обновить", callback_data="admin_stats")],
-                [InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]
+                [InlineKeyboardButton("📊 Статистика", callback_data="admin_stats")],
+                [InlineKeyboardButton("⚙️ Настройки", callback_data="admin_settings")],
+                [InlineKeyboardButton("🔍 Поиск", callback_data="admin_search")],
+                [InlineKeyboardButton("📝 Добавить", callback_data="admin_add")],
+                [InlineKeyboardButton("🧪 Тест OCR", callback_data="admin_test_ocr")],
+                [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
             ]
             
             await query.edit_message_text(
-                stats_text,
+                admin_text,
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='HTML'
             )
@@ -3592,33 +3838,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 'Система проверит:\n'
                 '✅ Распознавание текста\n'
                 '✅ Поиск сумм\n'
-                '✅ Работа Tesseract OCR\n\n'
-                'Или нажмите /cancel для отмены.',
-                parse_mode='HTML'
-            )
-            user_sessions[user_id] = {
-                'waiting_for': 'admin_test_ocr'
-            }
-            return ADMIN_TEST_OCR
-        
-        if data == "admin_test_ocr":
-            if not OCR_AVAILABLE or not PIL_AVAILABLE:
-                await query.edit_message_text(
-                    '❌ <b>OCR недоступен</b>\n\n'
-                    'Tesseract OCR не установлен или библиотеки не найдены.\n\n'
-                    'Установите:\n'
-                    '1. pip install Pillow pytesseract\n'
-                    '2. Tesseract OCR (см. TESSERACT_INSTALL.txt)',
-                    parse_mode='HTML'
-                )
-                return ConversationHandler.END
-            
-            await query.edit_message_text(
-                '🧪 <b>Тест OCR</b>\n\n'
-                'Отправьте изображение со скриншотом платежа.\n\n'
-                'Система проверит:\n'
-                '✅ Распознавание текста\n'
-                '✅ Поиск суммы\n'
                 '✅ Работа Tesseract OCR\n\n'
                 'Или нажмите /cancel для отмены.',
                 parse_mode='HTML'
@@ -4373,6 +4592,23 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await start_next_parameter(update, context, user_id)
         
         return INPUTTING_PARAMS
+    
+    # If we get here and no handler matched, log and return END
+    except Exception as e:
+        logger.error(f"Error in button_callback for data '{data}': {e}", exc_info=True)
+        try:
+            await query.answer("❌ Произошла ошибка. Попробуйте еще раз или используйте /start", show_alert=True)
+        except:
+            pass
+        return ConversationHandler.END
+    
+    # Fallback - should never reach here if all handlers work correctly
+    logger.warning(f"Unhandled callback data: {data} from user {user_id}")
+    try:
+        await query.answer("❌ Неизвестная команда. Используйте /start", show_alert=True)
+    except:
+        pass
+    return ConversationHandler.END
 
 
 async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int):
@@ -6179,6 +6415,8 @@ def main():
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
                 CallbackQueryHandler(button_callback, pattern='^check_balance$'),
                 CallbackQueryHandler(button_callback, pattern='^topup_balance$'),
+                CallbackQueryHandler(button_callback, pattern='^topup_amount:'),
+                CallbackQueryHandler(button_callback, pattern='^topup_custom$'),
                 CallbackQueryHandler(button_callback, pattern='^referral_info$'),
                 CallbackQueryHandler(button_callback, pattern='^help_menu$'),
                 CallbackQueryHandler(button_callback, pattern='^support_contact$'),
@@ -6190,6 +6428,17 @@ def main():
                 CallbackQueryHandler(button_callback, pattern='^tutorial_start$'),
                 CallbackQueryHandler(button_callback, pattern='^tutorial_step'),
                 CallbackQueryHandler(button_callback, pattern='^tutorial_complete$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_stats$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_settings$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_search$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_add$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_promocodes$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_broadcast$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_create_broadcast$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_broadcast_stats$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_test_ocr$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_user_mode$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_back_to_admin$'),
                 CallbackQueryHandler(button_callback, pattern='^cancel$')
             ],
             CONFIRMING_GENERATION: [
@@ -6197,6 +6446,8 @@ def main():
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
                 CallbackQueryHandler(button_callback, pattern='^check_balance$'),
                 CallbackQueryHandler(button_callback, pattern='^topup_balance$'),
+                CallbackQueryHandler(button_callback, pattern='^topup_amount:'),
+                CallbackQueryHandler(button_callback, pattern='^topup_custom$'),
                 CallbackQueryHandler(button_callback, pattern='^referral_info$'),
                 CallbackQueryHandler(button_callback, pattern='^help_menu$'),
                 CallbackQueryHandler(button_callback, pattern='^support_contact$'),
@@ -6208,6 +6459,19 @@ def main():
                 CallbackQueryHandler(button_callback, pattern='^tutorial_start$'),
                 CallbackQueryHandler(button_callback, pattern='^tutorial_step'),
                 CallbackQueryHandler(button_callback, pattern='^tutorial_complete$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_stats$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_settings$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_search$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_add$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_promocodes$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_broadcast$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_create_broadcast$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_broadcast_stats$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_test_ocr$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_user_mode$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_back_to_admin$'),
+                CallbackQueryHandler(button_callback, pattern='^select_model:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_type:'),
                 CallbackQueryHandler(button_callback, pattern='^cancel$')
             ],
             INPUTTING_PARAMS: [
@@ -6220,6 +6484,8 @@ def main():
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
                 CallbackQueryHandler(button_callback, pattern='^check_balance$'),
                 CallbackQueryHandler(button_callback, pattern='^topup_balance$'),
+                CallbackQueryHandler(button_callback, pattern='^topup_amount:'),
+                CallbackQueryHandler(button_callback, pattern='^topup_custom$'),
                 CallbackQueryHandler(button_callback, pattern='^referral_info$'),
                 CallbackQueryHandler(button_callback, pattern='^help_menu$'),
                 CallbackQueryHandler(button_callback, pattern='^support_contact$'),
@@ -6231,12 +6497,26 @@ def main():
                 CallbackQueryHandler(button_callback, pattern='^tutorial_start$'),
                 CallbackQueryHandler(button_callback, pattern='^tutorial_step'),
                 CallbackQueryHandler(button_callback, pattern='^tutorial_complete$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_stats$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_settings$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_search$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_add$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_promocodes$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_broadcast$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_create_broadcast$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_broadcast_stats$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_test_ocr$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_user_mode$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_back_to_admin$'),
+                CallbackQueryHandler(button_callback, pattern='^select_model:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_type:'),
                 CallbackQueryHandler(button_callback, pattern='^cancel$')
             ],
             SELECTING_AMOUNT: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, input_parameters),
                 CallbackQueryHandler(button_callback, pattern='^topup_amount:'),
                 CallbackQueryHandler(button_callback, pattern='^topup_custom$'),
+                CallbackQueryHandler(button_callback, pattern='^topup_balance$'),
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
                 CallbackQueryHandler(button_callback, pattern='^check_balance$'),
                 CallbackQueryHandler(button_callback, pattern='^referral_info$'),
@@ -6244,6 +6524,25 @@ def main():
                 CallbackQueryHandler(button_callback, pattern='^support_contact$'),
                 CallbackQueryHandler(button_callback, pattern='^generate_again$'),
                 CallbackQueryHandler(button_callback, pattern='^my_generations$'),
+                CallbackQueryHandler(button_callback, pattern='^gen_view:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_repeat:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_history:'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_start$'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_step'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_complete$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_stats$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_settings$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_search$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_add$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_promocodes$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_broadcast$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_create_broadcast$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_broadcast_stats$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_test_ocr$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_user_mode$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_back_to_admin$'),
+                CallbackQueryHandler(button_callback, pattern='^select_model:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_type:'),
                 CallbackQueryHandler(button_callback, pattern='^cancel$')
             ],
             WAITING_PAYMENT_SCREENSHOT: [
@@ -6252,23 +6551,100 @@ def main():
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
                 CallbackQueryHandler(button_callback, pattern='^check_balance$'),
                 CallbackQueryHandler(button_callback, pattern='^topup_balance$'),
+                CallbackQueryHandler(button_callback, pattern='^topup_amount:'),
+                CallbackQueryHandler(button_callback, pattern='^topup_custom$'),
                 CallbackQueryHandler(button_callback, pattern='^referral_info$'),
                 CallbackQueryHandler(button_callback, pattern='^help_menu$'),
                 CallbackQueryHandler(button_callback, pattern='^support_contact$'),
                 CallbackQueryHandler(button_callback, pattern='^generate_again$'),
                 CallbackQueryHandler(button_callback, pattern='^my_generations$'),
+                CallbackQueryHandler(button_callback, pattern='^gen_view:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_repeat:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_history:'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_start$'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_step'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_complete$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_stats$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_settings$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_search$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_add$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_promocodes$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_broadcast$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_create_broadcast$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_broadcast_stats$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_test_ocr$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_user_mode$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_back_to_admin$'),
+                CallbackQueryHandler(button_callback, pattern='^select_model:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_type:'),
                 CallbackQueryHandler(button_callback, pattern='^cancel$')
             ],
             ADMIN_TEST_OCR: [
                 MessageHandler(filters.PHOTO, input_parameters),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, input_parameters),
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
+                CallbackQueryHandler(button_callback, pattern='^check_balance$'),
+                CallbackQueryHandler(button_callback, pattern='^topup_balance$'),
+                CallbackQueryHandler(button_callback, pattern='^topup_amount:'),
+                CallbackQueryHandler(button_callback, pattern='^topup_custom$'),
+                CallbackQueryHandler(button_callback, pattern='^referral_info$'),
+                CallbackQueryHandler(button_callback, pattern='^help_menu$'),
+                CallbackQueryHandler(button_callback, pattern='^support_contact$'),
                 CallbackQueryHandler(button_callback, pattern='^generate_again$'),
+                CallbackQueryHandler(button_callback, pattern='^my_generations$'),
+                CallbackQueryHandler(button_callback, pattern='^gen_view:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_repeat:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_history:'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_start$'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_step'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_complete$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_stats$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_settings$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_search$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_add$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_promocodes$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_broadcast$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_create_broadcast$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_broadcast_stats$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_test_ocr$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_user_mode$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_back_to_admin$'),
+                CallbackQueryHandler(button_callback, pattern='^select_model:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_type:'),
                 CallbackQueryHandler(button_callback, pattern='^cancel$')
             ],
             WAITING_BROADCAST_MESSAGE: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, input_parameters),
                 MessageHandler(filters.PHOTO, input_parameters),
+                CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
+                CallbackQueryHandler(button_callback, pattern='^check_balance$'),
+                CallbackQueryHandler(button_callback, pattern='^topup_balance$'),
+                CallbackQueryHandler(button_callback, pattern='^topup_amount:'),
+                CallbackQueryHandler(button_callback, pattern='^topup_custom$'),
+                CallbackQueryHandler(button_callback, pattern='^referral_info$'),
+                CallbackQueryHandler(button_callback, pattern='^help_menu$'),
+                CallbackQueryHandler(button_callback, pattern='^support_contact$'),
+                CallbackQueryHandler(button_callback, pattern='^generate_again$'),
+                CallbackQueryHandler(button_callback, pattern='^my_generations$'),
+                CallbackQueryHandler(button_callback, pattern='^gen_view:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_repeat:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_history:'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_start$'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_step'),
+                CallbackQueryHandler(button_callback, pattern='^tutorial_complete$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_stats$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_settings$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_search$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_add$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_promocodes$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_broadcast$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_create_broadcast$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_broadcast_stats$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_test_ocr$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_user_mode$'),
+                CallbackQueryHandler(button_callback, pattern='^admin_back_to_admin$'),
+                CallbackQueryHandler(button_callback, pattern='^select_model:'),
+                CallbackQueryHandler(button_callback, pattern='^gen_type:'),
                 CallbackQueryHandler(button_callback, pattern='^cancel$')
             ]
         },
@@ -6450,6 +6826,31 @@ def main():
             await update.message.reply_text("❌ Неверный формат user_id. Используйте число.")
     
     # Add handlers
+    # Add error handler for better debugging
+    async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Log the error and send a telegram message to notify the developer."""
+        logger.error("Exception while handling an update:", exc_info=context.error)
+        
+        # Try to send error message to user if update is available
+        if update and isinstance(update, Update):
+            if update.callback_query:
+                try:
+                    await update.callback_query.answer(
+                        "❌ Произошла ошибка. Попробуйте еще раз или используйте /start",
+                        show_alert=True
+                    )
+                except:
+                    pass
+            elif update.message:
+                try:
+                    await update.message.reply_text(
+                        "❌ Произошла ошибка. Попробуйте еще раз или используйте /start"
+                    )
+                except:
+                    pass
+    
+    application.add_error_handler(error_handler)
+    
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("balance", check_balance))
