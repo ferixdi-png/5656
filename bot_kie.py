@@ -6358,7 +6358,23 @@ def main():
     
     # Run the bot
     logger.info("Bot starting...")
-    application.run_polling()
+    try:
+        # Drop pending updates to avoid conflicts with other bot instances
+        application.run_polling(
+            drop_pending_updates=True
+        )
+    except Exception as e:
+        error_msg = str(e)
+        if "Conflict" in error_msg or "terminated by other getUpdates" in error_msg:
+            logger.error("❌ Conflict: Another bot instance is already running!")
+            logger.error("Please stop the other instance before starting this one.")
+            logger.error("On Render: Check if there are multiple services running with the same bot token.")
+            logger.error("Wait 10 seconds and try again, or stop the other instance manually.")
+        else:
+            logger.error(f"❌ Bot crashed: {e}")
+            import traceback
+            traceback.print_exc()
+        raise
 
 
 if __name__ == '__main__':
