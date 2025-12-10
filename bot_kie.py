@@ -6028,6 +6028,45 @@ def main():
     """Start the bot."""
     global storage, kie
     
+    # CRITICAL: Start HTTP server FIRST for Render port check
+    import threading
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+    
+    class HealthCheckHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == '/health' or self.path == '/':
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(b'{"status":"ok","service":"telegram-bot"}')
+            else:
+                self.send_response(404)
+                self.end_headers()
+        
+        def log_message(self, format, *args):
+            pass  # Suppress HTTP server logs
+    
+    def start_health_server():
+        port = int(os.getenv('PORT', 10000))
+        try:
+            server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+            logger.info(f"✅ Health check server started on port {port}")
+            server.serve_forever()
+        except Exception as e:
+            logger.error(f"❌ Failed to start health server: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    # Start health check server IMMEDIATELY in background thread
+    health_thread = threading.Thread(target=start_health_server, daemon=True)
+    health_thread.start()
+    logger.info("🚀 Health check server thread started")
+    
+    # Give server time to bind to port (critical for Render)
+    import time
+    time.sleep(2)
+    logger.info("✅ Port should be open now")
+    
     # Initialize storage and KIE client here (not at import time to avoid blocking)
     if storage is None:
         storage = KnowledgeStorage()
@@ -6356,35 +6395,7 @@ def main():
     application.add_handler(generation_handler)
     application.add_handler(CommandHandler("models", list_models))
     
-    # Start HTTP server for health check (Render requires an open port)
-    import threading
-    from http.server import HTTPServer, BaseHTTPRequestHandler
-    
-    class HealthCheckHandler(BaseHTTPRequestHandler):
-        def do_GET(self):
-            if self.path == '/health' or self.path == '/':
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(b'{"status":"ok","service":"telegram-bot"}')
-            else:
-                self.send_response(404)
-                self.end_headers()
-        
-        def log_message(self, format, *args):
-            pass  # Suppress HTTP server logs
-    
-    def start_health_server():
-        port = int(os.getenv('PORT', 10000))
-        server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
-        logger.info(f"Health check server started on port {port}")
-        server.serve_forever()
-    
-    # Start health check server in background thread
-    health_thread = threading.Thread(target=start_health_server, daemon=True)
-    health_thread.start()
-    logger.info("Health check server thread started")
-    
+    # HTTP server already started at the beginning of main()
     # Run the bot
     logger.info("Bot starting...")
     
