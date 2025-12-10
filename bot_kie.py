@@ -2142,10 +2142,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Wrap all callback handling in try-except for error handling
     try:
-    
-    # Handle admin user mode toggle (MUST be first, before any other checks)
-    if data == "admin_user_mode":
-        # Toggle user mode for admin
+        # Handle admin user mode toggle (MUST be first, before any other checks)
+        if data == "admin_user_mode":
+            # Toggle user mode for admin
         if user_id != ADMIN_ID:
             await query.answer("Эта функция доступна только администратору.")
             return ConversationHandler.END
@@ -2297,72 +2296,72 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode='HTML'
             )
             return ConversationHandler.END
-    
-    if data == "admin_back_to_admin":
-        # Return to admin mode - send new message directly
-        if user_id != ADMIN_ID:
-            await query.answer("Эта функция доступна только администратору.")
+        
+        if data == "admin_back_to_admin":
+            # Return to admin mode - send new message directly
+            if user_id != ADMIN_ID:
+                await query.answer("Эта функция доступна только администратору.")
+                return ConversationHandler.END
+            
+            if user_id in user_sessions:
+                user_sessions[user_id]['admin_user_mode'] = False
+            await query.answer("Возврат в админ-панель")
+            user = update.effective_user
+            categories = get_categories()
+            total_models = len(KIE_MODELS)
+            
+            welcome_text = (
+                f'👑 <b>Панель администратора</b>\n\n'
+                f'Привет, {user.mention_html()}! 👋\n\n'
+                f'🚀 <b>Расширенное меню управления</b>\n\n'
+                f'📊 <b>Статистика:</b>\n'
+                f'✅ <b>{total_models} моделей</b> доступно\n'
+                f'✅ <b>{len(categories)} категорий</b>\n\n'
+                f'⚙️ <b>Административные функции доступны</b>'
+            )
+            
+            keyboard = []
+            
+            # All models button first
+            keyboard.append([
+                InlineKeyboardButton("📋 Все модели", callback_data="all_models")
+            ])
+            
+            keyboard.append([])
+            for category in categories:
+                models_in_category = get_models_by_category(category)
+                emoji = models_in_category[0]["emoji"] if models_in_category else "📦"
+                keyboard.append([InlineKeyboardButton(
+                    f"{emoji} {category} ({len(models_in_category)})",
+                    callback_data=f"category:{category}"
+                )])
+            
+            keyboard.append([
+                InlineKeyboardButton("💰 Баланс", callback_data="check_balance")
+            ])
+            keyboard.append([
+                InlineKeyboardButton("📊 Статистика", callback_data="admin_stats"),
+                InlineKeyboardButton("⚙️ Настройки", callback_data="admin_settings")
+            ])
+            keyboard.append([
+                InlineKeyboardButton("🔍 Поиск", callback_data="admin_search"),
+                InlineKeyboardButton("📝 Добавить", callback_data="admin_add")
+            ])
+            keyboard.append([
+                InlineKeyboardButton("🧪 Тест OCR", callback_data="admin_test_ocr")
+            ])
+            keyboard.append([InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")])
+            
+            await query.message.reply_text(
+                welcome_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
             return ConversationHandler.END
         
-        if user_id in user_sessions:
-            user_sessions[user_id]['admin_user_mode'] = False
-        await query.answer("Возврат в админ-панель")
-        user = update.effective_user
-        categories = get_categories()
-        total_models = len(KIE_MODELS)
-        
-        welcome_text = (
-            f'👑 <b>Панель администратора</b>\n\n'
-            f'Привет, {user.mention_html()}! 👋\n\n'
-            f'🚀 <b>Расширенное меню управления</b>\n\n'
-            f'📊 <b>Статистика:</b>\n'
-            f'✅ <b>{total_models} моделей</b> доступно\n'
-            f'✅ <b>{len(categories)} категорий</b>\n\n'
-            f'⚙️ <b>Административные функции доступны</b>'
-        )
-        
-        keyboard = []
-        
-        # All models button first
-        keyboard.append([
-            InlineKeyboardButton("📋 Все модели", callback_data="all_models")
-        ])
-        
-        keyboard.append([])
-        for category in categories:
-            models_in_category = get_models_by_category(category)
-            emoji = models_in_category[0]["emoji"] if models_in_category else "📦"
-            keyboard.append([InlineKeyboardButton(
-                f"{emoji} {category} ({len(models_in_category)})",
-                callback_data=f"category:{category}"
-            )])
-        
-        keyboard.append([
-            InlineKeyboardButton("💰 Баланс", callback_data="check_balance")
-        ])
-        keyboard.append([
-            InlineKeyboardButton("📊 Статистика", callback_data="admin_stats"),
-            InlineKeyboardButton("⚙️ Настройки", callback_data="admin_settings")
-        ])
-        keyboard.append([
-            InlineKeyboardButton("🔍 Поиск", callback_data="admin_search"),
-            InlineKeyboardButton("📝 Добавить", callback_data="admin_add")
-        ])
-        keyboard.append([
-            InlineKeyboardButton("🧪 Тест OCR", callback_data="admin_test_ocr")
-        ])
-        keyboard.append([InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")])
-        
-        await query.message.reply_text(
-            welcome_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-        return ConversationHandler.END
-    
-    if data == "back_to_menu":
-        # Return to start menu - recreate the same menu as /start
-        try:
+        if data == "back_to_menu":
+            # Return to start menu - recreate the same menu as /start
+            try:
             user = update.effective_user
             user_id = user.id
             is_admin = (user_id == ADMIN_ID)
@@ -2756,9 +2755,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
-        return ConversationHandler.END
-    
-    if data == "generate_again":
+            return ConversationHandler.END
+        
+        if data == "generate_again":
         # Generate again - restore model and show model info, then ask for new prompt
         await query.answer()  # Acknowledge the callback
         
@@ -2922,15 +2921,15 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await start_next_parameter(update, context, user_id)
         
         return INPUTTING_PARAMS
-    
-    if data == "cancel":
+        
+        if data == "cancel":
         if user_id in user_sessions:
             del user_sessions[user_id]
         await query.edit_message_text("❌ Операция отменена.")
         return ConversationHandler.END
-    
-    # Handle category selection (can be called from main menu)
-    if data.startswith("gen_type:"):
+        
+        # Handle category selection (can be called from main menu)
+        if data.startswith("gen_type:"):
         # User selected a generation type
         gen_type = data.split(":", 1)[1]
         gen_info = get_generation_type_info(gen_type)
@@ -3057,8 +3056,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
         
         return ConversationHandler.END
-    
-    if data.startswith("category:"):
+        
+        if data.startswith("category:"):
         category = data.split(":", 1)[1]
         models = get_models_by_category(category)
         
@@ -3130,8 +3129,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return SELECTING_MODEL
-    
-    if data == "show_models" or data == "all_models":
+        
+        if data == "show_models" or data == "all_models":
         # Show generation types instead of all models with marketing text
         generation_types = get_generation_types()
         remaining_free = get_user_free_generations_remaining(user_id)
@@ -3206,8 +3205,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return SELECTING_MODEL
-    
-    if data == "add_image":
+        
+        if data == "add_image":
         await query.edit_message_text(
             "📷 <b>Загрузите изображение</b>\n\n"
             "Отправьте фото, которое хотите использовать как референс или для трансформации.\n"
@@ -3225,8 +3224,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         session['waiting_for'] = image_param_name
         session[image_param_name] = []  # Initialize as array
         return INPUTTING_PARAMS
-    
-    if data == "image_done":
+        
+        if data == "image_done":
         session = user_sessions.get(user_id, {})
         image_param_name = session.get('waiting_for', 'image_input')
         if image_param_name in session and session[image_param_name]:
@@ -3266,8 +3265,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"Error after image done: {e}")
             await query.edit_message_text("❌ Ошибка при переходе к следующему параметру.")
             return INPUTTING_PARAMS
-    
-    if data == "skip_image":
+        
+        if data == "skip_image":
         await query.answer("Изображение пропущено")
         # Move to next parameter
         try:
@@ -3299,8 +3298,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"Error after skipping image: {e}")
             await query.edit_message_text("❌ Ошибка при переходе к следующему параметру.")
             return INPUTTING_PARAMS
-    
-    if data.startswith("set_param:"):
+        
+        if data.startswith("set_param:"):
         # Handle parameter setting via button
         parts = data.split(":", 2)
         if len(parts) == 3:
@@ -3364,8 +3363,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     parse_mode='HTML'
                 )
                 return CONFIRMING_GENERATION
-    
-    if data == "check_balance":
+        
+        if data == "check_balance":
         # Check user's personal balance (NOT KIE balance)
         user_balance = get_user_balance(user_id)
         balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
@@ -3410,8 +3409,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return ConversationHandler.END
-    
-    if data == "topup_balance":
+        
+        if data == "topup_balance":
         # Check if user is blocked
         if is_user_blocked(user_id):
             await query.edit_message_text(
@@ -3456,8 +3455,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return SELECTING_AMOUNT
-    
-    if data.startswith("topup_amount:"):
+        
+        if data.startswith("topup_amount:"):
         # User selected a preset amount
         amount = float(data.split(":")[1])
         user_sessions[user_id] = {
@@ -3496,8 +3495,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return WAITING_PAYMENT_SCREENSHOT
-    
-    if data == "topup_custom":
+        
+        if data == "topup_custom":
         # User wants to enter custom amount
         await query.edit_message_text(
             f'💰 <b>ВВЕДИ СВОЮ СУММУ</b> 💰\n\n'
@@ -3846,8 +3845,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 'waiting_for': 'admin_test_ocr'
             }
             return ADMIN_TEST_OCR
-    
-    if data == "tutorial_start":
+        
+        if data == "tutorial_start":
         # Interactive tutorial for new users
         tutorial_text = (
             '🎓 <b>ИНТЕРАКТИВНЫЙ ТУТОРИАЛ</b>\n\n'
@@ -3872,8 +3871,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return ConversationHandler.END
-    
-    if data == "tutorial_step1":
+        
+        if data == "tutorial_step1":
         tutorial_text = (
             '📖 <b>ШАГ 1: Что такое AI-генерация?</b>\n\n'
             '━━━━━━━━━━━━━━━━━━━━\n\n'
@@ -3901,8 +3900,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return ConversationHandler.END
-    
-    if data == "tutorial_step2":
+        
+        if data == "tutorial_step2":
         categories = get_categories()
         total_models = len(KIE_MODELS)
         tutorial_text = (
@@ -3931,8 +3930,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return ConversationHandler.END
-    
-    if data == "tutorial_step3":
+        
+        if data == "tutorial_step3":
         tutorial_text = (
             '📖 <b>ШАГ 3: Как создать контент?</b>\n\n'
             '━━━━━━━━━━━━━━━━━━━━\n\n'
@@ -3960,8 +3959,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return ConversationHandler.END
-    
-    if data == "tutorial_step4":
+        
+        if data == "tutorial_step4":
         remaining_free = get_user_free_generations_remaining(user_id)
         tutorial_text = (
             '📖 <b>ШАГ 4: Баланс и оплата</b>\n\n'
@@ -3990,8 +3989,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return ConversationHandler.END
-    
-    if data == "tutorial_complete":
+        
+        if data == "tutorial_complete":
         tutorial_text = (
             '🎉 <b>ТУТОРИАЛ ЗАВЕРШЕН!</b>\n\n'
             '━━━━━━━━━━━━━━━━━━━━\n\n'
@@ -4018,8 +4017,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return ConversationHandler.END
-    
-    if data == "help_menu":
+        
+        if data == "help_menu":
         is_new = is_new_user(user_id)
         
         if is_new:
@@ -4089,8 +4088,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return ConversationHandler.END
-    
-    if data == "support_contact":
+        
+        if data == "support_contact":
         support_info = get_support_contact()
         keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]]
         
@@ -4100,8 +4099,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return ConversationHandler.END
-    
-    if data == "referral_info":
+        
+        if data == "referral_info":
         # Show referral information
         referral_link = get_user_referral_link(user_id)
         referrals_count = len(get_user_referrals(user_id))
@@ -4137,8 +4136,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return ConversationHandler.END
-    
-    if data == "my_generations":
+        
+        if data == "my_generations":
         # Show user's generation history
         history = get_user_generations_history(user_id, limit=20)
         
@@ -4210,8 +4209,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return ConversationHandler.END
-    
-    if data.startswith("gen_view:"):
+        
+        if data.startswith("gen_view:"):
         # View specific generation result
         gen_id = int(data.split(":")[1])
         gen = get_generation_by_id(user_id, gen_id)
@@ -4264,8 +4263,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await query.answer("✅ Результаты отправлены")
         return ConversationHandler.END
-    
-    if data.startswith("gen_repeat:"):
+        
+        if data.startswith("gen_repeat:"):
         # Repeat generation with same parameters
         gen_id = int(data.split(":")[1])
         gen = get_generation_by_id(user_id, gen_id)
@@ -4306,8 +4305,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return CONFIRMING_GENERATION
-    
-    if data.startswith("gen_history:"):
+        
+        if data.startswith("gen_history:"):
         # Navigate through generation history
         parts = data.split(":")
         if len(parts) < 3:
@@ -4394,8 +4393,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return ConversationHandler.END
-    
-    if data.startswith("select_model:"):
+        
+        if data.startswith("select_model:"):
         model_id = data.split(":", 1)[1]
         
         # Get model from static list
