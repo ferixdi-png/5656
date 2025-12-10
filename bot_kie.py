@@ -111,10 +111,9 @@ except (ValueError, TypeError):
 CREDIT_TO_USD = 0.005  # 1 credit = $0.005 ($0.09 / 18)
 USD_TO_RUB = 6.95 / 0.09  # 1 USD = 77.2222... RUB (calculated from 6.95 ₽ / $0.09)
 
-# Initialize knowledge storage
-storage = KnowledgeStorage()
-# KIE client (async)
-kie = get_client()
+# Initialize knowledge storage and KIE client (will be initialized in main() to avoid blocking import)
+storage = None
+kie = None
 
 # Store user sessions
 user_sessions = {}
@@ -2145,9 +2144,12 @@ async def list_models(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def start_generation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start the generation process."""
+    global kie
     user_id = update.effective_user.id
     
-    # Check if KIE API is configured
+    # Check if KIE API is configured (initialize if needed)
+    if kie is None:
+        kie = get_client()
     if not kie.api_key:
         await update.message.reply_text(
             '❌ API не настроен. Укажите API ключ в файле .env'
@@ -6028,6 +6030,14 @@ async def add_knowledge(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     """Start the bot."""
+    global storage, kie
+    
+    # Initialize storage and KIE client here (not at import time to avoid blocking)
+    if storage is None:
+        storage = KnowledgeStorage()
+    if kie is None:
+        kie = get_client()
+    
     if not BOT_TOKEN:
         logger.error("No TELEGRAM_BOT_TOKEN found in environment variables!")
         return

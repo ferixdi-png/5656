@@ -13,16 +13,19 @@ class KnowledgeStorage:
     def __init__(self, storage_path: str = "./knowledge_store"):
         self.storage_path = storage_path
         self.entries_file = os.path.join(storage_path, "entries.json")
-        self.ensure_storage_exists()
+        self._initialized = False
         
     def ensure_storage_exists(self):
-        """Ensure the storage directory and files exist."""
+        """Ensure the storage directory and files exist (lazy initialization)."""
+        if self._initialized:
+            return
         os.makedirs(self.storage_path, exist_ok=True)
         
         # Create entries file if it doesn't exist
         if not os.path.exists(self.entries_file):
             with open(self.entries_file, 'w', encoding='utf-8') as f:
                 json.dump([], f)
+        self._initialized = True
     
     def add_entry(self, content: str, author_id: Optional[str] = None) -> bool:
         """Add a new knowledge entry."""
@@ -78,10 +81,21 @@ class KnowledgeStorage:
     
     def _load_entries(self) -> List[Dict]:
         """Load entries from the JSON file."""
-        with open(self.entries_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        self.ensure_storage_exists()  # Lazy initialization
+        try:
+            if os.path.exists(self.entries_file):
+                with open(self.entries_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            return []
+        except Exception as e:
+            print(f"Error loading entries: {e}")
+            return []
     
     def _save_entries(self, entries: List[Dict]):
         """Save entries to the JSON file."""
-        with open(self.entries_file, 'w', encoding='utf-8') as f:
-            json.dump(entries, f, ensure_ascii=False, indent=2)
+        self.ensure_storage_exists()  # Lazy initialization
+        try:
+            with open(self.entries_file, 'w', encoding='utf-8') as f:
+                json.dump(entries, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Error saving entries: {e}")
