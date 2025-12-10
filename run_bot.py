@@ -85,9 +85,14 @@ try:
             del sys.modules[mod_name]
     
     print("  → Importing bot_kie module...", flush=True)
+    sys.stdout.flush()
+    import time
+    start_time = time.time()
     try:
         import bot_kie
-        print("  ✓ bot_kie imported successfully", flush=True)
+        elapsed = time.time() - start_time
+        print(f"  ✓ bot_kie imported successfully in {elapsed:.2f}s", flush=True)
+        sys.stdout.flush()
     except SyntaxError as e:
         print(f"  ❌ Syntax error in bot_kie.py: {e}", flush=True)
         print(f"  Line {e.lineno}: {e.text}", flush=True)

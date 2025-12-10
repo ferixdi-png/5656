@@ -71,16 +71,12 @@ try:
                 break
     
     # Try to find Tesseract in PATH (works on both Windows and Linux)
+    # NOTE: shutil.which() can hang on some systems, so we skip it at import time
+    # Tesseract path will be auto-detected when OCR is actually used
     if not tesseract_found:
-        try:
-            import shutil
-            tesseract_path = shutil.which('tesseract')
-            if tesseract_path:
-                pytesseract.pytesseract.tesseract_cmd = tesseract_path
-                logger.info(f"Tesseract found in PATH: {tesseract_path}")
-                tesseract_found = True
-        except Exception as e:
-            logger.debug(f"Could not find Tesseract in PATH: {e}")
+        # Don't search PATH at import time - it can cause timeout
+        # pytesseract will try to find tesseract automatically when needed
+        logger.info("Tesseract path not set. Will auto-detect when OCR is used.")
     
     if not tesseract_found:
         logger.warning("Tesseract not found. OCR analysis will be disabled. Install tesseract-ocr package if needed.")
