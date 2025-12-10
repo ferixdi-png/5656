@@ -2145,157 +2145,157 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Handle admin user mode toggle (MUST be first, before any other checks)
         if data == "admin_user_mode":
             # Toggle user mode for admin
-        if user_id != ADMIN_ID:
-            await query.answer("Эта функция доступна только администратору.")
-            return ConversationHandler.END
-        
-        if user_id not in user_sessions:
-            user_sessions[user_id] = {}
-        
-        current_mode = user_sessions[user_id].get('admin_user_mode', False)
-        user_sessions[user_id]['admin_user_mode'] = not current_mode
-        
-        if not current_mode:
-            # Switching to user mode - send new message directly
-            await query.answer("Режим пользователя включен")
-            user = update.effective_user
-            categories = get_categories()
-            total_models = len(KIE_MODELS)
+            if user_id != ADMIN_ID:
+                await query.answer("Эта функция доступна только администратору.")
+                return ConversationHandler.END
             
-            remaining_free = get_user_free_generations_remaining(user_id)
-            free_info = ""
-            if remaining_free > 0:
-                free_info = f"\n🎁 <b>Бесплатно:</b> {remaining_free} генераций Z-Image\n"
+            if user_id not in user_sessions:
+                user_sessions[user_id] = {}
             
-            welcome_text = (
-                f'✨ <b>ПРЕМИУМ AI MARKETPLACE</b> ✨\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'👋 Привет, {user.mention_html()}!\n\n'
-                f'🚀 <b>Топовые нейросети без VPN</b>\n'
-                f'📦 <b>{total_models} моделей</b> | <b>{len(categories)} категорий</b>{free_info}\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'💎 <b>Преимущества:</b>\n'
-                f'• Прямой доступ к мировым AI\n'
-                f'• Профессиональное качество 2K/4K\n'
-                f'• Мгновенная генерация\n\n'
-                f'🎯 <b>Выберите категорию или все модели</b>'
-            )
+            current_mode = user_sessions[user_id].get('admin_user_mode', False)
+            user_sessions[user_id]['admin_user_mode'] = not current_mode
             
-            keyboard = []
-            # All models button first
-            keyboard.append([
-                InlineKeyboardButton("📋 Все модели", callback_data="all_models")
-            ])
-            
-            keyboard.append([])
-            for category in categories:
-                models_in_category = get_models_by_category(category)
-                emoji = models_in_category[0]["emoji"] if models_in_category else "📦"
-                keyboard.append([InlineKeyboardButton(
-                    f"{emoji} {category} ({len(models_in_category)})",
-                    callback_data=f"category:{category}"
-                )])
-            
-            keyboard.append([
-                InlineKeyboardButton("💰 Баланс", callback_data="check_balance")
-            ])
-            keyboard.append([
-                InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")
-            ])
-            keyboard.append([
-                InlineKeyboardButton("🔙 Вернуться в админ-панель", callback_data="admin_back_to_admin")
-            ])
-            keyboard.append([
-                InlineKeyboardButton("🆘 Помощь", callback_data="help_menu"),
-                InlineKeyboardButton("💬 Поддержка", callback_data="support_contact")
-            ])
-            
-            await query.message.reply_text(
-                welcome_text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
-            return ConversationHandler.END
-        else:
-            # Switching back to admin mode - send new message with full admin panel
-            user_sessions[user_id]['admin_user_mode'] = False
-            await query.answer("Возврат в админ-панель")
-            user = update.effective_user
-            generation_types = get_generation_types()
-            total_models = len(KIE_MODELS)
-            
-            welcome_text = (
-                f'👑 ✨ <b>ПАНЕЛЬ АДМИНИСТРАТОРА</b> ✨\n\n'
-                f'Привет, {user.mention_html()}! 👋\n\n'
-                f'🎯 <b>ПОЛНЫЙ КОНТРОЛЬ НАД AI MARKETPLACE</b>\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'📊 <b>СТАТИСТИКА СИСТЕМЫ:</b>\n\n'
-                f'✅ <b>{total_models} премиум моделей</b> в арсенале\n'
-                f'✅ <b>{len(generation_types)} категорий</b> контента\n'
-                f'✅ Безлимитный доступ ко всем генерациям\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'🔥 <b>ТОПОВЫЕ МОДЕЛИ В СИСТЕМЕ:</b>\n\n'
-                f'🎨 <b>Google Imagen 4 Ultra</b> - Флагман от Google DeepMind\n'
-                f'   💰 Безлимит (цена: 4.63 ₽)\n'
-                f'   ⭐️ Максимальное качество для тестирования\n\n'
-                f'🍌 <b>Nano Banana Pro</b> - 4K от Google\n'
-                f'   💰 Безлимит (1K/2K: 6.95 ₽, 4K: 9.27 ₽)\n'
-                f'   🎯 Профессиональная генерация 2K/4K\n\n'
-                f'🎥 <b>Sora 2</b> - Видео от OpenAI\n'
-                f'   💰 Безлимит (цена: 11.58 ₽) за 10-секундное видео\n'
-                f'   🎬 Кинематографические видео с аудио\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'⚙️ <b>АДМИНИСТРАТИВНЫЕ ВОЗМОЖНОСТИ:</b>\n\n'
-                f'📈 Просмотр статистики и аналитики\n'
-                f'👥 Управление пользователями\n'
-                f'🎁 Управление промокодами\n'
-                f'🧪 Тестирование OCR системы\n'
-                f'💼 Полный контроль над ботом\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'💫 <b>НАЧНИТЕ УПРАВЛЕНИЕ ИЛИ ТЕСТИРОВАНИЕ!</b>'
-            )
-            
-            keyboard = []
-            # All models button first
-            keyboard.append([
-                InlineKeyboardButton("📋 Все модели", callback_data="all_models")
-            ])
-            
-            keyboard.append([])
-            for category in categories:
-                models_in_category = get_models_by_category(category)
-                emoji = models_in_category[0]["emoji"] if models_in_category else "📦"
-                keyboard.append([InlineKeyboardButton(
-                    f"{emoji} {category} ({len(models_in_category)})",
-                    callback_data=f"category:{category}"
-                )])
-            
-            keyboard.append([
-                InlineKeyboardButton("📋 Все модели", callback_data="all_models"),
-                InlineKeyboardButton("💰 Баланс", callback_data="check_balance")
-            ])
-            keyboard.append([
-                InlineKeyboardButton("📊 Статистика", callback_data="admin_stats"),
-                InlineKeyboardButton("⚙️ Настройки", callback_data="admin_settings")
-            ])
-            keyboard.append([
-                InlineKeyboardButton("🔍 Поиск", callback_data="admin_search"),
-                InlineKeyboardButton("📝 Добавить", callback_data="admin_add")
-            ])
-            keyboard.append([
-                InlineKeyboardButton("🧪 Тест OCR", callback_data="admin_test_ocr")
-            ])
-            keyboard.append([
-                InlineKeyboardButton("👤 Режим пользователя", callback_data="admin_user_mode")
-            ])
-            keyboard.append([InlineKeyboardButton("🆘 Помощь", callback_data="help_menu")])
-            
-            await query.message.reply_text(
-                welcome_text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
-            return ConversationHandler.END
+            if not current_mode:
+                # Switching to user mode - send new message directly
+                await query.answer("Режим пользователя включен")
+                user = update.effective_user
+                categories = get_categories()
+                total_models = len(KIE_MODELS)
+                
+                remaining_free = get_user_free_generations_remaining(user_id)
+                free_info = ""
+                if remaining_free > 0:
+                    free_info = f"\n🎁 <b>Бесплатно:</b> {remaining_free} генераций Z-Image\n"
+                
+                welcome_text = (
+                    f'✨ <b>ПРЕМИУМ AI MARKETPLACE</b> ✨\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'👋 Привет, {user.mention_html()}!\n\n'
+                    f'🚀 <b>Топовые нейросети без VPN</b>\n'
+                    f'📦 <b>{total_models} моделей</b> | <b>{len(categories)} категорий</b>{free_info}\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'💎 <b>Преимущества:</b>\n'
+                    f'• Прямой доступ к мировым AI\n'
+                    f'• Профессиональное качество 2K/4K\n'
+                    f'• Мгновенная генерация\n\n'
+                    f'🎯 <b>Выберите категорию или все модели</b>'
+                )
+                
+                keyboard = []
+                # All models button first
+                keyboard.append([
+                    InlineKeyboardButton("📋 Все модели", callback_data="all_models")
+                ])
+                
+                keyboard.append([])
+                for category in categories:
+                    models_in_category = get_models_by_category(category)
+                    emoji = models_in_category[0]["emoji"] if models_in_category else "📦"
+                    keyboard.append([InlineKeyboardButton(
+                        f"{emoji} {category} ({len(models_in_category)})",
+                        callback_data=f"category:{category}"
+                    )])
+                
+                keyboard.append([
+                    InlineKeyboardButton("💰 Баланс", callback_data="check_balance")
+                ])
+                keyboard.append([
+                    InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")
+                ])
+                keyboard.append([
+                    InlineKeyboardButton("🔙 Вернуться в админ-панель", callback_data="admin_back_to_admin")
+                ])
+                keyboard.append([
+                    InlineKeyboardButton("🆘 Помощь", callback_data="help_menu"),
+                    InlineKeyboardButton("💬 Поддержка", callback_data="support_contact")
+                ])
+                
+                await query.message.reply_text(
+                    welcome_text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+                return ConversationHandler.END
+            else:
+                # Switching back to admin mode - send new message with full admin panel
+                user_sessions[user_id]['admin_user_mode'] = False
+                await query.answer("Возврат в админ-панель")
+                user = update.effective_user
+                generation_types = get_generation_types()
+                total_models = len(KIE_MODELS)
+                
+                welcome_text = (
+                    f'👑 ✨ <b>ПАНЕЛЬ АДМИНИСТРАТОРА</b> ✨\n\n'
+                    f'Привет, {user.mention_html()}! 👋\n\n'
+                    f'🎯 <b>ПОЛНЫЙ КОНТРОЛЬ НАД AI MARKETPLACE</b>\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'📊 <b>СТАТИСТИКА СИСТЕМЫ:</b>\n\n'
+                    f'✅ <b>{total_models} премиум моделей</b> в арсенале\n'
+                    f'✅ <b>{len(generation_types)} категорий</b> контента\n'
+                    f'✅ Безлимитный доступ ко всем генерациям\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'🔥 <b>ТОПОВЫЕ МОДЕЛИ В СИСТЕМЕ:</b>\n\n'
+                    f'🎨 <b>Google Imagen 4 Ultra</b> - Флагман от Google DeepMind\n'
+                    f'   💰 Безлимит (цена: 4.63 ₽)\n'
+                    f'   ⭐️ Максимальное качество для тестирования\n\n'
+                    f'🍌 <b>Nano Banana Pro</b> - 4K от Google\n'
+                    f'   💰 Безлимит (1K/2K: 6.95 ₽, 4K: 9.27 ₽)\n'
+                    f'   🎯 Профессиональная генерация 2K/4K\n\n'
+                    f'🎥 <b>Sora 2</b> - Видео от OpenAI\n'
+                    f'   💰 Безлимит (цена: 11.58 ₽) за 10-секундное видео\n'
+                    f'   🎬 Кинематографические видео с аудио\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'⚙️ <b>АДМИНИСТРАТИВНЫЕ ВОЗМОЖНОСТИ:</b>\n\n'
+                    f'📈 Просмотр статистики и аналитики\n'
+                    f'👥 Управление пользователями\n'
+                    f'🎁 Управление промокодами\n'
+                    f'🧪 Тестирование OCR системы\n'
+                    f'💼 Полный контроль над ботом\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'💫 <b>НАЧНИТЕ УПРАВЛЕНИЕ ИЛИ ТЕСТИРОВАНИЕ!</b>'
+                )
+                
+                keyboard = []
+                # All models button first
+                keyboard.append([
+                    InlineKeyboardButton("📋 Все модели", callback_data="all_models")
+                ])
+                
+                keyboard.append([])
+                for category in categories:
+                    models_in_category = get_models_by_category(category)
+                    emoji = models_in_category[0]["emoji"] if models_in_category else "📦"
+                    keyboard.append([InlineKeyboardButton(
+                        f"{emoji} {category} ({len(models_in_category)})",
+                        callback_data=f"category:{category}"
+                    )])
+                
+                keyboard.append([
+                    InlineKeyboardButton("📋 Все модели", callback_data="all_models"),
+                    InlineKeyboardButton("💰 Баланс", callback_data="check_balance")
+                ])
+                keyboard.append([
+                    InlineKeyboardButton("📊 Статистика", callback_data="admin_stats"),
+                    InlineKeyboardButton("⚙️ Настройки", callback_data="admin_settings")
+                ])
+                keyboard.append([
+                    InlineKeyboardButton("🔍 Поиск", callback_data="admin_search"),
+                    InlineKeyboardButton("📝 Добавить", callback_data="admin_add")
+                ])
+                keyboard.append([
+                    InlineKeyboardButton("🧪 Тест OCR", callback_data="admin_test_ocr")
+                ])
+                keyboard.append([
+                    InlineKeyboardButton("👤 Режим пользователя", callback_data="admin_user_mode")
+                ])
+                keyboard.append([InlineKeyboardButton("🆘 Помощь", callback_data="help_menu")])
+                
+                await query.message.reply_text(
+                    welcome_text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+                return ConversationHandler.END
         
         if data == "admin_back_to_admin":
             # Return to admin mode - send new message directly
