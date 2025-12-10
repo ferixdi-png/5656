@@ -84,14 +84,11 @@ try:
     
     if not tesseract_found:
         logger.warning("Tesseract not found. OCR analysis will be disabled. Install tesseract-ocr package if needed.")
-    
-    # Test if Tesseract works
-    try:
-        pytesseract.get_tesseract_version()
-        logger.info("Tesseract OCR is available and working.")
-    except Exception as e:
         OCR_AVAILABLE = False
-        logger.warning(f"Tesseract OCR is not working: {e}")
+    else:
+        # Don't test Tesseract at import time - it can hang or timeout
+        # Test will happen when OCR is actually needed
+        logger.info("Tesseract OCR path configured. Will be tested when needed.")
 except ImportError:
     OCR_AVAILABLE = False
     logger.warning("pytesseract not available. OCR analysis will be disabled.")
@@ -100,7 +97,14 @@ except ImportError:
 BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
 # Admin user ID (can be set via environment variable)
-ADMIN_ID = int(os.getenv('ADMIN_ID', '6913446846'))
+try:
+    admin_id_str = os.getenv('ADMIN_ID', '6913446846')
+    if admin_id_str and admin_id_str != 'your_admin_id_here':
+        ADMIN_ID = int(admin_id_str)
+    else:
+        ADMIN_ID = 6913446846  # Default fallback
+except (ValueError, TypeError):
+    ADMIN_ID = 6913446846  # Default fallback if invalid
 
 # Price conversion constants
 # Based on: 18 credits = $0.09 = 6.95 ₽
