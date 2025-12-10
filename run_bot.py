@@ -84,18 +84,67 @@ try:
         if mod_name in sys.modules:
             del sys.modules[mod_name]
     
-    import bot_kie
-    importlib.reload(bot_kie)
-    print("  ✓ bot_kie reloaded", flush=True)
+    print("  → Importing bot_kie module...", flush=True)
+    try:
+        import bot_kie
+        print("  ✓ bot_kie imported successfully", flush=True)
+    except SyntaxError as e:
+        print(f"  ❌ Syntax error in bot_kie.py: {e}", flush=True)
+        print(f"  Line {e.lineno}: {e.text}", flush=True)
+        sys.exit(1)
+    except ImportError as e:
+        print(f"  ❌ Import error in bot_kie.py: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+    except Exception as e:
+        print(f"  ❌ Error loading bot_kie.py: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
     
-    from bot_kie import main
+    print("  → Reloading bot_kie...", flush=True)
+    try:
+        importlib.reload(bot_kie)
+        print("  ✓ bot_kie reloaded", flush=True)
+    except Exception as e:
+        print(f"  ❌ Error reloading bot_kie: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+    
+    print("  → Importing main function...", flush=True)
+    try:
+        from bot_kie import main
+        print("  ✓ main function imported", flush=True)
+    except ImportError as e:
+        print(f"  ❌ Error importing main function: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+    
     print("Using enhanced bot with KIE AI support", flush=True)
     print("✅ All modules reloaded - latest changes will be applied\n", flush=True)
     sys.stdout.flush()
-    main()
+    
+    print("Starting bot main() function...", flush=True)
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n🛑 Bot stopped by user", flush=True)
+        sys.exit(0)
+    except Exception as e:
+        print(f"❌ Error in main(): {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 except ImportError as e:
-    print(f"Error importing bot: {e}")
+    print(f"❌ Import error: {e}", flush=True)
+    import traceback
+    traceback.print_exc()
     sys.exit(1)
 except Exception as e:
-    print(f"Error running bot: {e}")
+    print(f"❌ Fatal error: {e}", flush=True)
+    import traceback
+    traceback.print_exc()
     sys.exit(1)
