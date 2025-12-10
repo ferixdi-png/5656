@@ -2142,6 +2142,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Wrap all callback handling in try-except for error handling
     try:
+        # Initialize common variables that might be used in multiple handlers
+        # This prevents UnboundLocalError if variable is assigned in one branch but used in another
+        categories = None
+        total_models = None
+        
         # Handle admin user mode toggle (MUST be first, before any other checks)
         if data == "admin_user_mode":
             # Toggle user mode for admin
@@ -3225,6 +3230,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 return ConversationHandler.END
             
+            # Get payment details to show immediately
+            payment_details = get_payment_details()
+            
             # Show amount selection - focus on small amounts with marketing
             keyboard = [
                 [
@@ -3245,6 +3253,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f'💳 <b>ПОПОЛНЕНИЕ БАЛАНСА</b> 💳\n\n'
                 f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
                 f'💰 <b>Твой текущий баланс:</b> {balance_str} ₽\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'{payment_details}\n\n'
                 f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
                 f'💡 <b>Доступные модели:</b>\n'
                 f'• От 3.86 ₽ за видео\n'
@@ -3740,33 +3750,33 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if data == "tutorial_step2":
             categories = get_categories()
-        total_models = len(KIE_MODELS)
-        tutorial_text = (
-            f'📖 <b>ШАГ 2: Как выбрать модель?</b>\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'🎯 <b>У нас {total_models} моделей в {len(categories)} категориях:</b>\n\n'
-            f'🖼️ <b>Изображения</b>\n'
-            f'• Z-Image - быстрая генерация (бесплатно 5 раз в день!)\n'
-            f'• Nano Banana Pro - качество 2K/4K\n'
-            f'• Imagen 4 Ultra - новейшая от Google\n\n'
-            f'🎬 <b>Видео</b>\n'
-            f'• Sora 2 - реалистичные видео\n'
-            f'• Grok Imagine - мультимодальная модель\n\n'
-            f'💡 <b>Совет:</b> Начните с Z-Image - она бесплатная!'
-        )
-        
-        keyboard = [
-            [InlineKeyboardButton("▶️ Далее", callback_data="tutorial_step3")],
-            [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_step1")],
-            [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
-        ]
-        
-        await query.edit_message_text(
-            tutorial_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-        return ConversationHandler.END
+            total_models = len(KIE_MODELS)
+            tutorial_text = (
+                f'📖 <b>ШАГ 2: Как выбрать модель?</b>\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'🎯 <b>У нас {total_models} моделей в {len(categories)} категориях:</b>\n\n'
+                f'🖼️ <b>Изображения</b>\n'
+                f'• Z-Image - быстрая генерация (бесплатно 5 раз в день!)\n'
+                f'• Nano Banana Pro - качество 2K/4K\n'
+                f'• Imagen 4 Ultra - новейшая от Google\n\n'
+                f'🎬 <b>Видео</b>\n'
+                f'• Sora 2 - реалистичные видео\n'
+                f'• Grok Imagine - мультимодальная модель\n\n'
+                f'💡 <b>Совет:</b> Начните с Z-Image - она бесплатная!'
+            )
+            
+            keyboard = [
+                [InlineKeyboardButton("▶️ Далее", callback_data="tutorial_step3")],
+                [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_step1")],
+                [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+            ]
+            
+            await query.edit_message_text(
+                tutorial_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
         
         if data == "tutorial_step3":
             tutorial_text = (
@@ -3966,13 +3976,13 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [InlineKeyboardButton("📋 Скопировать ссылку", url=referral_link)],
                 [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
             ]
-        
-        await query.edit_message_text(
-            referral_text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-        return ConversationHandler.END
+            
+            await query.edit_message_text(
+                referral_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
         
         if data == "my_generations":
             # Show user's generation history
