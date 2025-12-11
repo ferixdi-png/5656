@@ -65,11 +65,42 @@ function checkEnv() {
   console.log('✅ Environment variables checked');
 }
 
+// Start simple health check server (CRITICAL for Render.com)
+function startHealthCheck() {
+  const http = require('http');
+  const port = process.env.PORT || 10000;
+  
+  const server = http.createServer((req, res) => {
+    if (req.url === '/health' || req.url === '/') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok', service: 'telegram-bot' }));
+    } else {
+      res.writeHead(404);
+      res.end();
+    }
+  });
+  
+  server.listen(port, '0.0.0.0', () => {
+    console.log(`✅ Health check server started on port ${port}`);
+  });
+  
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`⚠️  Port ${port} already in use (health check may already be running)`);
+    } else {
+      console.error(`❌ Health check server error: ${err.message}`);
+    }
+  });
+}
+
 // Start Python bot
 async function startBot() {
   console.log('🚀 Starting KIE Telegram Bot...');
   console.log('📦 Using Python version');
   console.log('');
+  
+  // NOTE: Health check server is already started at the top level
+  // This prevents Render.com from killing the process during Python startup
   
   // Check environment
   checkEnv();
@@ -170,24 +201,34 @@ async function startBot() {
   });
 }
 
-// Start the bot
-console.log('='.repeat(60));
-console.log('KIE Telegram Bot - Starting...');
-console.log('='.repeat(60));
-console.log(`Node.js version: ${process.version}`);
-console.log(`Platform: ${process.platform}`);
-console.log(`Working directory: ${__dirname}`);
-console.log('='.repeat(60));
-console.log('');
+// CRITICAL: Start health check server IMMEDIATELY to prevent Render.com SIGTERM
+console.log('🏥 Starting health check server FIRST...');
+startHealthCheck();
 
-// Ensure output is flushed immediately
-process.stdout.setEncoding('utf8');
-process.stderr.setEncoding('utf8');
+// Give health check server time to bind to port
+setTimeout(() => {
+  console.log('✅ Health check server should be responding now');
+  console.log('');
+  
+  // Start the bot
+  console.log('='.repeat(60));
+  console.log('KIE Telegram Bot - Starting...');
+  console.log('='.repeat(60));
+  console.log(`Node.js version: ${process.version}`);
+  console.log(`Platform: ${process.platform}`);
+  console.log(`Working directory: ${__dirname}`);
+  console.log('='.repeat(60));
+  console.log('');
 
-startBot().catch((error) => {
-  console.error('❌ Fatal error:', error);
-  console.error('Error stack:', error.stack);
-  process.exit(1);
-});
+  // Ensure output is flushed immediately
+  process.stdout.setEncoding('utf8');
+  process.stderr.setEncoding('utf8');
+
+  startBot().catch((error) => {
+    console.error('❌ Fatal error:', error);
+    console.error('Error stack:', error.stack);
+    process.exit(1);
+  });
+}, 500); // Wait 500ms for health check server to start
 
 
