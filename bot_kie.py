@@ -14,53 +14,7 @@ from telegram.ext import ContextTypes
 import os
 from dotenv import load_dotenv
 from knowledge_storage import KnowledgeStorage
-
-# Import translations with fallback
-try:
-    from translations import t, TRANSLATIONS
-except ImportError:
-    # Fallback if translations.py is not available
-    print("⚠️  WARNING: translations.py not found, using fallback translations", flush=True)
-    TRANSLATIONS = {
-        'ru': {
-            'welcome_new': '👋 Привет, {name}!',
-            'welcome_returning': '👋 С возвращением, {name}!',
-            'select_language': '🌍 Выберите язык',
-            'language_set': '✅ Язык установлен!',
-            'generate_free': '🎁 Генерировать бесплатно',
-            'balance': '💰 Баланс',
-            'models': '🤖 Модели',
-            'help': '❓ Помощь',
-            'support': '💬 Поддержка',
-            'referral': '🎁 Рефералы',
-            'my_generations': '📋 Мои генерации',
-            'admin_panel': '👑 Админ-панель',
-        },
-        'en': {
-            'welcome_new': '👋 Hello, {name}!',
-            'welcome_returning': '👋 Welcome back, {name}!',
-            'select_language': '🌍 Choose language',
-            'language_set': '✅ Language set!',
-            'generate_free': '🎁 Generate free',
-            'balance': '💰 Balance',
-            'models': '🤖 Models',
-            'help': '❓ Help',
-            'support': '💬 Support',
-            'referral': '🎁 Referrals',
-            'my_generations': '📋 My generations',
-            'admin_panel': '👑 Admin panel',
-        }
-    }
-    
-    def t(key: str, lang: str = 'ru', **kwargs) -> str:
-        """Get translated text (fallback)."""
-        translations = TRANSLATIONS.get(lang, TRANSLATIONS['ru'])
-        text = translations.get(key, TRANSLATIONS['ru'].get(key, key))
-        try:
-            return text.format(**kwargs)
-        except KeyError:
-            return text
-
+from translations import t, TRANSLATIONS
 from kie_client import get_client
 from kie_models import (
     KIE_MODELS, get_model_by_id, get_models_by_category, get_categories,
@@ -91,16 +45,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Try to import PIL/Pillow
-# NOTE: Defer logging to avoid blocking during import
 try:
     from PIL import Image
     PIL_AVAILABLE = True
 except ImportError:
     PIL_AVAILABLE = False
-    # Defer logging - don't log during import
+    logger.warning("PIL/Pillow not available. Image analysis will be limited.")
 
 # Try to import pytesseract and configure Tesseract path
-# NOTE: Defer logging to avoid blocking during import
 try:
     import pytesseract
     OCR_AVAILABLE = True
@@ -120,22 +72,27 @@ try:
             if os.path.exists(path):
                 pytesseract.pytesseract.tesseract_cmd = path
                 tesseract_found = True
-                # Defer logging - don't log during import
+                logger.info(f"Tesseract found at: {path}")
                 break
     else:
         # On Linux, assume Tesseract is in PATH (installed via apt-get in Dockerfile)
         # Don't search PATH at import time - it can cause timeout
         # pytesseract will try to find tesseract automatically when needed
+        logger.info("Tesseract should be in PATH (Linux). Will auto-detect when OCR is used.")
         # Assume it's available if we're on Linux (installed in Dockerfile)
         tesseract_found = True
     
     if not tesseract_found:
+        logger.warning("Tesseract not found. OCR analysis will be disabled. Install tesseract-ocr package if needed.")
         OCR_AVAILABLE = False
-    # Don't test Tesseract at import time - it can hang or timeout
-    # Test will happen when OCR is actually needed
+    else:
+        # Don't test Tesseract at import time - it can hang or timeout
+        # Test will happen when OCR is actually needed
+        logger.info("Tesseract OCR path configured. Will be tested when needed.")
 except ImportError:
     OCR_AVAILABLE = False
     tesseract_found = False
+    logger.warning("pytesseract not available. OCR analysis will be disabled.")
 
 # Bot token from environment variable
 BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
@@ -7684,59 +7641,44 @@ def main():
     """Start the bot."""
     global storage, kie
     
-    # NOTE: Health check server is started in run_bot.py BEFORE importing bot_kie
-    # This prevents Render.com from killing the process during import
-    # If we're here, health check should already be running
-    logger.info("🚀 Bot main() function starting (health check should already be running)")
+    # CRITICAL: Start HTTP server FIRST for Render port check
+    import threading
+    from http.server import HTTPServer, BaseHTTPRequestHandler
     
-    # Try to start health check server if not already running (fallback)
-    try:
-        import threading
-        from http.server import HTTPServer, BaseHTTPRequestHandler
-        import socket
+    class HealthCheckHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == '/health' or self.path == '/':
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(b'{"status":"ok","service":"telegram-bot"}')
+            else:
+                self.send_response(404)
+                self.end_headers()
         
-        class HealthCheckHandler(BaseHTTPRequestHandler):
-            def do_GET(self):
-                if self.path == '/health' or self.path == '/':
-                    self.send_response(200)
-                    self.send_header('Content-type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(b'{"status":"ok","service":"telegram-bot"}')
-                else:
-                    self.send_response(404)
-                    self.end_headers()
-            
-            def log_message(self, format, *args):
-                pass
-        
-        def start_health_server():
-            port = int(os.getenv('PORT', 10000))
-            try:
-                # Check if port is already in use (health check already running)
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                result = sock.connect_ex(('127.0.0.1', port))
-                sock.close()
-                if result == 0:
-                    logger.info(f"✅ Health check server already running on port {port}")
-                    return
-                
-                server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
-                logger.info(f"✅ Health check server started on port {port}")
-                server.serve_forever()
-            except OSError as e:
-                if "Address already in use" in str(e):
-                    logger.info(f"✅ Health check server already running on port {port}")
-                else:
-                    logger.error(f"❌ Failed to start health server: {e}")
-            except Exception as e:
-                logger.error(f"❌ Failed to start health server: {e}")
-        
-        # Try to start health check server if not already running
-        health_thread = threading.Thread(target=start_health_server, daemon=True)
-        health_thread.start()
-        time.sleep(0.5)  # Give it a moment to try
-    except Exception as e:
-        logger.warning(f"⚠️ Could not start health check server (may already be running): {e}")
+        def log_message(self, format, *args):
+            pass  # Suppress HTTP server logs
+    
+    def start_health_server():
+        port = int(os.getenv('PORT', 10000))
+        try:
+            server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+            logger.info(f"✅ Health check server started on port {port}")
+            server.serve_forever()
+        except Exception as e:
+            logger.error(f"❌ Failed to start health server: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    # Start health check server IMMEDIATELY in background thread
+    health_thread = threading.Thread(target=start_health_server, daemon=True)
+    health_thread.start()
+    logger.info("🚀 Health check server thread started")
+    
+    # Give server time to bind to port (critical for Render)
+    # NOTE: time already imported at top level
+    time.sleep(2)
+    logger.info("✅ Port should be open now")
     
     # Initialize storage and KIE client here (not at import time to avoid blocking)
     if storage is None:
@@ -8208,7 +8150,7 @@ def main():
                 return
             
             # Add admin with 100 rubles limit
-            import time
+            # NOTE: time already imported at top level
             admin_limits[str(new_admin_id)] = {
                 'limit': 100.0,
                 'spent': 0.0,
@@ -8255,9 +8197,10 @@ def main():
     application.add_error_handler(error_handler)
     
     # Add payment handlers for Telegram Stars
-    from telegram.ext import PreCheckoutQueryHandler, MessageHandler, filters as telegram_filters
+    # NOTE: MessageHandler and filters already imported at top level, don't re-import
+    from telegram.ext import PreCheckoutQueryHandler
     application.add_handler(PreCheckoutQueryHandler(pre_checkout_query_handler))
-    application.add_handler(MessageHandler(telegram_filters.SUCCESSFUL_PAYMENT, successful_payment_handler))
+    application.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_handler))
     
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
@@ -8278,7 +8221,7 @@ def main():
     logger.info("Bot starting...")
     
     # Wait a bit to let any previous instance finish
-    import time
+    # NOTE: time and asyncio already imported at top level
     import asyncio
     logger.info("Waiting 5 seconds to avoid conflicts with previous instance...")
     time.sleep(5)
