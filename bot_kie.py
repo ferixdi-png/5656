@@ -6030,15 +6030,15 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             # Add more details for admin
             if is_admin_user:
                 error_details = f"\n\n📋 <b>Отправленные параметры:</b>\n"
-                import json
                 try:
                     params_preview = json.dumps(api_params, indent=2, ensure_ascii=False)
                     # Limit preview length
                     if len(params_preview) > 500:
                         params_preview = params_preview[:500] + "..."
                     error_details += f"<code>{params_preview}</code>"
-                except:
+                except Exception as e:
                     error_details += f"<code>{str(api_params)[:500]}</code>"
+                    logger.error(f"Error formatting params for error message: {e}")
             
             await query.edit_message_text(
                 f"❌ <b>Ошибка создания задачи:</b>\n\n{error}"
