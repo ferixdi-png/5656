@@ -14,6 +14,7 @@ from telegram.ext import ContextTypes
 import os
 from dotenv import load_dotenv
 from knowledge_storage import KnowledgeStorage
+from translations import t, TRANSLATIONS
 from kie_client import get_client
 from kie_models import (
     KIE_MODELS, get_model_by_id, get_models_by_category, get_categories,
@@ -21,12 +22,16 @@ from kie_models import (
 )
 import json
 import aiohttp
+import aiofiles
 import io
 from io import BytesIO
 import re
 import platform
 import random
 import time
+from asyncio import Lock
+from typing import Optional
+import threading
 
 # Load environment variables FIRST
 load_dotenv()
@@ -869,11 +874,41 @@ user_sessions = {}
 # Store saved generation data for "generate again" feature
 saved_generations = {}
 
-# Store saved generation data for "generate again" feature
-saved_generations = {}
+# Global HTTP client for connection pooling (optimized for 1000+ users)
+_http_client: Optional[aiohttp.ClientSession] = None
+
+# File operation locks to prevent race conditions (using threading.Lock for sync operations)
+_file_locks = {
+    'balances': threading.Lock(),
+    'generations_history': threading.Lock(),
+    'referrals': threading.Lock(),
+    'promocodes': threading.Lock(),
+    'free_generations': threading.Lock(),
+    'languages': threading.Lock(),
+    'gifts': threading.Lock(),
+    'payments': threading.Lock(),
+    'broadcasts': threading.Lock(),
+    'admin_limits': threading.Lock(),
+    'blocked_users': threading.Lock()
+}
+
+# In-memory cache for frequently accessed data (optimized for 1000+ users)
+_data_cache = {
+    'balances': {},
+    'free_generations': {},
+    'languages': {},
+    'gifts': {},
+    'cache_timestamps': {}
+}
+
+# Cache TTL in seconds (5 minutes)
+CACHE_TTL = 300
+_last_save_time = {}
 
 # Payment data files
 BALANCES_FILE = "user_balances.json"
+USER_LANGUAGES_FILE = "user_languages.json"
+GIFT_CLAIMED_FILE = "gift_claimed.json"
 ADMIN_LIMITS_FILE = "admin_limits.json"  # File to store admins with spending limits
 PAYMENTS_FILE = "payments.json"
 BLOCKED_USERS_FILE = "blocked_users.json"
@@ -891,39 +926,167 @@ REFERRAL_BONUS_GENERATIONS = 5  # Bonus generations for inviting a user
 
 # ==================== Payment System Functions ====================
 
+def get_cache_key(filename: str) -> str:
+    """Get cache key for filename."""
+    cache_map = {
+        BALANCES_FILE: 'balances',
+        FREE_GENERATIONS_FILE: 'free_generations',
+        USER_LANGUAGES_FILE: 'languages',
+        GIFT_CLAIMED_FILE: 'gifts',
+        REFERRALS_FILE: 'referrals',
+        PROMOCODES_FILE: 'promocodes',
+        GENERATIONS_HISTORY_FILE: 'generations_history',
+        PAYMENTS_FILE: 'payments',
+        BROADCASTS_FILE: 'broadcasts',
+        ADMIN_LIMITS_FILE: 'admin_limits',
+        BLOCKED_USERS_FILE: 'blocked_users'
+    }
+    return cache_map.get(filename, filename)
+
 def load_json_file(filename: str, default: dict = None) -> dict:
-    """Load JSON file, return default if file doesn't exist."""
+    """Load JSON file with caching and locking for performance (optimized for 1000+ users)."""
     if default is None:
         default = {}
-    try:
-        if os.path.exists(filename):
-            with open(filename, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        return default
-    except Exception as e:
-        logger.error(f"Error loading {filename}: {e}")
-        return default
+    
+    cache_key = get_cache_key(filename)
+    current_time = time.time()
+    
+    # Check cache first (thread-safe read)
+    if cache_key in _data_cache['cache_timestamps']:
+        cache_time = _data_cache['cache_timestamps'][cache_key]
+        if current_time - cache_time < CACHE_TTL and cache_key in _data_cache:
+            if cache_key != filename:  # Only for mapped cache keys
+                cached_data = _data_cache.get(cache_key)
+                if cached_data is not None:
+                    return cached_data.copy()
+    
+    # Get lock for this file type
+    lock_key = cache_key if cache_key in _file_locks else 'balances'  # Default to balances lock
+    lock = _file_locks.get(lock_key, _file_locks['balances'])
+    
+    # Load from file with lock to prevent race conditions
+    with lock:
+        try:
+            if os.path.exists(filename):
+                with open(filename, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    # Update cache (thread-safe)
+                    if cache_key != filename:
+                        _data_cache[cache_key] = data.copy()
+                        _data_cache['cache_timestamps'][cache_key] = current_time
+                    return data
+            return default
+        except Exception as e:
+            logger.error(f"Error loading {filename}: {e}")
+            return default
 
 
-def save_json_file(filename: str, data: dict):
-    """Save data to JSON file."""
+def save_json_file(filename: str, data: dict, use_cache: bool = True):
+    """Save data to JSON file with batched writes (optimized for 1000+ users)."""
     try:
+        cache_key = get_cache_key(filename)
+        current_time = time.time()
+        
+        # Update cache immediately
+        if use_cache and cache_key != filename:
+            _data_cache[cache_key] = data.copy()
+            _data_cache['cache_timestamps'][cache_key] = current_time
+        
+        # Batch writes: only save if enough time passed (reduce I/O)
+        if filename in _last_save_time:
+            time_since_last_save = current_time - _last_save_time[filename]
+            # For critical files (balances), save immediately
+            # For others, batch every 2 seconds max
+            if filename not in [BALANCES_FILE] and time_since_last_save < 2.0:
+                return  # Skip write, will be saved later or by batch save
+        
+        # Perform actual write
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+        
+        _last_save_time[filename] = current_time
     except Exception as e:
         logger.error(f"Error saving {filename}: {e}")
 
 
+async def get_http_client() -> aiohttp.ClientSession:
+    """Get or create global HTTP client with connection pooling."""
+    global _http_client
+    if _http_client is None or _http_client.closed:
+        connector = aiohttp.TCPConnector(
+            limit=100,  # Max connections
+            limit_per_host=30,  # Max connections per host
+            ttl_dns_cache=300,  # DNS cache TTL
+            use_dns_cache=True,
+        )
+        timeout = aiohttp.ClientTimeout(total=60, connect=10)
+        _http_client = aiohttp.ClientSession(
+            connector=connector,
+            timeout=timeout,
+            headers={'User-Agent': 'TelegramBot/1.0'}
+        )
+    return _http_client
+
+
+async def cleanup_http_client():
+    """Close HTTP client on shutdown."""
+    global _http_client
+    if _http_client and not _http_client.closed:
+        await _http_client.close()
+        _http_client = None
+
+
+def cleanup_old_sessions(max_age_seconds: int = 3600):
+    """Clean up old user sessions to prevent memory leaks (optimized for 1000+ users)."""
+    current_time = time.time()
+    keys_to_remove = []
+    
+    for user_id, session in user_sessions.items():
+        session_time = session.get('last_activity', current_time)
+        if current_time - session_time > max_age_seconds:
+            keys_to_remove.append(user_id)
+    
+    for key in keys_to_remove:
+        del user_sessions[key]
+    
+    if keys_to_remove:
+        logger.info(f"Cleaned up {len(keys_to_remove)} old user sessions")
+
+
+def update_session_activity(user_id: int):
+    """Update last activity time for user session."""
+    if user_id in user_sessions:
+        user_sessions[user_id]['last_activity'] = time.time()
+
+
 def get_user_balance(user_id: int) -> float:
-    """Get user balance in rubles."""
+    """Get user balance in rubles (optimized with caching)."""
+    user_key = str(user_id)
+    
+    # Check cache first
+    current_time = time.time()
+    if 'balances' in _data_cache['cache_timestamps']:
+        cache_time = _data_cache['cache_timestamps']['balances']
+        if current_time - cache_time < CACHE_TTL and user_key in _data_cache.get('balances', {}):
+            return _data_cache['balances'][user_key]
+    
+    # Load from file if not in cache
     balances = load_json_file(BALANCES_FILE, {})
-    return balances.get(str(user_id), 0.0)
+    return balances.get(user_key, 0.0)
 
 
 def set_user_balance(user_id: int, amount: float):
-    """Set user balance in rubles."""
+    """Set user balance in rubles (optimized with caching)."""
+    user_key = str(user_id)
     balances = load_json_file(BALANCES_FILE, {})
-    balances[str(user_id)] = amount
+    balances[user_key] = amount
+    
+    # Update cache immediately
+    if 'balances' not in _data_cache:
+        _data_cache['balances'] = {}
+    _data_cache['balances'][user_key] = amount
+    _data_cache['cache_timestamps']['balances'] = time.time()
+    
     save_json_file(BALANCES_FILE, balances)
 
 
@@ -942,6 +1105,44 @@ def subtract_user_balance(user_id: int, amount: float) -> bool:
         set_user_balance(user_id, current - amount)
         return True
     return False
+
+
+# ==================== User Language System ====================
+
+def get_user_language(user_id: int) -> str:
+    """Get user language preference (default: 'ru')."""
+    languages = load_json_file(USER_LANGUAGES_FILE, {})
+    return languages.get(str(user_id), 'ru')  # Default to Russian
+
+
+def set_user_language(user_id: int, language: str):
+    """Set user language preference ('ru' or 'en')."""
+    languages = load_json_file(USER_LANGUAGES_FILE, {})
+    languages[str(user_id)] = language
+    save_json_file(USER_LANGUAGES_FILE, languages)
+
+
+# ==================== Gift System ====================
+
+def has_claimed_gift(user_id: int) -> bool:
+    """Check if user has already claimed their gift."""
+    claimed = load_json_file(GIFT_CLAIMED_FILE, {})
+    return claimed.get(str(user_id), False)
+
+
+def set_gift_claimed(user_id: int):
+    """Mark gift as claimed for user."""
+    claimed = load_json_file(GIFT_CLAIMED_FILE, {})
+    claimed[str(user_id)] = True
+    save_json_file(GIFT_CLAIMED_FILE, claimed)
+
+
+def spin_gift_wheel() -> float:
+    """Spin the gift wheel and return random amount between 10 and 30 rubles."""
+    import random
+    # Generate random amount between 10 and 30 with 2 decimal places
+    amount = round(random.uniform(10.0, 30.0), 2)
+    return amount
 
 
 # ==================== Free Generations System ====================
@@ -1804,39 +2005,39 @@ async def upload_image_to_hosting(image_data: bytes, filename: str = "image.jpg"
     for service in hosting_services:
         try:
             logger.info(f"Trying to upload to {service['url']}")
-            async with aiohttp.ClientSession() as session:
-                if service['data_type'] == 'form':
-                    data = aiohttp.FormData()
-                    # Add extra params if needed
-                    if 'extra_params' in service:
-                        for key, value in service['extra_params'].items():
-                            data.add_field(key, value)
+            session = await get_http_client()
+            if service['data_type'] == 'form':
+                data = aiohttp.FormData()
+                # Add extra params if needed
+                if 'extra_params' in service:
+                    for key, value in service['extra_params'].items():
+                        data.add_field(key, value)
+                
+                # Add file
+                data.add_field(
+                    service['field_name'],
+                    BytesIO(image_data),
+                    filename=filename,
+                    content_type='image/jpeg'
+                )
+                
+                async with session.post(service['url'], data=data, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                    status = resp.status
+                    text = await resp.text()
+                    logger.info(f"Response from {service['url']}: status={status}, text={text[:100]}")
                     
-                    # Add file
-                    data.add_field(
-                        service['field_name'],
-                        BytesIO(image_data),
-                        filename=filename,
-                        content_type='image/jpeg'
-                    )
-                    
-                    async with session.post(service['url'], data=data, timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                        status = resp.status
-                        text = await resp.text()
-                        logger.info(f"Response from {service['url']}: status={status}, text={text[:100]}")
-                        
-                        if status in [200, 201]:
-                            text = text.strip()
-                            # For catbox.moe, response is direct URL
-                            if 'catbox.moe' in service['url']:
-                                if text.startswith('http'):
-                                    return text
-                            # For 0x0.st, response is direct URL
-                            elif text.startswith('http'):
+                    if status in [200, 201]:
+                        text = text.strip()
+                        # For catbox.moe, response is direct URL
+                        if 'catbox.moe' in service['url']:
+                            if text.startswith('http'):
                                 return text
-                        else:
-                            logger.warning(f"Upload to {service['url']} failed with status {status}: {text[:200]}")
-                else:  # raw
+                        # For 0x0.st, response is direct URL
+                        elif text.startswith('http'):
+                            return text
+                    else:
+                        logger.warning(f"Upload to {service['url']} failed with status {status}: {text[:200]}")
+            else:  # raw
                     headers = {'Content-Type': 'image/jpeg', 'Max-Downloads': '1', 'Max-Days': '7'}
                     async with session.put(service['url'], data=image_data, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
                         status = resp.status
@@ -1866,6 +2067,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
     
+    # Check if language is set, if not - show language selection
+    user_lang = get_user_language(user_id)
+    if not user_lang or user_lang not in ['ru', 'en']:
+        keyboard = [
+            [
+                InlineKeyboardButton("🇷🇺 Русский", callback_data="language_select:ru"),
+                InlineKeyboardButton("🇬🇧 English", callback_data="language_select:en")
+            ]
+        ]
+        await update.message.reply_html(
+            t('select_language', lang='ru'),
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return
+    
     # Check if user is admin
     is_admin = (user_id == ADMIN_ID)
     
@@ -1879,118 +2095,92 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_new = is_new_user(user_id)
     referral_link = get_user_referral_link(user_id)
     referrals_count = len(get_user_referrals(user_id))
+    online_count = get_fake_online_count()
     
+    # Use translations
     if is_new:
-        # Enhanced marketing welcome for new users - максимальный акцент на бесплатный Z-Image
-        online_count = get_fake_online_count()
-        
-        welcome_text = (
-            f'🎉 <b>ПРИВЕТ, {user.mention_html()}!</b> 🎉\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'🔥 <b>У ТЕБЯ ЕСТЬ {remaining_free if remaining_free > 0 else FREE_GENERATIONS_PER_DAY} БЕСПЛАТНЫХ ГЕНЕРАЦИЙ!</b> 🔥\n\n'
-            f'✨ <b>ПРЕМИУМ AI MARKETPLACE</b> ✨\n\n'
-            f'🚀 <b>Что это за бот?</b>\n'
-            f'• 📦 <b>{total_models} топовых нейросетей</b> в одном месте\n'
-            f'• 🎯 <b>{len(generation_types)} типов генерации</b> контента\n'
-            f'• 🌐 Прямой доступ БЕЗ VPN\n'
-            f'• ⚡ Мгновенная генерация\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'✨ <b>Z-Image - САМАЯ КРУТАЯ НЕЙРОСЕТЬ ДЛЯ ИЗОБРАЖЕНИЙ!</b> ✨\n\n'
-            f'💎 <b>Почему Z-Image?</b>\n'
-            f'• 🎨 Профессиональное качество изображений\n'
-            f'• ⚡ Мгновенная генерация (10-30 секунд)\n'
-            f'• 🎯 Работает БЕЗ VPN\n'
-            f'• 💰 <b>ПОЛНОСТЬЮ БЕСПЛАТНО для тебя!</b>\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
-            f'🚀 <b>ЧТО МОЖНО ДЕЛАТЬ:</b>\n'
-            f'• 🎨 Создавать изображения из текста\n'
-            f'• 🎬 Генерировать видео\n'
-            f'• ✨ Редактировать и трансформировать контент\n'
-            f'• 🎯 Все это БЕЗ VPN и по цене жвачки!\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'🏢 <b>ТОПОВЫЕ НЕЙРОСЕТИ 2025:</b>\n\n'
-            f'🤖 OpenAI • Google • Black Forest Labs\n'
-            f'🎬 ByteDance • Ideogram • Qwen\n'
-            f'✨ Kling • Hailuo • Topaz\n'
-            f'🎨 Recraft • Grok (xAI) • Wan\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'🎁 <b>КАК НАЧАТЬ?</b>\n\n'
-            f'1️⃣ <b>Нажми кнопку "🎁 Генерировать бесплатно"</b> ниже\n'
-            f'   → Создай свое первое изображение за 30 секунд!\n\n'
-            f'2️⃣ <b>Напиши что хочешь увидеть</b> (например: "Кот в космосе")\n'
-            f'   → Z-Image создаст это для тебя!\n\n'
-            f'3️⃣ <b>Получи результат и наслаждайся!</b> 🎉\n\n'
-            f'💡 <b>Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} бесплатных генераций!</b>\n'
-            f'🔗 <code>{referral_link}</code>\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'💰 <b>После бесплатных генераций:</b>\n'
-            f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео'
-        )
+        welcome_text = t('welcome_new', lang=user_lang,
+                        name=user.mention_html(),
+                        free=remaining_free if remaining_free > 0 else FREE_GENERATIONS_PER_DAY,
+                        models=total_models,
+                        types=len(generation_types),
+                        online=online_count,
+                        ref_bonus=REFERRAL_BONUS_GENERATIONS,
+                        ref_link=referral_link)
     else:
-        # Marketing welcome for existing users - акцент на бесплатный Z-Image
-        online_count = get_fake_online_count()
         referral_bonus_text = ""
         if referrals_count > 0:
-            referral_bonus_text = (
-                f"\n🎁 <b>Отлично!</b> Ты пригласил <b>{referrals_count}</b> друзей\n"
-                f"   → Получено <b>+{referrals_count * REFERRAL_BONUS_GENERATIONS} бесплатных генераций</b>! 🎉\n\n"
-            )
+            if user_lang == 'ru':
+                referral_bonus_text = (
+                    f"\n🎁 <b>Отлично!</b> Ты пригласил <b>{referrals_count}</b> друзей\n"
+                    f"   → Получено <b>+{referrals_count * REFERRAL_BONUS_GENERATIONS} бесплатных генераций</b>! 🎉\n\n"
+                )
+            else:
+                referral_bonus_text = (
+                    f"\n🎁 <b>Great!</b> You invited <b>{referrals_count}</b> friends\n"
+                    f"   → Received <b>+{referrals_count * REFERRAL_BONUS_GENERATIONS} free generations</b>! 🎉\n\n"
+                )
         
-        welcome_text = (
-            f'👋 <b>С возвращением, {user.mention_html()}!</b> 🤖✨\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
-        )
+        welcome_text = t('welcome_returning', lang=user_lang,
+                        name=user.mention_html(),
+                        online=online_count,
+                        free=remaining_free if remaining_free > 0 else FREE_GENERATIONS_PER_DAY,
+                        models=total_models,
+                        types=len(generation_types))
+        welcome_text += referral_bonus_text
         
-        if remaining_free > 0:
+        if user_lang == 'ru':
             welcome_text += (
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'🔥 <b>У ТЕБЯ ЕСТЬ {remaining_free} БЕСПЛАТНЫХ ГЕНЕРАЦИЙ!</b> 🔥\n\n'
-                f'✨ <b>ПРЕМИУМ AI MARKETPLACE</b> ✨\n\n'
-                f'🚀 <b>Что это за бот?</b>\n'
-                f'• 📦 <b>{total_models} топовых нейросетей</b> в одном месте\n'
-                f'• 🎯 <b>{len(generation_types)} типов генерации</b> контента\n'
-                f'• 🌐 Прямой доступ БЕЗ VPN\n'
-                f'• ⚡ Мгновенная генерация\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'✨ <b>Z-Image - САМАЯ КРУТАЯ НЕЙРОСЕТЬ ДЛЯ ИЗОБРАЖЕНИЙ!</b> ✨\n\n'
-                f'💎 <b>Почему Z-Image?</b>\n'
-                f'• 🎨 Профессиональное качество изображений\n'
-                f'• ⚡ Мгновенная генерация (10-30 секунд)\n'
-                f'• 🎯 Работает БЕЗ VPN\n'
-                f'• 💰 <b>ПОЛНОСТЬЮ БЕСПЛАТНО для тебя!</b>\n\n'
-                f'💡 <b>Нажми кнопку "🎁 Генерировать бесплатно" ниже</b>\n\n'
+                f'💎 <b>ДОСТУПНО:</b>\n'
+                f'• {len(generation_types)} типов генерации\n'
+                f'• {total_models} топовых нейросетей\n'
+                f'• Без VPN, прямо здесь!\n\n'
+                f'💰 <b>После бесплатных генераций:</b>\n'
+                f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
+                f'💡 <b>Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} бесплатных генераций!</b>\n'
+                f'🔗 <code>{referral_link}</code>\n\n'
+                f'🎯 <b>Выбери формат генерации ниже или начни с бесплатной!</b>'
             )
-        
-        welcome_text += (
-            f'{referral_bonus_text}'
-            f'💎 <b>ДОСТУПНО:</b>\n'
-            f'• {len(generation_types)} типов генерации\n'
-            f'• {total_models} топовых нейросетей\n'
-            f'• Без VPN, прямо здесь!\n\n'
-            f'💰 <b>После бесплатных генераций:</b>\n'
-            f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
-            f'💡 <b>Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} бесплатных генераций!</b>\n'
-            f'🔗 <code>{referral_link}</code>\n\n'
-            f'🎯 <b>Выбери формат генерации ниже или начни с бесплатной!</b>'
-        )
+        else:
+            welcome_text += (
+                f'💎 <b>AVAILABLE:</b>\n'
+                f'• {len(generation_types)} generation types\n'
+                f'• {total_models} top AI models\n'
+                f'• No VPN needed!\n\n'
+                f'💰 <b>After free generations:</b>\n'
+                f'From 0.62 ₽ per image • From 3.86 ₽ per video\n\n'
+                f'💡 <b>Invite a friend → get +{REFERRAL_BONUS_GENERATIONS} free generations!</b>\n'
+                f'🔗 <code>{referral_link}</code>\n\n'
+                f'🎯 <b>Choose generation format below or start with free!</b>'
+            )
     
     # Common keyboard for both admin and regular users
     keyboard = []
     
     # Free generation button (ALWAYS prominent - biggest button)
     if remaining_free > 0:
+        if user_lang == 'ru':
+            button_text = f"🎁 ГЕНЕРИРОВАТЬ БЕСПЛАТНО ({remaining_free} осталось)"
+        else:
+            button_text = f"🎁 GENERATE FREE ({remaining_free} left)"
         keyboard.append([
-            InlineKeyboardButton(f"🎁 ГЕНЕРИРОВАТЬ БЕСПЛАТНО ({remaining_free} осталось)", callback_data="select_model:z-image")
+            InlineKeyboardButton(button_text, callback_data="select_model:z-image")
         ])
         keyboard.append([])  # Empty row for spacing
     
     # Generation types buttons (compact, 2 per row)
+    # Find text-to-image type and add it after free generation button
+    text_to_image_type = None
     gen_type_rows = []
     for i, gen_type in enumerate(generation_types):
         gen_info = get_generation_type_info(gen_type)
         models_count = len(get_models_by_generation_type(gen_type))
+        
+        # Identify text-to-image type
+        if gen_type == 'text-to-image':
+            text_to_image_type = gen_type
+            continue
+            
         button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
         
         if i % 2 == 0:
@@ -2010,36 +2200,67 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     callback_data=f"gen_type:{gen_type}"
                 )])
     
+    # Add text-to-image button after free generation (if it exists)
+    if text_to_image_type:
+        gen_info = get_generation_type_info(text_to_image_type)
+        models_count = len(get_models_by_generation_type(text_to_image_type))
+        button_text = f"{gen_info.get('name', text_to_image_type)} ({models_count})"
+        keyboard.append([
+            InlineKeyboardButton(button_text, callback_data=f"gen_type:{text_to_image_type}")
+        ])
+        keyboard.append([])  # Empty row for spacing
+    
     keyboard.extend(gen_type_rows)
     
+    # Add "Claim Gift" button for new users who haven't claimed yet
+    if is_new and not has_claimed_gift(user_id):
+        if user_lang == 'ru':
+            keyboard.append([
+                InlineKeyboardButton("🎰 Получить подарок", callback_data="claim_gift")
+            ])
+        else:
+            keyboard.append([
+                InlineKeyboardButton("🎰 Claim Gift", callback_data="claim_gift")
+            ])
+        keyboard.append([])  # Empty row for spacing
+    
     # Bottom action buttons
-    keyboard.append([])  # Empty row for spacing
     keyboard.append([
-        InlineKeyboardButton("💰 Баланс", callback_data="check_balance"),
-        InlineKeyboardButton("📚 Мои генерации", callback_data="my_generations")
+        InlineKeyboardButton(t('balance', lang=user_lang), callback_data="check_balance"),
+        InlineKeyboardButton(t('my_generations', lang=user_lang), callback_data="my_generations")
     ])
     keyboard.append([
-        InlineKeyboardButton("💳 Пополнить", callback_data="topup_balance"),
-        InlineKeyboardButton("🎁 Пригласить друга", callback_data="referral_info")
+        InlineKeyboardButton(t('balance', lang=user_lang).replace('💰 ', '💳 '), callback_data="topup_balance") if user_lang == 'ru' else InlineKeyboardButton("💳 Top up", callback_data="topup_balance"),
+        InlineKeyboardButton(t('referral', lang=user_lang), callback_data="referral_info")
     ])
     
     # Add tutorial button for new users
     if is_new:
-        keyboard.append([
-            InlineKeyboardButton("❓ Как это работает?", callback_data="tutorial_start")
-        ])
+        if user_lang == 'ru':
+            keyboard.append([
+                InlineKeyboardButton("❓ Как это работает?", callback_data="tutorial_start")
+            ])
+        else:
+            keyboard.append([
+                InlineKeyboardButton("❓ How it works?", callback_data="tutorial_start")
+            ])
     
     keyboard.append([
-        InlineKeyboardButton("🆘 Помощь", callback_data="help_menu"),
-        InlineKeyboardButton("💬 Поддержка", callback_data="support_contact")
+        InlineKeyboardButton(t('help', lang=user_lang), callback_data="help_menu"),
+        InlineKeyboardButton(t('support', lang=user_lang), callback_data="support_contact")
     ])
     
     # Add admin panel button ONLY for admin (at the end)
     if is_admin:
         keyboard.append([])  # Empty row for admin section
-        keyboard.append([
-            InlineKeyboardButton("👑 АДМИН ПАНЕЛЬ", callback_data="admin_stats")
-        ])
+        if user_lang == 'ru':
+            keyboard.append([
+                InlineKeyboardButton("👑 АДМИН ПАНЕЛЬ", callback_data="admin_stats")
+            ])
+        else:
+            keyboard.append([
+                InlineKeyboardButton("👑 ADMIN PANEL", callback_data="admin_stats")
+            ])
     
     await update.message.reply_html(
         welcome_text,
@@ -2171,6 +2392,76 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         promocodes_text = None
         broadcast_text = None
         stats_text = None
+        
+        # Handle language selection
+        if data.startswith("language_select:"):
+            lang_code = data.split(":")[1]
+            if lang_code in ['ru', 'en']:
+                set_user_language(user_id, lang_code)
+                user_lang = get_user_language(user_id)
+                if user_lang == 'ru':
+                    await query.edit_message_text(
+                        "✅ Язык установлен! Используйте /start для продолжения."
+                    )
+                else:
+                    await query.edit_message_text(
+                        "✅ Language set! Use /start to continue."
+                    )
+                # Trigger start command to show main menu
+                context.user_data['trigger_start'] = True
+                return ConversationHandler.END
+            else:
+                await query.answer("Неверный язык / Invalid language")
+                return ConversationHandler.END
+        
+        # Handle claim gift
+        if data == "claim_gift":
+            if has_claimed_gift(user_id):
+                user_lang = get_user_language(user_id)
+                if user_lang == 'ru':
+                    await query.answer("Вы уже получили подарок! / You already claimed the gift!", show_alert=True)
+                else:
+                    await query.answer("You already claimed the gift!", show_alert=True)
+                return ConversationHandler.END
+            
+            # Spin the wheel
+            amount = spin_gift_wheel()
+            add_user_balance(user_id, amount)
+            set_gift_claimed(user_id)
+            
+            user_lang = get_user_language(user_id)
+            if user_lang == 'ru':
+                gift_text = (
+                    f'🎰 <b>ПОДАРОК ПОЛУЧЕН!</b> 🎰\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'🎁 <b>Поздравляем!</b> Вы выиграли:\n\n'
+                    f'💰 <b>{amount:.2f} ₽</b> на баланс!\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'🎉 Сумма автоматически зачислена на ваш баланс!\n\n'
+                    f'💡 Теперь вы можете использовать эти средства для генерации контента.'
+                )
+            else:
+                gift_text = (
+                    f'🎰 <b>GIFT CLAIMED!</b> 🎰\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'🎁 <b>Congratulations!</b> You won:\n\n'
+                    f'💰 <b>{amount:.2f} ₽</b> added to balance!\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'🎉 Amount automatically added to your balance!\n\n'
+                    f'💡 Now you can use these funds for content generation.'
+                )
+            
+            keyboard = [
+                [InlineKeyboardButton("💰 Проверить баланс" if user_lang == 'ru' else "💰 Check Balance", callback_data="check_balance")],
+                [InlineKeyboardButton("◀️ Главное меню" if user_lang == 'ru' else "◀️ Main Menu", callback_data="back_to_menu")]
+            ]
+            
+            await query.edit_message_text(
+                gift_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
         
         # Handle admin user mode toggle (MUST be first, before any other checks)
         if data == "admin_user_mode":
@@ -2754,20 +3045,105 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             return INPUTTING_PARAMS
         
+        if data.startswith("set_language:"):
+            # Handle language selection
+            lang = data.split(":", 1)[1]
+            if lang in ['ru', 'en']:
+                set_user_language(user_id, lang)
+                await query.answer(t('language_set', lang))
+                # Show main menu after language selection
+                await start(update, context)
+                return ConversationHandler.END
+            else:
+                await query.answer("Неверный язык / Invalid language")
+            return ConversationHandler.END
+        
+        if data == "claim_gift":
+            # Handle gift claiming
+            if has_claimed_gift(user_id):
+                await query.answer("Вы уже использовали свой подарок! 🎉", show_alert=True)
+                await query.edit_message_text(
+                    "🎁 <b>ПОДАРОК УЖЕ ИСПОЛЬЗОВАН</b> 🎁\n\n"
+                    "Ты уже забрал свой подарок! 🎉\n\n"
+                    "💡 Используй бесплатные генерации или пополни баланс для создания контента.",
+                    parse_mode='HTML'
+                )
+                return ConversationHandler.END
+            
+            # Spin the wheel
+            await query.answer("Крутим колесо удачи... 🎰")
+            
+            # Show spinning animation
+            spin_emojis = ["🎰", "🎲", "🎯", "🎪", "🎨", "🎭", "🎪", "🎰"]
+            spin_message = await query.edit_message_text(
+                "🎰 <b>КРУТИ КОЛЕСО УДАЧИ!</b> 🎰\n\n"
+                "🎲 Крутим...\n\n"
+                "⏳ Секундочку...",
+                parse_mode='HTML'
+            )
+            
+            # Simulate spinning with multiple updates
+            for i in range(5):
+                await asyncio.sleep(0.3)
+                try:
+                    await spin_message.edit_text(
+                        f"🎰 <b>КРУТИ КОЛЕСО УДАЧИ!</b> 🎰\n\n"
+                        f"{spin_emojis[i % len(spin_emojis)]} Крутим...\n\n"
+                        f"⏳ Секундочку...",
+                        parse_mode='HTML'
+                    )
+                except:
+                    pass
+            
+            # Get random gift amount
+            gift_amount = spin_gift_wheel()
+            
+            # Add to user balance
+            add_user_balance(user_id, gift_amount)
+            set_gift_claimed(user_id)
+            
+            # Show result
+            keyboard = [
+                [InlineKeyboardButton("🎁 Генерировать бесплатно", callback_data="select_model:z-image")],
+                [InlineKeyboardButton("🤖 Все модели", callback_data="show_models")],
+                [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+            ]
+            
+            await spin_message.edit_text(
+                f"🎉 <b>ПОЗДРАВЛЯЕМ!</b> 🎉\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"💰 <b>ТВОЙ ВЫИГРЫШ:</b> {gift_amount:.2f} ₽\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"✅ <b>Баланс успешно пополнен!</b>\n\n"
+                f"🎯 Теперь ты можешь:\n"
+                f"• Создавать изображения\n"
+                f"• Генерировать видео\n"
+                f"• Тестировать разные модели!\n\n"
+                f"💡 <b>Удачной генерации!</b> ✨",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
+        
         if data == "cancel":
             await query.answer("Операция отменена")
             if user_id in user_sessions:
                 del user_sessions[user_id]
             try:
+                keyboard = [[InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]]
                 await query.edit_message_text(
                     "❌ Операция отменена.\n\n"
                     "Вы вернулись в главное меню.",
-                    reply_markup=None
+                    reply_markup=InlineKeyboardMarkup(keyboard)
                 )
             except Exception as e:
                 logger.error(f"Error editing message on cancel: {e}")
                 try:
-                    await query.message.reply_text("❌ Операция отменена.")
+                    keyboard = [[InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]]
+                    await query.message.reply_text(
+                        "❌ Операция отменена.",
+                        reply_markup=InlineKeyboardMarkup(keyboard)
+                    )
                 except:
                     pass
             return ConversationHandler.END
@@ -3058,8 +3434,16 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 keyboard.append([])  # Empty row
             
             # Generation types buttons (2 per row for compact display)
+            # Sort generation types: text-to-image first, then others
+            sorted_gen_types = []
+            if "text-to-image" in generation_types:
+                sorted_gen_types.append("text-to-image")
+            for gen_type in generation_types:
+                if gen_type != "text-to-image":
+                    sorted_gen_types.append(gen_type)
+            
             gen_type_rows = []
-            for i, gen_type in enumerate(generation_types):
+            for i, gen_type in enumerate(sorted_gen_types):
                 gen_info = get_generation_type_info(gen_type)
                 models_count = len(get_models_by_generation_type(gen_type))
                 button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
@@ -3085,6 +3469,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             keyboard.extend(gen_type_rows)
             keyboard.append([InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")])
+            keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data="cancel")])
             
             await query.edit_message_text(
                 models_text,
@@ -3424,9 +3809,190 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if data.startswith("topup_amount:"):
             # User selected a preset amount
             amount = float(data.split(":")[1])
+            user_lang = get_user_language(user_id)
+            
+            # Calculate what user can generate
+            examples_count = int(amount / 0.62)  # Z-Image price
+            video_count = int(amount / 3.86)  # Basic video price
+            
+            # Show payment method selection
+            if user_lang == 'ru':
+                payment_text = (
+                    f'💳 <b>ОПЛАТА {amount:.0f} ₽</b> 💳\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'💵 <b>Сумма к оплате:</b> {amount:.2f} ₽\n\n'
+                    f'🎯 <b>ЧТО ТЫ ПОЛУЧИШЬ:</b>\n'
+                    f'• ~{examples_count} изображений Z-Image\n'
+                    f'• ~{video_count} видео (базовая модель)\n'
+                    f'• Или комбинацию разных моделей!\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'💳 <b>ВЫБЕРИ СПОСОБ ОПЛАТЫ:</b>'
+                )
+            else:
+                payment_text = (
+                    f'💳 <b>PAYMENT {amount:.0f} ₽</b> 💳\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'💵 <b>Amount to pay:</b> {amount:.2f} ₽\n\n'
+                    f'🎯 <b>WHAT YOU WILL GET:</b>\n'
+                    f'• ~{examples_count} Z-Image images\n'
+                    f'• ~{video_count} videos (basic model)\n'
+                    f'• Or a combination of different models!\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'💳 <b>CHOOSE PAYMENT METHOD:</b>'
+                )
+            
+            # Store amount in session
             user_sessions[user_id] = {
                 'topup_amount': amount,
-                'waiting_for': 'payment_screenshot'
+                'waiting_for': 'payment_method'
+            }
+            
+            # For English users - only Telegram Stars, no SBP
+            if user_lang == 'en':
+                keyboard = [
+                    [InlineKeyboardButton("⭐ Telegram Stars", callback_data=f"pay_stars:{amount}")],
+                    [InlineKeyboardButton("❌ Cancel", callback_data="cancel")]
+                ]
+            else:
+                # For Russian users - both options
+                keyboard = [
+                    [
+                        InlineKeyboardButton("⭐ Telegram Stars", callback_data=f"pay_stars:{amount}"),
+                        InlineKeyboardButton("💳 СБП / SBP", callback_data=f"pay_sbp:{amount}")
+                    ],
+                    [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
+                ]
+            
+            await query.edit_message_text(
+                payment_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return SELECTING_AMOUNT
+        
+        # Handle payment method selection
+        if data.startswith("pay_stars:"):
+            # User chose Telegram Stars payment
+            amount = float(data.split(":")[1])
+            user_lang = get_user_language(user_id)
+            
+            # Convert rubles to stars (approximate: 1 star ≈ 1 ruble, but we need to round)
+            # Telegram Stars are integers, so we round to nearest integer
+            stars_amount = int(round(amount))
+            
+            if stars_amount < 1:
+                stars_amount = 1  # Minimum 1 star
+            
+            try:
+                # Create invoice for Telegram Stars
+                # Note: Invoice prices are in XTR (XTR is the currency for Telegram Stars)
+                # 1 XTR = 1 Star
+                from telegram import LabeledPrice
+                
+                invoice_text_ru = f"Пополнение баланса на {amount:.2f} ₽"
+                invoice_text_en = f"Balance top-up for {amount:.2f} ₽"
+                invoice_text = invoice_text_ru if user_lang == 'ru' else invoice_text_en
+                
+                # Store payment info in session
+                user_sessions[user_id] = {
+                    'topup_amount': amount,
+                    'payment_method': 'stars',
+                    'stars_amount': stars_amount,
+                    'invoice_payload': f"topup_{user_id}_{int(time.time())}"
+                }
+                
+                # Send invoice directly (Telegram Stars payment)
+                # Note: provider_token is not needed for Telegram Stars (use empty string or None)
+                await context.bot.send_invoice(
+                    chat_id=query.message.chat_id,
+                    title=invoice_text,
+                    description=invoice_text,
+                    payload=f"topup_{user_id}_{int(time.time())}",
+                    provider_token="",  # Empty for Telegram Stars
+                    currency="XTR",  # XTR is the currency code for Telegram Stars
+                    prices=[LabeledPrice(invoice_text, stars_amount)],
+                )
+                
+                invoice = None  # Will be sent as message
+                
+                # Invoice is sent directly, just answer the query
+                await query.answer()
+                if user_lang == 'ru':
+                    await query.edit_message_text(
+                        f'⭐ <b>ОПЛАТА ЧЕРЕЗ TELEGRAM STARS</b> ⭐\n\n'
+                        f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                        f'💰 <b>Сумма:</b> {amount:.2f} ₽ ({stars_amount} ⭐)\n\n'
+                        f'💡 <b>Счет отправлен выше. Оплатите через Telegram Stars.</b>'
+                    )
+                else:
+                    await query.edit_message_text(
+                        f'⭐ <b>PAYMENT VIA TELEGRAM STARS</b> ⭐\n\n'
+                        f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                        f'💰 <b>Amount:</b> {amount:.2f} ₽ ({stars_amount} ⭐)\n\n'
+                        f'💡 <b>Invoice sent above. Pay via Telegram Stars.</b>'
+                    )
+                    
+            except Exception as e:
+                logger.error(f"Error creating Stars invoice: {e}", exc_info=True)
+                user_lang = get_user_language(user_id)
+                if user_lang == 'ru':
+                    await query.answer("Ошибка при создании счета. Попробуйте позже.", show_alert=True)
+                else:
+                    await query.answer("Error creating invoice. Please try later.", show_alert=True)
+            
+            return SELECTING_AMOUNT
+        
+        if data.startswith("pay_sbp:"):
+            # User chose SBP payment
+            amount = float(data.split(":")[1])
+            user_lang = get_user_language(user_id)
+            
+            # English users can only pay via Telegram Stars
+            if user_lang == 'en':
+                # Redirect to Stars payment
+                await query.answer("For English users, only Telegram Stars payment is available.", show_alert=True)
+                # Trigger Stars payment instead
+                stars_amount = int(round(amount))
+                if stars_amount < 1:
+                    stars_amount = 1
+                
+                try:
+                    from telegram import LabeledPrice
+                    invoice_text = f"Balance top-up for {amount:.2f} ₽"
+                    
+                    user_sessions[user_id] = {
+                        'topup_amount': amount,
+                        'payment_method': 'stars',
+                        'stars_amount': stars_amount,
+                        'invoice_payload': f"topup_{user_id}_{int(time.time())}"
+                    }
+                    
+                    await context.bot.send_invoice(
+                        chat_id=query.message.chat_id,
+                        title=invoice_text,
+                        description=invoice_text,
+                        payload=f"topup_{user_id}_{int(time.time())}",
+                        provider_token="",
+                        currency="XTR",
+                        prices=[LabeledPrice(invoice_text, stars_amount)],
+                    )
+                    
+                    await query.edit_message_text(
+                        f'⭐ <b>PAYMENT VIA TELEGRAM STARS</b> ⭐\n\n'
+                        f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                        f'💰 <b>Amount:</b> {amount:.2f} ₽ ({stars_amount} ⭐)\n\n'
+                        f'💡 <b>Invoice sent above. Pay via Telegram Stars.</b>'
+                    )
+                except Exception as e:
+                    logger.error(f"Error creating Stars invoice: {e}", exc_info=True)
+                    await query.answer("Error creating invoice. Please try later.", show_alert=True)
+                
+                return SELECTING_AMOUNT
+            
+            user_sessions[user_id] = {
+                'topup_amount': amount,
+                'waiting_for': 'payment_screenshot',
+                'payment_method': 'sbp'
             }
             
             payment_details = get_payment_details()
@@ -3436,26 +4002,50 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             video_count = int(amount / 3.86)  # Basic video price
             
             keyboard = [
-                [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
+                [InlineKeyboardButton("❌ Отмена" if user_lang == 'ru' else "❌ Cancel", callback_data="cancel")]
             ]
             
+            if user_lang == 'ru':
+                sbp_text = (
+                    f'💳 <b>ОПЛАТА {amount:.0f} ₽ (СБП)</b> 💳\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'{payment_details}\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'💵 <b>Сумма к оплате:</b> {amount:.2f} ₽\n\n'
+                    f'🎯 <b>ЧТО ТЫ ПОЛУЧИШЬ:</b>\n'
+                    f'• ~{examples_count} изображений Z-Image\n'
+                    f'• ~{video_count} видео (базовая модель)\n'
+                    f'• Или комбинацию разных моделей!\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'📸 <b>КАК ОПЛАТИТЬ:</b>\n'
+                    f'1️⃣ Переведи {amount:.2f} ₽ по реквизитам выше\n'
+                    f'2️⃣ Сделай скриншот перевода\n'
+                    f'3️⃣ Отправь скриншот сюда\n'
+                    f'4️⃣ Баланс начислится автоматически! ⚡\n\n'
+                    f'✅ <b>Все просто и быстро!</b>'
+                )
+            else:
+                sbp_text = (
+                    f'💳 <b>PAYMENT {amount:.0f} ₽ (SBP)</b> 💳\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'{payment_details}\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'💵 <b>Amount to pay:</b> {amount:.2f} ₽\n\n'
+                    f'🎯 <b>WHAT YOU WILL GET:</b>\n'
+                    f'• ~{examples_count} Z-Image images\n'
+                    f'• ~{video_count} videos (basic model)\n'
+                    f'• Or a combination of different models!\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'📸 <b>HOW TO PAY:</b>\n'
+                    f'1️⃣ Transfer {amount:.2f} ₽ using details above\n'
+                    f'2️⃣ Take a screenshot of the transfer\n'
+                    f'3️⃣ Send screenshot here\n'
+                    f'4️⃣ Balance will be added automatically! ⚡\n\n'
+                    f'✅ <b>Simple and fast!</b>'
+                )
+            
             await query.edit_message_text(
-                f'💳 <b>ОПЛАТА {amount:.0f} ₽</b> 💳\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'{payment_details}\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'💵 <b>Сумма к оплате:</b> {amount:.2f} ₽\n\n'
-                f'🎯 <b>ЧТО ТЫ ПОЛУЧИШЬ:</b>\n'
-                f'• ~{examples_count} изображений Z-Image\n'
-                f'• ~{video_count} видео (базовая модель)\n'
-                f'• Или комбинацию разных моделей!\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'📸 <b>КАК ОПЛАТИТЬ:</b>\n'
-                f'1️⃣ Переведи {amount:.2f} ₽ по реквизитам выше\n'
-                f'2️⃣ Сделай скриншот перевода\n'
-                f'3️⃣ Отправь скриншот сюда\n'
-                f'4️⃣ Баланс начислится автоматически! ⚡\n\n'
-                f'✅ <b>Все просто и быстро!</b>',
+                sbp_text,
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='HTML'
             )
@@ -4109,12 +4699,14 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f'💡 <b>КАК ЭТО РАБОТАЕТ:</b>\n\n'
                 f'1️⃣ Пригласи друга по вашей ссылке\n'
                 f'2️⃣ Он зарегистрируется через бота\n'
-                f'3️⃣ Вы получите <b>+{REFERRAL_BONUS_GENERATIONS} бесплатных генераций</b>!\n\n'
+                f'3️⃣ Вы получите <b>+{REFERRAL_BONUS_GENERATIONS} бесплатных генераций в Z-Image</b>!\n\n'
                 f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
                 f'📊 <b>ВАША СТАТИСТИКА:</b>\n'
                 f'• Приглашено друзей: <b>{referrals_count}</b>\n'
                 f'• Получено бонусов: <b>{referrals_count * REFERRAL_BONUS_GENERATIONS}</b> генераций\n'
-                f'• Доступно бесплатно: <b>{remaining_free}</b> генераций\n\n'
+                f'• Доступно бесплатно: <b>{remaining_free}</b> генераций в Z-Image\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'⚠️ <b>ВАЖНО:</b> Бесплатные генерации доступны только для модели <b>Z-Image</b>!\n\n'
                 f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
                 f'🔗 <b>ВАША РЕФЕРАЛЬНАЯ ССЫЛКА:</b>\n\n'
                 f'<code>{referral_link}</code>\n\n'
@@ -4222,10 +4814,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return ConversationHandler.END
             
             # Send media
+            session_http = await get_http_client()
             for i, url in enumerate(result_urls[:5]):
                 try:
-                    async with aiohttp.ClientSession() as session_http:
-                        async with session_http.get(url, timeout=aiohttp.ClientTimeout(total=60)) as resp:
+                    async with session_http.get(url) as resp:
                             if resp.status == 200:
                                 media_data = await resp.read()
                                 
@@ -4777,6 +5369,7 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                 max_length = param_info.get('max_length')
                 max_text = f"\n\nМаксимум {max_length} символов." if max_length else ""
                 is_optional = not param_info.get('required', False)
+                default_value = param_info.get('default')
                 
                 # Get chat_id from update
                 chat_id = None
@@ -4792,21 +5385,56 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                     return None
                 
                 keyboard = []
-                # For optional text parameters, add skip button
+                # For optional text parameters, add skip button with default value info
                 if is_optional:
-                    keyboard.append([InlineKeyboardButton("⏭️ Пропустить (опционально)", callback_data=f"set_param:{param_name}:" )])
+                    if default_value:
+                        # Special handling for language_code - show quick select buttons
+                        if param_name == 'language_code' and default_value == 'ru':
+                            keyboard.append([
+                                InlineKeyboardButton("🇷🇺 Русский (ru)", callback_data=f"set_param:{param_name}:ru"),
+                                InlineKeyboardButton("🇺🇸 English (en)", callback_data=f"set_param:{param_name}:en")
+                            ])
+                            keyboard.append([
+                                InlineKeyboardButton("🇩🇪 Deutsch (de)", callback_data=f"set_param:{param_name}:de"),
+                                InlineKeyboardButton("🇫🇷 Français (fr)", callback_data=f"set_param:{param_name}:fr")
+                            ])
+                            keyboard.append([InlineKeyboardButton("⏭️ Использовать по умолчанию (ru)", callback_data=f"set_param:{param_name}:ru")])
+                            keyboard.append([InlineKeyboardButton("✏️ Ввести другой код", callback_data=f"set_param:{param_name}:custom")])
+                        else:
+                            default_text = f" (по умолчанию: {default_value})" if default_value else ""
+                            keyboard.append([InlineKeyboardButton(f"⏭️ Использовать по умолчанию{default_text}", callback_data=f"set_param:{param_name}:{default_value}")])
+                    else:
+                        keyboard.append([InlineKeyboardButton("⏭️ Пропустить (опционально)", callback_data=f"set_param:{param_name}:")])
                 keyboard.append([InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")])
                 keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data="cancel")])
                 
-                optional_text = "\n\n(Этот параметр опциональный, можно пропустить)" if is_optional else ""
+                default_info = f"\n\nПо умолчанию: {default_value}" if default_value and is_optional else ""
+                optional_text = "\n\n(Этот параметр опциональный)" if is_optional else ""
+                
+                message_text = f"📝 <b>Введите {param_name}:</b>\n\n{param_desc}{max_text}{default_info}{optional_text}"
+                
+                # If language_code with quick select, modify message
+                if param_name == 'language_code' and default_value == 'ru':
+                    message_text = (
+                        f"🌍 <b>Выберите язык аудио:</b>\n\n"
+                        f"{param_desc}\n\n"
+                        f"По умолчанию: <b>Русский (ru)</b>\n\n"
+                        f"Выберите язык из списка или введите код языка вручную."
+                    )
                 
                 await context.bot.send_message(
                     chat_id=chat_id,
-                    text=f"📝 <b>Введите {param_name}:</b>\n\n{param_desc}{max_text}{optional_text}",
+                    text=message_text,
                     reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
                 )
-                session['waiting_for'] = param_name
+                
+                # If custom input requested, set waiting state
+                if param_name == 'language_code' and default_value == 'ru':
+                    # Don't set waiting_for yet - wait for button or text input
+                    session['language_code_custom'] = False
+                else:
+                    session['waiting_for'] = param_name
                 return INPUTTING_PARAMS
     
     # All parameters collected
@@ -5164,39 +5792,92 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id in user_sessions and user_sessions[user_id].get('waiting_for') == 'topup_amount_input':
         try:
             amount = float(update.message.text.replace(',', '.'))
+            user_lang = get_user_language(user_id)
             
             if amount < 50:
-                await update.message.reply_text("❌ Минимальная сумма пополнения: 50 ₽")
+                if user_lang == 'ru':
+                    await update.message.reply_text("❌ Минимальная сумма пополнения: 50 ₽")
+                else:
+                    await update.message.reply_text("❌ Minimum top-up amount: 50 ₽")
                 return SELECTING_AMOUNT
             
             if amount > 50000:
-                await update.message.reply_text("❌ Максимальная сумма пополнения: 50000 ₽")
+                if user_lang == 'ru':
+                    await update.message.reply_text("❌ Максимальная сумма пополнения: 50000 ₽")
+                else:
+                    await update.message.reply_text("❌ Maximum top-up amount: 50000 ₽")
                 return SELECTING_AMOUNT
             
-            # Set amount and show payment details
-            user_sessions[user_id]['topup_amount'] = amount
-            user_sessions[user_id]['waiting_for'] = 'payment_screenshot'
+            # Calculate what user can generate
+            examples_count = int(amount / 0.62)  # Z-Image price
+            video_count = int(amount / 3.86)  # Basic video price
             
-            payment_details = get_payment_details()
+            # Show payment method selection
+            if user_lang == 'ru':
+                payment_text = (
+                    f'💳 <b>ОПЛАТА {amount:.0f} ₽</b> 💳\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'💵 <b>Сумма к оплате:</b> {amount:.2f} ₽\n\n'
+                    f'🎯 <b>ЧТО ТЫ ПОЛУЧИШЬ:</b>\n'
+                    f'• ~{examples_count} изображений Z-Image\n'
+                    f'• ~{video_count} видео (базовая модель)\n'
+                    f'• Или комбинацию разных моделей!\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'💳 <b>ВЫБЕРИ СПОСОБ ОПЛАТЫ:</b>'
+                )
+            else:
+                payment_text = (
+                    f'💳 <b>PAYMENT {amount:.0f} ₽</b> 💳\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'💵 <b>Amount to pay:</b> {amount:.2f} ₽\n\n'
+                    f'🎯 <b>WHAT YOU WILL GET:</b>\n'
+                    f'• ~{examples_count} Z-Image images\n'
+                    f'• ~{video_count} videos (basic model)\n'
+                    f'• Or a combination of different models!\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'💳 <b>CHOOSE PAYMENT METHOD:</b>'
+                )
             
-            keyboard = [
-                [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
-            ]
+            # Store amount in session
+            user_sessions[user_id] = {
+                'topup_amount': amount,
+                'waiting_for': 'payment_method'
+            }
+            
+            # For English users - only Telegram Stars, no SBP
+            if user_lang == 'en':
+                keyboard = [
+                    [InlineKeyboardButton("⭐ Telegram Stars", callback_data=f"pay_stars:{amount}")],
+                    [InlineKeyboardButton("❌ Cancel", callback_data="cancel")]
+                ]
+            else:
+                # For Russian users - both options
+                keyboard = [
+                    [
+                        InlineKeyboardButton("⭐ Telegram Stars", callback_data=f"pay_stars:{amount}"),
+                        InlineKeyboardButton("💳 СБП / SBP", callback_data=f"pay_sbp:{amount}")
+                    ],
+                    [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
+                ]
             
             await update.message.reply_text(
-                f"{payment_details}\n\n"
-                f"💵 <b>Сумма к оплате:</b> {amount:.2f} ₽\n\n"
-                f"После оплаты отправьте скриншот перевода в этот чат.\n\n"
-                f"✅ <b>Баланс начислится автоматически</b> после отправки скриншота.",
+                payment_text,
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='HTML'
             )
-            return WAITING_PAYMENT_SCREENSHOT
+            return SELECTING_AMOUNT
         except ValueError:
-            await update.message.reply_text(
-                "❌ Пожалуйста, введите число (например: 1500)\n\n"
-                "Или нажмите /cancel для отмены."
-            )
+            user_lang = get_user_language(user_id)
+            if user_lang == 'ru':
+                await update.message.reply_text(
+                    "❌ Пожалуйста, введите число (например: 1500)\n\n"
+                    "Или нажмите /cancel для отмены."
+                )
+            else:
+                await update.message.reply_text(
+                    "❌ Please enter a number (e.g., 1500)\n\n"
+                    "Or press /cancel to cancel."
+                )
             return SELECTING_AMOUNT
     
     if user_id not in user_sessions:
@@ -5543,15 +6224,47 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return INPUTTING_PARAMS
         
+        # For language_code, convert common language names to codes
+        if current_param == 'language_code':
+            lang_lower = text.lower()
+            lang_map = {
+                'русский': 'ru',
+                'russian': 'ru',
+                'английский': 'en',
+                'english': 'en',
+                'eng': 'en',
+                'немецкий': 'de',
+                'german': 'de',
+                'французский': 'fr',
+                'french': 'fr',
+                'испанский': 'es',
+                'spanish': 'es',
+                'итальянский': 'it',
+                'italian': 'it',
+                'китайский': 'zh',
+                'chinese': 'zh',
+                'японский': 'ja',
+                'japanese': 'ja',
+                'корейский': 'ko',
+                'korean': 'ko'
+            }
+            if lang_lower in lang_map:
+                text = lang_map[lang_lower]
+            # If it's already a code (2-3 letters), convert to lowercase
+            elif len(text) <= 5 and text.replace('-', '').replace('_', '').isalpha():
+                text = text.lower()
+        
         # Set parameter value
         session['params'][current_param] = text
         session['waiting_for'] = None
         session['current_param'] = None
+        session['language_code_custom'] = False
         
         # Confirm parameter was set
+        display_value = text[:100] + '...' if len(text) > 100 else text
         await update.message.reply_text(
             f"✅ <b>{current_param}</b> установлен!\n\n"
-            f"Значение: {text[:100]}{'...' if len(text) > 100 else ''}",
+            f"Значение: {display_value}",
             parse_mode='HTML'
         )
         
@@ -6047,9 +6760,56 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 elif isinstance(reference_image_input, str):
                     api_params['reference_image_urls'] = [reference_image_input]
         
-        # For elevenlabs/speech-to-text, send all parameters that user set
-        # Parameters that user skipped will not be in session['params'], so they won't be in api_params either
-        # This is handled correctly - we only send what user explicitly chose
+        # For elevenlabs/speech-to-text, process parameters
+        if model_id == "elevenlabs/speech-to-text":
+            # Remove boolean parameters if they are False (default value)
+            if 'tag_audio_events' in api_params and api_params.get('tag_audio_events') is False:
+                api_params.pop('tag_audio_events')
+            if 'diarize' in api_params and api_params.get('diarize') is False:
+                api_params.pop('diarize')
+            
+            # language_code: always ensure it's set (default "ru" if not set by user)
+            if 'language_code' not in api_params or not api_params.get('language_code'):
+                # Use default "ru" if not set
+                api_params['language_code'] = 'ru'
+            else:
+                # User set language_code, ensure it's a valid code
+                lang_code = str(api_params.get('language_code', '')).strip()
+                if lang_code:
+                    # Try to convert common language names to codes
+                    lang_lower = lang_code.lower()
+                    lang_map = {
+                        'русский': 'ru',
+                        'russian': 'ru',
+                        'английский': 'en',
+                        'english': 'en',
+                        'eng': 'en',
+                        'немецкий': 'de',
+                        'german': 'de',
+                        'французский': 'fr',
+                        'french': 'fr',
+                        'испанский': 'es',
+                        'spanish': 'es',
+                        'итальянский': 'it',
+                        'italian': 'it',
+                        'китайский': 'zh',
+                        'chinese': 'zh',
+                        'японский': 'ja',
+                        'japanese': 'ja',
+                        'корейский': 'ko',
+                        'korean': 'ko'
+                    }
+                    if lang_lower in lang_map:
+                        api_params['language_code'] = lang_map[lang_lower]
+                    # If it's already a code (2-3 letters), keep it as is
+                    elif len(lang_code) <= 5 and lang_code.replace('-', '').replace('_', '').isalpha():
+                        api_params['language_code'] = lang_code.lower()
+                    else:
+                        # Invalid format, use default
+                        api_params['language_code'] = 'ru'
+                else:
+                    # Empty language_code - use default
+                    api_params['language_code'] = 'ru'
         
         # Log API params for debugging (only for admin)
         if is_admin_user:
@@ -6060,8 +6820,8 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             audio_url = api_params['audio_url']
             try:
                 # Quick check if URL is accessible
-                async with aiohttp.ClientSession() as session:
-                    async with session.head(audio_url, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                session = await get_http_client()
+                async with session.head(audio_url) as resp:
                         if resp.status != 200:
                             logger.warning(f"Audio URL returned status {resp.status}: {audio_url}")
                             if is_admin_user:
@@ -6324,11 +7084,11 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                     
                     if result_urls:
                         # Send media (video or image) directly
+                        session_http = await get_http_client()
                         for i, url in enumerate(result_urls[:5]):  # Limit to 5 items
                             try:
                                 # Try to download media and send it
-                                async with aiohttp.ClientSession() as session_http:
-                                    async with session_http.get(url, timeout=aiohttp.ClientTimeout(total=60)) as resp:
+                                async with session_http.get(url) as resp:
                                         if resp.status == 200:
                                             media_data = await resp.read()
                                             
@@ -6768,6 +7528,115 @@ async def add_knowledge(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text('❌ Не удалось добавить знание.')
 
 
+async def pre_checkout_query_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle pre-checkout query for Telegram Stars payments."""
+    query = update.pre_checkout_query
+    user_id = query.from_user.id
+    
+    # Verify the payment amount matches what we expect
+    # The payload format is: topup_{user_id}_{timestamp}
+    payload_parts = query.invoice_payload.split('_')
+    
+    if len(payload_parts) >= 2 and payload_parts[0] == 'topup':
+        # Extract user_id from payload to verify
+        payload_user_id = int(payload_parts[1])
+        
+        if payload_user_id == user_id:
+            # Check if user has a pending payment in session
+            if user_id in user_sessions and 'topup_amount' in user_sessions[user_id]:
+                # Approve the pre-checkout query
+                await query.answer(ok=True)
+                logger.info(f"Pre-checkout approved for user {user_id}, amount: {query.total_amount} XTR")
+            else:
+                # Reject if no pending payment
+                await query.answer(ok=False, error_message="Payment session expired. Please try again.")
+                logger.warning(f"Pre-checkout rejected for user {user_id}: no pending payment")
+        else:
+            await query.answer(ok=False, error_message="Invalid payment request.")
+            logger.warning(f"Pre-checkout rejected for user {user_id}: invalid user_id in payload")
+    else:
+        await query.answer(ok=False, error_message="Invalid payment payload.")
+        logger.warning(f"Pre-checkout rejected for user {user_id}: invalid payload format")
+
+
+async def successful_payment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle successful Telegram Stars payment."""
+    user_id = update.effective_user.id
+    payment = update.message.successful_payment
+    
+    user_lang = get_user_language(user_id)
+    
+    # Extract payment info
+    payload_parts = payment.invoice_payload.split('_')
+    amount_stars = payment.total_amount  # Amount in XTR (Stars)
+    
+    # Convert stars to rubles (approximately 1 star = 1 ruble)
+    amount_rubles = float(amount_stars)
+    
+    if user_id in user_sessions and 'topup_amount' in user_sessions[user_id]:
+        # Use the amount from session (more accurate)
+        amount_rubles = user_sessions[user_id]['topup_amount']
+    
+    # Add balance to user
+    add_user_balance(user_id, amount_rubles)
+    
+    # Clear payment session
+    if user_id in user_sessions:
+        del user_sessions[user_id]
+    
+    # Save payment record
+    payments = load_json_file(PAYMENTS_FILE, {})
+    payment_id = f"stars_{user_id}_{int(time.time())}"
+    payments[payment_id] = {
+        'user_id': user_id,
+        'amount': amount_rubles,
+        'currency': 'RUB',
+        'payment_method': 'telegram_stars',
+        'stars_amount': amount_stars,
+        'timestamp': time.time(),
+        'status': 'completed'
+    }
+    save_json_file(PAYMENTS_FILE, payments)
+    
+    # Send confirmation message
+    balance_str = f"{get_user_balance(user_id):.2f}".rstrip('0').rstrip('.')
+    
+    if user_lang == 'ru':
+        success_text = (
+            f'✅ <b>ОПЛАТА УСПЕШНА!</b> ✅\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'💰 <b>Зачислено:</b> {amount_rubles:.2f} ₽\n'
+            f'⭐ <b>Способ:</b> Telegram Stars ({amount_stars} ⭐)\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'💳 <b>Ваш баланс:</b> {balance_str} ₽\n\n'
+            f'🎉 Теперь вы можете использовать средства для генерации контента!'
+        )
+    else:
+        success_text = (
+            f'✅ <b>PAYMENT SUCCESSFUL!</b> ✅\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'💰 <b>Added:</b> {amount_rubles:.2f} ₽\n'
+            f'⭐ <b>Method:</b> Telegram Stars ({amount_stars} ⭐)\n\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            f'💳 <b>Your balance:</b> {balance_str} ₽\n\n'
+            f'🎉 You can now use funds for content generation!'
+        )
+    
+    keyboard = [
+        [InlineKeyboardButton("💰 Проверить баланс" if user_lang == 'ru' else "💰 Check Balance", callback_data="check_balance")],
+        [InlineKeyboardButton("🎨 Начать генерацию" if user_lang == 'ru' else "🎨 Start Generation", callback_data="show_models")],
+        [InlineKeyboardButton("◀️ Главное меню" if user_lang == 'ru' else "◀️ Main Menu", callback_data="back_to_menu")]
+    ]
+    
+    await update.message.reply_text(
+        success_text,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='HTML'
+    )
+    
+    logger.info(f"Successful Stars payment for user {user_id}: {amount_rubles} RUB ({amount_stars} stars)")
+
+
 def main():
     """Start the bot."""
     global storage, kie
@@ -6843,6 +7712,8 @@ def main():
             CallbackQueryHandler(button_callback, pattern='^all_models$'),
             CallbackQueryHandler(button_callback, pattern='^gen_type:'),
             CallbackQueryHandler(button_callback, pattern='^check_balance$'),
+            CallbackQueryHandler(button_callback, pattern='^language_select:'),
+            CallbackQueryHandler(button_callback, pattern='^claim_gift$'),
             CallbackQueryHandler(button_callback, pattern='^help_menu$'),
             CallbackQueryHandler(button_callback, pattern='^support_contact$'),
             CallbackQueryHandler(button_callback, pattern='^select_model:'),
@@ -6985,9 +7856,13 @@ def main():
             SELECTING_AMOUNT: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, input_parameters),
                 CallbackQueryHandler(button_callback, pattern='^topup_amount:'),
+                CallbackQueryHandler(button_callback, pattern='^pay_stars:'),
+                CallbackQueryHandler(button_callback, pattern='^pay_sbp:'),
                 CallbackQueryHandler(button_callback, pattern='^topup_custom$'),
                 CallbackQueryHandler(button_callback, pattern='^topup_balance$'),
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
+                CallbackQueryHandler(button_callback, pattern='^language_select:'),
+                CallbackQueryHandler(button_callback, pattern='^claim_gift$'),
                 CallbackQueryHandler(button_callback, pattern='^check_balance$'),
                 CallbackQueryHandler(button_callback, pattern='^referral_info$'),
                 CallbackQueryHandler(button_callback, pattern='^help_menu$'),
@@ -7320,6 +8195,11 @@ def main():
                     pass
     
     application.add_error_handler(error_handler)
+    
+    # Add payment handlers for Telegram Stars
+    from telegram.ext import PreCheckoutQueryHandler, MessageHandler, filters as telegram_filters
+    application.add_handler(PreCheckoutQueryHandler(pre_checkout_query_handler))
+    application.add_handler(MessageHandler(telegram_filters.SUCCESSFUL_PAYMENT, successful_payment_handler))
     
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
