@@ -2772,6 +2772,36 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     pass
             return ConversationHandler.END
         
+        if data.startswith("retry_generate:"):
+            # Retry generation with same parameters
+            await query.answer("Повторяю попытку...")
+            
+            if user_id not in user_sessions:
+                await query.edit_message_text("❌ Сессия не найдена. Начните заново.")
+                return ConversationHandler.END
+            
+            session = user_sessions[user_id]
+            
+            # Show confirmation again with same parameters
+            model_name = session.get('model_info', {}).get('name', 'Unknown')
+            params = session.get('params', {})
+            params_text = "\n".join([f"  • {k}: {str(v)[:50]}{'...' if len(str(v)) > 50 else ''}" for k, v in params.items()])
+            
+            keyboard = [
+                [InlineKeyboardButton("✅ Генерировать", callback_data="confirm_generate")],
+                [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
+            ]
+            
+            await query.edit_message_text(
+                f"🔄 <b>Повторная попытка:</b>\n\n"
+                f"Модель: <b>{model_name}</b>\n"
+                f"Параметры:\n{params_text}\n\n"
+                f"Продолжить генерацию?",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return CONFIRMING_GENERATION
+        
         # Handle category selection (can be called from main menu)
         if data.startswith("gen_type:"):
             # User selected a generation type
@@ -4640,8 +4670,17 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
     params = session.get('params', {})
     required = session.get('required', [])
     
+    # For elevenlabs/speech-to-text, also show optional parameters
+    model_id = session.get('model_id', '')
+    all_params_to_check = required.copy()
+    if model_id == "elevenlabs/speech-to-text":
+        # Add optional parameters that should be shown to user
+        for param_name in ['language_code', 'tag_audio_events', 'diarize']:
+            if param_name in properties and param_name not in all_params_to_check:
+                all_params_to_check.append(param_name)
+    
     # Find next unset parameter (skip prompt, image_input, image_urls, audio_url, audio_input as they're handled separately)
-    for param_name in required:
+    for param_name in all_params_to_check:
         if param_name in ['prompt', 'image_input', 'image_urls', 'audio_url', 'audio_input']:
             continue
         if param_name not in params:
@@ -4653,17 +4692,25 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
             
             # Handle boolean parameters
             if param_type == 'boolean':
-                default_value = param_info.get('default', True)
+                default_value = param_info.get('default', False)
+                is_optional = not param_info.get('required', False)
+                
                 keyboard = [
                     [
                         InlineKeyboardButton("✅ Да (true)", callback_data=f"set_param:{param_name}:true"),
                         InlineKeyboardButton("❌ Нет (false)", callback_data=f"set_param:{param_name}:false")
-                    ],
-                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")],
-                    [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
+                    ]
                 ]
                 
+                # For optional parameters, add "Пропустить" button
+                if is_optional:
+                    keyboard.append([InlineKeyboardButton("⏭️ Пропустить (по умолчанию)", callback_data=f"set_param:{param_name}:{str(default_value).lower()}")])
+                
+                keyboard.append([InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")])
+                keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data="cancel")])
+                
                 param_desc = param_info.get('description', '')
+                default_text = f"\n\nПо умолчанию: {'Да' if default_value else 'Нет'}" if is_optional else ""
                 chat_id = None
                 if hasattr(update, 'effective_chat') and update.effective_chat:
                     chat_id = update.effective_chat.id
@@ -4678,10 +4725,11 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                 
                 await context.bot.send_message(
                     chat_id=chat_id,
-                    text=f"📝 <b>Выберите {param_name}:</b>\n\n{param_desc}\n\nПо умолчанию: {'Да' if default_value else 'Нет'}",
+                    text=f"📝 <b>Выберите {param_name}:</b>\n\n{param_desc}{default_text}",
                     reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
                 )
+                session['waiting_for'] = param_name
                 return INPUTTING_PARAMS
             # If parameter has enum values, show buttons
             elif enum_values:
@@ -4728,6 +4776,7 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                 param_desc = param_info.get('description', '')
                 max_length = param_info.get('max_length')
                 max_text = f"\n\nМаксимум {max_length} символов." if max_length else ""
+                is_optional = not param_info.get('required', False)
                 
                 # Get chat_id from update
                 chat_id = None
@@ -4742,13 +4791,18 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                     logger.error("Cannot determine chat_id in start_next_parameter")
                     return None
                 
-                keyboard = [
-                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
-                ]
+                keyboard = []
+                # For optional text parameters, add skip button
+                if is_optional:
+                    keyboard.append([InlineKeyboardButton("⏭️ Пропустить (опционально)", callback_data=f"set_param:{param_name}:" )])
+                keyboard.append([InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")])
+                keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data="cancel")])
+                
+                optional_text = "\n\n(Этот параметр опциональный, можно пропустить)" if is_optional else ""
                 
                 await context.bot.send_message(
                     chat_id=chat_id,
-                    text=f"📝 <b>Введите {param_name}:</b>\n\n{param_desc}{max_text}",
+                    text=f"📝 <b>Введите {param_name}:</b>\n\n{param_desc}{max_text}{optional_text}",
                     reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
                 )
@@ -5575,12 +5629,22 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
                 )
-            return INPUTTING_PARAMS
+                session['waiting_for'] = None
+                return INPUTTING_PARAMS
         
         # Check if there are more parameters
         required = session.get('required', [])
         params = session.get('params', {})
         missing = [p for p in required if p not in params and p not in ['prompt', 'image_input', 'image_urls', 'audio_url', 'audio_input']]
+        
+        # For elevenlabs/speech-to-text, also check optional parameters
+        model_id = session.get('model_id', '')
+        if model_id == "elevenlabs/speech-to-text":
+            # Check optional parameters that haven't been set yet
+            properties = session.get('properties', {})
+            for opt_param in ['language_code', 'tag_audio_events', 'diarize']:
+                if opt_param in properties and opt_param not in params:
+                    missing.append(opt_param)
         
         if missing:
             # Move to next parameter
@@ -5983,29 +6047,66 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 elif isinstance(reference_image_input, str):
                     api_params['reference_image_urls'] = [reference_image_input]
         
-        # Remove optional parameters with default values for some models to avoid API issues
-        # Some APIs may not expect optional parameters if they match defaults
-        if model_id == "elevenlabs/speech-to-text":
-            # For elevenlabs, only send non-default values for optional params
-            # Default values are False, so remove them if they are False
-            if 'tag_audio_events' in api_params and api_params.get('tag_audio_events') is False:
-                api_params.pop('tag_audio_events')
-            if 'diarize' in api_params and api_params.get('diarize') is False:
-                api_params.pop('diarize')
-            # Also remove empty language_code if it exists
-            if 'language_code' in api_params and not api_params.get('language_code'):
-                api_params.pop('language_code')
+        # For elevenlabs/speech-to-text, send all parameters that user set
+        # Parameters that user skipped will not be in session['params'], so they won't be in api_params either
+        # This is handled correctly - we only send what user explicitly chose
         
         # Log API params for debugging (only for admin)
         if is_admin_user:
             logger.info(f"Creating task for model {model_id} with params: {json.dumps(api_params, indent=2, ensure_ascii=False)}")
         
-        # Create task (for async models like z-image)
-        result = await kie.create_task(model_id, api_params)
+        # For elevenlabs/speech-to-text, verify audio_url is accessible
+        if model_id == "elevenlabs/speech-to-text" and 'audio_url' in api_params:
+            audio_url = api_params['audio_url']
+            try:
+                # Quick check if URL is accessible
+                async with aiohttp.ClientSession() as session:
+                    async with session.head(audio_url, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                        if resp.status != 200:
+                            logger.warning(f"Audio URL returned status {resp.status}: {audio_url}")
+                            if is_admin_user:
+                                await query.edit_message_text(
+                                    f"⚠️ <b>Предупреждение</b>\n\n"
+                                    f"URL аудио-файла возвращает статус {resp.status}.\n"
+                                    f"URL: {audio_url[:100]}...\n\n"
+                                    f"Попробуйте загрузить файл еще раз.",
+                                    parse_mode='HTML'
+                                )
+                                return ConversationHandler.END
+            except Exception as e:
+                logger.warning(f"Could not verify audio URL accessibility: {e}")
         
-        # Log result for debugging (only for admin)
-        if is_admin_user:
-            logger.info(f"Task creation result: {result}")
+        # Create task (for async models like z-image) with retry logic
+        result = None
+        max_retries = 3
+        retry_delay = 2
+        
+        for attempt in range(max_retries):
+            result = await kie.create_task(model_id, api_params)
+            
+            # Log result for debugging (only for admin)
+            if is_admin_user:
+                logger.info(f"Task creation attempt {attempt + 1}/{max_retries} result: {result}")
+            
+            if result.get('ok'):
+                break
+            
+            # Check if error is retryable
+            error = result.get('error', '').lower()
+            is_retryable = any(keyword in error for keyword in ['server exception', 'please again', 'try again', 'timeout', 'temporarily'])
+            
+            if is_retryable and attempt < max_retries - 1:
+                if is_admin_user:
+                    await query.edit_message_text(
+                        f"⏳ <b>Попытка {attempt + 2}/{max_retries}</b>\n\n"
+                        f"Ошибка API: {result.get('error', 'Unknown')}\n"
+                        f"Повторяю через {retry_delay} сек...",
+                        parse_mode='HTML'
+                    )
+                await asyncio.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                break
         
         if result.get('ok'):
             task_id = result.get('taskId')
@@ -6053,13 +6154,39 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     error_details += f"<code>{str(api_params)[:500]}</code>"
                     logger.error(f"Error formatting params for error message: {e}")
             
-            await query.edit_message_text(
-                f"❌ <b>Ошибка создания задачи:</b>\n\n{error}"
+            # Check if it's a server error
+            is_server_error = any(keyword in error.lower() for keyword in ['server exception', 'please again', 'try again'])
+            
+            keyboard = []
+            if is_server_error:
+                keyboard.append([InlineKeyboardButton("🔄 Попробовать еще раз", callback_data=f"retry_generate:{model_id}")])
+            keyboard.append([InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")])
+            
+            error_msg = (
+                f"❌ <b>Ошибка создания задачи</b>\n\n"
+                f"{error}\n"
                 f"{error_details}\n\n"
-                f"💡 <b>Возможные причины:</b>\n"
-                f"• Временная недоступность API сервера\n"
-                f"• Проблемы с параметрами запроса\n"
-                f"• Попробуйте еще раз через несколько секунд",
+            )
+            
+            if is_server_error:
+                error_msg += (
+                    f"⚠️ <b>Это ошибка API сервера KIE</b>\n\n"
+                    f"💡 <b>Что делать:</b>\n"
+                    f"• Попробуйте нажать 'Попробовать еще раз'\n"
+                    f"• Или подождите несколько минут и попробуйте снова\n"
+                    f"• Проверьте доступность вашего аудио-файла по URL"
+                )
+            else:
+                error_msg += (
+                    f"💡 <b>Возможные причины:</b>\n"
+                    f"• Проблемы с параметрами запроса\n"
+                    f"• Неверный формат данных\n"
+                    f"• Попробуйте еще раз"
+                )
+            
+            await query.edit_message_text(
+                error_msg,
+                reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='HTML'
             )
             # Clean up session
@@ -6782,6 +6909,7 @@ def main():
             ],
             CONFIRMING_GENERATION: [
                 CallbackQueryHandler(confirm_generation, pattern='^confirm_generate$'),
+                CallbackQueryHandler(button_callback, pattern='^retry_generate:'),
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
                 CallbackQueryHandler(button_callback, pattern='^check_balance$'),
                 CallbackQueryHandler(button_callback, pattern='^topup_balance$'),
