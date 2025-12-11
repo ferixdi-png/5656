@@ -73,7 +73,11 @@ function startHealthCheck() {
   const server = http.createServer((req, res) => {
     if (req.url === '/health' || req.url === '/') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ok', service: 'telegram-bot' }));
+      res.end(JSON.stringify({ 
+        status: 'ok', 
+        service: 'telegram-bot',
+        timestamp: new Date().toISOString()
+      }));
     } else {
       res.writeHead(404);
       res.end();
@@ -82,6 +86,21 @@ function startHealthCheck() {
   
   server.listen(port, '0.0.0.0', () => {
     console.log(`✅ Health check server started on port ${port}`);
+    console.log(`✅ Health check available at http://0.0.0.0:${port}/health`);
+    
+    // Test health check immediately
+    setTimeout(() => {
+      const testReq = http.get(`http://localhost:${port}/health`, (testRes) => {
+        let data = '';
+        testRes.on('data', (chunk) => { data += chunk; });
+        testRes.on('end', () => {
+          console.log(`✅ Health check test successful: ${data}`);
+        });
+      });
+      testReq.on('error', (err) => {
+        console.error(`⚠️  Health check test failed: ${err.message}`);
+      });
+    }, 100);
   });
   
   server.on('error', (err) => {
@@ -91,6 +110,8 @@ function startHealthCheck() {
       console.error(`❌ Health check server error: ${err.message}`);
     }
   });
+  
+  return server;
 }
 
 // Start Python bot

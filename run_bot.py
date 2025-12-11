@@ -7,6 +7,8 @@ import os
 import sys
 import shutil
 import importlib
+import threading
+import time
 from dotenv import load_dotenv
 
 # Clear Python cache to force module reload
@@ -127,8 +129,21 @@ try:
     print("  → Importing bot_kie module...", flush=True)
     sys.stdout.flush()
     import time
+    
+    # Start a heartbeat thread to keep process alive during import
+    def heartbeat():
+        while True:
+            time.sleep(5)
+            print("  💓 Import in progress...", flush=True)
+            sys.stdout.flush()
+    
+    heartbeat_thread = threading.Thread(target=heartbeat, daemon=True)
+    heartbeat_thread.start()
+    
     start_time = time.time()
     try:
+        print("  → Starting import (this may take a moment)...", flush=True)
+        sys.stdout.flush()
         import bot_kie
         elapsed = time.time() - start_time
         print(f"  ✓ bot_kie imported successfully in {elapsed:.2f}s", flush=True)

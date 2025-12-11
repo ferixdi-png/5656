@@ -45,14 +45,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Try to import PIL/Pillow
+# NOTE: Defer logging to avoid blocking during import
 try:
     from PIL import Image
     PIL_AVAILABLE = True
 except ImportError:
     PIL_AVAILABLE = False
-    logger.warning("PIL/Pillow not available. Image analysis will be limited.")
+    # Defer logging - don't log during import
 
 # Try to import pytesseract and configure Tesseract path
+# NOTE: Defer logging to avoid blocking during import
 try:
     import pytesseract
     OCR_AVAILABLE = True
@@ -72,27 +74,22 @@ try:
             if os.path.exists(path):
                 pytesseract.pytesseract.tesseract_cmd = path
                 tesseract_found = True
-                logger.info(f"Tesseract found at: {path}")
+                # Defer logging - don't log during import
                 break
     else:
         # On Linux, assume Tesseract is in PATH (installed via apt-get in Dockerfile)
         # Don't search PATH at import time - it can cause timeout
         # pytesseract will try to find tesseract automatically when needed
-        logger.info("Tesseract should be in PATH (Linux). Will auto-detect when OCR is used.")
         # Assume it's available if we're on Linux (installed in Dockerfile)
         tesseract_found = True
     
     if not tesseract_found:
-        logger.warning("Tesseract not found. OCR analysis will be disabled. Install tesseract-ocr package if needed.")
         OCR_AVAILABLE = False
-    else:
-        # Don't test Tesseract at import time - it can hang or timeout
-        # Test will happen when OCR is actually needed
-        logger.info("Tesseract OCR path configured. Will be tested when needed.")
+    # Don't test Tesseract at import time - it can hang or timeout
+    # Test will happen when OCR is actually needed
 except ImportError:
     OCR_AVAILABLE = False
     tesseract_found = False
-    logger.warning("pytesseract not available. OCR analysis will be disabled.")
 
 # Bot token from environment variable
 BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
