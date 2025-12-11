@@ -14,7 +14,53 @@ from telegram.ext import ContextTypes
 import os
 from dotenv import load_dotenv
 from knowledge_storage import KnowledgeStorage
-from translations import t, TRANSLATIONS
+
+# Import translations with fallback
+try:
+    from translations import t, TRANSLATIONS
+except ImportError:
+    # Fallback if translations.py is not available
+    print("⚠️  WARNING: translations.py not found, using fallback translations", flush=True)
+    TRANSLATIONS = {
+        'ru': {
+            'welcome_new': '👋 Привет, {name}!',
+            'welcome_returning': '👋 С возвращением, {name}!',
+            'select_language': '🌍 Выберите язык',
+            'language_set': '✅ Язык установлен!',
+            'generate_free': '🎁 Генерировать бесплатно',
+            'balance': '💰 Баланс',
+            'models': '🤖 Модели',
+            'help': '❓ Помощь',
+            'support': '💬 Поддержка',
+            'referral': '🎁 Рефералы',
+            'my_generations': '📋 Мои генерации',
+            'admin_panel': '👑 Админ-панель',
+        },
+        'en': {
+            'welcome_new': '👋 Hello, {name}!',
+            'welcome_returning': '👋 Welcome back, {name}!',
+            'select_language': '🌍 Choose language',
+            'language_set': '✅ Language set!',
+            'generate_free': '🎁 Generate free',
+            'balance': '💰 Balance',
+            'models': '🤖 Models',
+            'help': '❓ Help',
+            'support': '💬 Support',
+            'referral': '🎁 Referrals',
+            'my_generations': '📋 My generations',
+            'admin_panel': '👑 Admin panel',
+        }
+    }
+    
+    def t(key: str, lang: str = 'ru', **kwargs) -> str:
+        """Get translated text (fallback)."""
+        translations = TRANSLATIONS.get(lang, TRANSLATIONS['ru'])
+        text = translations.get(key, TRANSLATIONS['ru'].get(key, key))
+        try:
+            return text.format(**kwargs)
+        except KeyError:
+            return text
+
 from kie_client import get_client
 from kie_models import (
     KIE_MODELS, get_model_by_id, get_models_by_category, get_categories,

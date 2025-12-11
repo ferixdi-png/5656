@@ -2313,8 +2313,9 @@ KIE_MODELS = [
             },
             "language_code": {
                 "type": "string",
-                "description": "Код языка аудио (макс. 500 символов, опционально)",
+                "description": "Код языка аудио (макс. 500 символов, опционально). По умолчанию: ru (русский)",
                 "required": False,
+                "default": "ru",
                 "max_length": 500
             },
             "tag_audio_events": {
