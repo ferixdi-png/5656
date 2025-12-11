@@ -6025,8 +6025,28 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             asyncio.create_task(poll_task_status(update, context, task_id, user_id))
         else:
             error = result.get('error', 'Unknown error')
+            error_details = ""
+            
+            # Add more details for admin
+            if is_admin_user:
+                error_details = f"\n\n📋 <b>Отправленные параметры:</b>\n"
+                import json
+                try:
+                    params_preview = json.dumps(api_params, indent=2, ensure_ascii=False)
+                    # Limit preview length
+                    if len(params_preview) > 500:
+                        params_preview = params_preview[:500] + "..."
+                    error_details += f"<code>{params_preview}</code>"
+                except:
+                    error_details += f"<code>{str(api_params)[:500]}</code>"
+            
             await query.edit_message_text(
-                f"❌ <b>Ошибка создания задачи:</b>\n\n{error}",
+                f"❌ <b>Ошибка создания задачи:</b>\n\n{error}"
+                f"{error_details}\n\n"
+                f"💡 <b>Возможные причины:</b>\n"
+                f"• Временная недоступность API сервера\n"
+                f"• Проблемы с параметрами запроса\n"
+                f"• Попробуйте еще раз через несколько секунд",
                 parse_mode='HTML'
             )
             # Clean up session
