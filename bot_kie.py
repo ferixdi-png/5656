@@ -5983,6 +5983,19 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 elif isinstance(reference_image_input, str):
                     api_params['reference_image_urls'] = [reference_image_input]
         
+        # Remove optional parameters with default values for some models to avoid API issues
+        # Some APIs may not expect optional parameters if they match defaults
+        if model_id == "elevenlabs/speech-to-text":
+            # For elevenlabs, only send non-default values for optional params
+            # Default values are False, so remove them if they are False
+            if 'tag_audio_events' in api_params and api_params.get('tag_audio_events') is False:
+                api_params.pop('tag_audio_events')
+            if 'diarize' in api_params and api_params.get('diarize') is False:
+                api_params.pop('diarize')
+            # Also remove empty language_code if it exists
+            if 'language_code' in api_params and not api_params.get('language_code'):
+                api_params.pop('language_code')
+        
         # Log API params for debugging (only for admin)
         if is_admin_user:
             logger.info(f"Creating task for model {model_id} with params: {json.dumps(api_params, indent=2, ensure_ascii=False)}")
