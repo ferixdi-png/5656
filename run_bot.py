@@ -22,15 +22,55 @@ for cache_dir in cache_dirs:
 # Load environment variables
 load_dotenv()
 
+# CRITICAL: Start health check server FIRST for Render.com
+# This must happen BEFORE any imports to prevent SIGTERM timeout
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
+
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/health' or self.path == '/':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(b'{"status":"ok","service":"telegram-bot"}')
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
+    def log_message(self, format, *args):
+        pass  # Suppress HTTP server logs
+
+def start_health_server():
+    port = int(os.getenv('PORT', 10000))
+    try:
+        server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+        print(f"✅ Health check server started on port {port}", flush=True)
+        server.serve_forever()
+    except Exception as e:
+        print(f"❌ Failed to start health server: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+
+# Start health check server IMMEDIATELY in background thread
+health_thread = threading.Thread(target=start_health_server, daemon=True)
+health_thread.start()
+print("🚀 Health check server thread started", flush=True)
+
+# Give server time to bind to port (critical for Render)
+import time
+time.sleep(1)
+print("✅ Port should be open now", flush=True)
+
 # Check if bot token is available
 BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
 if not BOT_TOKEN or BOT_TOKEN == "your_bot_token_here":
-    print("ERROR: No valid bot token found!")
-    print("\nTo run the bot:")
-    print("1. Get a bot token from @BotFather on Telegram")
-    print("2. Update the .env file with your bot token")
-    print("3. Run this script again")
+    print("ERROR: No valid bot token found!", flush=True)
+    print("\nTo run the bot:", flush=True)
+    print("1. Get a bot token from @BotFather on Telegram", flush=True)
+    print("2. Update the .env file with your bot token", flush=True)
+    print("3. Run this script again", flush=True)
     sys.exit(1)
 
 print("=" * 60)

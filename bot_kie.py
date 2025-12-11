@@ -7641,44 +7641,59 @@ def main():
     """Start the bot."""
     global storage, kie
     
-    # CRITICAL: Start HTTP server FIRST for Render port check
-    import threading
-    from http.server import HTTPServer, BaseHTTPRequestHandler
+    # NOTE: Health check server is started in run_bot.py BEFORE importing bot_kie
+    # This prevents Render.com from killing the process during import
+    # If we're here, health check should already be running
+    logger.info("🚀 Bot main() function starting (health check should already be running)")
     
-    class HealthCheckHandler(BaseHTTPRequestHandler):
-        def do_GET(self):
-            if self.path == '/health' or self.path == '/':
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(b'{"status":"ok","service":"telegram-bot"}')
-            else:
-                self.send_response(404)
-                self.end_headers()
+    # Try to start health check server if not already running (fallback)
+    try:
+        import threading
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+        import socket
         
-        def log_message(self, format, *args):
-            pass  # Suppress HTTP server logs
-    
-    def start_health_server():
-        port = int(os.getenv('PORT', 10000))
-        try:
-            server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
-            logger.info(f"✅ Health check server started on port {port}")
-            server.serve_forever()
-        except Exception as e:
-            logger.error(f"❌ Failed to start health server: {e}")
-            import traceback
-            traceback.print_exc()
-    
-    # Start health check server IMMEDIATELY in background thread
-    health_thread = threading.Thread(target=start_health_server, daemon=True)
-    health_thread.start()
-    logger.info("🚀 Health check server thread started")
-    
-    # Give server time to bind to port (critical for Render)
-    import time
-    time.sleep(2)
-    logger.info("✅ Port should be open now")
+        class HealthCheckHandler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                if self.path == '/health' or self.path == '/':
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(b'{"status":"ok","service":"telegram-bot"}')
+                else:
+                    self.send_response(404)
+                    self.end_headers()
+            
+            def log_message(self, format, *args):
+                pass
+        
+        def start_health_server():
+            port = int(os.getenv('PORT', 10000))
+            try:
+                # Check if port is already in use (health check already running)
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                result = sock.connect_ex(('127.0.0.1', port))
+                sock.close()
+                if result == 0:
+                    logger.info(f"✅ Health check server already running on port {port}")
+                    return
+                
+                server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+                logger.info(f"✅ Health check server started on port {port}")
+                server.serve_forever()
+            except OSError as e:
+                if "Address already in use" in str(e):
+                    logger.info(f"✅ Health check server already running on port {port}")
+                else:
+                    logger.error(f"❌ Failed to start health server: {e}")
+            except Exception as e:
+                logger.error(f"❌ Failed to start health server: {e}")
+        
+        # Try to start health check server if not already running
+        health_thread = threading.Thread(target=start_health_server, daemon=True)
+        health_thread.start()
+        time.sleep(0.5)  # Give it a moment to try
+    except Exception as e:
+        logger.warning(f"⚠️ Could not start health check server (may already be running): {e}")
     
     # Initialize storage and KIE client here (not at import time to avoid blocking)
     if storage is None:
