@@ -5273,6 +5273,46 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             audio_param_name = session.get('waiting_for', 'audio_url')
             session['params'][audio_param_name] = public_url
             session[audio_param_name] = public_url  # Also store in session for consistency
+            session['waiting_for'] = None
+            session['current_param'] = None
+            
+            # Confirm audio was set
+            await update.message.reply_text(
+                f"✅ <b>Аудио-файл загружен!</b>\n\n"
+                f"Обрабатываю...",
+                parse_mode='HTML'
+            )
+            
+            # Move to next parameter
+            try:
+                next_param_result = await start_next_parameter(update, context, user_id)
+                if next_param_result:
+                    return next_param_result
+                else:
+                    # All parameters collected, show confirmation
+                    model_name = session.get('model_info', {}).get('name', 'Unknown')
+                    params = session.get('params', {})
+                    params_text = "\n".join([f"  • {k}: {str(v)[:50]}{'...' if len(str(v)) > 50 else ''}" for k, v in params.items()])
+                    
+                    keyboard = [
+                        [InlineKeyboardButton("✅ Генерировать", callback_data="confirm_generate")],
+                        [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
+                    ]
+                    
+                    await update.message.reply_text(
+                        f"📋 <b>Подтверждение:</b>\n\n"
+                        f"Модель: <b>{model_name}</b>\n"
+                        f"Параметры:\n{params_text}\n\n"
+                        f"Продолжить генерацию?",
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                    return CONFIRMING_GENERATION
+            except Exception as e:
+                logger.error(f"Error after audio input: {e}", exc_info=True)
+                await update.message.reply_text("❌ Ошибка при переходе к следующему параметру.")
+            
+            return INPUTTING_PARAMS
             
         except Exception as e:
             logger.error(f"Error processing audio: {e}", exc_info=True)
@@ -5290,17 +5330,6 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode='HTML'
             )
             return INPUTTING_PARAMS
-        
-        # Move to next parameter
-        session['waiting_for'] = None
-        try:
-            next_param_result = await start_next_parameter(update, context, user_id)
-            if next_param_result:
-                return next_param_result
-        except Exception as e:
-            logger.error(f"Error after audio input: {e}")
-        
-        return INPUTTING_PARAMS
     
     # Handle image input (for image_input or image_urls)
     waiting_for_image = session.get('waiting_for') in ['image_input', 'image_urls']
@@ -6754,6 +6783,7 @@ def main():
             INPUTTING_PARAMS: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, input_parameters),
                 MessageHandler(filters.PHOTO, input_parameters),
+                MessageHandler(filters.AUDIO | filters.VOICE | (filters.Document.MimeType("audio/*")), input_parameters),
                 CallbackQueryHandler(button_callback, pattern='^set_param:'),
                 CallbackQueryHandler(button_callback, pattern='^add_image$'),
                 CallbackQueryHandler(button_callback, pattern='^skip_image$'),
