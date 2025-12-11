@@ -603,9 +603,9 @@ def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = Fa
         price_720p_10s_str = f"{round(price_720p_10s, 2):.2f}"
         price_1080p_10s_str = f"{round(price_1080p_10s, 2):.2f}"
         if is_admin:
-            return f"💰 <b>Безлимит</b> (720p: {price_720p_5s_str}₽/5с, {price_720p_10s_str}₽/10с | 1080p: {price_1080p_5s_str}₽/5с, {price_1080p_10s_str}₽/10с)"
+            return f"💰 <b>Безлимит</b>\n\n📺 <b>Разрешение 720p:</b> {price_720p_5s_str}₽ (5с), {price_720p_10s_str}₽ (10с)\n📺 <b>Разрешение 1080p:</b> {price_1080p_5s_str}₽ (5с), {price_1080p_10s_str}₽ (10с)"
         else:
-            return f"💰 <b>От {price_720p_5s_str} ₽</b> (720p: {price_720p_5s_str}₽/5с, {price_720p_10s_str}₽/10с | 1080p: {price_1080p_5s_str}₽/5с, {price_1080p_10s_str}₽/10с)"
+            return f"💰 <b>От {price_720p_5s_str} ₽</b>\n\n📺 <b>720p:</b> {price_720p_5s_str}₽ (5с), {price_720p_10s_str}₽ (10с)\n📺 <b>1080p:</b> {price_1080p_5s_str}₽ (5с), {price_1080p_10s_str}₽ (10с)"
     elif model_id == "wan/2-2-animate-move" or model_id == "wan/2-2-animate-replace":
         # Show price based on resolution
         resolution = params.get("resolution", "480p") if params else "480p"
@@ -616,9 +616,9 @@ def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = Fa
         price_580p_str = f"{round(price_580p, 2):.2f}"
         price_720p_str = f"{round(price_720p, 2):.2f}"
         if is_admin:
-            return f"💰 <b>Безлимит</b> (480p: {price_480p_str}₽/5с, 580p: {price_580p_str}₽/5с, 720p: {price_720p_str}₽/5с)"
+            return f"💰 <b>Безлимит</b>\n\n📺 <b>Разрешение 480p:</b> {price_480p_str}₽ (5с)\n📺 <b>Разрешение 580p:</b> {price_580p_str}₽ (5с)\n📺 <b>Разрешение 720p:</b> {price_720p_str}₽ (5с)"
         else:
-            return f"💰 <b>От {price_480p_str} ₽</b> (480p: {price_480p_str}₽/5с, 580p: {price_580p_str}₽/5с, 720p: {price_720p_str}₽/5с)"
+            return f"💰 <b>От {price_480p_str} ₽</b>\n\n📺 <b>480p:</b> {price_480p_str}₽ (5с)\n📺 <b>580p:</b> {price_580p_str}₽ (5с)\n📺 <b>720p:</b> {price_720p_str}₽ (5с)"
     elif model_id == "hailuo/02-text-to-video-pro" or model_id == "hailuo/02-image-to-video-pro":
         # Show fixed price for 6-second 1080p video
         price = calculate_price_rub(model_id, params, is_admin)
@@ -640,9 +640,9 @@ def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = Fa
         price_512p_10s_str = f"{round(price_512p_10s, 2):.2f}"
         price_768p_10s_str = f"{round(price_768p_10s, 2):.2f}"
         if is_admin:
-            return f"💰 <b>Безлимит</b> (512P: {price_512p_6s_str}₽/6с, {price_512p_10s_str}₽/10с | 768P: {price_768p_6s_str}₽/6с, {price_768p_10s_str}₽/10с)"
+            return f"💰 <b>Безлимит</b>\n\n📺 <b>Разрешение 512p:</b> {price_512p_6s_str}₽ (6с), {price_512p_10s_str}₽ (10с)\n📺 <b>Разрешение 768p:</b> {price_768p_6s_str}₽ (6с), {price_768p_10s_str}₽ (10с)"
         else:
-            return f"💰 <b>От {price_512p_6s_str} ₽</b> (512P: {price_512p_6s_str}₽/6с, {price_512p_10s_str}₽/10с | 768P: {price_768p_6s_str}₽/6с, {price_768p_10s_str}₽/10с)"
+            return f"💰 <b>От {price_512p_6s_str} ₽</b>\n\n📺 <b>512p:</b> {price_512p_6s_str}₽ (6с), {price_512p_10s_str}₽ (10с)\n📺 <b>768p:</b> {price_768p_6s_str}₽ (6с), {price_768p_10s_str}₽ (10с)"
     elif model_id == "hailuo/02-text-to-video-standard":
         # Show price based on duration (fixed 768P)
         duration = params.get("duration", "6") if params else "6"
@@ -651,9 +651,9 @@ def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = Fa
         price_6s_str = f"{round(price_6s, 2):.2f}"
         price_10s_str = f"{round(price_10s, 2):.2f}"
         if is_admin:
-            return f"💰 <b>Безлимит</b> (768P: {price_6s_str}₽/6с, {price_10s_str}₽/10с)"
+            return f"💰 <b>Безлимит</b>\n\n📺 <b>Разрешение 768p:</b> {price_6s_str}₽ (6с), {price_10s_str}₽ (10с)"
         else:
-            return f"💰 <b>От {price_6s_str} ₽</b> (768P: {price_6s_str}₽/6с, {price_10s_str}₽/10с)"
+            return f"💰 <b>От {price_6s_str} ₽</b>\n\n📺 <b>768p:</b> {price_6s_str}₽ (6с), {price_10s_str}₽ (10с)"
     elif model_id == "topaz/video-upscale":
         # Show price per second
         price_per_sec = calculate_price_rub(model_id, {}, is_admin) / 5  # Divide by default 5 seconds
@@ -667,17 +667,17 @@ def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = Fa
         price_per_sec = calculate_price_rub(model_id, {}, is_admin) / 5  # Divide by default 5 seconds
         price_per_sec_str = f"{round(price_per_sec, 2):.2f}"
         if is_admin:
-            return f"💰 <b>Безлимит</b> ({price_per_sec_str} ₽/сек, 720P, до 15с)"
+            return f"💰 <b>Безлимит</b>\n\n📺 <b>Разрешение:</b> 720p\n💰 {price_per_sec_str} ₽/сек\n⏱️ До 15 секунд"
         else:
-            return f"💰 <b>{price_per_sec_str} ₽/сек</b> (720P, до 15с)"
+            return f"💰 <b>{price_per_sec_str} ₽/сек</b>\n\n📺 <b>Разрешение:</b> 720p\n⏱️ До 15 секунд"
     elif model_id == "kling/ai-avatar-v1-pro":
         # Show price per second for 1080P
         price_per_sec = calculate_price_rub(model_id, {}, is_admin) / 5  # Divide by default 5 seconds
         price_per_sec_str = f"{round(price_per_sec, 2):.2f}"
         if is_admin:
-            return f"💰 <b>Безлимит</b> ({price_per_sec_str} ₽/сек, 1080P, до 15с)"
+            return f"💰 <b>Безлимит</b>\n\n📺 <b>Разрешение:</b> 1080p\n💰 {price_per_sec_str} ₽/сек\n⏱️ До 15 секунд"
         else:
-            return f"💰 <b>{price_per_sec_str} ₽/сек</b> (1080P, до 15с)"
+            return f"💰 <b>{price_per_sec_str} ₽/сек</b>\n\n📺 <b>Разрешение:</b> 1080p\n⏱️ До 15 секунд"
     elif model_id == "bytedance/seedream-v4-text-to-image" or model_id == "bytedance/seedream-v4-edit":
         # Show price per image
         max_images = params.get("max_images", 1) if params else 1
@@ -703,9 +703,9 @@ def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = Fa
         price_per_sec_480p_str = f"{round(price_per_sec_480p, 2):.2f}"
         price_per_sec_720p_str = f"{round(price_per_sec_720p, 2):.2f}"
         if is_admin:
-            return f"💰 <b>Безлимит</b> (480P: {price_per_sec_480p_str}₽/сек, 720P: {price_per_sec_720p_str}₽/сек, до 15с)"
+            return f"💰 <b>Безлимит</b>\n\n📺 <b>Разрешение 480p:</b> {price_per_sec_480p_str}₽/сек\n📺 <b>Разрешение 720p:</b> {price_per_sec_720p_str}₽/сек\n⏱️ До 15 секунд"
         else:
-            return f"💰 <b>От {price_per_sec_480p_str} ₽/сек</b> (480P: {price_per_sec_480p_str}₽/сек, 720P: {price_per_sec_720p_str}₽/сек, до 15с)"
+            return f"💰 <b>От {price_per_sec_480p_str} ₽/сек</b>\n\n📺 <b>480p:</b> {price_per_sec_480p_str}₽/сек\n📺 <b>720p:</b> {price_per_sec_720p_str}₽/сек\n⏱️ До 15 секунд"
     elif model_id == "recraft/remove-background":
         # Show fixed price per image
         price = calculate_price_rub(model_id, {}, is_admin)
@@ -745,9 +745,9 @@ def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = Fa
         price_per_sec_580p_str = f"{round(price_per_sec_580p, 2):.2f}"
         price_per_sec_720p_str = f"{round(price_per_sec_720p, 2):.2f}"
         if is_admin:
-            return f"💰 <b>Безлимит</b> (480P: {price_per_sec_480p_str}₽/сек, 580P: {price_per_sec_580p_str}₽/сек, 720P: {price_per_sec_720p_str}₽/сек)"
+            return f"💰 <b>Безлимит</b>\n\n📺 <b>Разрешение 480p:</b> {price_per_sec_480p_str}₽/сек\n📺 <b>Разрешение 580p:</b> {price_per_sec_580p_str}₽/сек\n📺 <b>Разрешение 720p:</b> {price_per_sec_720p_str}₽/сек"
         else:
-            return f"💰 <b>От {price_per_sec_480p_str} ₽/сек</b> (480P: {price_per_sec_480p_str}₽/сек, 580P: {price_per_sec_580p_str}₽/сек, 720P: {price_per_sec_720p_str}₽/сек)"
+            return f"💰 <b>От {price_per_sec_480p_str} ₽/сек</b>\n\n📺 <b>480p:</b> {price_per_sec_480p_str}₽/сек\n📺 <b>580p:</b> {price_per_sec_580p_str}₽/сек\n📺 <b>720p:</b> {price_per_sec_720p_str}₽/сек"
     elif model_id == "bytedance/seedream":
         # Show fixed price per image
         price = calculate_price_rub(model_id, {}, is_admin)
@@ -2755,9 +2755,21 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return INPUTTING_PARAMS
         
         if data == "cancel":
+            await query.answer("Операция отменена")
             if user_id in user_sessions:
                 del user_sessions[user_id]
-            await query.edit_message_text("❌ Операция отменена.")
+            try:
+                await query.edit_message_text(
+                    "❌ Операция отменена.\n\n"
+                    "Вы вернулись в главное меню.",
+                    reply_markup=None
+                )
+            except Exception as e:
+                logger.error(f"Error editing message on cancel: {e}")
+                try:
+                    await query.message.reply_text("❌ Операция отменена.")
+                except:
+                    pass
             return ConversationHandler.END
         
         # Handle category selection (can be called from main menu)
@@ -3113,8 +3125,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if data == "add_audio":
             # User wants to add audio file
+            await query.answer()
             if user_id not in user_sessions:
-                await query.answer("Ошибка: сессия не найдена. Начните заново.", show_alert=True)
+                await query.edit_message_text("❌ Ошибка: сессия не найдена. Начните заново.")
                 return ConversationHandler.END
             
             session = user_sessions[user_id]
@@ -3124,7 +3137,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             audio_param_name = 'audio_url' if 'audio_url' in input_params else 'audio_input'
             
             keyboard = [
-                [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+                [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")],
+                [InlineKeyboardButton("⏭️ Пропустить", callback_data="skip_audio")]
             ]
             
             await query.edit_message_text(
@@ -3142,20 +3156,43 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if data == "skip_audio":
             # User wants to skip audio upload
+            await query.answer("Аудио пропущено")
             if user_id not in user_sessions:
-                await query.answer("Ошибка: сессия не найдена. Начните заново.", show_alert=True)
+                await query.edit_message_text("❌ Ошибка: сессия не найдена. Начните заново.")
                 return ConversationHandler.END
             
             session = user_sessions[user_id]
             session['waiting_for'] = None
+            session['current_param'] = None
             
             # Move to next parameter
             try:
                 next_param_result = await start_next_parameter(update, context, user_id)
                 if next_param_result:
                     return next_param_result
+                else:
+                    # All parameters collected, show confirmation
+                    model_name = session.get('model_info', {}).get('name', 'Unknown')
+                    params = session.get('params', {})
+                    params_text = "\n".join([f"  • {k}: {str(v)[:50]}{'...' if len(str(v)) > 50 else ''}" for k, v in params.items()])
+                    
+                    keyboard = [
+                        [InlineKeyboardButton("✅ Генерировать", callback_data="confirm_generate")],
+                        [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
+                    ]
+                    
+                    await query.edit_message_text(
+                        f"📋 <b>Подтверждение:</b>\n\n"
+                        f"Модель: <b>{model_name}</b>\n"
+                        f"Параметры:\n{params_text}\n\n"
+                        f"Продолжить генерацию?",
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                    return CONFIRMING_GENERATION
             except Exception as e:
-                logger.error(f"Error after skipping audio: {e}")
+                logger.error(f"Error after skipping audio: {e}", exc_info=True)
+                await query.edit_message_text("❌ Ошибка при переходе к следующему параметру.")
             
             return INPUTTING_PARAMS
         
@@ -4386,16 +4423,37 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"━━━━━━━━━━━━━━━━━━━━\n\n"
             )
             
-            # Format price text properly (remove duplicate emoji and formatting)
-            price_display = price_text
-            if price_text.startswith("💰"):
-                price_display = price_text.replace("💰", "").strip()
-            # Remove HTML tags if present but keep the content
+            # Format price text properly (optimize for mobile display)
             import re
-            price_display = re.sub(r'<b>(.*?)</b>', r'\1', price_display)
-            price_display = price_display.strip()
             
-            model_info_text += f"💰 <b>Стоимость:</b> {price_display}\n"
+            # For hailuo models with multiple resolutions, show formatted version
+            if model_id == "hailuo/02-image-to-video-standard" or model_id == "hailuo/02-image-to-video-pro":
+                # Remove emoji and HTML, but keep the structure
+                price_display_clean = price_text.replace("💰", "").strip()
+                price_display_clean = re.sub(r'<b>(.*?)</b>', r'\1', price_display_clean)
+                # Replace (512P: with (Разрешение 512p: to make it clearer
+                price_display_clean = price_display_clean.replace("512P:", "📺 Разрешение 512p:")
+                price_display_clean = price_display_clean.replace("768P:", "📺 Разрешение 768p:")
+                price_display_clean = price_display_clean.replace(" | ", "\n")
+                price_display_clean = price_display_clean.replace("₽/6с", "₽ (6с)").replace("₽/10с", "₽ (10с)")
+                model_info_text += f"\n{price_display_clean}\n"
+            else:
+                # For other models, use simple format
+                price_display = price_text
+                if price_text.startswith("💰"):
+                    price_display = price_text.replace("💰", "").strip()
+                # Remove HTML tags if present but keep the content
+                price_display = re.sub(r'<b>(.*?)</b>', r'\1', price_display)
+                price_display = price_display.strip()
+                
+                # Shorten price display for mobile
+                if len(price_display) > 50:
+                    # Extract just the number and currency
+                    price_match = re.search(r'(\d+\.?\d*)\s*₽', price_display)
+                    if price_match:
+                        price_display = f"{price_match.group(1)} ₽"
+                
+                model_info_text += f"💰 <b>Цена:</b> {price_display}\n"
             
             # Add hint for new users
             if is_new and model_id == FREE_MODEL_ID:
@@ -5421,8 +5479,10 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             input_params = model_info.get('input_params', {})
             
             # Check for audio_url requirement
-            if session.get('has_audio_input') or ('audio_url' in input_params and input_params['audio_url'].get('required', False)):
-                audio_required = input_params.get('audio_url', {}).get('required', False) if 'audio_url' in input_params else False
+            if 'audio_url' in input_params or 'audio_input' in input_params:
+                audio_param_name = 'audio_url' if 'audio_url' in input_params else 'audio_input'
+                audio_required = input_params.get(audio_param_name, {}).get('required', False)
+                
                 if audio_required:
                     # Audio is required
                     keyboard = [
@@ -5432,17 +5492,18 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "🎤 <b>Загрузите аудио-файл для транскрибации</b>\n\n"
                         "Отправьте аудио-файл (MP3, WAV, OGG, M4A, FLAC, AAC, WMA, MPEG).\n"
                         "Максимальный размер: 200 MB",
-                    reply_markup=InlineKeyboardMarkup(keyboard),
-                    parse_mode='HTML'
-                )
-                session['waiting_for'] = 'audio_url'
-                session['current_param'] = 'audio_url'
-                return INPUTTING_PARAMS
-            else:
-                    # Audio is optional - show button
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                    session['waiting_for'] = audio_param_name
+                    session['current_param'] = audio_param_name
+                    return INPUTTING_PARAMS
+                else:
+                    # Audio is optional - show buttons
                     keyboard = [
                         [InlineKeyboardButton("🎤 Загрузить аудио (опционально)", callback_data="add_audio")],
-                        [InlineKeyboardButton("⏭️ Пропустить", callback_data="skip_audio")]
+                        [InlineKeyboardButton("⏭️ Пропустить", callback_data="skip_audio")],
+                        [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
                     ]
                     await update.message.reply_text(
                         "🎤 <b>Вы можете загрузить аудио-файл (опционально)</b>\n\n"
@@ -6411,11 +6472,37 @@ async def check_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Cancel the current operation."""
     user_id = update.effective_user.id
-    if user_id in user_sessions:
-        del user_sessions[user_id]
     
-    await update.message.reply_text("❌ Операция отменена.")
-    return ConversationHandler.END
+    # Handle callback query (button press)
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer("Операция отменена")
+        
+        # Clean up session
+        if user_id in user_sessions:
+            del user_sessions[user_id]
+        
+        try:
+            await query.edit_message_text(
+                "❌ Операция отменена.\n\n"
+                "Используйте /start для возврата в главное меню."
+            )
+        except Exception as e:
+            logger.error(f"Error editing message on cancel: {e}", exc_info=True)
+            try:
+                await query.message.reply_text("❌ Операция отменена.")
+            except:
+                pass
+        return ConversationHandler.END
+    
+    # Handle command
+    if update.message:
+        # Clean up session
+        if user_id in user_sessions:
+            del user_sessions[user_id]
+        
+        await update.message.reply_text("❌ Операция отменена.")
+        return ConversationHandler.END
 
 
 # Keep existing handlers
@@ -6671,6 +6758,8 @@ def main():
                 CallbackQueryHandler(button_callback, pattern='^add_image$'),
                 CallbackQueryHandler(button_callback, pattern='^skip_image$'),
                 CallbackQueryHandler(button_callback, pattern='^image_done$'),
+                CallbackQueryHandler(button_callback, pattern='^add_audio$'),
+                CallbackQueryHandler(button_callback, pattern='^skip_audio$'),
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
                 CallbackQueryHandler(button_callback, pattern='^check_balance$'),
                 CallbackQueryHandler(button_callback, pattern='^topup_balance$'),
