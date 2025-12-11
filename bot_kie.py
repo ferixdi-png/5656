@@ -500,6 +500,12 @@ def calculate_price_rub(model_id: str, params: dict = None, is_admin: bool = Fal
             base_credits = 20  # 4K
         else:  # upscale_factor == "1"
             base_credits = 10  # ≤2K
+    elif model_id == "elevenlabs/speech-to-text":
+        # ElevenLabs Speech-to-Text pricing:
+        # 3.5 credits per minute
+        # For pricing calculation, we'll use a default of 1 minute as minimum
+        # Note: Actual price depends on audio duration, but we show minimum price
+        base_credits = 3.5  # Per minute
     else:
         # Default fallback
         base_credits = 1.0
@@ -830,6 +836,14 @@ def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = Fa
             return f"💰 <b>Безлимит</b> (1x: {price_1x_str} ₽, 2x/4x: {price_2x_str} ₽, 8x: {price_8x_str} ₽)"
         else:
             return f"💰 <b>От {price_1x_str} ₽</b> (1x: {price_1x_str} ₽, 2x/4x: {price_2x_str} ₽, 8x: {price_8x_str} ₽)"
+    elif model_id == "elevenlabs/speech-to-text":
+        # Show price per minute for speech-to-text
+        price = calculate_price_rub(model_id, {}, is_admin)
+        price_str = f"{round(price, 2):.2f}"
+        if is_admin:
+            return f"💰 <b>Безлимит</b> ({price_str} ₽ за минуту)"
+        else:
+            return f"💰 <b>{price_str} ₽</b> за минуту"
     else:
         price = calculate_price_rub(model_id, params, is_admin)
         return format_price_rub(price, is_admin)
@@ -2918,8 +2932,18 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     # Fallback: show calculated price
                     price_display = f"{min_price:.2f} ₽"
                 
-                # Compact button text with price
-                button_text = f"{model['emoji']} {model['name']} • {price_display}"
+                # Compact button text with price (limit name to 20 chars for mobile display)
+                model_name_short = model['name'][:20] + "..." if len(model['name']) > 20 else model['name']
+                button_text = f"{model['emoji']} {model_name_short} • {price_display}"
+                
+                # Telegram button text limit is ~64 chars, ensure we don't exceed
+                if len(button_text) > 60:
+                    model_name_short = model['name'][:15] + "..."
+                    button_text = f"{model['emoji']} {model_name_short} • {price_display}"
+                if len(button_text) > 60:
+                    # If still too long, remove emoji from price part
+                    price_display_short = price_display.replace("₽", "₽")[:8]
+                    button_text = f"{model['emoji']} {model_name_short} {price_display_short}"
                 
                 keyboard.append([InlineKeyboardButton(
                     button_text,
@@ -3086,6 +3110,54 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 logger.error(f"Error after image done: {e}")
                 await query.edit_message_text("❌ Ошибка при переходе к следующему параметру.")
                 return INPUTTING_PARAMS
+        
+        if data == "add_audio":
+            # User wants to add audio file
+            if user_id not in user_sessions:
+                await query.answer("Ошибка: сессия не найдена. Начните заново.", show_alert=True)
+                return ConversationHandler.END
+            
+            session = user_sessions[user_id]
+            model_info = session.get('model_info', {})
+            input_params = model_info.get('input_params', {})
+            
+            audio_param_name = 'audio_url' if 'audio_url' in input_params else 'audio_input'
+            
+            keyboard = [
+                [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+            ]
+            
+            await query.edit_message_text(
+                "🎤 <b>Загрузите аудио-файл</b>\n\n"
+                "Отправьте аудио-файл для транскрибации.\n\n"
+                "Поддерживаемые форматы: MP3, WAV, OGG, M4A, FLAC, AAC, WMA, MPEG\n"
+                "Максимальный размер: 200 MB",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            
+            session['waiting_for'] = audio_param_name
+            session['current_param'] = audio_param_name
+            return INPUTTING_PARAMS
+        
+        if data == "skip_audio":
+            # User wants to skip audio upload
+            if user_id not in user_sessions:
+                await query.answer("Ошибка: сессия не найдена. Начните заново.", show_alert=True)
+                return ConversationHandler.END
+            
+            session = user_sessions[user_id]
+            session['waiting_for'] = None
+            
+            # Move to next parameter
+            try:
+                next_param_result = await start_next_parameter(update, context, user_id)
+                if next_param_result:
+                    return next_param_result
+            except Exception as e:
+                logger.error(f"Error after skipping audio: {e}")
+            
+            return INPUTTING_PARAMS
         
         if data == "skip_image":
             await query.answer("Изображение пропущено")
@@ -4302,12 +4374,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Check if new user for hints
             is_new = is_new_user(user_id)
             
-            # Premium formatted model info
+            # Premium formatted model info (optimized for mobile - shorter lines)
             model_info_text = (
                 f"✨ <b>ПРЕМИУМ МОДЕЛЬ</b> ✨\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━\n\n"
                 f"{model_emoji} <b>{model_name}</b>\n"
-                f"📁 <b>Категория:</b> {model_category}\n\n"
+                f"📁 {model_category}\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━\n\n"
                 f"📝 <b>Описание:</b>\n"
                 f"<i>{model_desc}</i>\n\n"
@@ -4401,9 +4473,13 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             if not input_params:
                 # If no params defined, ask for simple text input
+                keyboard = [
+                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+                ]
                 await query.edit_message_text(
                     f"{model_info_text}"
                     f"Введите текст для генерации:",
+                    reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
                 )
                 user_sessions[user_id]['params'] = {}
@@ -4416,10 +4492,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_sessions[user_id]['required'] = [p for p, info in input_params.items() if info.get('required', False)]
             user_sessions[user_id]['current_param'] = None
             
-            # Start with prompt parameter first
+            # Start with prompt parameter first (if exists)
+            # Or start with audio_url if no prompt and audio_url is required
             if 'prompt' in input_params:
                 # Check if model supports image input (image_input or image_urls)
                 has_image_input = 'image_input' in input_params or 'image_urls' in input_params
+                has_audio_input = 'audio_url' in input_params or 'audio_input' in input_params
                 
                 prompt_text = (
                     f"{model_info_text}"
@@ -4428,22 +4506,51 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if has_image_input:
                     prompt_text += (
                         f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
-                        f"Опишите изображение, которое хотите сгенерировать.\n\n"
-                        f"💡 <i>После ввода промпта вы сможете добавить изображение (опционально)</i>"
+                        f"Опишите изображение для генерации.\n\n"
+                        f"💡 После ввода промпта вы сможете добавить изображение (опционально)"
+                    )
+                elif has_audio_input:
+                    prompt_text += (
+                        f"📝 <b>Шаг 1: Введите промпт (опционально)</b>\n\n"
+                        f"Для транскрибации промпт не обязателен.\n\n"
+                        f"💡 После этого вы сможете загрузить аудио-файл"
                     )
                 else:
                     prompt_text += (
                         f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
-                        f"Опишите изображение, которое хотите сгенерировать:"
+                        f"Опишите изображение для генерации:"
                     )
+                
+                keyboard = [
+                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")],
+                    [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
+                ]
                 
                 await query.edit_message_text(
                     prompt_text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
                 )
                 user_sessions[user_id]['current_param'] = 'prompt'
                 user_sessions[user_id]['waiting_for'] = 'prompt'
                 user_sessions[user_id]['has_image_input'] = has_image_input
+                user_sessions[user_id]['has_audio_input'] = has_audio_input
+            elif 'audio_url' in input_params and input_params['audio_url'].get('required', False):
+                # If no prompt but audio_url is required, start with audio_url
+                keyboard = [
+                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+                ]
+                await query.edit_message_text(
+                    f"{model_info_text}"
+                    f"📝 <b>Шаг 1: Загрузите аудио-файл</b>\n\n"
+                    f"Отправьте аудио-файл для транскрибации.\n\n"
+                    f"Поддерживаемые форматы: MP3, WAV, OGG, M4A, FLAC, AAC, WMA, MPEG\n"
+                    f"Максимальный размер: 200 MB",
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+                user_sessions[user_id]['current_param'] = 'audio_url'
+                user_sessions[user_id]['waiting_for'] = 'audio_url'
             else:
                 # If no prompt, start with first required parameter
                 await start_next_parameter(update, context, user_id)
@@ -4475,9 +4582,9 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
     params = session.get('params', {})
     required = session.get('required', [])
     
-    # Find next unset parameter (skip prompt, image_input, and image_urls as they're handled separately)
+    # Find next unset parameter (skip prompt, image_input, image_urls, audio_url, audio_input as they're handled separately)
     for param_name in required:
-        if param_name in ['prompt', 'image_input', 'image_urls']:
+        if param_name in ['prompt', 'image_input', 'image_urls', 'audio_url', 'audio_input']:
             continue
         if param_name not in params:
             param_info = properties.get(param_name, {})
@@ -4494,6 +4601,7 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                         InlineKeyboardButton("✅ Да (true)", callback_data=f"set_param:{param_name}:true"),
                         InlineKeyboardButton("❌ Нет (false)", callback_data=f"set_param:{param_name}:false")
                     ],
+                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")],
                     [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
                 ]
                 
@@ -4533,6 +4641,7 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                             callback_data=f"set_param:{param_name}:{enum_values[i + 1]}"
                         ))
                     keyboard.append(row)
+                keyboard.append([InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")])
                 keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data="cancel")])
                 
                 param_desc = param_info.get('description', '')
@@ -4575,9 +4684,14 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                     logger.error("Cannot determine chat_id in start_next_parameter")
                     return None
                 
+                keyboard = [
+                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+                ]
+                
                 await context.bot.send_message(
                     chat_id=chat_id,
                     text=f"📝 <b>Введите {param_name}:</b>\n\n{param_desc}{max_text}",
+                    reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
                 )
                 session['waiting_for'] = param_name
@@ -4899,11 +5013,17 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 # Clean up session
                 del user_sessions[user_id]
                 
+                # Create keyboard with main menu button
+                keyboard = [
+                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+                ]
+                
                 await update.message.reply_text(
                     f"✅ <b>Оплата получена!</b>\n\n"
                     f"💵 <b>Сумма:</b> {amount:.2f} ₽\n"
                     f"💰 <b>Новый баланс:</b> {balance_str} ₽\n\n"
                     f"Спасибо за пополнение! Теперь вы можете использовать баланс для генерации контента.",
+                    reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
                 )
                 return ConversationHandler.END
@@ -4973,6 +5093,156 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     session = user_sessions[user_id]
     properties = session.get('properties', {})
+    
+    # Handle audio input (for audio_url or audio_input)
+    waiting_for_audio = session.get('waiting_for') in ['audio_url', 'audio_input']
+    if (update.message.audio or update.message.voice or (update.message.document and update.message.document.mime_type and update.message.document.mime_type.startswith('audio/'))) and waiting_for_audio:
+        # Get audio file
+        audio_file = None
+        if update.message.audio:
+            audio_file = update.message.audio
+        elif update.message.voice:
+            audio_file = update.message.voice
+        elif update.message.document:
+            audio_file = update.message.document
+        
+        if not audio_file:
+            await update.message.reply_text("❌ Не удалось получить аудио-файл. Попробуйте еще раз.")
+            return INPUTTING_PARAMS
+        
+        file = await context.bot.get_file(audio_file.file_id)
+        
+        # Download audio from Telegram
+        loading_msg = None
+        try:
+            # Show loading message
+            loading_msg = await update.message.reply_text("📤 Загрузка аудио...")
+            
+            # Download audio
+            try:
+                audio_data = await file.download_as_bytearray()
+            except Exception as e:
+                logger.error(f"Error downloading audio file from Telegram: {e}", exc_info=True)
+                if loading_msg:
+                    try:
+                        await loading_msg.delete()
+                    except:
+                        pass
+                await update.message.reply_text(
+                    "❌ <b>Ошибка загрузки</b>\n\n"
+                    "Не удалось скачать аудио-файл из Telegram.\n"
+                    "Попробуйте еще раз.",
+                    parse_mode='HTML'
+                )
+                return INPUTTING_PARAMS
+            
+            # Check file size (max 200MB as per API)
+            if len(audio_data) > 200 * 1024 * 1024:
+                if loading_msg:
+                    try:
+                        await loading_msg.delete()
+                    except:
+                        pass
+                await update.message.reply_text(
+                    "❌ <b>Файл слишком большой</b>\n\n"
+                    "Максимальный размер: 200 MB.\n"
+                    "Попробуйте другой файл.",
+                    parse_mode='HTML'
+                )
+                return INPUTTING_PARAMS
+            
+            if len(audio_data) == 0:
+                if loading_msg:
+                    try:
+                        await loading_msg.delete()
+                    except:
+                        pass
+                await update.message.reply_text(
+                    "❌ <b>Ошибка загрузки</b>\n\n"
+                    "Аудио-файл пустой.\n"
+                    "Попробуйте еще раз.",
+                    parse_mode='HTML'
+                )
+                return INPUTTING_PARAMS
+            
+            logger.info(f"Downloaded audio: {len(audio_data)} bytes")
+            
+            # Determine file extension
+            file_extension = "mp3"
+            if update.message.audio:
+                if update.message.audio.mime_type:
+                    if "wav" in update.message.audio.mime_type:
+                        file_extension = "wav"
+                    elif "ogg" in update.message.audio.mime_type:
+                        file_extension = "ogg"
+                    elif "aac" in update.message.audio.mime_type:
+                        file_extension = "aac"
+                    elif "mp4" in update.message.audio.mime_type:
+                        file_extension = "m4a"
+            elif update.message.document and update.message.document.mime_type:
+                if "wav" in update.message.document.mime_type:
+                    file_extension = "wav"
+                elif "ogg" in update.message.document.mime_type:
+                    file_extension = "ogg"
+                elif "aac" in update.message.document.mime_type:
+                    file_extension = "aac"
+                elif "mp4" in update.message.document.mime_type:
+                    file_extension = "m4a"
+            
+            # Upload to public hosting
+            filename = f"audio_{user_id}_{audio_file.file_id[:8]}.{file_extension}"
+            public_url = await upload_image_to_hosting(audio_data, filename=filename)
+            
+            # Delete loading message
+            if loading_msg:
+                try:
+                    await loading_msg.delete()
+                except:
+                    pass
+            
+            if not public_url:
+                await update.message.reply_text(
+                    "❌ <b>Ошибка загрузки</b>\n\n"
+                    "Не удалось обработать аудио-файл.\n"
+                    "Попробуйте еще раз.",
+                    parse_mode='HTML'
+                )
+                return INPUTTING_PARAMS
+            
+            logger.info(f"Successfully uploaded audio to: {public_url}")
+            
+            # Set audio_url parameter
+            audio_param_name = session.get('waiting_for', 'audio_url')
+            session['params'][audio_param_name] = public_url
+            session[audio_param_name] = public_url  # Also store in session for consistency
+            
+        except Exception as e:
+            logger.error(f"Error processing audio: {e}", exc_info=True)
+            # Try to delete loading message if exists
+            if loading_msg:
+                try:
+                    await loading_msg.delete()
+                except:
+                    pass
+            
+            await update.message.reply_text(
+                "❌ <b>Ошибка обработки</b>\n\n"
+                "Не удалось обработать аудио-файл.\n"
+                "Попробуйте еще раз.",
+                parse_mode='HTML'
+            )
+            return INPUTTING_PARAMS
+        
+        # Move to next parameter
+        session['waiting_for'] = None
+        try:
+            next_param_result = await start_next_parameter(update, context, user_id)
+            if next_param_result:
+                return next_param_result
+        except Exception as e:
+            logger.error(f"Error after audio input: {e}")
+        
+        return INPUTTING_PARAMS
     
     # Handle image input (for image_input or image_urls)
     waiting_for_image = session.get('waiting_for') in ['image_input', 'image_urls']
@@ -5145,19 +5415,55 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         # If prompt was entered and model supports image input, offer to add image
-        if current_param == 'prompt' and session.get('has_image_input'):
+        # Or if prompt was entered and model supports audio input, offer to add audio
+        if current_param == 'prompt':
             model_info = session.get('model_info', {})
             input_params = model_info.get('input_params', {})
-            # Check if image is required (for image_urls or image_input)
-            image_required = False
-            if 'image_urls' in input_params:
-                image_required = input_params['image_urls'].get('required', False)
-            elif 'image_input' in input_params:
-                image_required = input_params['image_input'].get('required', False)
             
-            if image_required:
-                # Image is required - show button without skip option
-                keyboard = [
+            # Check for audio_url requirement
+            if session.get('has_audio_input') or ('audio_url' in input_params and input_params['audio_url'].get('required', False)):
+                audio_required = input_params.get('audio_url', {}).get('required', False) if 'audio_url' in input_params else False
+                if audio_required:
+                    # Audio is required
+                    keyboard = [
+                        [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+                    ]
+                    await update.message.reply_text(
+                        "🎤 <b>Загрузите аудио-файл для транскрибации</b>\n\n"
+                        "Отправьте аудио-файл (MP3, WAV, OGG, M4A, FLAC, AAC, WMA, MPEG).\n"
+                        "Максимальный размер: 200 MB",
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+                session['waiting_for'] = 'audio_url'
+                session['current_param'] = 'audio_url'
+                return INPUTTING_PARAMS
+            else:
+                    # Audio is optional - show button
+                    keyboard = [
+                        [InlineKeyboardButton("🎤 Загрузить аудио (опционально)", callback_data="add_audio")],
+                        [InlineKeyboardButton("⏭️ Пропустить", callback_data="skip_audio")]
+                    ]
+                    await update.message.reply_text(
+                        "🎤 <b>Вы можете загрузить аудио-файл (опционально)</b>\n\n"
+                        "Отправьте аудио-файл или нажмите 'Пропустить', чтобы продолжить.",
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                    session['waiting_for'] = None  # Will be set when user clicks button or sends audio
+                    return INPUTTING_PARAMS
+            
+            # Check if image is required (for image_urls or image_input)
+            if session.get('has_image_input'):
+                image_required = False
+                if 'image_urls' in input_params:
+                    image_required = input_params['image_urls'].get('required', False)
+                elif 'image_input' in input_params:
+                    image_required = input_params['image_input'].get('required', False)
+                
+                if image_required:
+                    # Image is required - show button without skip option
+                    keyboard = [
                     [InlineKeyboardButton("📷 Загрузить изображение", callback_data="add_image")]
                 ]
                 await update.message.reply_text(
@@ -5184,7 +5490,7 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Check if there are more parameters
         required = session.get('required', [])
         params = session.get('params', {})
-        missing = [p for p in required if p not in params and p not in ['prompt', 'image_input', 'image_urls']]
+        missing = [p for p in required if p not in params and p not in ['prompt', 'image_input', 'image_urls', 'audio_url', 'audio_input']]
         
         if missing:
             # Move to next parameter
@@ -5269,6 +5575,25 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
     model_id = session.get('model_id')
     params = session.get('params', {})
     model_info = session.get('model_info', {})
+    
+    # Apply default values for parameters that are not set
+    input_params = model_info.get('input_params', {})
+    for param_name, param_info in input_params.items():
+        if param_name not in params and not param_info.get('required', False):
+            default_value = param_info.get('default')
+            if default_value is not None:
+                params[param_name] = default_value
+    
+    # Convert string boolean values to actual booleans
+    for param_name, param_value in params.items():
+        if param_name in input_params:
+            param_info = input_params[param_name]
+            if param_info.get('type') == 'boolean':
+                if isinstance(param_value, str):
+                    if param_value.lower() == 'true':
+                        params[param_name] = True
+                    elif param_value.lower() == 'false':
+                        params[param_name] = False
     
     # Check if this is a free generation
     is_free = is_free_generation_available(user_id, model_id)
@@ -5568,8 +5893,16 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 elif isinstance(reference_image_input, str):
                     api_params['reference_image_urls'] = [reference_image_input]
         
+        # Log API params for debugging (only for admin)
+        if is_admin_user:
+            logger.info(f"Creating task for model {model_id} with params: {json.dumps(api_params, indent=2, ensure_ascii=False)}")
+        
         # Create task (for async models like z-image)
         result = await kie.create_task(model_id, api_params)
+        
+        # Log result for debugging (only for admin)
+        if is_admin_user:
+            logger.info(f"Task creation result: {result}")
         
         if result.get('ok'):
             task_id = result.get('taskId')

@@ -2297,6 +2297,39 @@ KIE_MODELS = [
                 "max_length": 500
             }
         }
+    },
+    {
+        "id": "elevenlabs/speech-to-text",
+        "name": "ElevenLabs Speech-to-Text",
+        "description": "ElevenLabs API для преобразования речи в текст. Основан на модели Scribe v1, предоставляет передовую транскрипцию с точностью, лидирующей в отрасли, поддержкой множества языков и такими функциями, как разделение говорящих и тегирование аудио-событий.",
+        "category": "Речь в текст",
+        "emoji": "🎤",
+        "pricing": "3.5 кредитов за минуту",
+        "input_params": {
+            "audio_url": {
+                "type": "string",
+                "description": "URL аудиофайла для транскрибации. После загрузки файла, не содержимое файла. Поддерживаемые типы: audio/mpeg, audio/wav, audio/x-wav, audio/aac, audio/mp4, audio/ogg. Макс. размер: 200.0MB",
+                "required": True
+            },
+            "language_code": {
+                "type": "string",
+                "description": "Код языка аудио (макс. 500 символов, опционально)",
+                "required": False,
+                "max_length": 500
+            },
+            "tag_audio_events": {
+                "type": "boolean",
+                "description": "Тегировать аудио-события (смех, аплодисменты и т.д.)",
+                "required": False,
+                "default": False
+            },
+            "diarize": {
+                "type": "boolean",
+                "description": "Разделять говорящих (аннотировать, кто говорит)",
+                "required": False,
+                "default": False
+            }
+        }
     }
 ]
 
@@ -2365,6 +2398,11 @@ GENERATION_TYPES = {
         "name": "🖼️ Редактирование фото",
         "description": "Редактирование и улучшение изображений",
         "models": ["topaz/image-upscale", "recraft/crisp-upscale", "recraft/remove-background", "ideogram/v3-reframe", "qwen/image-edit", "ideogram/character-edit", "ideogram/character-remix", "ideogram/character", "ideogram/v3-edit"]
+    },
+    "speech-to-text": {
+        "name": "🎙️ Речь в текст",
+        "description": "Преобразование речи в текст с высокой точностью",
+        "models": ["elevenlabs/speech-to-text"]
     }
 }
 
