@@ -37,10 +37,8 @@ COPY requirements.txt ./
 RUN pip3 install --upgrade pip setuptools wheel --break-system-packages --root-user-action=ignore && \
     pip3 install --no-cache-dir --break-system-packages --root-user-action=ignore -r requirements.txt
 
-# Copy Python files explicitly to ensure critical modules are included
-COPY bot_kie.py run_bot.py translations.py kie_client.py kie_models.py knowledge_storage.py ./
-
-# Copy all other application files
+# Copy all application files (including translations.py and other Python modules)
+# NOTE: All Python files must be committed to git for this to work
 COPY . .
 
 # Set environment variables
