@@ -31,7 +31,8 @@ RUN pip3 install --upgrade pip setuptools wheel --break-system-packages --root-u
 COPY bot_kie.py run_bot.py index.js config.py translations.py kie_models.py kie_client.py knowledge_storage.py ./
 COPY bot_kie_services ./bot_kie_services
 COPY bot_kie_utils ./bot_kie_utils
-COPY bot_kie_handlers ./bot_kie_handlers
+# bot_kie_handlers is empty (handlers are in bot_kie.py), so we skip it
+# COPY bot_kie_handlers ./bot_kie_handlers
 COPY validate_*.py ./
 
 # Set environment variables
