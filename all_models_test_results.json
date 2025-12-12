@@ -1,0 +1,1037 @@
+{
+  "z-image": {
+    "model_id": "z-image",
+    "name": "Z-Image",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 0.8,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "aspect_ratio": "1:1"
+    },
+    "improvements": []
+  },
+  "nano-banana-pro": {
+    "model_id": "nano-banana-pro",
+    "name": "Nano Banana Pro",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 18,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "aspect_ratio": "1:1",
+      "resolution": "1K",
+      "output_format": "png"
+    },
+    "improvements": []
+  },
+  "seedream/4.5-text-to-image": {
+    "model_id": "seedream/4.5-text-to-image",
+    "name": "Seedream 4.5 Text-to-Image",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 6.5,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "aspect_ratio": "1:1",
+      "quality": "basic"
+    },
+    "improvements": []
+  },
+  "seedream/4.5-edit": {
+    "model_id": "seedream/4.5-edit",
+    "name": "Seedream 4.5 Edit",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 6.5,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_urls": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "aspect_ratio": "1:1",
+      "quality": "basic"
+    },
+    "improvements": []
+  },
+  "sora-watermark-remover": {
+    "model_id": "sora-watermark-remover",
+    "name": "Sora 2 Watermark Remover",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 10,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "video_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+    },
+    "improvements": []
+  },
+  "sora-2-text-to-video": {
+    "model_id": "sora-2-text-to-video",
+    "name": "Sora 2 Text-to-Video",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 30,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "aspect_ratio": "portrait",
+      "n_frames": "10",
+      "remove_watermark": true
+    },
+    "improvements": []
+  },
+  "kling-2.6/image-to-video": {
+    "model_id": "kling-2.6/image-to-video",
+    "name": "Kling 2.6 Image-to-Video",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 55,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "sound": false,
+      "duration": "5"
+    },
+    "improvements": []
+  },
+  "kling-2.6/text-to-video": {
+    "model_id": "kling-2.6/text-to-video",
+    "name": "Kling 2.6 Text-to-Video",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 55,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "sound": false,
+      "aspect_ratio": "1:1",
+      "duration": "5"
+    },
+    "improvements": []
+  },
+  "flux-2/pro-image-to-image": {
+    "model_id": "flux-2/pro-image-to-image",
+    "name": "Flux 2 Pro Image-to-Image",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 5,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "aspect_ratio": "1:1",
+      "resolution": "1K"
+    },
+    "improvements": []
+  },
+  "flux-2/pro-text-to-image": {
+    "model_id": "flux-2/pro-text-to-image",
+    "name": "Flux 2 Pro Text-to-Image",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 5,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "aspect_ratio": "1:1",
+      "resolution": "1K"
+    },
+    "improvements": []
+  },
+  "flux-2/flex-image-to-image": {
+    "model_id": "flux-2/flex-image-to-image",
+    "name": "Flux 2 Flex Image-to-Image",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 14,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "aspect_ratio": "1:1",
+      "resolution": "1K"
+    },
+    "improvements": []
+  },
+  "flux-2/flex-text-to-image": {
+    "model_id": "flux-2/flex-text-to-image",
+    "name": "Flux 2 Flex Text-to-Image",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 14,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "aspect_ratio": "1:1",
+      "resolution": "1K"
+    },
+    "improvements": []
+  },
+  "topaz/image-upscale": {
+    "model_id": "topaz/image-upscale",
+    "name": "Topaz Image Upscale",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 10,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "upscale_factor": "1"
+    },
+    "improvements": []
+  },
+  "kling/v2-5-turbo-text-to-video-pro": {
+    "model_id": "kling/v2-5-turbo-text-to-video-pro",
+    "name": "Kling 2.5 Turbo Text-to-Video Pro",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 42,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "duration": "5",
+      "aspect_ratio": "16:9",
+      "cfg_scale": 0
+    },
+    "improvements": []
+  },
+  "kling/v2-5-turbo-image-to-video-pro": {
+    "model_id": "kling/v2-5-turbo-image-to-video-pro",
+    "name": "Kling 2.5 Turbo Image-to-Video Pro",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 42,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "duration": "5",
+      "cfg_scale": 0
+    },
+    "improvements": []
+  },
+  "wan/2-5-image-to-video": {
+    "model_id": "wan/2-5-image-to-video",
+    "name": "WAN 2.5 Image-to-Video",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 60,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "duration": "5",
+      "resolution": "720p",
+      "enable_prompt_expansion": true
+    },
+    "improvements": []
+  },
+  "wan/2-5-text-to-video": {
+    "model_id": "wan/2-5-text-to-video",
+    "name": "WAN 2.5 Text-to-Video",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 60,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "duration": "5",
+      "aspect_ratio": "16:9",
+      "resolution": "720p",
+      "enable_prompt_expansion": true
+    },
+    "improvements": []
+  },
+  "wan/2-2-animate-move": {
+    "model_id": "wan/2-2-animate-move",
+    "name": "WAN 2.2 Animate Move",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 30,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "video_input": [
+        "test_item"
+      ],
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "resolution": "480p"
+    },
+    "improvements": []
+  },
+  "wan/2-2-animate-replace": {
+    "model_id": "wan/2-2-animate-replace",
+    "name": "WAN 2.2 Animate Replace",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 30,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "video_input": [
+        "test_item"
+      ],
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "resolution": "480p"
+    },
+    "improvements": []
+  },
+  "hailuo/02-text-to-video-pro": {
+    "model_id": "hailuo/02-text-to-video-pro",
+    "name": "Hailuo 02 Text-to-Video Pro",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 57,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "prompt_optimizer": true
+    },
+    "improvements": []
+  },
+  "hailuo/02-image-to-video-pro": {
+    "model_id": "hailuo/02-image-to-video-pro",
+    "name": "Hailuo 02 Image-to-Video Pro",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 57,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "prompt_optimizer": true
+    },
+    "improvements": []
+  },
+  "hailuo/02-image-to-video-standard": {
+    "model_id": "hailuo/02-image-to-video-standard",
+    "name": "Hailuo 02 Image-to-Video Standard",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 12,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "duration": "6",
+      "resolution": "512P",
+      "prompt_optimizer": true
+    },
+    "improvements": []
+  },
+  "hailuo/02-text-to-video-standard": {
+    "model_id": "hailuo/02-text-to-video-standard",
+    "name": "Hailuo 02 Text-to-Video Standard",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 30,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "duration": "6",
+      "prompt_optimizer": true
+    },
+    "improvements": []
+  },
+  "topaz/video-upscale": {
+    "model_id": "topaz/video-upscale",
+    "name": "Topaz Video Upscale",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 60,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "video_input": [
+        "test_item"
+      ],
+      "upscale_factor": "1"
+    },
+    "improvements": []
+  },
+  "kling/v1-avatar-standard": {
+    "model_id": "kling/v1-avatar-standard",
+    "name": "Kling AI Avatar Standard",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 40,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "audio_input": [
+        "https://example.com/audio.mp3"
+      ],
+      "prompt": "Test prompt"
+    },
+    "improvements": []
+  },
+  "kling/ai-avatar-v1-pro": {
+    "model_id": "kling/ai-avatar-v1-pro",
+    "name": "Kling AI Avatar Pro",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 80,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "audio_input": [
+        "https://example.com/audio.mp3"
+      ],
+      "prompt": "Test prompt"
+    },
+    "improvements": []
+  },
+  "bytedance/seedream-v4-text-to-image": {
+    "model_id": "bytedance/seedream-v4-text-to-image",
+    "name": "Seedream V4 Text-to-Image",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 5,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_size": "square",
+      "image_resolution": "1K",
+      "max_images": 1
+    },
+    "improvements": []
+  },
+  "bytedance/seedream-v4-edit": {
+    "model_id": "bytedance/seedream-v4-edit",
+    "name": "Seedream V4 Edit",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 5,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "image_size": "square",
+      "image_resolution": "1K",
+      "max_images": 1
+    },
+    "improvements": []
+  },
+  "recraft/remove-background": {
+    "model_id": "recraft/remove-background",
+    "name": "Recraft Remove Background",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 0,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ]
+    },
+    "improvements": []
+  },
+  "recraft/crisp-upscale": {
+    "model_id": "recraft/crisp-upscale",
+    "name": "Recraft Crisp Upscale",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 0,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ]
+    },
+    "improvements": []
+  },
+  "ideogram/v3-reframe": {
+    "model_id": "ideogram/v3-reframe",
+    "name": "Ideogram V3 Reframe",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 3.5,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "image_size": "square",
+      "rendering_speed": "TURBO",
+      "style": "AUTO",
+      "num_images": "1"
+    },
+    "improvements": []
+  },
+  "wan/2-2-a14b-speech-to-video-turbo": {
+    "model_id": "wan/2-2-a14b-speech-to-video-turbo",
+    "name": "WAN 2.2 A14B Speech-to-Video Turbo",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 60,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "audio_input": [
+        "https://example.com/audio.mp3"
+      ],
+      "num_frames": 40,
+      "frames_per_second": 4,
+      "resolution": "480p",
+      "num_inference_steps": 2,
+      "guidance_scale": 1,
+      "shift": 1,
+      "enable_safety_checker": true
+    },
+    "improvements": []
+  },
+  "bytedance/seedream": {
+    "model_id": "bytedance/seedream",
+    "name": "Seedream 3.0",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 3.5,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_size": "square",
+      "guidance_scale": 1,
+      "enable_safety_checker": true
+    },
+    "improvements": []
+  },
+  "qwen/text-to-image": {
+    "model_id": "qwen/text-to-image",
+    "name": "Qwen Text-to-Image",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 1.04,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_size": "square",
+      "num_inference_steps": 2,
+      "guidance_scale": 0,
+      "enable_safety_checker": true,
+      "output_format": "png",
+      "acceleration": "none"
+    },
+    "improvements": []
+  },
+  "qwen/image-to-image": {
+    "model_id": "qwen/image-to-image",
+    "name": "Qwen Image-to-Image",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 4,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "strength": 0,
+      "output_format": "png",
+      "acceleration": "none",
+      "num_inference_steps": 2,
+      "guidance_scale": 0,
+      "enable_safety_checker": true
+    },
+    "improvements": []
+  },
+  "qwen/image-edit": {
+    "model_id": "qwen/image-edit",
+    "name": "Qwen Image Edit",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 1.56,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "acceleration": "none",
+      "image_size": "square",
+      "num_inference_steps": 2,
+      "guidance_scale": 0,
+      "num_images": "1",
+      "enable_safety_checker": true,
+      "output_format": "jpeg",
+      "negative_prompt": "test_value"
+    },
+    "improvements": []
+  },
+  "ideogram/character-edit": {
+    "model_id": "ideogram/character-edit",
+    "name": "Ideogram Character Edit",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 12,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "mask_input": [
+        "test_item"
+      ],
+      "reference_image_input": [
+        "test_item"
+      ],
+      "rendering_speed": "TURBO",
+      "style": "AUTO",
+      "expand_prompt": true,
+      "num_images": "1"
+    },
+    "improvements": []
+  },
+  "ideogram/character-remix": {
+    "model_id": "ideogram/character-remix",
+    "name": "Ideogram Character Remix",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 12,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "reference_image_input": [
+        "test_item"
+      ],
+      "rendering_speed": "TURBO",
+      "style": "AUTO",
+      "expand_prompt": true,
+      "image_size": "square",
+      "num_images": "1",
+      "strength": 0.1,
+      "negative_prompt": "test_value"
+    },
+    "improvements": []
+  },
+  "ideogram/character": {
+    "model_id": "ideogram/character",
+    "name": "Ideogram Character",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 12,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "reference_image_input": [
+        "test_item"
+      ],
+      "rendering_speed": "TURBO",
+      "style": "AUTO",
+      "expand_prompt": true,
+      "num_images": "1",
+      "image_size": "square",
+      "negative_prompt": "test_value"
+    },
+    "improvements": []
+  },
+  "bytedance/v1-pro-fast-image-to-video": {
+    "model_id": "bytedance/v1-pro-fast-image-to-video",
+    "name": "ByteDance V1 Pro Fast Image-to-Video",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 16,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "resolution": "720p",
+      "duration": "5"
+    },
+    "improvements": []
+  },
+  "kling/v2-1-master-image-to-video": {
+    "model_id": "kling/v2-1-master-image-to-video",
+    "name": "Kling V2.1 Master Image-to-Video",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 40,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "duration": "5",
+      "cfg_scale": 0
+    },
+    "improvements": []
+  },
+  "kling/v2-1-standard": {
+    "model_id": "kling/v2-1-standard",
+    "name": "Kling V2.1 Standard",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 40,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "duration": "5",
+      "cfg_scale": 0
+    },
+    "improvements": []
+  },
+  "kling/v2-1-pro": {
+    "model_id": "kling/v2-1-pro",
+    "name": "Kling V2.1 Pro",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 40,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "duration": "5",
+      "cfg_scale": 0
+    },
+    "improvements": []
+  },
+  "kling/v2-1-master-text-to-video": {
+    "model_id": "kling/v2-1-master-text-to-video",
+    "name": "Kling V2.1 Master Text-to-Video",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 1.0,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "duration": "5",
+      "aspect_ratio": "16:9",
+      "cfg_scale": 0
+    },
+    "improvements": []
+  },
+  "ideogram/v3-text-to-image": {
+    "model_id": "ideogram/v3-text-to-image",
+    "name": "Ideogram V3 Text-to-Image",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 3.5,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "rendering_speed": "TURBO",
+      "style": "AUTO",
+      "expand_prompt": true,
+      "image_size": "square",
+      "num_images": "1"
+    },
+    "improvements": []
+  },
+  "ideogram/v3-edit": {
+    "model_id": "ideogram/v3-edit",
+    "name": "Ideogram V3 Edit",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 3.5,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "mask_input": [
+        "test_item"
+      ],
+      "rendering_speed": "TURBO",
+      "expand_prompt": true,
+      "num_images": "1"
+    },
+    "improvements": []
+  },
+  "ideogram/v3-remix": {
+    "model_id": "ideogram/v3-remix",
+    "name": "Ideogram V3 Remix",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 3.5,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "rendering_speed": "TURBO",
+      "style": "AUTO",
+      "expand_prompt": true,
+      "image_size": "square",
+      "num_images": "1",
+      "strength": 0.01
+    },
+    "improvements": []
+  },
+  "wan/2-2-a14b-text-to-video-turbo": {
+    "model_id": "wan/2-2-a14b-text-to-video-turbo",
+    "name": "WAN 2.2 A14B Text-to-Video Turbo",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 40,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "resolution": "480p",
+      "aspect_ratio": "16:9",
+      "enable_prompt_expansion": false,
+      "acceleration": "none"
+    },
+    "improvements": []
+  },
+  "wan/2-2-a14b-image-to-video-turbo": {
+    "model_id": "wan/2-2-a14b-image-to-video-turbo",
+    "name": "WAN 2.2 A14B Image-to-Video Turbo",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 40,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "prompt": "Test prompt",
+      "resolution": "480p",
+      "aspect_ratio": "auto",
+      "enable_prompt_expansion": false,
+      "acceleration": "none"
+    },
+    "improvements": []
+  },
+  "google/imagen4-ultra": {
+    "model_id": "google/imagen4-ultra",
+    "name": "Google Imagen 4 Ultra",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 12,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "aspect_ratio": "1:1"
+    },
+    "improvements": []
+  },
+  "google/imagen4-fast": {
+    "model_id": "google/imagen4-fast",
+    "name": "Google Imagen 4 Fast",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 4,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "aspect_ratio": "1:1",
+      "num_images": "1"
+    },
+    "improvements": []
+  },
+  "google/imagen4": {
+    "model_id": "google/imagen4",
+    "name": "Google Imagen 4",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 8,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "aspect_ratio": "1:1",
+      "num_images": "1"
+    },
+    "improvements": []
+  },
+  "google/nano-banana": {
+    "model_id": "google/nano-banana",
+    "name": "Google Nano Banana",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 4,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "output_format": "png",
+      "image_size": "1:1"
+    },
+    "improvements": []
+  },
+  "google/nano-banana-edit": {
+    "model_id": "google/nano-banana-edit",
+    "name": "Google Nano Banana Edit",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 4,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "prompt": "Test prompt",
+      "image_urls": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "output_format": "png",
+      "image_size": "1:1"
+    },
+    "improvements": []
+  },
+  "elevenlabs/speech-to-text": {
+    "model_id": "elevenlabs/speech-to-text",
+    "name": "ElevenLabs Speech-to-Text",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 3.5,
+    "price_error": null,
+    "validation_errors": [],
+    "test_params": {
+      "audio_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
+      "language_code": "test_value",
+      "tag_audio_events": false,
+      "diarize": false
+    },
+    "improvements": []
+  }
+}

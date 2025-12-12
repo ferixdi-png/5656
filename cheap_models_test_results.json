@@ -1,0 +1,333 @@
+{
+  "z-image": {
+    "model_id": "z-image",
+    "name": "Z-Image",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 0.8,
+    "price_rub": 0.8,
+    "test_params": {
+      "prompt": "Test prompt for validation",
+      "aspect_ratio": "1:1"
+    }
+  },
+  "seedream/4.5-text-to-image": {
+    "model_id": "seedream/4.5-text-to-image",
+    "name": "Seedream 4.5 Text-to-Image",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 6.5,
+    "price_rub": 6.5,
+    "test_params": {
+      "prompt": "Test prompt for validation",
+      "aspect_ratio": "1:1",
+      "quality": "basic"
+    }
+  },
+  "seedream/4.5-edit": {
+    "model_id": "seedream/4.5-edit",
+    "name": "Seedream 4.5 Edit",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 6.5,
+    "price_rub": 6.5,
+    "test_params": {
+      "prompt": "Test prompt for validation",
+      "image_urls": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "aspect_ratio": "1:1",
+      "quality": "basic"
+    }
+  },
+  "sora-watermark-remover": {
+    "model_id": "sora-watermark-remover",
+    "name": "Sora 2 Watermark Remover",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 10.0,
+    "price_rub": 10.0,
+    "test_params": {
+      "video_url": "test_value"
+    }
+  },
+  "bytedance/seedream-v4-text-to-image": {
+    "model_id": "bytedance/seedream-v4-text-to-image",
+    "name": "Seedream V4 Text-to-Image",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 5.0,
+    "price_rub": 5.0,
+    "test_params": {
+      "prompt": "Test prompt for validation",
+      "image_size": "square",
+      "image_resolution": "1K",
+      "max_images": 1
+    }
+  },
+  "bytedance/seedream-v4-edit": {
+    "model_id": "bytedance/seedream-v4-edit",
+    "name": "Seedream V4 Edit",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 5.0,
+    "price_rub": 5.0,
+    "test_params": {
+      "prompt": "Test prompt for validation",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "image_size": "square",
+      "image_resolution": "1K",
+      "max_images": 1
+    }
+  },
+  "recraft/remove-background": {
+    "model_id": "recraft/remove-background",
+    "name": "Recraft Remove Background",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 0.0,
+    "price_rub": 0.0,
+    "test_params": {
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ]
+    }
+  },
+  "recraft/crisp-upscale": {
+    "model_id": "recraft/crisp-upscale",
+    "name": "Recraft Crisp Upscale",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 0.0,
+    "price_rub": 0.0,
+    "test_params": {
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ]
+    }
+  },
+  "ideogram/v3-reframe": {
+    "model_id": "ideogram/v3-reframe",
+    "name": "Ideogram V3 Reframe",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 3.5,
+    "price_rub": 3.5,
+    "test_params": {
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "image_size": "square",
+      "rendering_speed": "TURBO",
+      "style": "AUTO",
+      "num_images": "1"
+    }
+  },
+  "bytedance/seedream": {
+    "model_id": "bytedance/seedream",
+    "name": "Seedream 3.0",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 3.5,
+    "price_rub": 3.5,
+    "test_params": {
+      "prompt": "Test prompt for validation",
+      "image_size": "square",
+      "guidance_scale": 2.5,
+      "enable_safety_checker": true
+    }
+  },
+  "qwen/text-to-image": {
+    "model_id": "qwen/text-to-image",
+    "name": "Qwen Text-to-Image",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 1.04,
+    "price_rub": 1.04,
+    "test_params": {
+      "prompt": "Test prompt for validation",
+      "image_size": "square",
+      "num_inference_steps": 30,
+      "guidance_scale": 2.5,
+      "enable_safety_checker": true,
+      "output_format": "png",
+      "acceleration": "none"
+    }
+  },
+  "qwen/image-to-image": {
+    "model_id": "qwen/image-to-image",
+    "name": "Qwen Image-to-Image",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 4.0,
+    "price_rub": 4.0,
+    "test_params": {
+      "prompt": "Test prompt for validation",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "strength": 0.8,
+      "output_format": "png",
+      "acceleration": "none",
+      "num_inference_steps": 30,
+      "guidance_scale": 2.5,
+      "enable_safety_checker": true
+    }
+  },
+  "qwen/image-edit": {
+    "model_id": "qwen/image-edit",
+    "name": "Qwen Image Edit",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 1.56,
+    "price_rub": 1.56,
+    "test_params": {
+      "prompt": "Test prompt for validation",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "acceleration": "none",
+      "image_size": "square",
+      "num_inference_steps": 30,
+      "guidance_scale": 4,
+      "num_images": "1",
+      "enable_safety_checker": true,
+      "output_format": "jpeg",
+      "negative_prompt": "test_value"
+    }
+  },
+  "ideogram/v3-text-to-image": {
+    "model_id": "ideogram/v3-text-to-image",
+    "name": "Ideogram V3 Text-to-Image",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 3.5,
+    "price_rub": 3.5,
+    "test_params": {
+      "prompt": "Test prompt for validation",
+      "rendering_speed": "TURBO",
+      "style": "AUTO",
+      "expand_prompt": true,
+      "image_size": "square",
+      "num_images": "1"
+    }
+  },
+  "ideogram/v3-edit": {
+    "model_id": "ideogram/v3-edit",
+    "name": "Ideogram V3 Edit",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 3.5,
+    "price_rub": 3.5,
+    "test_params": {
+      "prompt": "Test prompt for validation",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "mask_input": [
+        "test_item"
+      ],
+      "rendering_speed": "TURBO",
+      "expand_prompt": true,
+      "num_images": "1"
+    }
+  },
+  "ideogram/v3-remix": {
+    "model_id": "ideogram/v3-remix",
+    "name": "Ideogram V3 Remix",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 3.5,
+    "price_rub": 3.5,
+    "test_params": {
+      "prompt": "Test prompt for validation",
+      "image_input": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "rendering_speed": "TURBO",
+      "style": "AUTO",
+      "expand_prompt": true,
+      "image_size": "square",
+      "num_images": "1",
+      "strength": 0.8
+    }
+  },
+  "google/imagen4-fast": {
+    "model_id": "google/imagen4-fast",
+    "name": "Google Imagen 4 Fast",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 4.0,
+    "price_rub": 4.0,
+    "test_params": {
+      "prompt": "Test prompt for validation",
+      "aspect_ratio": "1:1",
+      "num_images": "1"
+    }
+  },
+  "google/nano-banana": {
+    "model_id": "google/nano-banana",
+    "name": "Google Nano Banana",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 4.0,
+    "price_rub": 4.0,
+    "test_params": {
+      "prompt": "Test prompt for validation",
+      "output_format": "png",
+      "image_size": "1:1"
+    }
+  },
+  "google/nano-banana-edit": {
+    "model_id": "google/nano-banana-edit",
+    "name": "Google Nano Banana Edit",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 4.0,
+    "price_rub": 4.0,
+    "test_params": {
+      "prompt": "Test prompt for validation",
+      "image_urls": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"
+      ],
+      "output_format": "png",
+      "image_size": "1:1"
+    }
+  },
+  "elevenlabs/speech-to-text": {
+    "model_id": "elevenlabs/speech-to-text",
+    "name": "ElevenLabs Speech-to-Text",
+    "status": "success",
+    "errors": [],
+    "warnings": [],
+    "price_credits": 3.5,
+    "price_rub": 3.5,
+    "test_params": {
+      "audio_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
+      "language_code": "test_value",
+      "tag_audio_events": false,
+      "diarize": false
+    }
+  }
+}

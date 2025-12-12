@@ -36,3 +36,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Start the bot directly with Python (faster than npm)
 CMD ["python3", "run_bot.py"]
 
+
+
+
+

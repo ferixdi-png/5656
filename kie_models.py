@@ -2301,22 +2301,23 @@ KIE_MODELS = [
     {
         "id": "google/nano-banana",
         "name": "Google Nano Banana",
-        "description": "Google DeepMind модель для генерации изображений из текста. Быстрая и эффективная генерация с поддержкой различных соотношений сторон.",
+        "description": "Gemini 3 Image Preview (aka Nano Banana) is an advanced AI model excelling in natural language-driven image generation and editing. It produces hyper-realistic, physics-aware visuals with seamless style transformations.",
         "category": "Фото",
         "emoji": "🍌",
         "pricing": "4 кредита за изображение (~$0.02)",
         "input_params": {
             "prompt": {
                 "type": "string",
-                "description": "Текстовое описание изображения, которое вы хотите сгенерировать",
-                "required": True
+                "description": "Текстовое описание изображения, которое вы хотите сгенерировать (макс. 5000 символов)",
+                "required": True,
+                "max_length": 5000
             },
             "output_format": {
                 "type": "string",
                 "description": "Формат выходного изображения",
                 "required": False,
-                "default": "PNG",
-                "enum": ["PNG", "JPEG"]
+                "default": "png",
+                "enum": ["png", "jpeg"]
             },
             "image_size": {
                 "type": "string",
@@ -2330,30 +2331,31 @@ KIE_MODELS = [
     {
         "id": "google/nano-banana-edit",
         "name": "Google Nano Banana Edit",
-        "description": "Google DeepMind модель для редактирования изображений. Редактирование изображений на основе текстового описания с поддержкой различных соотношений сторон.",
+        "description": "Gemini 3 Image Preview (aka Nano Banana) is an advanced AI model excelling in natural language-driven image generation and editing. It produces hyper-realistic, physics-aware visuals with seamless style transformations.",
         "category": "Фото",
         "emoji": "✏️",
         "pricing": "4 кредита за изображение (~$0.02)",
         "input_params": {
             "prompt": {
                 "type": "string",
-                "description": "Текстовое описание изменений, которые вы хотите внести в изображение",
-                "required": True
+                "description": "Текстовое описание изменений, которые вы хотите внести в изображение (макс. 5000 символов)",
+                "required": True,
+                "max_length": 5000
             },
             "image_urls": {
                 "type": "array",
-                "description": "Изображение для редактирования (URL после загрузки)",
+                "description": "Список URL изображений для редактирования (до 10 изображений). URL файла после загрузки, не содержимое файла. Поддерживаемые типы: image/jpeg, image/png, image/webp. Макс. размер: 10.0MB",
                 "required": True,
                 "item_type": "string",
                 "min_items": 1,
-                "max_items": 1
+                "max_items": 10
             },
             "output_format": {
                 "type": "string",
                 "description": "Формат выходного изображения",
                 "required": False,
-                "default": "PNG",
-                "enum": ["PNG", "JPEG"]
+                "default": "png",
+                "enum": ["png", "jpeg"]
             },
             "image_size": {
                 "type": "string",
