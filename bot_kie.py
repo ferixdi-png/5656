@@ -8237,14 +8237,14 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if image_required:
                     # Image is required - show button without skip option
                     keyboard = [
-                    [InlineKeyboardButton("📷 Загрузить изображение", callback_data="add_image")]
-                ]
-                await update.message.reply_text(
-                    "📷 <b>Загрузите изображение для редактирования</b>\n\n"
-                    "Отправьте фото, которое хотите отредактировать.",
-                    reply_markup=InlineKeyboardMarkup(keyboard),
-                    parse_mode='HTML'
-                )
+                        [InlineKeyboardButton("📷 Загрузить изображение", callback_data="add_image")]
+                    ]
+                    await update.message.reply_text(
+                        "📷 <b>Загрузите изображение для редактирования</b>\n\n"
+                        "Отправьте фото, которое хотите отредактировать.",
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
                     # Determine which parameter name to use (image_input or image_urls)
                     if 'image_urls' in input_params:
                         image_param_name = 'image_urls'
