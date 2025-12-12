@@ -13,10 +13,15 @@ services:
         value: production
       - key: PYTHONUNBUFFERED
         value: "1"
+      - key: PORT
+        value: "10000"
       # Добавьте остальные переменные через панель Render:
       # TELEGRAM_BOT_TOKEN
       # KIE_API_KEY
       # ADMIN_ID
-    healthCheckPath: /
+    healthCheckPath: /health
+    healthCheckGracePeriod: 300
     autoDeploy: true
+    buildCommand: ""
+    startCommand: "npm start"
 

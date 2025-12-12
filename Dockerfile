@@ -67,5 +67,9 @@ RUN chmod +x index.js || true
 # Expose port for health check
 EXPOSE 10000
 
+# Health check for Render.com
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:10000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
 # Start the bot
 CMD ["npm", "start"]
