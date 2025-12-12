@@ -8385,10 +8385,33 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Move to next parameter
             try:
                 next_param_result = await start_next_parameter(update, context, user_id)
+                logger.info(f"start_next_parameter returned: {next_param_result} for model {session.get('model_id', 'Unknown')}")
                 if next_param_result:
                     return next_param_result
+                else:
+                    # All parameters collected, show confirmation
+                    model_name = session.get('model_info', {}).get('name', 'Unknown')
+                    model_id = session.get('model_id', 'Unknown')
+                    params = session.get('params', {})
+                    logger.info(f"All parameters collected for {model_id}, params: {list(params.keys())}")
+                    params_text = "\n".join([f"  • {k}: {str(v)[:50]}..." for k, v in params.items()])
+                    
+                    keyboard = [
+                        [InlineKeyboardButton("✅ Генерировать", callback_data="confirm_generate")],
+                        [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
+                    ]
+                    
+                    await update.message.reply_text(
+                        f"📋 <b>Подтверждение:</b>\n\n"
+                        f"Модель: <b>{model_name}</b>\n"
+                        f"Параметры:\n{params_text}\n\n"
+                        f"Продолжить генерацию?",
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                    return INPUTTING_PARAMS
             except Exception as e:
-                logger.error(f"Error after image input: {e}")
+                logger.error(f"Error after image input: {e}", exc_info=True)
         elif image_count < min(max_items, 8):
             keyboard = [
                 [InlineKeyboardButton("📷 Добавить еще", callback_data="add_image")],
