@@ -1,210 +1,37 @@
+#!/usr/bin/env python3
 """
-Run script for KIE Telegram Bot
-This is a simplified version that only starts the bot if a token is available
+Entry point for KIE Telegram Bot
+This script starts the bot and handles graceful shutdown
 """
 
-import os
 import sys
-import shutil
-import importlib
-import threading
-import time
-from dotenv import load_dotenv
+import os
+import logging
 
-# Clear Python cache to force module reload
-cache_dirs = ['__pycache__']
-for cache_dir in cache_dirs:
-    if os.path.exists(cache_dir):
-        try:
-            shutil.rmtree(cache_dir)
-            print(f"Cleared cache: {cache_dir}")
-        except Exception as e:
-            print(f"Warning: Could not clear cache {cache_dir}: {e}")
+# Setup logging first
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 
-# Load environment variables
-load_dotenv()
+logger = logging.getLogger(__name__)
 
-# CRITICAL: Start health check server FIRST for Render.com
-# This must happen BEFORE any imports to prevent SIGTERM timeout
-import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
-
-class HealthCheckHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        if self.path == '/health' or self.path == '/':
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(b'{"status":"ok","service":"telegram-bot"}')
-        else:
-            self.send_response(404)
-            self.end_headers()
-    
-    def log_message(self, format, *args):
-        pass  # Suppress HTTP server logs
-
-def start_health_server():
-    port = int(os.getenv('PORT', 10000))
+def main():
+    """Main entry point"""
     try:
-        server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
-        print(f"✅ Health check server started on port {port}", flush=True)
-        server.serve_forever()
-    except Exception as e:
-        print(f"❌ Failed to start health server: {e}", flush=True)
-        import traceback
-        traceback.print_exc()
-
-# Start health check server IMMEDIATELY in background thread
-health_thread = threading.Thread(target=start_health_server, daemon=True)
-health_thread.start()
-print("🚀 Health check server thread started", flush=True)
-
-# Give server time to bind to port (critical for Render)
-import time
-time.sleep(1)
-print("✅ Port should be open now", flush=True)
-
-# Check if bot token is available
-BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-
-if not BOT_TOKEN or BOT_TOKEN == "your_bot_token_here":
-    print("ERROR: No valid bot token found!", flush=True)
-    print("\nTo run the bot:", flush=True)
-    print("1. Get a bot token from @BotFather on Telegram", flush=True)
-    print("2. Update the .env file with your bot token", flush=True)
-    print("3. Run this script again", flush=True)
-    sys.exit(1)
-
-print("=" * 60)
-print("Starting KIE Telegram Bot...")
-print("=" * 60)
-print(f"Python version: {sys.version}")
-print(f"Working directory: {os.getcwd()}")
-print(f"Platform: {os.name}")
-print("=" * 60)
-sys.stdout.flush()
-
-# Import and run the bot only if token is available
-try:
-    # Force reload modules to ensure latest changes are loaded
-    print("Step 1: Removing modules from cache...", flush=True)
-    modules_to_remove = ['bot_kie', 'kie_models', 'kie_client', 'knowledge_storage']
-    for mod_name in modules_to_remove:
-        if mod_name in sys.modules:
-            del sys.modules[mod_name]
-            print(f"  ✓ Removed {mod_name} from cache", flush=True)
-    
-    print("Step 2: Loading kie_models fresh...", flush=True)
-    import kie_models
-    importlib.reload(kie_models)
-    print("  ✓ kie_models reloaded", flush=True)
-    
-    print("Step 3: Verifying models...", flush=True)
-    from kie_models import KIE_MODELS, get_categories
-    categories = get_categories()
-    sora_models = [m for m in KIE_MODELS if m['id'] == 'sora-watermark-remover']
-    
-    print(f"\n{'='*60}", flush=True)
-    print(f"MODEL VERIFICATION:", flush=True)
-    print(f"Total models: {len(KIE_MODELS)}", flush=True)
-    print(f"Categories: {categories}", flush=True)
-    if sora_models:
-        print(f"✅ Sora model found: {sora_models[0]['name']} ({sora_models[0]['category']})", flush=True)
-    else:
-        print("❌ WARNING: Sora model NOT found in KIE_MODELS!", flush=True)
-        print("Available models:", flush=True)
-        for m in KIE_MODELS:
-            print(f"  - {m['id']} ({m['category']})", flush=True)
-    print(f"{'='*60}\n", flush=True)
-    sys.stdout.flush()
-    
-    print("Step 4: Loading bot_kie...", flush=True)
-    if 'bot_kie' in sys.modules:
-        del sys.modules['bot_kie']
-    dependent_modules = ['kie_client', 'knowledge_storage']
-    for mod_name in dependent_modules:
-        if mod_name in sys.modules:
-            del sys.modules[mod_name]
-    
-    print("  → Importing bot_kie module...", flush=True)
-    sys.stdout.flush()
-    import time
-    
-    # Start a heartbeat thread to keep process alive during import
-    def heartbeat():
-        while True:
-            time.sleep(5)
-            print("  💓 Import in progress...", flush=True)
-            sys.stdout.flush()
-    
-    heartbeat_thread = threading.Thread(target=heartbeat, daemon=True)
-    heartbeat_thread.start()
-    
-    start_time = time.time()
-    try:
-        print("  → Starting import (this may take a moment)...", flush=True)
-        sys.stdout.flush()
-        import bot_kie
-        elapsed = time.time() - start_time
-        print(f"  ✓ bot_kie imported successfully in {elapsed:.2f}s", flush=True)
-        sys.stdout.flush()
-    except SyntaxError as e:
-        print(f"  ❌ Syntax error in bot_kie.py: {e}", flush=True)
-        print(f"  Line {e.lineno}: {e.text}", flush=True)
-        sys.exit(1)
-    except ImportError as e:
-        print(f"  ❌ Import error in bot_kie.py: {e}", flush=True)
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
-    except Exception as e:
-        print(f"  ❌ Error loading bot_kie.py: {e}", flush=True)
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
-    
-    print("  → Reloading bot_kie...", flush=True)
-    try:
-        importlib.reload(bot_kie)
-        print("  ✓ bot_kie reloaded", flush=True)
-    except Exception as e:
-        print(f"  ❌ Error reloading bot_kie: {e}", flush=True)
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
-    
-    print("  → Importing main function...", flush=True)
-    try:
-        from bot_kie import main
-        print("  ✓ main function imported", flush=True)
-    except ImportError as e:
-        print(f"  ❌ Error importing main function: {e}", flush=True)
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)
-    
-    print("Using enhanced bot with KIE AI support", flush=True)
-    print("✅ All modules reloaded - latest changes will be applied\n", flush=True)
-    sys.stdout.flush()
-    
-    print("Starting bot main() function...", flush=True)
-    try:
-        main()
+        # Import and run bot
+        from bot_kie import main as bot_main
+        logger.info("🚀 Starting KIE Telegram Bot...")
+        bot_main()
     except KeyboardInterrupt:
-        print("\n🛑 Bot stopped by user", flush=True)
+        logger.info("🛑 Bot stopped by user")
         sys.exit(0)
     except Exception as e:
-        print(f"❌ Error in main(): {e}", flush=True)
-        import traceback
-        traceback.print_exc()
+        logger.error(f"❌ Fatal error: {e}", exc_info=True)
         sys.exit(1)
-except ImportError as e:
-    print(f"❌ Import error: {e}", flush=True)
-    import traceback
-    traceback.print_exc()
-    sys.exit(1)
-except Exception as e:
-    print(f"❌ Fatal error: {e}", flush=True)
-    import traceback
-    traceback.print_exc()
-    sys.exit(1)
+
+if __name__ == "__main__":
+    main()

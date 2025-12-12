@@ -1,6 +1,18 @@
-python-telegram-bot>=20.7
+# Telegram Bot
+python-telegram-bot>=20.0
+
+# HTTP Client
+aiohttp>=3.8.0
+aiofiles>=23.0.0
+
+# Environment variables
 python-dotenv>=1.0.0
-aiohttp>=3.9.0
-aiofiles>=23.2.1
+
+# Image processing (optional, but recommended)
 Pillow>=10.0.0
+
+# OCR (optional)
 pytesseract>=0.3.10
+
+# Type hints (for Python < 3.9)
+typing-extensions>=4.5.0

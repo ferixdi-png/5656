@@ -1,0 +1,273 @@
+"""
+Валидация входных данных для модели wan/2-2-a14b-text-to-video-turbo
+"""
+
+def validate_wan_2_2_a14b_text_to_video_turbo_input(data: dict) -> tuple[bool, list[str], list[str]]:
+    """
+    Валидирует входные данные для модели wan/2-2-a14b-text-to-video-turbo
+    
+    Args:
+        data: Словарь с входными данными
+        
+    Returns:
+        tuple: (is_valid, errors, warnings)
+    """
+    errors = []
+    warnings = []
+    
+    # 1. Проверка prompt (обязательный, макс. 5000 символов)
+    if 'prompt' not in data or not data['prompt']:
+        errors.append("[ERROR] Параметр 'prompt' обязателен и не может быть пустым")
+    else:
+        prompt = str(data['prompt'])
+        if len(prompt) == 0:
+            errors.append("[ERROR] Параметр 'prompt' не может быть пустым")
+        elif len(prompt) > 5000:
+            errors.append(f"[ERROR] Параметр 'prompt' слишком длинный: {len(prompt)} символов (максимум 5000)")
+    
+    # 2. Проверка resolution (опциональный, enum: "480p", "580p" или "720p")
+    valid_resolutions = ["480p", "580p", "720p"]
+    
+    if 'resolution' in data and data['resolution']:
+        resolution = str(data['resolution']).strip().lower()
+        # Убеждаемся, что есть суффикс "p"
+        if not resolution.endswith('p'):
+            resolution = resolution + 'p'
+        
+        if resolution not in valid_resolutions:
+            errors.append(f"[ERROR] Параметр 'resolution' имеет недопустимое значение: '{data['resolution']}'. Допустимые значения: {', '.join(valid_resolutions)}")
+    
+    # 3. Проверка aspect_ratio (опциональный, enum)
+    valid_aspect_ratios = ["16:9", "9:16", "1:1"]
+    
+    if 'aspect_ratio' in data and data['aspect_ratio']:
+        aspect_ratio = str(data['aspect_ratio']).strip()
+        if aspect_ratio not in valid_aspect_ratios:
+            errors.append(f"[ERROR] Параметр 'aspect_ratio' имеет недопустимое значение: '{data['aspect_ratio']}'. Допустимые значения: {', '.join(valid_aspect_ratios)}")
+    
+    # 4. Проверка enable_prompt_expansion (опциональный, boolean)
+    if 'enable_prompt_expansion' in data and data['enable_prompt_expansion'] is not None:
+        enable_prompt_expansion = data['enable_prompt_expansion']
+        # Конвертируем строку в boolean, если нужно
+        if isinstance(enable_prompt_expansion, str):
+            enable_prompt_expansion_str = enable_prompt_expansion.strip().lower()
+            if enable_prompt_expansion_str not in ['true', 'false', '1', '0', 'yes', 'no']:
+                errors.append(f"[ERROR] Параметр 'enable_prompt_expansion' должен быть boolean (true/false), получено: '{enable_prompt_expansion}'")
+        elif not isinstance(enable_prompt_expansion, bool):
+            errors.append(f"[ERROR] Параметр 'enable_prompt_expansion' должен быть boolean, получено: {type(enable_prompt_expansion).__name__}")
+    
+    # 5. Проверка seed (опциональный, целое число от 0 до 2147483647)
+    if 'seed' in data and data['seed'] is not None:
+        seed = data['seed']
+        try:
+            # Конвертируем в целое число
+            if isinstance(seed, str):
+                seed_str = seed.strip()
+                # Убираем десятичную часть, если есть
+                if '.' in seed_str:
+                    seed_str = seed_str.split('.')[0]
+                seed_int = int(seed_str)
+            elif isinstance(seed, (int, float)):
+                seed_int = int(seed)
+            else:
+                errors.append(f"[ERROR] Параметр 'seed' должен быть числом (целым), получено: {type(seed).__name__}")
+                seed_int = None
+            
+            if seed_int is not None:
+                if seed_int < 0 or seed_int > 2147483647:
+                    errors.append(f"[ERROR] Параметр 'seed' должен быть в диапазоне от 0 до 2147483647, получено: {seed_int}")
+        except ValueError:
+            errors.append(f"[ERROR] Параметр 'seed' должен быть числом (целым), получено: '{seed}'")
+    
+    # 6. Проверка acceleration (опциональный, enum: "none" или "regular")
+    valid_accelerations = ["none", "regular"]
+    
+    if 'acceleration' in data and data['acceleration']:
+        acceleration = str(data['acceleration']).strip().lower()
+        if acceleration not in valid_accelerations:
+            errors.append(f"[ERROR] Параметр 'acceleration' имеет недопустимое значение: '{data['acceleration']}'. Допустимые значения: {', '.join(valid_accelerations)}")
+    
+    is_valid = len(errors) == 0
+    return is_valid, errors, warnings
+
+
+def calculate_price_credits(resolution: str, duration: int = 5) -> int:
+    """
+    Вычисляет цену в кредитах на основе параметра resolution
+    
+    Args:
+        resolution: Разрешение видео ("480p", "580p" или "720p")
+        duration: Длительность видео в секундах (по умолчанию 5 секунд)
+        
+    Returns:
+        int: Цена в кредитах
+    """
+    resolution = str(resolution).strip().lower()
+    # Убеждаемся, что есть суффикс "p"
+    if not resolution.endswith('p'):
+        resolution = resolution + 'p'
+    
+    # Цена за секунду в зависимости от разрешения
+    if resolution == "720p":
+        credits_per_second = 16
+    elif resolution == "580p":
+        credits_per_second = 12
+    else:  # 480p
+        credits_per_second = 8
+    
+    return credits_per_second * duration
+
+
+# Тестовые данные из запроса пользователя
+test_data = {
+    "prompt": "Drone shot, fast traversal, starting inside a cracked, frosty circular pipe. The camera bursts upward through the pipe to reveal a vast polar landscape bathed in golden sunrise light. Workers in orange suits operate steaming machinery. The camera tilts up, revealing the scene from the perspective of a rising hot air balloon. It continues ascending into a glowing sky, the balloon trailing steam and displaying the letters \"KIE AI\" as it rises into breathtaking polar majesty.",
+    "resolution": "720p",  # Опциональный
+    "aspect_ratio": "16:9",  # Опциональный
+    "enable_prompt_expansion": False,  # Опциональный (boolean)
+    "seed": 0,  # Опциональный (число)
+    "acceleration": "none"  # Опциональный (enum)
+}
+
+if __name__ == "__main__":
+    import sys
+    import io
+    
+    # Устанавливаем UTF-8 для вывода
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    
+    print("=" * 60)
+    print("Валидация входных данных для wan/2-2-a14b-text-to-video-turbo")
+    print("=" * 60)
+    print()
+    
+    print("[INFO] Проверяемые данные:")
+    print(f"  prompt: '{test_data['prompt'][:100]}...' ({len(test_data['prompt'])} символов)")
+    print(f"  resolution: '{test_data.get('resolution', '720p')}'")
+    print(f"  aspect_ratio: '{test_data.get('aspect_ratio', '16:9')}'")
+    print(f"  enable_prompt_expansion: {test_data.get('enable_prompt_expansion', False)}")
+    print(f"  seed: {test_data.get('seed', 'не указан')}")
+    print(f"  acceleration: '{test_data.get('acceleration', 'none')}'")
+    print()
+    
+    is_valid, errors, warnings = validate_wan_2_2_a14b_text_to_video_turbo_input(test_data)
+    
+    if is_valid:
+        print("[OK] ВСЕ ДАННЫЕ КОРРЕКТНЫ!")
+        print()
+        print("[DETAILS] Детали:")
+        print(f"  - prompt: {len(test_data['prompt'])} символов (лимит: до 5000) [OK]")
+        
+        resolution = str(test_data.get('resolution', '720p')).strip().lower()
+        if not resolution.endswith('p'):
+            resolution = resolution + 'p'
+        print(f"  - resolution: '{test_data.get('resolution', '720p')}' -> нормализовано в '{resolution}' [OK]")
+        
+        aspect_ratio = test_data.get('aspect_ratio', '16:9')
+        print(f"  - aspect_ratio: '{aspect_ratio}' [OK]")
+        
+        enable_prompt_expansion = test_data.get('enable_prompt_expansion', False)
+        print(f"  - enable_prompt_expansion: {enable_prompt_expansion} [OK]")
+        
+        seed = test_data.get('seed')
+        if seed is not None:
+            print(f"  - seed: {seed} [OK]")
+        else:
+            print(f"  - seed: не указан (опциональный) [OK]")
+        
+        acceleration = test_data.get('acceleration', 'none')
+        print(f"  - acceleration: '{acceleration}' [OK]")
+        print()
+        if warnings:
+            print("[WARNING] Предупреждения:")
+            for warning in warnings:
+                print(f"  {warning}")
+            print()
+        print("[NOTE] Особенности модели:")
+        print("  - Требуется prompt (текстовый промпт для генерации видео, до 5000 символов)")
+        print("  - Опционально resolution (разрешение: 480p, 580p или 720p, по умолчанию 720p)")
+        print("  - Опционально aspect_ratio (соотношение сторон: 16:9, 9:16, 1:1, по умолчанию 16:9)")
+        print("  - Опционально enable_prompt_expansion (включить расширение промпта с помощью LLM, по умолчанию False)")
+        print("  - Опционально seed (случайное число для воспроизводимости, от 0 до 2147483647)")
+        print("  - Опционально acceleration (уровень ускорения: none или regular, по умолчанию none)")
+        print()
+        print("[PRICING] Ценообразование:")
+        resolution = str(test_data.get('resolution', '720p')).strip().lower()
+        if not resolution.endswith('p'):
+            resolution = resolution + 'p'
+        # Примечание: длительность видео фиксирована (5 секунд) или определяется автоматически моделью
+        default_duration = 5  # Фиксированная длительность для расчета цены
+        price = calculate_price_credits(resolution, default_duration)
+        print(f"  - Текущая цена: {price} кредитов (при длительности {default_duration} секунд)")
+        print(f"  - Параметры влияют на цену:")
+        print(f"    * resolution='{resolution}'")
+        print(f"  - Параметры НЕ влияют на цену:")
+        print(f"    * prompt не влияет на цену")
+        print(f"    * aspect_ratio не влияет на цену")
+        print(f"    * enable_prompt_expansion не влияет на цену")
+        print(f"    * seed не влияет на цену")
+        print(f"    * acceleration не влияет на цену")
+        print()
+        print("  - Таблица цен (при длительности 5 секунд):")
+        print("    * 480p: 40 кредитов (8 кредитов/сек × 5)")
+        print("    * 580p: 60 кредитов (12 кредитов/сек × 5)")
+        print("    * 720p: 80 кредитов (16 кредитов/сек × 5)")
+        print("  - ВНИМАНИЕ: Длительность видео фиксирована (5 секунд) или определяется автоматически моделью")
+    else:
+        print("[ERROR] ОБНАРУЖЕНЫ ОШИБКИ:")
+        print()
+        for error in errors:
+            print(f"  {error}")
+        if warnings:
+            print()
+            print("[WARNING] Предупреждения:")
+            for warning in warnings:
+                print(f"  {warning}")
+    
+    print()
+    print("=" * 60)
+    
+    # Дополнительная проверка: формат для API
+    print()
+    print("[API] Формат данных для отправки в API:")
+    api_data = {}
+    
+    # prompt - обязательный
+    api_data['prompt'] = test_data['prompt']
+    
+    # resolution - опциональный (нормализуем, добавляя "p" если нужно)
+    resolution = str(test_data.get('resolution', '720p')).strip().lower()
+    if not resolution.endswith('p'):
+        resolution = resolution + 'p'
+    api_data['resolution'] = resolution
+    
+    # aspect_ratio - опциональный
+    if test_data.get('aspect_ratio'):
+        api_data['aspect_ratio'] = str(test_data['aspect_ratio']).strip()
+    
+    # enable_prompt_expansion - опциональный (конвертируем в boolean)
+    if test_data.get('enable_prompt_expansion') is not None:
+        enable_prompt_expansion = test_data['enable_prompt_expansion']
+        if isinstance(enable_prompt_expansion, str):
+            enable_prompt_expansion = enable_prompt_expansion.strip().lower()
+            api_data['enable_prompt_expansion'] = enable_prompt_expansion in ['true', '1', 'yes']
+        else:
+            api_data['enable_prompt_expansion'] = bool(enable_prompt_expansion)
+    
+    # seed - опциональный (конвертируем в целое число)
+    if test_data.get('seed') is not None:
+        seed = test_data['seed']
+        if isinstance(seed, str):
+            seed_str = seed.strip()
+            if '.' in seed_str:
+                seed_str = seed_str.split('.')[0]
+            api_data['seed'] = int(seed_str)
+        else:
+            api_data['seed'] = int(seed)
+    
+    # acceleration - опциональный
+    if test_data.get('acceleration'):
+        api_data['acceleration'] = str(test_data['acceleration']).strip().lower()
+    
+    import json
+    print(json.dumps(api_data, indent=2, ensure_ascii=False))
+
