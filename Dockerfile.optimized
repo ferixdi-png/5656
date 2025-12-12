@@ -1,0 +1,38 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies (minimal)
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    apt-get install -y --no-install-recommends \
+    python3-dev \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Python requirements first for better caching
+COPY requirements.txt ./
+
+# Upgrade pip and install Python dependencies (with cache)
+RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip3 install --no-cache-dir -r requirements.txt
+
+# Copy only necessary application files
+COPY bot_kie.py run_bot.py config.py translations.py kie_models.py kie_client.py knowledge_storage.py ./
+
+# Create directories with empty __init__.py files
+RUN mkdir -p ./bot_kie_services ./bot_kie_utils && \
+    echo '"""Empty - modules not available in build context"""' > ./bot_kie_services/__init__.py && \
+    echo '"""Empty - modules not available in build context"""' > ./bot_kie_utils/__init__.py
+
+COPY validate_*.py ./
+
+# Copy index.js if it exists (for health check)
+COPY index.js* ./
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Start the bot directly with Python (faster than npm)
+CMD ["python3", "run_bot.py"]
+
