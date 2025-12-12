@@ -1,6 +1,11 @@
 # Git
 .git
 .gitignore
+.gitattributes
+
+# Documentation (not needed in container)
+*.md
+!README.md
 
 # Environment files
 .env
@@ -40,6 +45,8 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+package-lock.json
+pnpm-lock.yaml
 
 # IDE
 .vscode/
@@ -58,32 +65,29 @@ desktop.ini
 logs/
 *.log.*
 
-# Bot specific
+# Bot specific data files (will be created at runtime)
 admin_limits.json
 *.db
 *.sqlite
 *.sqlite3
-user_balances.json
-payments.json
 
 # Temporary files
 *.tmp
 *.temp
 .cache/
 
-# Documentation (optional - can include if needed)
-# *.md
-# README*
-
 # Test files
-test_*.py
+test/
+tests/
 *_test.py
+*_tests.py
 
-# Windows specific
+# Scripts (not needed in production)
+scripts/
+*.sh
 *.bat
-*.vbs
-*.cmd
 
-# Linux specific (keep for Timeweb)
-# *.sh
-
+# Other
+.dockerignore
+Dockerfile
+.dockerignore

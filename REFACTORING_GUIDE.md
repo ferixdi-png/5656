@@ -171,3 +171,5 @@ balance = storage_service.get_user_balance(user_id)
 3. ⏳ Перенос handlers в отдельные файлы
 4. ⏳ Полный рефакторинг calculate_price_rub
 5. ⏳ Миграция на SQLite (опционально)
+
+

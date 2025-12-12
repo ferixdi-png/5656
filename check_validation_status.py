@@ -66,3 +66,5 @@ print()
 print("=" * 80)
 print(f"ИТОГО: {len(validated_models)}/{len(model_ids)} моделей имеют валидацию")
 
+
+

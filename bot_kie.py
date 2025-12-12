@@ -1189,6 +1189,16 @@ GENERATIONS_HISTORY_FILE = "generations_history.json"  # File to store user gene
 
 # Free generation settings
 FREE_MODEL_ID = "z-image"  # Model that is free for users
+
+def is_video_model(model_id: str) -> bool:
+    """Check if model is a video generation model"""
+    video_keywords = ['video', 'animate', 'avatar', 'speech-to-video']
+    return any(keyword in model_id.lower() for keyword in video_keywords)
+
+def is_audio_model(model_id: str) -> bool:
+    """Check if model is an audio processing model"""
+    audio_keywords = ['speech-to-text', 'audio', 'transcribe']
+    return any(keyword in model_id.lower() for keyword in audio_keywords)
 FREE_GENERATIONS_PER_DAY = 5  # Number of free generations per day per user
 REFERRAL_BONUS_GENERATIONS = 5  # Bonus generations for inviting a user
 
@@ -2587,18 +2597,26 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Find text-to-image type and add it after free generation button
     text_to_image_type = None
     gen_type_rows = []
-    for i, gen_type in enumerate(generation_types):
+    gen_type_index = 0  # Separate index for non-text-to-image types
+    
+    for gen_type in generation_types:
         gen_info = get_generation_type_info(gen_type)
         models_count = len(get_models_by_generation_type(gen_type))
         
-        # Identify text-to-image type
+        # Skip if no models in this type
+        if models_count == 0:
+            logger.warning(f"No models found for generation type: {gen_type}")
+            continue
+        
+        # Identify text-to-image type (will be added separately)
         if gen_type == 'text-to-image':
             text_to_image_type = gen_type
             continue
             
         button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
         
-        if i % 2 == 0:
+        # Add buttons in pairs (2 per row)
+        if gen_type_index % 2 == 0:
             gen_type_rows.append([InlineKeyboardButton(
                 button_text,
                 callback_data=f"gen_type:{gen_type}"
@@ -2614,21 +2632,36 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     button_text,
                     callback_data=f"gen_type:{gen_type}"
                 )])
+        
+        gen_type_index += 1
     
-    # Add text-to-image button after free generation (if it exists)
+    # Add text-to-image button after free generation (if it exists and has models)
     if text_to_image_type:
         gen_info = get_generation_type_info(text_to_image_type)
         models_count = len(get_models_by_generation_type(text_to_image_type))
-        button_text = f"{gen_info.get('name', text_to_image_type)} ({models_count})"
-        keyboard.append([
-            InlineKeyboardButton(button_text, callback_data=f"gen_type:{text_to_image_type}")
-        ])
-        keyboard.append([])  # Empty row for spacing
+        if models_count > 0:
+            button_text = f"{gen_info.get('name', text_to_image_type)} ({models_count})"
+            keyboard.append([
+                InlineKeyboardButton(button_text, callback_data=f"gen_type:{text_to_image_type}")
+            ])
+            keyboard.append([])  # Empty row for spacing
     
     keyboard.extend(gen_type_rows)
     
-    # Add "Claim Gift" button for new users who haven't claimed yet
-    if is_new and not has_claimed_gift(user_id):
+    # Add "All Models" button to show all models directly
+    keyboard.append([])  # Empty row for spacing
+    if user_lang == 'ru':
+        keyboard.append([
+            InlineKeyboardButton(f"🤖 Все модели ({total_models})", callback_data="show_models")
+        ])
+    else:
+        keyboard.append([
+            InlineKeyboardButton(f"🤖 All Models ({total_models})", callback_data="show_models")
+        ])
+    keyboard.append([])  # Empty row for spacing
+    
+    # Add "Claim Gift" button for users who haven't claimed yet (not just new users)
+    if not has_claimed_gift(user_id):
         if user_lang == 'ru':
             keyboard.append([
                 InlineKeyboardButton("🎰 Получить подарок", callback_data="claim_gift")
@@ -2991,8 +3024,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 
                 keyboard.extend(gen_type_rows)
                 
-                # Add "Claim Gift" button for new users who haven't claimed yet
-                if is_new and not has_claimed_gift(user_id):
+                # Add "Claim Gift" button for users who haven't claimed yet (not just new users)
+                if not has_claimed_gift(user_id):
                     if user_lang == 'ru':
                         keyboard.append([
                             InlineKeyboardButton("🎰 Получить подарок", callback_data="claim_gift")
@@ -3415,6 +3448,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ConversationHandler.END
         
         if data == "back_to_menu":
+            # Answer callback immediately to show button was pressed
+            try:
+                await query.answer()
+            except:
+                pass
+            
             # Return to start menu - recreate the same menu as /start
             try:
                 user = update.effective_user
@@ -3440,13 +3479,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f'• 🎯 <b>{len(generation_types)} типов генерации</b> контента\n'
                     f'• 🌐 Прямой доступ БЕЗ VPN\n'
                     f'• ⚡ Мгновенная генерация\n\n'
-                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                    f'✨ <b>Z-Image - САМАЯ КРУТАЯ НЕЙРОСЕТЬ ДЛЯ ИЗОБРАЖЕНИЙ!</b> ✨\n\n'
-                    f'💎 <b>Почему Z-Image?</b>\n'
-                    f'• 🎨 Профессиональное качество изображений\n'
-                    f'• ⚡ Мгновенная генерация (10-30 секунд)\n'
-                    f'• 🎯 Работает БЕЗ VPN\n'
-                    f'• 💰 <b>ПОЛНОСТЬЮ БЕСПЛАТНО для тебя!</b>\n\n'
                     f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
                     f'👥 <b>Сейчас в боте:</b> {online_count} человек онлайн\n\n'
                     f'🚀 <b>ЧТО МОЖНО ДЕЛАТЬ:</b>\n'
@@ -3499,12 +3531,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             f'• 🌐 Прямой доступ БЕЗ VPN\n'
                             f'• ⚡ Мгновенная генерация\n\n'
                             f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                            f'✨ <b>Z-Image - САМАЯ КРУТАЯ НЕЙРОСЕТЬ ДЛЯ ИЗОБРАЖЕНИЙ!</b> ✨\n\n'
-                            f'💎 <b>Почему Z-Image?</b>\n'
-                            f'• 🎨 Профессиональное качество изображений\n'
-                            f'• ⚡ Мгновенная генерация (10-30 секунд)\n'
-                            f'• 🎯 Работает БЕЗ VPN\n'
-                            f'• 💰 <b>ПОЛНОСТЬЮ БЕСПЛАТНО для тебя!</b>\n\n'
                             f'💡 <b>Нажми кнопку "🎁 Генерировать бесплатно" ниже</b>\n\n'
                         )
                     
@@ -3556,6 +3582,13 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             )])
                 
                 keyboard.extend(gen_type_rows)
+                
+                # Add "Claim Gift" button for users who haven't claimed yet (not just new users)
+                if not has_claimed_gift(user_id):
+                    keyboard.append([])  # Empty row for spacing
+                    keyboard.append([
+                        InlineKeyboardButton("🎰 Получить подарок", callback_data="claim_gift")
+                    ])
                 
                 # Bottom action buttons
                 keyboard.append([])  # Empty row for spacing
@@ -3754,17 +3787,39 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"{model_info_text}"
                 )
                 
+                # Determine if this is a video or audio model
+                is_video = is_video_model(model_id)
+                is_audio = is_audio_model(model_id)
+                
                 if has_image_input:
-                    prompt_text += (
-                        f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
-                        f"Опишите изображение, которое хотите сгенерировать.\n\n"
-                        f"💡 <i>После ввода промпта вы сможете добавить изображение (опционально)</i>"
-                    )
+                    if is_video:
+                        prompt_text += (
+                            f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
+                            f"Опишите видео, которое хотите сгенерировать.\n\n"
+                            f"💡 <i>После ввода промпта вы сможете добавить изображение (опционально)</i>"
+                        )
+                    else:
+                        prompt_text += (
+                            f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
+                            f"Опишите изображение, которое хотите сгенерировать.\n\n"
+                            f"💡 <i>После ввода промпта вы сможете добавить изображение (опционально)</i>"
+                        )
                 else:
-                    prompt_text += (
-                        f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
-                        f"Опишите изображение, которое хотите сгенерировать:"
-                    )
+                    if is_video:
+                        prompt_text += (
+                            f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
+                            f"Опишите видео, которое хотите сгенерировать:"
+                        )
+                    elif is_audio:
+                        prompt_text += (
+                            f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
+                            f"Опишите контент для обработки:"
+                        )
+                    else:
+                        prompt_text += (
+                            f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
+                            f"Опишите изображение, которое хотите сгенерировать:"
+                        )
                 
                 await query.edit_message_text(
                     prompt_text,
@@ -3947,6 +4002,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Handle category selection (can be called from main menu)
         if data.startswith("gen_type:"):
+            # Answer callback immediately to show button was pressed
+            try:
+                await query.answer()
+            except:
+                pass
+            
             # User selected a generation type
             gen_type = data.split(":", 1)[1]
             gen_info = get_generation_type_info(gen_type)
@@ -4027,31 +4088,52 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     # Fallback: show calculated price
                     price_display = f"{min_price:.2f} ₽"
                 
-                # Compact button text (shorten if too long)
+                # Compact button text (Telegram limit: 64 characters for button text)
+                # Make it shorter to fit price and avoid overlap
+                max_name_length = 20  # Shorter to fit price
                 button_text = f"{model_emoji} {model_name}"
-                if len(button_text) > 30:
+                if len(button_text) > max_name_length:
                     # Truncate model name if too long
-                    button_text = f"{model_emoji} {model_name[:25]}..."
+                    button_text = f"{model_emoji} {model_name[:max_name_length-4]}..."
                 
                 button_text_with_price = f"{button_text} • {price_display}"
+                
+                # Final check: Telegram button text limit is 64 characters
+                if len(button_text_with_price) > 64:
+                    # If still too long, truncate more aggressively
+                    max_total = 60  # Leave some margin
+                    available_for_name = max_total - len(f" • {price_display}")
+                    if available_for_name > 0:
+                        button_text = f"{model_emoji} {model_name[:available_for_name-4]}..."
+                        button_text_with_price = f"{button_text} • {price_display}"
+                    else:
+                        # If price is too long, just show model name
+                        button_text_with_price = button_text[:60] + "..."
+                
+                # Ensure callback_data is not too long (Telegram limit: 64 bytes)
+                callback_data = f"select_model:{model_id}"
+                if len(callback_data.encode('utf-8')) > 64:
+                    logger.error(f"Callback data too long for model {model_id}: {len(callback_data.encode('utf-8'))} bytes")
+                    # Use shorter model_id if possible
+                    callback_data = f"sel:{model_id[:50]}"
                 
                 if i % 2 == 0:
                     # First button in row
                     model_rows.append([InlineKeyboardButton(
                         button_text_with_price,
-                        callback_data=f"select_model:{model_id}"
+                        callback_data=callback_data
                     )])
                 else:
                     # Second button in row - add to last row
                     if model_rows:
                         model_rows[-1].append(InlineKeyboardButton(
                             button_text_with_price,
-                            callback_data=f"select_model:{model_id}"
+                            callback_data=callback_data
                         ))
                     else:
                         model_rows.append([InlineKeyboardButton(
                             button_text_with_price,
-                            callback_data=f"select_model:{model_id}"
+                            callback_data=callback_data
                         )])
             
             keyboard.extend(model_rows)
@@ -4117,22 +4199,52 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     # Fallback: show calculated price
                     price_display = f"{min_price:.2f} ₽"
                 
-                # Compact button text with price (limit name to 20 chars for mobile display)
-                model_name_short = model['name'][:20] + "..." if len(model['name']) > 20 else model['name']
-                button_text = f"{model['emoji']} {model_name_short} • {price_display}"
+                # Compact button text with price (Telegram limit: 64 characters)
+                model_name = model.get('name', model.get('id', 'Unknown'))
+                model_emoji = model.get('emoji', '🤖')
+                model_id = model.get('id')
                 
-                # Telegram button text limit is ~64 chars, ensure we don't exceed
-                if len(button_text) > 60:
-                    model_name_short = model['name'][:15] + "..."
-                    button_text = f"{model['emoji']} {model_name_short} • {price_display}"
-                if len(button_text) > 60:
-                    # If still too long, remove emoji from price part
-                    price_display_short = price_display.replace("₽", "₽")[:8]
-                    button_text = f"{model['emoji']} {model_name_short} {price_display_short}"
+                # Extract price for display
+                import re
+                price_match = re.search(r'(\d+\.?\d*)\s*₽', price_text)
+                if price_match:
+                    price_display = price_match.group(1)
+                    if "От" in price_text or "от" in price_text.lower():
+                        price_display = f"от {price_display} ₽"
+                    else:
+                        price_display = f"{price_display} ₽"
+                elif "БЕСПЛАТНО" in price_text or "Бесплатно" in price_text:
+                    price_display = "бесплатно"
+                else:
+                    price_display = f"{min_price:.2f} ₽"
+                
+                # Compact button text (Telegram limit: 64 characters for button text)
+                max_name_length = 20  # Shorter to fit price
+                button_text = f"{model_emoji} {model_name}"
+                if len(button_text) > max_name_length:
+                    button_text = f"{model_emoji} {model_name[:max_name_length-4]}..."
+                
+                button_text_with_price = f"{button_text} • {price_display}"
+                
+                # Final check: Telegram button text limit is 64 characters
+                if len(button_text_with_price) > 64:
+                    max_total = 60  # Leave some margin
+                    available_for_name = max_total - len(f" • {price_display}")
+                    if available_for_name > 0:
+                        button_text = f"{model_emoji} {model_name[:available_for_name-4]}..."
+                        button_text_with_price = f"{button_text} • {price_display}"
+                    else:
+                        button_text_with_price = button_text[:60] + "..."
+                
+                # Ensure callback_data is not too long (Telegram limit: 64 bytes)
+                callback_data = f"select_model:{model_id}"
+                if len(callback_data.encode('utf-8')) > 64:
+                    logger.error(f"Callback data too long for model {model_id}: {len(callback_data.encode('utf-8'))} bytes")
+                    callback_data = f"sel:{model_id[:50]}"
                 
                 keyboard.append([InlineKeyboardButton(
-                    button_text,
-                    callback_data=f"select_model:{model['id']}"
+                    button_text_with_price,
+                    callback_data=callback_data
                 )])
             keyboard.append([InlineKeyboardButton("◀️ Назад к категориям", callback_data="show_models")])
             keyboard.append([InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")])
@@ -4161,6 +4273,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return SELECTING_MODEL
         
         if data == "show_models" or data == "all_models":
+            # Answer callback immediately to show button was pressed
+            try:
+                await query.answer()
+            except:
+                pass
+            
             # Show generation types instead of all models with marketing text
             generation_types = get_generation_types()
             remaining_free = get_user_free_generations_remaining(user_id)
@@ -4201,28 +4319,34 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 keyboard.append([])  # Empty row
             
             # Generation types buttons (2 per row for compact display)
-            # Sort generation types: text-to-image first, then others
-            sorted_gen_types = []
-            if "text-to-image" in generation_types:
-                sorted_gen_types.append("text-to-image")
-            for gen_type in generation_types:
-                if gen_type != "text-to-image":
-                    sorted_gen_types.append(gen_type)
-            
+            # Find text-to-image type and add it after free generation button
+            text_to_image_type = None
             gen_type_rows = []
-            for i, gen_type in enumerate(sorted_gen_types):
+            gen_type_index = 0  # Separate index for non-text-to-image types
+            
+            for gen_type in generation_types:
                 gen_info = get_generation_type_info(gen_type)
                 models_count = len(get_models_by_generation_type(gen_type))
+                
+                # Skip if no models in this type
+                if models_count == 0:
+                    logger.warning(f"No models found for generation type: {gen_type}")
+                    continue
+                
+                # Identify text-to-image type (will be added separately)
+                if gen_type == 'text-to-image':
+                    text_to_image_type = gen_type
+                    continue
+                
                 button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
                 
-                if i % 2 == 0:
-                    # First button in row
+                # Add buttons in pairs (2 per row)
+                if gen_type_index % 2 == 0:
                     gen_type_rows.append([InlineKeyboardButton(
                         button_text,
                         callback_data=f"gen_type:{gen_type}"
                     )])
                 else:
-                    # Second button in row - add to last row
                     if gen_type_rows:
                         gen_type_rows[-1].append(InlineKeyboardButton(
                             button_text,
@@ -4233,8 +4357,34 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             button_text,
                             callback_data=f"gen_type:{gen_type}"
                         )])
+                
+                gen_type_index += 1
             
+            # Add text-to-image button after free generation (if it exists and has models)
+            if text_to_image_type:
+                gen_info = get_generation_type_info(text_to_image_type)
+                models_count = len(get_models_by_generation_type(text_to_image_type))
+                if models_count > 0:
+                    button_text = f"{gen_info.get('name', text_to_image_type)} ({models_count})"
+                    keyboard.append([
+                        InlineKeyboardButton(button_text, callback_data=f"gen_type:{text_to_image_type}")
+                    ])
+                    keyboard.append([])  # Empty row for spacing
+            
+            # Add other generation types
             keyboard.extend(gen_type_rows)
+            
+            # Add button to show all models directly (without grouping by type)
+            keyboard.append([])  # Empty row for spacing
+            if user_lang == 'ru':
+                keyboard.append([
+                    InlineKeyboardButton(f"📋 Показать все {len(KIE_MODELS)} моделей", callback_data="show_all_models_list")
+                ])
+            else:
+                keyboard.append([
+                    InlineKeyboardButton(f"📋 Show all {len(KIE_MODELS)} models", callback_data="show_all_models_list")
+                ])
+            
             keyboard.append([InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")])
             keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data="cancel")])
             
@@ -4243,6 +4393,144 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='HTML'
             )
+            return SELECTING_MODEL
+        
+        if data == "show_all_models_list":
+            # Answer callback immediately
+            try:
+                await query.answer()
+            except:
+                pass
+            
+            # Show all models directly, grouped by category
+            user_lang = get_user_language(user_id)
+            is_admin = get_is_admin(user_id)
+            remaining_free = get_user_free_generations_remaining(user_id)
+            
+            # Group models by category
+            from kie_models import get_categories, get_models_by_category
+            categories = get_categories()
+            
+            models_text = (
+                f"🤖 <b>ВСЕ МОДЕЛИ ({len(KIE_MODELS)})</b>\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            )
+            
+            if remaining_free > 0:
+                models_text += (
+                    f"🎁 <b>БЕСПЛАТНО:</b> {remaining_free} генераций Z-Image доступно!\n\n"
+                )
+            
+            models_text += (
+                f"💡 <b>Выберите модель из списка ниже</b>\n"
+                f"Модели сгруппированы по категориям для удобства\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            )
+            
+            keyboard = []
+            
+            # Free generation button if available
+            if remaining_free > 0:
+                keyboard.append([
+                    InlineKeyboardButton(f"🎁 Генерировать бесплатно ({remaining_free} осталось)", callback_data="select_model:z-image")
+                ])
+                keyboard.append([])  # Empty row
+            
+            # Show models grouped by category
+            for category in categories:
+                category_models = get_models_by_category(category)
+                if not category_models:
+                    continue
+                
+                # Add category header button (optional, can be clickable to filter)
+                category_emoji = {
+                    "Видео": "🎬",
+                    "Фото": "📸",
+                    "Изображения": "🖼️",
+                    "Редактирование": "✏️",
+                    "Речь в текст": "🎙️"
+                }.get(category, "📁")
+                
+                # Show first few models from each category (2 per row)
+                category_rows = []
+                for i, model in enumerate(category_models[:6]):  # Show up to 6 models per category
+                    model_name = model.get('name', model.get('id', 'Unknown'))
+                    model_emoji = model.get('emoji', '🤖')
+                    model_id = model.get('id')
+                    
+                    # Calculate price
+                    default_params = {}
+                    if model_id == "nano-banana-pro":
+                        default_params = {"resolution": "1K"}
+                    elif model_id in ["seedream/4.5-text-to-image", "seedream/4.5-edit"]:
+                        default_params = {"quality": "basic"}
+                    
+                    price_text = get_model_price_text(model_id, default_params, is_admin, user_id)
+                    import re
+                    price_match = re.search(r'(\d+\.?\d*)\s*₽', price_text)
+                    if price_match:
+                        price_display = price_match.group(1)
+                        if "От" in price_text or "от" in price_text.lower():
+                            price_display = f"от {price_display}₽"
+                        else:
+                            price_display = f"{price_display}₽"
+                    elif "БЕСПЛАТНО" in price_text or "Бесплатно" in price_text:
+                        price_display = "беспл."
+                    else:
+                        min_price = calculate_price_rub(model_id, default_params, is_admin)
+                        price_display = f"{min_price:.2f}₽"
+                    
+                    button_text = f"{model_emoji} {model_name[:15]}"
+                    if len(button_text) > 20:
+                        button_text = f"{model_emoji} {model_name[:12]}..."
+                    button_text_with_price = f"{button_text} {price_display}"
+                    
+                    if len(button_text_with_price) > 60:
+                        button_text_with_price = button_text[:50] + "..."
+                    
+                    callback_data = f"select_model:{model_id}"
+                    if len(callback_data.encode('utf-8')) > 64:
+                        callback_data = f"sel:{model_id[:50]}"
+                    
+                    if i % 2 == 0:
+                        category_rows.append([InlineKeyboardButton(
+                            button_text_with_price,
+                            callback_data=callback_data
+                        )])
+                    else:
+                        if category_rows:
+                            category_rows[-1].append(InlineKeyboardButton(
+                                button_text_with_price,
+                                callback_data=callback_data
+                            ))
+                        else:
+                            category_rows.append([InlineKeyboardButton(
+                                button_text_with_price,
+                                callback_data=callback_data
+                            )])
+                
+                # Add category section
+                if category_rows:
+                    keyboard.append([InlineKeyboardButton(
+                        f"{category_emoji} {category} ({len(category_models)})",
+                        callback_data=f"category:{category}"
+                    )])
+                    keyboard.extend(category_rows)
+                    keyboard.append([])  # Empty row between categories
+            
+            keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data="show_models")])
+            keyboard.append([InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")])
+            
+            try:
+                await query.edit_message_text(
+                    models_text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.error(f"Error showing all models: {e}", exc_info=True)
+                await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
+            
             return SELECTING_MODEL
         
         if data == "add_image":
@@ -4523,6 +4811,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ConversationHandler.END
         
         if data == "topup_balance":
+            # Answer callback immediately to show button was pressed
+            try:
+                await query.answer()
+            except:
+                pass
+            
             # Check if user is blocked
             if is_user_blocked(user_id):
                 await query.edit_message_text(
@@ -5407,6 +5701,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ConversationHandler.END
         
         if data == "help_menu":
+            # Answer callback immediately to show button was pressed
+            try:
+                await query.answer()
+            except:
+                pass
+            
             is_new = is_new_user(user_id)
             
             if is_new:
@@ -5478,6 +5778,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ConversationHandler.END
         
         if data == "support_contact":
+            # Answer callback immediately to show button was pressed
+            try:
+                await query.answer()
+            except:
+                pass
+            
             support_info = get_support_contact()
             keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]]
             
@@ -5489,6 +5795,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ConversationHandler.END
         
         if data == "referral_info":
+            # Answer callback immediately to show button was pressed
+            try:
+                await query.answer()
+            except:
+                pass
+            
             # Show referral information
             referral_link = get_user_referral_link(user_id)
             referrals_count = len(get_user_referrals(user_id))
@@ -5528,6 +5840,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ConversationHandler.END
         
         if data == "my_generations":
+            # Answer callback immediately to show button was pressed
+            try:
+                await query.answer()
+            except:
+                pass
+            
             # Show user's generation history
             history = get_user_generations_history(user_id, limit=20)
             
@@ -5785,6 +6103,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ConversationHandler.END
         
         if data.startswith("select_model:"):
+            # Answer callback immediately to show button was pressed
+            try:
+                await query.answer()
+            except:
+                pass
+            
             model_id = data.split(":", 1)[1]
             
             # Get model from static list
@@ -5977,19 +6301,32 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Or start with audio_url if no prompt and audio_url is required
             if 'prompt' in input_params:
                 # Check if model supports image input (image_input or image_urls)
-                has_image_input = 'image_input' in input_params or 'image_urls' in input_params
+                # BUT: z-image does NOT support image input (text-to-image only)
+                has_image_input = (model_id != "z-image" and 
+                                 ('image_input' in input_params or 'image_urls' in input_params))
                 has_audio_input = 'audio_url' in input_params or 'audio_input' in input_params
                 
                 prompt_text = (
                     f"{model_info_text}"
                 )
                 
+                # Determine if this is a video or audio model
+                is_video = is_video_model(model_id)
+                is_audio = is_audio_model(model_id)
+                
                 if has_image_input:
-                    prompt_text += (
-                        f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
-                        f"Опишите изображение для генерации.\n\n"
-                        f"💡 После ввода промпта вы сможете добавить изображение (опционально)"
-                    )
+                    if is_video:
+                        prompt_text += (
+                            f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
+                            f"Опишите видео, которое хотите сгенерировать.\n\n"
+                            f"💡 После ввода промпта вы сможете добавить изображение (опционально)"
+                        )
+                    else:
+                        prompt_text += (
+                            f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
+                            f"Опишите изображение для генерации.\n\n"
+                            f"💡 После ввода промпта вы сможете добавить изображение (опционально)"
+                        )
                 elif has_audio_input:
                     prompt_text += (
                         f"📝 <b>Шаг 1: Введите промпт (опционально)</b>\n\n"
@@ -5997,10 +6334,21 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         f"💡 После этого вы сможете загрузить аудио-файл"
                     )
                 else:
-                    prompt_text += (
-                        f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
-                        f"Опишите изображение для генерации:"
-                    )
+                    if is_video:
+                        prompt_text += (
+                            f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
+                            f"Опишите видео, которое хотите сгенерировать:"
+                        )
+                    elif is_audio:
+                        prompt_text += (
+                            f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
+                            f"Опишите контент для обработки:"
+                        )
+                    else:
+                        prompt_text += (
+                            f"📝 <b>Шаг 1: Введите промпт</b>\n\n"
+                            f"Опишите изображение для генерации:"
+                        )
                 
                 keyboard = [
                     [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")],
@@ -7097,7 +7445,13 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Or if prompt was entered and model supports audio input, offer to add audio
         if current_param == 'prompt':
             model_info = session.get('model_info', {})
+            model_id = session.get('model_id', '')
             input_params = model_info.get('input_params', {})
+            
+            # IMPORTANT: z-image does NOT support image input (text-to-image only)
+            if model_id == "z-image":
+                # For z-image, skip image input and go to next parameter
+                session['has_image_input'] = False
             
             # Check for audio_url requirement
             if 'audio_url' in input_params or 'audio_input' in input_params:
@@ -7136,7 +7490,8 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     return INPUTTING_PARAMS
             
             # Check if image is required (for image_urls or image_input)
-            if session.get('has_image_input'):
+            # IMPORTANT: z-image does NOT support image input (text-to-image only)
+            if session.get('has_image_input') and model_id != "z-image":
                 image_required = False
                 if 'image_urls' in input_params:
                     image_required = input_params['image_urls'].get('required', False)
@@ -10503,7 +10858,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 return ConversationHandler.END
             api_params['audio_url'] = audio_url
             
-            # Validate language_code (optional, string, default "eng")
+            # Validate language_code (optional, string, default "" according to API docs)
             # Common language codes: eng, ru, de, fr, es, it, zh, ja, ko, etc.
             if 'language_code' in api_params and api_params.get('language_code'):
                 lang_code = str(api_params['language_code']).strip()
@@ -10513,9 +10868,9 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     lang_map = {
                         'русский': 'ru',
                         'russian': 'ru',
-                        'английский': 'en',
-                        'english': 'en',
-                        'eng': 'en',
+                        'английский': 'eng',
+                        'english': 'eng',
+                        'en': 'eng',
                         'немецкий': 'de',
                         'german': 'de',
                         'французский': 'fr',
@@ -10537,14 +10892,14 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     elif len(lang_code) <= 5 and lang_code.replace('-', '').replace('_', '').isalpha():
                         api_params['language_code'] = lang_code.lower()
                     else:
-                        # Invalid format, use default "eng"
-                        api_params['language_code'] = 'eng'
+                        # Invalid format, remove parameter (use API default "")
+                        api_params.pop('language_code', None)
                 else:
-                    # Empty language_code - use default "eng"
-                    api_params['language_code'] = 'eng'
+                    # Empty language_code - remove parameter (use API default "")
+                    api_params.pop('language_code', None)
             else:
-                # Use default "eng" if not set
-                api_params['language_code'] = 'eng'
+                # If not set, don't send parameter (API will use default "")
+                api_params.pop('language_code', None)
             
             # Validate tag_audio_events (optional, boolean)
             if 'tag_audio_events' in api_params and api_params.get('tag_audio_events') is not None:

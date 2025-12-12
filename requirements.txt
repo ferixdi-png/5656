@@ -8,11 +8,8 @@ aiofiles>=23.0.0
 # Environment variables
 python-dotenv>=1.0.0
 
-# Image processing (optional, but recommended)
-Pillow>=10.0.0
-
-# OCR (optional)
-pytesseract>=0.3.10
-
 # Type hints (for Python < 3.9)
 typing-extensions>=4.5.0
+
+# Note: Pillow and pytesseract are optional and can be installed later if needed
+# They are not required for basic bot functionality

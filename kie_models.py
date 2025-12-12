@@ -2299,6 +2299,35 @@ KIE_MODELS = [
         }
     },
     {
+        "id": "google/nano-banana",
+        "name": "Google Nano Banana",
+        "description": "Google DeepMind модель для генерации изображений из текста. Быстрая и эффективная генерация с поддержкой различных соотношений сторон.",
+        "category": "Фото",
+        "emoji": "🍌",
+        "pricing": "Уточняется",
+        "input_params": {
+            "prompt": {
+                "type": "string",
+                "description": "Текстовое описание изображения, которое вы хотите сгенерировать",
+                "required": True
+            },
+            "output_format": {
+                "type": "string",
+                "description": "Формат выходного изображения",
+                "required": False,
+                "default": "PNG",
+                "enum": ["PNG", "JPEG"]
+            },
+            "image_size": {
+                "type": "string",
+                "description": "Соотношение сторон изображения",
+                "required": False,
+                "default": "1:1",
+                "enum": ["1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "5:4", "4:5", "21:9", "auto"]
+            }
+        }
+    },
+    {
         "id": "elevenlabs/speech-to-text",
         "name": "ElevenLabs Speech-to-Text",
         "description": "ElevenLabs API для преобразования речи в текст. Основан на модели Scribe v1, предоставляет передовую транскрипцию с точностью, лидирующей в отрасли, поддержкой множества языков и такими функциями, как разделение говорящих и тегирование аудио-событий.",
@@ -2382,13 +2411,13 @@ GENERATION_TYPES = {
     "lip-sync": {
         "name": "👄 Синхронизация губ",
         "description": "Синхронизация губ с аудио",
-        "models": ["kling/v1-avatar-standard", "kling/ai-avatar-v1-pro", "infinitalk/from-audio", "wan/2-2-animate-move", "wan/2-2-animate-replace"]
+        "models": ["kling/v1-avatar-standard", "kling/ai-avatar-v1-pro", "wan/2-2-animate-move", "wan/2-2-animate-replace"]
     },
     # Image Generation
     "text-to-image": {
         "name": "✨ Текст в фото",
         "description": "Создавайте изображения из текста",
-        "models": ["z-image", "nano-banana-pro", "seedream/4.5-text-to-image", "flux-2/pro-text-to-image", "flux-2/flex-text-to-image", "bytedance/seedream-v4-text-to-image", "bytedance/seedream", "qwen/text-to-image", "ideogram/v3-text-to-image", "google/imagen4-ultra", "google/imagen4-fast", "google/imagen4"]
+        "models": ["z-image", "nano-banana-pro", "google/nano-banana", "seedream/4.5-text-to-image", "flux-2/pro-text-to-image", "flux-2/flex-text-to-image", "bytedance/seedream-v4-text-to-image", "bytedance/seedream", "qwen/text-to-image", "ideogram/v3-text-to-image", "google/imagen4-ultra", "google/imagen4-fast", "google/imagen4"]
     },
     "image-to-image": {
         "name": "🎨 Фото в фото",

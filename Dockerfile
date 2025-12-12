@@ -2,22 +2,13 @@ FROM node:24-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (only essential)
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     python3-dev \
-    curl \
     build-essential \
-    libjpeg-dev \
-    zlib1g-dev \
-    libtiff5-dev \
-    libfreetype6-dev \
-    liblcms2-dev \
-    libwebp-dev \
-    tesseract-ocr \
-    tesseract-ocr-rus \
     && rm -rf /var/lib/apt/lists/*
 
 # Create symlink for python command
@@ -26,20 +17,22 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 # Copy package files first for better caching
 COPY package*.json ./
 
-# Install Node.js dependencies
-RUN npm ci --omit=dev
+# Install Node.js dependencies (only production)
+RUN npm ci --omit=dev --prefer-offline --no-audit
 
 # Copy Python requirements
 COPY requirements.txt ./
 
-# Upgrade pip and install Python dependencies
-# Using --break-system-packages is safe in Docker containers (isolated environment)
+# Upgrade pip and install Python dependencies (with cache)
 RUN pip3 install --upgrade pip setuptools wheel --break-system-packages --root-user-action=ignore && \
-    pip3 install --no-cache-dir --break-system-packages --root-user-action=ignore -r requirements.txt
+    pip3 install --break-system-packages --root-user-action=ignore -r requirements.txt
 
-# Copy all application files (including translations.py and other Python modules)
-# NOTE: All Python files must be committed to git for this to work
-COPY . .
+# Copy only necessary application files
+COPY bot_kie.py run_bot.py index.js config.py translations.py kie_models.py kie_client.py knowledge_storage.py ./
+COPY bot_kie_services ./bot_kie_services
+COPY bot_kie_utils ./bot_kie_utils
+COPY bot_kie_handlers ./bot_kie_handlers
+COPY validate_*.py ./
 
 # Set environment variables
 ENV NODE_ENV=production
