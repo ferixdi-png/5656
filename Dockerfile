@@ -59,9 +59,13 @@ COPY validate_*.py ./
 # Set environment variables
 ENV NODE_ENV=production
 ENV PYTHONUNBUFFERED=1
+ENV PORT=10000
 
 # Ensure proper permissions
 RUN chmod +x index.js || true
+
+# Expose port for health check
+EXPOSE 10000
 
 # Start the bot
 CMD ["npm", "start"]
