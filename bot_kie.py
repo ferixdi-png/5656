@@ -111,7 +111,36 @@ except (ValueError, TypeError):
 # Based on: 18 credits = $0.09 = 6.95 ₽
 # NOTE: Теперь рекомендуется использовать config.settings для этих значений
 CREDIT_TO_USD = 0.005  # 1 credit = $0.005 ($0.09 / 18)
-USD_TO_RUB = 6.95 / 0.09  # 1 USD = 77.2222... RUB (calculated from 6.95 ₽ / $0.09)
+USD_TO_RUB_DEFAULT = 6.95 / 0.09  # 1 USD = 77.2222... RUB (calculated from 6.95 ₽ / $0.09) - default value
+
+def get_usd_to_rub_rate() -> float:
+    """Get USD to RUB exchange rate from file, or return default if not set."""
+    try:
+        rate_data = load_json_file(CURRENCY_RATE_FILE, {})
+        rate = rate_data.get('usd_to_rub', USD_TO_RUB_DEFAULT)
+        if isinstance(rate, (int, float)) and rate > 0:
+            return float(rate)
+        else:
+            logger.warning(f"Invalid currency rate in file: {rate}, using default: {USD_TO_RUB_DEFAULT}")
+            return USD_TO_RUB_DEFAULT
+    except Exception as e:
+        logger.error(f"Error loading currency rate: {e}, using default: {USD_TO_RUB_DEFAULT}")
+        return USD_TO_RUB_DEFAULT
+
+def set_usd_to_rub_rate(rate: float) -> bool:
+    """Set USD to RUB exchange rate and save to file."""
+    try:
+        if not isinstance(rate, (int, float)) or rate <= 0:
+            logger.error(f"Invalid currency rate: {rate}")
+            return False
+        
+        rate_data = {'usd_to_rub': float(rate)}
+        save_json_file(CURRENCY_RATE_FILE, rate_data)
+        logger.info(f"Currency rate updated: 1 USD = {rate} RUB")
+        return True
+    except Exception as e:
+        logger.error(f"Error saving currency rate: {e}")
+        return False
 
 # Импортируем новые сервисы для использования (опционально)
 try:
@@ -201,8 +230,14 @@ def get_is_admin(user_id: int) -> bool:
         return False
 
 
-def calculate_price_rub(model_id: str, params: dict = None, is_admin: bool = False) -> float:
-    """Calculate price in rubles based on model and parameters."""
+def calculate_price_rub(model_id: str, params: dict = None, is_admin: bool = False, user_id: int = None) -> float:
+    """
+    Calculate price in rubles based on model and parameters.
+    
+    IMPORTANT: If user_id is provided, uses get_is_admin() to check admin status,
+    which respects admin_user_mode. Otherwise uses is_admin parameter.
+    For regular users (or admin in user mode), price is multiplied by 2.
+    """
     if params is None:
         params = {}
     
@@ -789,11 +824,24 @@ def calculate_price_rub(model_id: str, params: dict = None, is_admin: bool = Fal
         base_credits = 1.0
     
     # Convert credits to USD, then to RUB (no rounding)
+    # IMPORTANT: Always use get_is_admin() to check if user should see admin prices
+    # This ensures admin in user mode sees user prices (x2)
     price_usd = base_credits * CREDIT_TO_USD
-    price_rub = price_usd * USD_TO_RUB
+    usd_to_rub = get_usd_to_rub_rate()  # Get current exchange rate
+    price_rub = price_usd * usd_to_rub
     
-    # For regular users, multiply by 2
-    if not is_admin:
+    # For regular users (or admin in user mode), multiply by 2
+    # IMPORTANT: If user_id is provided, use get_is_admin() to respect admin_user_mode
+    # This ensures admin in user mode sees user prices (x2)
+    if user_id is not None:
+        is_admin_check = get_is_admin(user_id)
+    else:
+        # Fallback to is_admin parameter if user_id not available
+        is_admin_check = is_admin
+    
+    # If not admin (or admin in user mode), multiply by 2
+    # IMPORTANT: Prices for users are ALWAYS x2 from admin prices
+    if not is_admin_check:
         price_rub *= 2
     
     # Return exact value without rounding
@@ -813,9 +861,15 @@ def format_price_rub(price: float, is_admin: bool = False) -> str:
 
 def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = False, user_id: int = None) -> str:
     """Get formatted price text for a model."""
+    # IMPORTANT: Use get_is_admin() if user_id is provided to respect admin_user_mode
+    if user_id is not None:
+        is_admin_check = get_is_admin(user_id)
+    else:
+        is_admin_check = is_admin
+    
     if model_id == "z-image":
-        price = calculate_price_rub(model_id, params, is_admin)
-        if not is_admin and user_id is not None:
+        price = calculate_price_rub(model_id, params, is_admin_check, user_id)
+        if not is_admin_check and user_id is not None:
             # Check if user has free generations available
             remaining = get_user_free_generations_remaining(user_id)
             if remaining > 0:
@@ -823,21 +877,21 @@ def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = Fa
                 return f"🎁 <b>БЕСПЛАТНО</b> ({remaining}/{FREE_GENERATIONS_PER_DAY} в день) или {price_str} ₽"
         return format_price_rub(price, is_admin) + " за изображение"
     elif model_id == "nano-banana-pro":
-        price_1k = calculate_price_rub(model_id, {"resolution": "1K"}, is_admin)
-        price_4k = calculate_price_rub(model_id, {"resolution": "4K"}, is_admin)
+        price_1k = calculate_price_rub(model_id, {"resolution": "1K"}, is_admin_check, user_id)
+        price_4k = calculate_price_rub(model_id, {"resolution": "4K"}, is_admin_check, user_id)
         # Format prices to 2 decimal places
         price_1k_str = f"{round(price_1k, 2):.2f}"
         price_4k_str = f"{round(price_4k, 2):.2f}"
-        if is_admin:
+        if is_admin_check:
             return f"💰 <b>Безлимит</b> (1K/2K: {price_1k_str} ₽, 4K: {price_4k_str} ₽)"
         else:
             return f"💰 <b>От {price_1k_str} ₽</b> (1K/2K: {price_1k_str} ₽, 4K: {price_4k_str} ₽)"
     elif model_id == "sora-watermark-remover":
-        price = calculate_price_rub(model_id, params, is_admin)
-        return format_price_rub(price, is_admin) + " за использование"
+        price = calculate_price_rub(model_id, params, is_admin_check, user_id)
+        return format_price_rub(price, is_admin_check) + " за использование"
     elif model_id == "sora-2-text-to-video" or model_id == "sora-2-image-to-video":
-        price = calculate_price_rub(model_id, params, is_admin)
-        return format_price_rub(price, is_admin) + " за 10-секундное видео"
+        price = calculate_price_rub(model_id, params, is_admin_check, user_id)
+        return format_price_rub(price, is_admin_check) + " за 10-секундное видео"
     elif model_id == "kling-2.6/image-to-video" or model_id == "kling-2.6/text-to-video":
         # Show price range based on duration and sound
         duration = params.get("duration", "5") if params else "5"
@@ -845,26 +899,26 @@ def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = Fa
         
         if duration == "5":
             if sound:
-                price = calculate_price_rub(model_id, {"duration": "5", "sound": True}, is_admin)
-                return format_price_rub(price, is_admin) + " за 5с видео (со звуком)"
+                price = calculate_price_rub(model_id, {"duration": "5", "sound": True}, is_admin_check, user_id)
+                return format_price_rub(price, is_admin_check) + " за 5с видео (со звуком)"
             else:
-                price = calculate_price_rub(model_id, {"duration": "5", "sound": False}, is_admin)
-                return format_price_rub(price, is_admin) + " за 5с видео (без звука)"
+                price = calculate_price_rub(model_id, {"duration": "5", "sound": False}, is_admin_check, user_id)
+                return format_price_rub(price, is_admin_check) + " за 5с видео (без звука)"
         else:  # duration == "10"
             if sound:
-                price = calculate_price_rub(model_id, {"duration": "10", "sound": True}, is_admin)
-                return format_price_rub(price, is_admin) + " за 10с видео (со звуком)"
+                price = calculate_price_rub(model_id, {"duration": "10", "sound": True}, is_admin_check, user_id)
+                return format_price_rub(price, is_admin_check) + " за 10с видео (со звуком)"
             else:
-                price = calculate_price_rub(model_id, {"duration": "10", "sound": False}, is_admin)
-                return format_price_rub(price, is_admin) + " за 10с видео (без звука)"
+                price = calculate_price_rub(model_id, {"duration": "10", "sound": False}, is_admin_check, user_id)
+                return format_price_rub(price, is_admin_check) + " за 10с видео (без звука)"
     elif model_id == "kling/v2-5-turbo-text-to-video-pro" or model_id == "kling/v2-5-turbo-image-to-video-pro":
         # Show price based on duration
         duration = params.get("duration", "5") if params else "5"
-        price_5s = calculate_price_rub(model_id, {"duration": "5"}, is_admin)
-        price_10s = calculate_price_rub(model_id, {"duration": "10"}, is_admin)
+        price_5s = calculate_price_rub(model_id, {"duration": "5"}, is_admin_check, user_id)
+        price_10s = calculate_price_rub(model_id, {"duration": "10"}, is_admin_check, user_id)
         price_5s_str = f"{round(price_5s, 2):.2f}"
         price_10s_str = f"{round(price_10s, 2):.2f}"
-        if is_admin:
+        if is_admin_check:
             return f"💰 <b>Безлимит</b> (5с: {price_5s_str} ₽, 10с: {price_10s_str} ₽)"
         else:
             return f"💰 <b>От {price_5s_str} ₽</b> (5с: {price_5s_str} ₽, 10с: {price_10s_str} ₽)"
@@ -872,15 +926,15 @@ def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = Fa
         # Show price based on duration and resolution
         duration = params.get("duration", "5") if params else "5"
         resolution = params.get("resolution", "720p") if params else "720p"
-        price_720p_5s = calculate_price_rub(model_id, {"duration": "5", "resolution": "720p"}, is_admin)
-        price_1080p_5s = calculate_price_rub(model_id, {"duration": "5", "resolution": "1080p"}, is_admin)
-        price_720p_10s = calculate_price_rub(model_id, {"duration": "10", "resolution": "720p"}, is_admin)
-        price_1080p_10s = calculate_price_rub(model_id, {"duration": "10", "resolution": "1080p"}, is_admin)
+        price_720p_5s = calculate_price_rub(model_id, {"duration": "5", "resolution": "720p"}, is_admin_check, user_id)
+        price_1080p_5s = calculate_price_rub(model_id, {"duration": "5", "resolution": "1080p"}, is_admin_check, user_id)
+        price_720p_10s = calculate_price_rub(model_id, {"duration": "10", "resolution": "720p"}, is_admin_check, user_id)
+        price_1080p_10s = calculate_price_rub(model_id, {"duration": "10", "resolution": "1080p"}, is_admin_check, user_id)
         price_720p_5s_str = f"{round(price_720p_5s, 2):.2f}"
         price_1080p_5s_str = f"{round(price_1080p_5s, 2):.2f}"
         price_720p_10s_str = f"{round(price_720p_10s, 2):.2f}"
         price_1080p_10s_str = f"{round(price_1080p_10s, 2):.2f}"
-        if is_admin:
+        if is_admin_check:
             return f"💰 <b>Безлимит</b>\n\n📺 <b>Разрешение 720p:</b> {price_720p_5s_str}₽ (5с), {price_720p_10s_str}₽ (10с)\n📺 <b>Разрешение 1080p:</b> {price_1080p_5s_str}₽ (5с), {price_1080p_10s_str}₽ (10с)"
         else:
             return f"💰 <b>От {price_720p_5s_str} ₽</b>\n\n📺 <b>720p:</b> {price_720p_5s_str}₽ (5с), {price_720p_10s_str}₽ (10с)\n📺 <b>1080p:</b> {price_1080p_5s_str}₽ (5с), {price_1080p_10s_str}₽ (10с)"
@@ -1133,6 +1187,7 @@ ADMIN_TEST_OCR = 5
 
 # Broadcast states
 WAITING_BROADCAST_MESSAGE = 6
+WAITING_CURRENCY_RATE = 7
 
 # Admin test OCR state
 ADMIN_TEST_OCR = 5
@@ -1183,6 +1238,7 @@ PAYMENTS_FILE = "payments.json"
 BLOCKED_USERS_FILE = "blocked_users.json"
 FREE_GENERATIONS_FILE = "daily_free_generations.json"  # File to store daily free generations
 PROMOCODES_FILE = "promocodes.json"  # File to store promo codes
+CURRENCY_RATE_FILE = "currency_rate.json"  # File to store USD to RUB exchange rate
 REFERRALS_FILE = "referrals.json"  # File to store referral data
 BROADCASTS_FILE = "broadcasts.json"  # File to store broadcast statistics
 GENERATIONS_HISTORY_FILE = "generations_history.json"  # File to store user generation history
@@ -1272,16 +1328,22 @@ def save_json_file(filename: str, data: dict, use_cache: bool = True):
             _data_cache['cache_timestamps'][cache_key] = current_time
         
         # Batch writes: only save if enough time passed (reduce I/O)
-        if filename in _last_save_time:
+        # For critical files (balances, generations history), save immediately always
+        critical_files = [BALANCES_FILE, GENERATIONS_HISTORY_FILE]
+        is_critical = filename in critical_files
+        
+        if not is_critical and filename in _last_save_time:
             time_since_last_save = current_time - _last_save_time[filename]
-            # For critical files (balances), save immediately
-            # For others, batch every 2 seconds max
-            if filename not in [BALANCES_FILE] and time_since_last_save < 2.0:
+            # For non-critical files, batch every 2 seconds max
+            if time_since_last_save < 2.0:
                 return  # Skip write, will be saved later or by batch save
         
         # Perform actual write
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+            f.flush()  # Force write to disk immediately
+            if hasattr(os, 'fsync'):
+                os.fsync(f.fileno())  # Force sync to disk (Unix/Linux)
         
         _last_save_time[filename] = current_time
     except Exception as e:
@@ -1714,46 +1776,124 @@ def get_broadcast(broadcast_id: int) -> dict:
 def save_generation_to_history(user_id: int, model_id: str, model_name: str, params: dict, result_urls: list, task_id: str, price: float = 0.0, is_free: bool = False):
     """Save generation to user history."""
     import time
-    history = load_json_file(GENERATIONS_HISTORY_FILE, {})
-    user_key = str(user_id)
-    
-    if user_key not in history:
-        history[user_key] = []
-    
-    generation_entry = {
-        'id': len(history[user_key]) + 1,
-        'timestamp': int(time.time()),
-        'model_id': model_id,
-        'model_name': model_name,
-        'params': params.copy(),
-        'result_urls': result_urls.copy(),
-        'task_id': task_id,
-        'price': price,
-        'is_free': is_free
-    }
-    
-    history[user_key].append(generation_entry)
-    
-    # Keep only last 100 generations per user
-    if len(history[user_key]) > 100:
-        history[user_key] = history[user_key][-100:]
-    
-    save_json_file(GENERATIONS_HISTORY_FILE, history)
-    return generation_entry['id']
+    try:
+        history = load_json_file(GENERATIONS_HISTORY_FILE, {})
+        user_key = str(user_id)
+        
+        if user_key not in history:
+            history[user_key] = []
+            logger.info(f"Created new history entry for user {user_id}")
+        
+        generation_entry = {
+            'id': len(history[user_key]) + 1,
+            'timestamp': int(time.time()),
+            'model_id': model_id,
+            'model_name': model_name,
+            'params': params.copy(),
+            'result_urls': result_urls.copy() if result_urls else [],
+            'task_id': task_id,
+            'price': price,
+            'is_free': is_free
+        }
+        
+        history[user_key].append(generation_entry)
+        
+        # Keep only last 100 generations per user
+        if len(history[user_key]) > 100:
+            history[user_key] = history[user_key][-100:]
+        
+        # Force immediate save for generations history (critical data)
+        # Clear last save time to force immediate write
+        if GENERATIONS_HISTORY_FILE in _last_save_time:
+            del _last_save_time[GENERATIONS_HISTORY_FILE]
+        
+        save_json_file(GENERATIONS_HISTORY_FILE, history, use_cache=True)
+        
+        # Verify file was saved and data is correct
+        if os.path.exists(GENERATIONS_HISTORY_FILE):
+            # Reload to verify
+            verify_history = load_json_file(GENERATIONS_HISTORY_FILE, {})
+            if user_key in verify_history and len(verify_history[user_key]) > 0:
+                logger.info(f"✅ Saved generation to history: user_id={user_id}, model_id={model_id}, gen_id={generation_entry['id']}, total_for_user={len(verify_history[user_key])}")
+            else:
+                logger.error(f"❌ History saved but user data not found in file! user_key={user_key}, file_keys={list(verify_history.keys())[:5]}")
+        else:
+            logger.error(f"❌ Failed to save generation history file: {GENERATIONS_HISTORY_FILE} does not exist after save!")
+        
+        return generation_entry['id']
+    except Exception as e:
+        logger.error(f"Error saving generation to history: {e}", exc_info=True)
+        return None
 
 
 def get_user_generations_history(user_id: int, limit: int = 20) -> list:
     """Get user's generation history."""
-    history = load_json_file(GENERATIONS_HISTORY_FILE, {})
-    user_key = str(user_id)
-    
-    if user_key not in history:
+    try:
+        # Check if file exists
+        if not os.path.exists(GENERATIONS_HISTORY_FILE):
+            logger.warning(f"History file {GENERATIONS_HISTORY_FILE} does not exist")
+            return []
+        
+        history = load_json_file(GENERATIONS_HISTORY_FILE, {})
+        if not history:
+            logger.warning(f"History file {GENERATIONS_HISTORY_FILE} is empty")
+            return []
+        
+        # Try both string and integer keys (for compatibility)
+        user_key_str = str(user_id)
+        user_key_int = user_id
+        
+        # Debug: log what we're looking for
+        logger.info(f"Loading history for user_id={user_id}, trying keys: '{user_key_str}' and {user_key_int}, total_users_in_file={len(history)}")
+        
+        # Check both string and integer keys
+        user_history = None
+        if user_key_str in history:
+            user_history = history[user_key_str]
+            logger.info(f"Found history with string key '{user_key_str}': {len(user_history)} generations")
+        elif user_key_int in history:
+            user_history = history[user_key_int]
+            logger.info(f"Found history with integer key {user_key_int}: {len(user_history)} generations")
+            # Migrate to string key for consistency
+            history[user_key_str] = user_history
+            if user_key_int != user_key_str:
+                del history[user_key_int]
+            save_json_file(GENERATIONS_HISTORY_FILE, history, use_cache=True)
+        else:
+            # Try to find by checking all keys
+            all_keys = list(history.keys())
+            logger.info(f"User {user_id} not found in history file. Available keys (first 20): {all_keys[:20]}")
+            
+            # Try to find numeric matches
+            for key in all_keys:
+                try:
+                    if int(key) == user_id:
+                        user_history = history[key]
+                        logger.info(f"Found history with numeric match: key={key}, generations={len(user_history)}")
+                        # Migrate to string key
+                        history[user_key_str] = user_history
+                        if key != user_key_str:
+                            del history[key]
+                        save_json_file(GENERATIONS_HISTORY_FILE, history, use_cache=True)
+                        break
+                except (ValueError, TypeError):
+                    continue
+            
+            if user_history is None:
+                logger.info(f"No history found for user {user_id} after checking all keys")
+                return []
+        
+        if not user_history:
+            logger.info(f"User {user_id} has empty history")
+            return []
+        
+        # Return last N generations, sorted by timestamp (newest first)
+        logger.info(f"Returning {min(limit, len(user_history))} generations for user {user_id} (total: {len(user_history)})")
+        user_history.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
+        return user_history[:limit]
+    except Exception as e:
+        logger.error(f"Error loading user generations history: {e}", exc_info=True)
         return []
-    
-    # Return last N generations, sorted by timestamp (newest first)
-    user_history = history[user_key]
-    user_history.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
-    return user_history[:limit]
 
 
 def get_generation_by_id(user_id: int, generation_id: int) -> dict:
@@ -2532,7 +2672,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f'🆓 <b>БЕСПЛАТНЫЕ ИНСТРУМЕНТЫ:</b>\n'
                 f'• <b>Recraft Remove Background</b> - удаление фона (бесплатно и безлимитно!)\n'
                 f'• <b>Recraft Crisp Upscale</b> - улучшение качества изображений (бесплатно и безлимитно!)\n'
-                f'• <b>Z-Image</b> - генерация изображений ({FREE_GENERATIONS_PER_DAY} раз в день, можно увеличить через приглашения!)\n\n'
+                f'• <b>Z-Image</b> - генерация изображений\n'
+                f'   📊 <b>Бесплатно:</b> <b>{remaining_free}/{FREE_GENERATIONS_PER_DAY}</b> генераций сегодня\n'
+                f'   🎁 <b>Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} бесплатных генераций!</b>\n'
+                f'   🔗 Реферальная ссылка: <code>{referral_link}</code>\n\n'
                 f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
                 f'📊 <b>СТАТИСТИКА:</b>\n'
                 f'• {total_models} топовых нейросетей\n'
@@ -2541,8 +2684,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f'• ⚡ Мгновенная генерация\n\n'
                 f'💰 <b>ЦЕНЫ:</b>\n'
                 f'От 0.62 ₽ за изображение • От 3.86 ₽ за видео\n\n'
-                f'💡 <b>Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} бесплатных генераций Z-Image!</b>\n'
-                f'🔗 <code>{referral_link}</code>\n\n'
                 f'🎯 <b>Выбери формат генерации ниже или начни с бесплатной!</b>'
             )
         else:
@@ -2565,7 +2706,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f'🆓 <b>FREE TOOLS:</b>\n'
                 f'• <b>Recraft Remove Background</b> - remove background (free and unlimited!)\n'
                 f'• <b>Recraft Crisp Upscale</b> - enhance image quality (free and unlimited!)\n'
-                f'• <b>Z-Image</b> - image generation ({FREE_GENERATIONS_PER_DAY} times per day, can be increased by inviting users!)\n\n'
+                f'• <b>Z-Image</b> - image generation\n'
+                f'   📊 <b>Free:</b> <b>{remaining_free}/{FREE_GENERATIONS_PER_DAY}</b> generations today\n'
+                f'   🎁 <b>Invite friend → get +{REFERRAL_BONUS_GENERATIONS} free generations!</b>\n'
+                f'   🔗 Referral link: <code>{referral_link}</code>\n\n'
                 f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
                 f'📊 <b>STATISTICS:</b>\n'
                 f'• {total_models} top AI models\n'
@@ -2574,24 +2718,52 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f'• ⚡ Instant generation\n\n'
                 f'💰 <b>PRICING:</b>\n'
                 f'From 0.62 ₽ per image • From 3.86 ₽ per video\n\n'
-                f'💡 <b>Invite a friend → get +{REFERRAL_BONUS_GENERATIONS} free Z-Image generations!</b>\n'
-                f'🔗 <code>{referral_link}</code>\n\n'
                 f'🎯 <b>Choose generation format below or start with free!</b>'
             )
     
     # Common keyboard for both admin and regular users
     keyboard = []
     
-    # Free generation button (ALWAYS prominent - biggest button)
-    if remaining_free > 0:
-        if user_lang == 'ru':
-            button_text = f"🎁 ГЕНЕРИРОВАТЬ БЕСПЛАТНО ({remaining_free} осталось)"
+    # Free generation button (ALWAYS show with remaining count)
+    # Show button even if remaining_free is 0, but disable it or show message
+    if user_lang == 'ru':
+        if remaining_free > 0:
+            button_text = f"🎁 ГЕНЕРИРОВАТЬ БЕСПЛАТНО ({remaining_free}/{FREE_GENERATIONS_PER_DAY} осталось)"
         else:
-            button_text = f"🎁 GENERATE FREE ({remaining_free} left)"
+            button_text = f"🎁 ГЕНЕРИРОВАТЬ БЕСПЛАТНО (0/{FREE_GENERATIONS_PER_DAY} осталось)"
+    else:
+        if remaining_free > 0:
+            button_text = f"🎁 GENERATE FREE ({remaining_free}/{FREE_GENERATIONS_PER_DAY} left)"
+        else:
+            button_text = f"🎁 GENERATE FREE (0/{FREE_GENERATIONS_PER_DAY} left)"
+    
+    keyboard.append([
+        InlineKeyboardButton(button_text, callback_data="select_model:z-image")
+    ])
+    
+    # Add referral button right after free generation button (always visible)
+    if user_lang == 'ru':
         keyboard.append([
-            InlineKeyboardButton(button_text, callback_data="select_model:z-image")
+            InlineKeyboardButton(f"🎁 Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} бесплатных!", callback_data="referral_info")
         ])
-        keyboard.append([])  # Empty row for spacing
+    else:
+        keyboard.append([
+            InlineKeyboardButton(f"🎁 Invite friend → get +{REFERRAL_BONUS_GENERATIONS} free!", callback_data="referral_info")
+        ])
+    
+    keyboard.append([])  # Empty row for spacing
+    
+    # Add free tools button (always visible, prominent)
+    if user_lang == 'ru':
+        keyboard.append([
+            InlineKeyboardButton("🆓 БЕСПЛАТНЫЕ ИНСТРУМЕНТЫ", callback_data="free_tools")
+        ])
+    else:
+        keyboard.append([
+            InlineKeyboardButton("🆓 FREE TOOLS", callback_data="free_tools")
+        ])
+    
+    keyboard.append([])  # Empty row for spacing
     
     # Generation types buttons (compact, 2 per row)
     # Find text-to-image type and add it after free generation button
@@ -2647,6 +2819,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard.append([])  # Empty row for spacing
     
     keyboard.extend(gen_type_rows)
+    
+    # Add free tools button (always visible, prominent)
+    keyboard.append([])  # Empty row for spacing
+    if user_lang == 'ru':
+        keyboard.append([
+            InlineKeyboardButton("🆓 БЕСПЛАТНЫЕ ИНСТРУМЕНТЫ", callback_data="free_tools")
+        ])
+    else:
+        keyboard.append([
+            InlineKeyboardButton("🆓 FREE TOOLS", callback_data="free_tools")
+        ])
     
     # Add "All Models" button to show all models directly
     keyboard.append([])  # Empty row for spacing
@@ -2810,6 +2993,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id
         data = query.data
         
+        logger.info(f"Button callback received: user_id={user_id}, data='{data}'")
+        
         if not data:
             logger.error("No data in callback_query")
             try:
@@ -2953,7 +3138,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             f'🆓 <b>FREE TOOLS:</b>\n'
                             f'• <b>Recraft Remove Background</b> - remove background (free and unlimited!)\n'
                             f'• <b>Recraft Crisp Upscale</b> - enhance image quality (free and unlimited!)\n'
-                            f'• <b>Z-Image</b> - image generation ({FREE_GENERATIONS_PER_DAY} times per day, can be increased by inviting users!)\n\n'
+                            f'• <b>Z-Image</b> - image generation\n'
+                            f'   📊 <b>Free:</b> <b>{remaining_free}/{FREE_GENERATIONS_PER_DAY}</b> generations today\n'
+                            f'   🎁 <b>Invite friend → get +{REFERRAL_BONUS_GENERATIONS} free generations!</b>\n'
+                            f'   🔗 Referral link: <code>{referral_link}</code>\n\n'
                             f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
                             f'📊 <b>STATISTICS:</b>\n'
                             f'• {total_models} top AI models\n'
@@ -2971,11 +3159,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 keyboard = []
                 
                 # Free generation button (ALWAYS prominent - biggest button)
-                if remaining_free > 0:
-                    if user_lang == 'ru':
-                        button_text = f"🎁 ГЕНЕРИРОВАТЬ БЕСПЛАТНО ({remaining_free} осталось)"
-                    else:
-                        button_text = f"🎁 GENERATE FREE ({remaining_free} left)"
+                # Always show free generation button with count
+                if user_lang == 'ru':
+                    button_text = f"🎁 ГЕНЕРИРОВАТЬ БЕСПЛАТНО ({remaining_free}/{FREE_GENERATIONS_PER_DAY} осталось)"
+                else:
+                    button_text = f"🎁 GENERATE FREE ({remaining_free}/{FREE_GENERATIONS_PER_DAY} left)"
                     keyboard.append([
                         InlineKeyboardButton(button_text, callback_data="select_model:z-image")
                     ])
@@ -3285,9 +3473,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )])
                 
                 keyboard.append([
-                    InlineKeyboardButton("💰 Баланс", callback_data="check_balance")
-                ])
-                keyboard.append([
                     InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")
                 ])
                 keyboard.append([
@@ -3359,8 +3544,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )])
                 
                 keyboard.append([
-                    InlineKeyboardButton("📋 Все модели", callback_data="all_models"),
-                    InlineKeyboardButton("💰 Баланс", callback_data="check_balance")
+                    InlineKeyboardButton("📋 Все модели", callback_data="all_models")
                 ])
                 keyboard.append([
                     InlineKeyboardButton("📊 Статистика", callback_data="admin_stats"),
@@ -3424,9 +3608,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     callback_data=f"category:{category}"
                 )])
             
-            keyboard.append([
-                InlineKeyboardButton("💰 Баланс", callback_data="check_balance")
-            ])
             keyboard.append([
                 InlineKeyboardButton("📊 Статистика", callback_data="admin_stats"),
                 InlineKeyboardButton("⚙️ Настройки", callback_data="admin_settings")
@@ -3553,7 +3734,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 # Free generation button (ALWAYS prominent - biggest button)
                 if remaining_free > 0:
                     keyboard.append([
-                        InlineKeyboardButton(f"🎁 ГЕНЕРИРОВАТЬ БЕСПЛАТНО ({remaining_free} осталось)", callback_data="select_model:z-image")
+                        InlineKeyboardButton(f"🎁 ГЕНЕРИРОВАТЬ БЕСПЛАТНО ({remaining_free}/{FREE_GENERATIONS_PER_DAY} осталось)", callback_data="select_model:z-image")
                     ])
                     keyboard.append([])  # Empty row for spacing
                 
@@ -3582,6 +3763,17 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             )])
                 
                 keyboard.extend(gen_type_rows)
+                
+                # Add free tools button (always visible, prominent)
+                keyboard.append([])  # Empty row for spacing
+                if user_lang == 'ru':
+                    keyboard.append([
+                        InlineKeyboardButton("🆓 БЕСПЛАТНЫЕ ИНСТРУМЕНТЫ", callback_data="free_tools")
+                    ])
+                else:
+                    keyboard.append([
+                        InlineKeyboardButton("🆓 FREE TOOLS", callback_data="free_tools")
+                    ])
                 
                 # Add "Claim Gift" button for users who haven't claimed yet (not just new users)
                 if not has_claimed_gift(user_id):
@@ -3781,7 +3973,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Start with prompt parameter first
             if 'prompt' in input_params:
                 # Check if model supports image input (image_input or image_urls)
-                has_image_input = 'image_input' in input_params or 'image_urls' in input_params
+                # BUT: z-image does NOT support image input (text-to-image only)
+                model_id = session.get('model_id', '')
+                has_image_input = (model_id != "z-image" and 
+                                 ('image_input' in input_params or 'image_urls' in input_params))
                 
                 prompt_text = (
                     f"{model_info_text}"
@@ -4049,10 +4244,27 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard = []
             
             # Free generation button if available and this is text-to-image
-            if remaining_free > 0 and gen_type == "text-to-image":
+            # Always show button with count, even if 0
+            if gen_type == "text-to-image":
+                user_lang = get_user_language(user_id)
+                if user_lang == 'ru':
+                    button_text = f"🎁 Генерировать бесплатно ({remaining_free}/{FREE_GENERATIONS_PER_DAY} осталось)"
+                else:
+                    button_text = f"🎁 Generate free ({remaining_free}/{FREE_GENERATIONS_PER_DAY} left)"
                 keyboard.append([
-                    InlineKeyboardButton(f"🎁 Генерировать бесплатно ({remaining_free} осталось)", callback_data="select_model:z-image")
+                    InlineKeyboardButton(button_text, callback_data="select_model:z-image")
                 ])
+                
+                # Add referral button
+                if user_lang == 'ru':
+                    keyboard.append([
+                        InlineKeyboardButton(f"🎁 Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} бесплатных!", callback_data="referral_info")
+                    ])
+                else:
+                    keyboard.append([
+                        InlineKeyboardButton(f"🎁 Invite friend → get +{REFERRAL_BONUS_GENERATIONS} free!", callback_data="referral_info")
+                    ])
+                
                 keyboard.append([])  # Empty row
             
             # Show models in compact format with prices (2 per row)
@@ -4069,8 +4281,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 elif model_id in ["seedream/4.5-text-to-image", "seedream/4.5-edit"]:
                     default_params = {"quality": "basic"}
                 
-                min_price = calculate_price_rub(model_id, default_params, is_admin)
-                price_text = get_model_price_text(model_id, default_params, is_admin, user_id)
+                # IMPORTANT: Use get_is_admin() if user_id is available to respect admin_user_mode
+                is_admin_check = get_is_admin(user_id) if user_id is not None else is_admin
+                min_price = calculate_price_rub(model_id, default_params, is_admin_check, user_id)
+                price_text = get_model_price_text(model_id, default_params, is_admin_check, user_id)
                 
                 # Extract price number from price_text for compact display
                 import re
@@ -4157,7 +4371,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     logger.error(f"Error sending new message in gen_type: {e2}", exc_info=True)
                     await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
             
-            return ConversationHandler.END
+            # IMPORTANT: Return SELECTING_MODEL state so that select_model: buttons work
+            # If we return END, the buttons won't be clickable
+            return SELECTING_MODEL
         
         if data.startswith("category:"):
             category = data.split(":", 1)[1]
@@ -4180,8 +4396,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 elif model['id'] in ["seedream/4.5-text-to-image", "seedream/4.5-edit"]:
                     default_params = {"quality": "basic"}
                 
-                min_price = calculate_price_rub(model['id'], default_params, is_admin)
-                price_text = get_model_price_text(model['id'], default_params, is_admin, user_id)
+                # IMPORTANT: Use get_is_admin() if user_id is available to respect admin_user_mode
+                is_admin_check = get_is_admin(user_id) if user_id is not None else is_admin
+                min_price = calculate_price_rub(model['id'], default_params, is_admin_check, user_id)
+                price_text = get_model_price_text(model['id'], default_params, is_admin_check, user_id)
                 
                 # Extract price number from price_text for compact display
                 import re
@@ -4272,12 +4490,131 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return SELECTING_MODEL
         
+        if data == "free_tools":
+            # Answer callback immediately
+            try:
+                await query.answer()
+            except Exception as e:
+                logger.error(f"Error answering callback for free_tools: {e}")
+                pass
+            
+            logger.info(f"User {user_id} clicked 'free_tools' button")
+            
+            # Get free tools (models with price = 0)
+            free_models = []
+            for model in KIE_MODELS:
+                model_id = model.get('id')
+                # Check if model is free (price = 0)
+                price = calculate_price_rub(model_id, {}, False, user_id)  # Use user price (x2)
+                if price == 0.0:
+                    free_models.append(model)
+            
+            if not free_models:
+                user_lang = get_user_language(user_id)
+                if user_lang == 'ru':
+                    await query.edit_message_text(
+                        "❌ <b>Бесплатные инструменты не найдены</b>\n\n"
+                        "В данный момент нет доступных бесплатных инструментов.",
+                        parse_mode='HTML'
+                    )
+                else:
+                    await query.edit_message_text(
+                        "❌ <b>Free tools not found</b>\n\n"
+                        "No free tools are currently available.",
+                        parse_mode='HTML'
+                    )
+                return ConversationHandler.END
+            
+            user_lang = get_user_language(user_id)
+            if user_lang == 'ru':
+                free_tools_text = (
+                    f"🆓 <b>БЕСПЛАТНЫЕ ИНСТРУМЕНТЫ</b>\n\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"💡 <b>Все инструменты в этом разделе полностью бесплатны!</b>\n\n"
+                    f"🤖 <b>Доступные инструменты ({len(free_models)}):</b>\n\n"
+                    f"💡 <b>Выберите инструмент ниже</b>"
+                )
+            else:
+                free_tools_text = (
+                    f"🆓 <b>FREE TOOLS</b>\n\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"💡 <b>All tools in this section are completely free!</b>\n\n"
+                    f"🤖 <b>Available tools ({len(free_models)}):</b>\n\n"
+                    f"💡 <b>Select a tool below</b>"
+                )
+            
+            # Create keyboard with free models (2 per row)
+            keyboard = []
+            model_rows = []
+            for i, model in enumerate(free_models):
+                model_name = model.get('name', model.get('id', 'Unknown'))
+                model_emoji = model.get('emoji', '🆓')
+                model_id = model.get('id')
+                
+                # Compact button text
+                max_name_length = 25
+                button_text = f"{model_emoji} {model_name}"
+                if len(button_text) > max_name_length:
+                    button_text = f"{model_emoji} {model_name[:max_name_length-4]}..."
+                
+                # Ensure callback_data is not too long
+                callback_data = f"select_model:{model_id}"
+                if len(callback_data.encode('utf-8')) > 64:
+                    logger.error(f"Callback data too long for model {model_id}: {len(callback_data.encode('utf-8'))} bytes")
+                    callback_data = f"sel:{model_id[:50]}"
+                
+                if i % 2 == 0:
+                    # First button in row
+                    model_rows.append([InlineKeyboardButton(
+                        button_text,
+                        callback_data=callback_data
+                    )])
+                else:
+                    # Second button in row
+                    if model_rows:
+                        model_rows[-1].append(InlineKeyboardButton(
+                            button_text,
+                            callback_data=callback_data
+                        ))
+                    else:
+                        model_rows.append([InlineKeyboardButton(
+                            button_text,
+                            callback_data=callback_data
+                        )])
+            
+            keyboard.extend(model_rows)
+            keyboard.append([InlineKeyboardButton("◀️ Назад в меню" if user_lang == 'ru' else "◀️ Back to menu", callback_data="back_to_menu")])
+            
+            try:
+                await query.edit_message_text(
+                    free_tools_text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.error(f"Error editing message in free_tools: {e}", exc_info=True)
+                try:
+                    await query.message.reply_text(
+                        free_tools_text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                except Exception as e2:
+                    logger.error(f"Error sending new message in free_tools: {e2}", exc_info=True)
+                    await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
+            
+            # Return SELECTING_MODEL state so that select_model: buttons work
+            return SELECTING_MODEL
+        
         if data == "show_models" or data == "all_models":
             # Answer callback immediately to show button was pressed
             try:
                 await query.answer()
-            except:
+            except Exception as e:
+                logger.error(f"Error answering callback for show_models/all_models: {e}")
                 pass
+            
+            logger.info(f"User {user_id} clicked 'show_models' or 'all_models' button (data: {data})")
             
             # Show generation types instead of all models with marketing text
             generation_types = get_generation_types()
@@ -4311,12 +4648,28 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             keyboard = []
             
-            # Free generation button if available
-            if remaining_free > 0:
+            # Free generation button - always show with count
+            user_lang = get_user_language(user_id)
+            if user_lang == 'ru':
+                button_text = f"🎁 Генерировать бесплатно ({remaining_free}/{FREE_GENERATIONS_PER_DAY} осталось)"
+            else:
+                button_text = f"🎁 Generate free ({remaining_free}/{FREE_GENERATIONS_PER_DAY} left)"
+            keyboard.append([
+                InlineKeyboardButton(button_text, callback_data="select_model:z-image")
+            ])
+            
+            # Add referral button
+            referral_link = get_user_referral_link(user_id)
+            if user_lang == 'ru':
                 keyboard.append([
-                    InlineKeyboardButton(f"🎁 Генерировать бесплатно ({remaining_free} осталось)", callback_data="select_model:z-image")
+                    InlineKeyboardButton(f"🎁 Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} бесплатных!", callback_data="referral_info")
                 ])
-                keyboard.append([])  # Empty row
+            else:
+                keyboard.append([
+                    InlineKeyboardButton(f"🎁 Invite friend → get +{REFERRAL_BONUS_GENERATIONS} free!", callback_data="referral_info")
+                ])
+            
+            keyboard.append([])  # Empty row
             
             # Generation types buttons (2 per row for compact display)
             # Find text-to-image type and add it after free generation button
@@ -4374,6 +4727,17 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Add other generation types
             keyboard.extend(gen_type_rows)
             
+            # Add free tools button (always visible, prominent)
+            keyboard.append([])  # Empty row for spacing
+            if user_lang == 'ru':
+                keyboard.append([
+                    InlineKeyboardButton("🆓 БЕСПЛАТНЫЕ ИНСТРУМЕНТЫ", callback_data="free_tools")
+                ])
+            else:
+                keyboard.append([
+                    InlineKeyboardButton("🆓 FREE TOOLS", callback_data="free_tools")
+                ])
+            
             # Add button to show all models directly (without grouping by type)
             keyboard.append([])  # Empty row for spacing
             if user_lang == 'ru':
@@ -4399,8 +4763,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Answer callback immediately
             try:
                 await query.answer()
-            except:
+            except Exception as e:
+                logger.error(f"Error answering callback for show_all_models_list: {e}")
                 pass
+            
+            logger.info(f"User {user_id} clicked 'show_all_models_list' button")
             
             # Show all models directly, grouped by category
             user_lang = get_user_language(user_id)
@@ -4429,12 +4796,28 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             keyboard = []
             
-            # Free generation button if available
-            if remaining_free > 0:
+            # Free generation button - always show with count
+            user_lang = get_user_language(user_id)
+            if user_lang == 'ru':
+                button_text = f"🎁 Генерировать бесплатно ({remaining_free}/{FREE_GENERATIONS_PER_DAY} осталось)"
+            else:
+                button_text = f"🎁 Generate free ({remaining_free}/{FREE_GENERATIONS_PER_DAY} left)"
+            keyboard.append([
+                InlineKeyboardButton(button_text, callback_data="select_model:z-image")
+            ])
+            
+            # Add referral button
+            referral_link = get_user_referral_link(user_id)
+            if user_lang == 'ru':
                 keyboard.append([
-                    InlineKeyboardButton(f"🎁 Генерировать бесплатно ({remaining_free} осталось)", callback_data="select_model:z-image")
+                    InlineKeyboardButton(f"🎁 Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} бесплатных!", callback_data="referral_info")
                 ])
-                keyboard.append([])  # Empty row
+            else:
+                keyboard.append([
+                    InlineKeyboardButton(f"🎁 Invite friend → get +{REFERRAL_BONUS_GENERATIONS} free!", callback_data="referral_info")
+                ])
+            
+            keyboard.append([])  # Empty row
             
             # Show models grouped by category
             for category in categories:
@@ -4451,9 +4834,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "Речь в текст": "🎙️"
                 }.get(category, "📁")
                 
-                # Show first few models from each category (2 per row)
+                # Show ALL models from each category (2 per row)
                 category_rows = []
-                for i, model in enumerate(category_models[:6]):  # Show up to 6 models per category
+                for i, model in enumerate(category_models):  # Show ALL models per category
                     model_name = model.get('name', model.get('id', 'Unknown'))
                     model_emoji = model.get('emoji', '🤖')
                     model_id = model.get('id')
@@ -4465,7 +4848,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     elif model_id in ["seedream/4.5-text-to-image", "seedream/4.5-edit"]:
                         default_params = {"quality": "basic"}
                     
-                    price_text = get_model_price_text(model_id, default_params, is_admin, user_id)
+                    # IMPORTANT: Use get_is_admin() if user_id is available to respect admin_user_mode
+                    is_admin_check = get_is_admin(user_id) if user_id is not None else is_admin
+                    price_text = get_model_price_text(model_id, default_params, is_admin_check, user_id)
                     import re
                     price_match = re.search(r'(\d+\.?\d*)\s*₽', price_text)
                     if price_match:
@@ -4477,7 +4862,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     elif "БЕСПЛАТНО" in price_text or "Бесплатно" in price_text:
                         price_display = "беспл."
                     else:
-                        min_price = calculate_price_rub(model_id, default_params, is_admin)
+                        min_price = calculate_price_rub(model_id, default_params, is_admin_check, user_id)
                         price_display = f"{min_price:.2f}₽"
                     
                     button_text = f"{model_emoji} {model_name[:15]}"
@@ -4534,12 +4919,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return SELECTING_MODEL
         
         if data == "add_image":
-            await query.edit_message_text(
-                "📷 <b>Загрузите изображение</b>\n\n"
-                "Отправьте фото, которое хотите использовать как референс или для трансформации.\n"
-                "Можно загрузить до 8 изображений.",
-                parse_mode='HTML'
-            )
             session = user_sessions.get(user_id, {})
             # Determine which parameter name to use (image_input or image_urls)
             model_info = session.get('model_info', {})
@@ -4549,12 +4928,34 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 image_param_name = 'image_input'
             session['waiting_for'] = image_param_name
-            session[image_param_name] = []  # Initialize as array
+            session['current_param'] = image_param_name
+            if image_param_name not in session:
+                session[image_param_name] = []  # Initialize as array
+            
+            await query.edit_message_text(
+                "📷 <b>Загрузите изображение</b>\n\n"
+                "Отправьте фото, которое хотите использовать как референс или для трансформации.\n"
+                "Можно загрузить до 8 изображений.",
+                parse_mode='HTML'
+            )
+            await query.answer()
             return INPUTTING_PARAMS
         
         if data == "image_done":
             session = user_sessions.get(user_id, {})
-            image_param_name = session.get('waiting_for', 'image_input')
+            waiting_for = session.get('waiting_for', 'image_input')
+            # Normalize: if waiting_for is 'image', use the actual parameter name from properties
+            if waiting_for == 'image':
+                properties = session.get('properties', {})
+                if 'image_input' in properties:
+                    image_param_name = 'image_input'
+                elif 'image_urls' in properties:
+                    image_param_name = 'image_urls'
+                else:
+                    image_param_name = 'image_input'  # Default fallback
+            else:
+                image_param_name = waiting_for
+            
             if image_param_name in session and session[image_param_name]:
                 session['params'][image_param_name] = session[image_param_name]
                 await query.edit_message_text(
@@ -5153,7 +5554,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     balance_result = await kie.get_credits()
                     if balance_result.get('ok'):
                         balance = balance_result.get('credits', 0)
-                        balance_rub = balance * CREDIT_TO_USD * USD_TO_RUB
+                        balance_rub = balance * CREDIT_TO_USD * get_usd_to_rub_rate()
                         balance_rub_str = f"{balance_rub:.2f}".rstrip('0').rstrip('.')
                         kie_balance_info = f"💰 <b>Баланс KIE API:</b> {balance_rub_str} ₽ ({balance} кредитов)\n\n"
                 except Exception as e:
@@ -5253,11 +5654,18 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f'💡 Для изменения настроек поддержки отредактируйте файл .env'
             )
             
+            # Get current exchange rate
+            current_rate = get_usd_to_rub_rate()
+            
             keyboard = [
+                [InlineKeyboardButton("💱 Установить курс валюты", callback_data="admin_set_currency_rate")],
                 [InlineKeyboardButton("📢 Рассылка", callback_data="admin_broadcast")],
                 [InlineKeyboardButton("🎁 Промокоды", callback_data="admin_promocodes")],
                 [InlineKeyboardButton("◀️ Назад", callback_data="back_to_menu")]
             ]
+            
+            settings_text += f'\n💱 <b>Курс валюты:</b>\n'
+            settings_text += f'1 USD = {current_rate:.2f} RUB\n\n'
             
             await query.edit_message_text(
                 settings_text,
@@ -5411,6 +5819,40 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 'waiting_for': 'broadcast_message'
             }
             return WAITING_BROADCAST_MESSAGE
+        
+        if data == "admin_set_currency_rate":
+            # Check admin access
+            if user_id != ADMIN_ID:
+                await query.answer("Эта функция доступна только администратору.")
+                return ConversationHandler.END
+            
+            # Get current exchange rate
+            current_rate = get_usd_to_rub_rate()
+            
+            currency_text = (
+                f'💱 <b>Установка курса валюты</b>\n\n'
+                f'📊 <b>Текущий курс:</b>\n'
+                f'1 USD = {current_rate:.2f} RUB\n\n'
+                f'💡 <b>Инструкция:</b>\n'
+                f'Отправьте новое значение курса валюты.\n'
+                f'Например: <code>100</code> (означает 1 USD = 100 RUB)\n\n'
+                f'⚠️ <b>Важно:</b>\n'
+                f'• Курс должен быть положительным числом\n'
+                f'• Используйте точку для десятичных значений (например: 95.5)\n'
+                f'• После установки все цены будут пересчитаны автоматически\n\n'
+                f'Для отмены нажмите /cancel'
+            )
+            
+            await query.edit_message_text(
+                currency_text,
+                parse_mode='HTML'
+            )
+            
+            # Set session to wait for currency rate
+            user_sessions[user_id] = {
+                'waiting_for': 'currency_rate'
+            }
+            return WAITING_CURRENCY_RATE
         
         if data == "admin_broadcast_stats":
             # Check admin access
@@ -5849,12 +6291,61 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Show user's generation history
             history = get_user_generations_history(user_id, limit=20)
             
+            # Debug: log history loading
+            logger.info(f"Loading history for user {user_id}: found {len(history)} generations")
+            
+            # Check if file exists and show helpful message
             if not history:
-                keyboard = [[InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]]
+                user_lang = get_user_language(user_id)
+                file_exists = os.path.exists(GENERATIONS_HISTORY_FILE)
+                
+                # Load full history to check if there are any users at all
+                full_history = {}
+                total_users = 0
+                if file_exists:
+                    try:
+                        full_history = load_json_file(GENERATIONS_HISTORY_FILE, {})
+                        total_users = len(full_history)
+                        logger.info(f"History file exists with {total_users} users. Checking for user {user_id}...")
+                    except Exception as e:
+                        logger.error(f"Error loading history file: {e}", exc_info=True)
+                
+                if user_lang == 'ru':
+                    message_text = (
+                        "📚 <b>Мои генерации</b>\n\n"
+                        "❌ У вас пока нет сохраненных генераций.\n\n"
+                    )
+                    if not file_exists:
+                        message_text += (
+                            "⚠️ <b>Примечание:</b> Файл истории не найден.\n"
+                            "Это может произойти после обновления бота.\n\n"
+                        )
+                    elif total_users > 0:
+                        message_text += (
+                            f"ℹ️ В системе сохранено {total_users} пользователей с историей.\n"
+                            f"Если вы создавали генерации ранее, они должны отображаться.\n\n"
+                        )
+                    message_text += "💡 После создания контента все ваши работы будут сохранены здесь."
+                else:
+                    message_text = (
+                        "📚 <b>My Generations</b>\n\n"
+                        "❌ You don't have any saved generations yet.\n\n"
+                    )
+                    if not file_exists:
+                        message_text += (
+                            "⚠️ <b>Note:</b> History file not found.\n"
+                            "This may happen after bot update.\n\n"
+                        )
+                    elif total_users > 0:
+                        message_text += (
+                            f"ℹ️ System has {total_users} users with history saved.\n"
+                            f"If you created generations before, they should appear.\n\n"
+                        )
+                    message_text += "💡 After creating content, all your works will be saved here."
+                
+                keyboard = [[InlineKeyboardButton("◀️ Назад в меню" if user_lang == 'ru' else "◀️ Back to menu", callback_data="back_to_menu")]]
                 await query.edit_message_text(
-                    "📚 <b>Мои генерации</b>\n\n"
-                    "❌ У вас пока нет сохраненных генераций.\n\n"
-                    "💡 После создания контента все ваши работы будут сохранены здесь.",
+                    message_text,
                     reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
                 )
@@ -6118,6 +6609,47 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.edit_message_text(f"❌ Модель {model_id} не найдена.")
                 return
             
+            # Check if model is coming soon
+            if model_info.get('coming_soon', False):
+                user_lang = get_user_language(user_id)
+                model_name = model_info.get('name', model_id)
+                model_emoji = model_info.get('emoji', '🤖')
+                model_description = model_info.get('description', '')
+                
+                if user_lang == 'ru':
+                    coming_soon_text = (
+                        f"⏳ <b>{model_emoji} {model_name}</b>\n\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        f"📝 <b>Описание:</b>\n"
+                        f"{model_description}\n\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        f"🚀 <b>СКОРО ПОЯВИТСЯ!</b>\n\n"
+                        f"Эта модель находится в разработке и скоро будет доступна в боте.\n"
+                        f"Следите за обновлениями! 🔔"
+                    )
+                else:
+                    coming_soon_text = (
+                        f"⏳ <b>{model_emoji} {model_name}</b>\n\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        f"📝 <b>Description:</b>\n"
+                        f"{model_description}\n\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        f"🚀 <b>COMING SOON!</b>\n\n"
+                        f"This model is under development and will be available soon.\n"
+                        f"Stay tuned for updates! 🔔"
+                    )
+                
+                keyboard = [
+                    [InlineKeyboardButton("◀️ Назад к моделям" if user_lang == 'ru' else "◀️ Back to models", callback_data="back_to_menu")]
+                ]
+                
+                await query.edit_message_text(
+                    coming_soon_text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+                return ConversationHandler.END
+            
             # Check user balance and calculate available generations
             user_balance = get_user_balance(user_id)
             is_admin = get_is_admin(user_id)
@@ -6131,8 +6663,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif model_id == "topaz/image-upscale":
                 default_params = {"upscale_factor": "1"}  # Cheapest option (1x = ≤2K)
             
-            min_price = calculate_price_rub(model_id, default_params, is_admin)
-            price_text = get_model_price_text(model_id, default_params, is_admin, user_id)
+            # IMPORTANT: Use get_is_admin() if user_id is available to respect admin_user_mode
+            is_admin_check = get_is_admin(user_id) if user_id is not None else is_admin
+            min_price = calculate_price_rub(model_id, default_params, is_admin_check, user_id)
+            price_text = get_model_price_text(model_id, default_params, is_admin_check, user_id)
             
             # Check for free generations for z-image
             is_free_available = is_free_generation_available(user_id, model_id)
@@ -6380,6 +6914,25 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 user_sessions[user_id]['current_param'] = 'audio_url'
                 user_sessions[user_id]['waiting_for'] = 'audio_url'
+            elif ('image_input' in input_params and input_params['image_input'].get('required', False)) or \
+                 ('image_urls' in input_params and input_params['image_urls'].get('required', False)):
+                # If no prompt but image_input or image_urls is required, start with image
+                param_name = 'image_input' if 'image_input' in input_params else 'image_urls'
+                keyboard = [
+                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")],
+                    [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
+                ]
+                await query.edit_message_text(
+                    f"{model_info_text}"
+                    f"📷 <b>Шаг 1: Загрузите изображение</b>\n\n"
+                    f"Отправьте изображение для обработки.\n\n"
+                    f"💡 Поддерживаемые форматы: PNG, JPG, JPEG, WEBP\n"
+                    f"📏 Максимальный размер: 10 MB",
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+                user_sessions[user_id]['current_param'] = param_name
+                user_sessions[user_id]['waiting_for'] = param_name  # Use actual parameter name
             else:
                 # If no prompt, start with first required parameter
                 await start_next_parameter(update, context, user_id)
@@ -6420,9 +6973,69 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
             if param_name in properties and param_name not in all_params_to_check:
                 all_params_to_check.append(param_name)
     
-    # Find next unset parameter (skip prompt, image_input, image_urls, audio_url, audio_input as they're handled separately)
+    # Handle mask_input and reference_image_input as special image parameters (before regular parameters)
+    for special_param in ['mask_input', 'reference_image_input']:
+        if special_param in all_params_to_check and special_param not in params:
+            param_info = properties.get(special_param, {})
+            if param_info.get('required', False):
+                # This is a required image parameter
+                session['current_param'] = special_param
+                session['waiting_for'] = special_param
+                if special_param not in session:
+                    session[special_param] = []  # Initialize as array
+                
+                # Get chat_id from update
+                chat_id = None
+                if hasattr(update, 'effective_chat') and update.effective_chat:
+                    chat_id = update.effective_chat.id
+                elif hasattr(update, 'message') and update.message:
+                    chat_id = update.message.chat_id
+                elif hasattr(update, 'callback_query') and update.callback_query and update.callback_query.message:
+                    chat_id = update.callback_query.message.chat_id
+                
+                if not chat_id:
+                    logger.error("Cannot determine chat_id in start_next_parameter")
+                    return None
+                
+                param_desc = param_info.get('description', '')
+                if special_param == 'mask_input':
+                    prompt_text = (
+                        f"🎭 <b>Шаг: Загрузите маску</b>\n\n"
+                        f"{param_desc}\n\n"
+                        f"💡 Поддерживаемые форматы: PNG, JPG, JPEG, WEBP\n"
+                        f"📏 Максимальный размер: 10 MB"
+                    )
+                elif special_param == 'reference_image_input':
+                    prompt_text = (
+                        f"🖼️ <b>Шаг: Загрузите референсное изображение</b>\n\n"
+                        f"{param_desc}\n\n"
+                        f"💡 Поддерживаемые форматы: PNG, JPG, JPEG, WEBP\n"
+                        f"📏 Максимальный размер: 10 MB"
+                    )
+                else:
+                    prompt_text = (
+                        f"📷 <b>Шаг: Загрузите изображение</b>\n\n"
+                        f"{param_desc}\n\n"
+                        f"💡 Поддерживаемые форматы: PNG, JPG, JPEG, WEBP\n"
+                        f"📏 Максимальный размер: 10 MB"
+                    )
+                
+                keyboard = [
+                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")],
+                    [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
+                ]
+                
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=prompt_text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+                return INPUTTING_PARAMS
+    
+    # Find next unset parameter (skip prompt, image_input, image_urls, audio_url, audio_input, mask_input, reference_image_input as they're handled separately)
     for param_name in all_params_to_check:
-        if param_name in ['prompt', 'image_input', 'image_urls', 'audio_url', 'audio_input']:
+        if param_name in ['prompt', 'image_input', 'image_urls', 'audio_url', 'audio_input', 'mask_input', 'reference_image_input']:
             continue
         if param_name not in params:
             param_info = properties.get(param_name, {})
@@ -6816,6 +7429,76 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
         asyncio.create_task(send_broadcast(context, broadcast_id, all_users, message_text, message_photo))
         
         return ConversationHandler.END
+    
+    # Handle currency rate input
+    if user_id == ADMIN_ID and user_id in user_sessions and user_sessions[user_id].get('waiting_for') == 'currency_rate':
+        if not update.message.text:
+            await update.message.reply_text(
+                "❌ <b>Ошибка</b>\n\n"
+                "Отправьте числовое значение курса валюты.\n\n"
+                "Например: <code>100</code> или <code>95.5</code>\n\n"
+                "Или нажмите /cancel для отмены.",
+                parse_mode='HTML'
+            )
+            return WAITING_CURRENCY_RATE
+        
+        try:
+            # Parse currency rate
+            rate_text = update.message.text.strip().replace(',', '.')
+            new_rate = float(rate_text)
+            
+            if new_rate <= 0:
+                await update.message.reply_text(
+                    "❌ <b>Ошибка</b>\n\n"
+                    "Курс валюты должен быть положительным числом.\n\n"
+                    "Попробуйте еще раз или нажмите /cancel для отмены.",
+                    parse_mode='HTML'
+                )
+                return WAITING_CURRENCY_RATE
+            
+            # Save currency rate
+            if set_usd_to_rub_rate(new_rate):
+                old_rate = get_usd_to_rub_rate()
+                await update.message.reply_text(
+                    f"✅ <b>Курс валюты обновлен!</b>\n\n"
+                    f"📊 <b>Новый курс:</b>\n"
+                    f"1 USD = {new_rate:.2f} RUB\n\n"
+                    f"💡 Все цены будут пересчитаны автоматически при следующем просмотре.",
+                    parse_mode='HTML'
+                )
+                
+                # Clear waiting state
+                if user_id in user_sessions:
+                    del user_sessions[user_id]['waiting_for']
+                
+                return ConversationHandler.END
+            else:
+                await update.message.reply_text(
+                    "❌ <b>Ошибка сохранения курса</b>\n\n"
+                    "Не удалось сохранить курс валюты.\n\n"
+                    "Попробуйте еще раз или нажмите /cancel для отмены.",
+                    parse_mode='HTML'
+                )
+                return WAITING_CURRENCY_RATE
+                
+        except ValueError:
+            await update.message.reply_text(
+                "❌ <b>Ошибка</b>\n\n"
+                "Неверный формат числа.\n\n"
+                "Отправьте числовое значение, например: <code>100</code> или <code>95.5</code>\n\n"
+                "Или нажмите /cancel для отмены.",
+                parse_mode='HTML'
+            )
+            return WAITING_CURRENCY_RATE
+        except Exception as e:
+            logger.error(f"Error setting currency rate: {e}")
+            await update.message.reply_text(
+                "❌ <b>Ошибка</b>\n\n"
+                f"Произошла ошибка: {str(e)}\n\n"
+                "Попробуйте еще раз или нажмите /cancel для отмены.",
+                parse_mode='HTML'
+            )
+            return WAITING_CURRENCY_RATE
     
     # Handle payment screenshot
     if user_id in user_sessions and user_sessions[user_id].get('waiting_for') == 'payment_screenshot':
@@ -7215,8 +7898,9 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return INPUTTING_PARAMS
     
-    # Handle image input (for image_input or image_urls)
-    waiting_for_image = session.get('waiting_for') in ['image_input', 'image_urls']
+    # Handle image input (for image_input, image_urls, mask_input, reference_image_input or 'image')
+    waiting_for = session.get('waiting_for')
+    waiting_for_image = waiting_for in ['image_input', 'image_urls', 'image', 'mask_input', 'reference_image_input']
     if update.message.photo and waiting_for_image:
         photo = update.message.photo[-1]  # Get largest photo
         file = await context.bot.get_file(photo.file_id)
@@ -7299,7 +7983,18 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # Add to image_input array
             # Determine which parameter name to use
-            image_param_name = session.get('waiting_for', 'image_input')  # image_input or image_urls
+            waiting_for = session.get('waiting_for', 'image_input')
+            # Normalize: if waiting_for is 'image', use the actual parameter name from properties
+            if waiting_for == 'image':
+                properties = session.get('properties', {})
+                if 'image_input' in properties:
+                    image_param_name = 'image_input'
+                elif 'image_urls' in properties:
+                    image_param_name = 'image_urls'
+                else:
+                    image_param_name = 'image_input'  # Default fallback
+            else:
+                image_param_name = waiting_for  # image_input or image_urls
             if image_param_name not in session:
                 session[image_param_name] = []
             session[image_param_name].append(public_url)
@@ -7321,24 +8016,56 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return INPUTTING_PARAMS
         
-        image_param_name = session.get('waiting_for', 'image_input')
-        image_count = len(session[image_param_name])
+        # Determine image parameter name (normalize 'image' to actual param name)
+        waiting_for = session.get('waiting_for', 'image_input')
+        if waiting_for == 'image':
+            properties_check = session.get('properties', {})
+            if 'image_input' in properties_check:
+                image_param_name = 'image_input'
+            elif 'image_urls' in properties_check:
+                image_param_name = 'image_urls'
+            else:
+                image_param_name = 'image_input'  # Default fallback
+        else:
+            image_param_name = waiting_for
         
-        if image_count < 8:
+        image_count = len(session.get(image_param_name, []))
+        
+        # Check if model requires only 1 image (max_items = 1)
+        properties = session.get('properties', {})
+        param_info = properties.get(image_param_name, {})
+        max_items = param_info.get('max_items', 8)  # Default to 8 if not specified
+        
+        # If max_items is 1, immediately move to next parameter
+        if max_items == 1:
+            await update.message.reply_text(
+                f"✅ Изображение загружено!\n\n"
+                f"Продолжаю..."
+            )
+            session['params'][image_param_name] = session[image_param_name]
+            session['waiting_for'] = None
+            # Move to next parameter
+            try:
+                next_param_result = await start_next_parameter(update, context, user_id)
+                if next_param_result:
+                    return next_param_result
+            except Exception as e:
+                logger.error(f"Error after image input: {e}")
+        elif image_count < min(max_items, 8):
             keyboard = [
                 [InlineKeyboardButton("📷 Добавить еще", callback_data="add_image")],
                 [InlineKeyboardButton("✅ Готово", callback_data="image_done")]
             ]
             await update.message.reply_text(
                 f"✅ Изображение {image_count} добавлено!\n\n"
-                f"Загружено: {image_count}/8\n\n"
+                f"Загружено: {image_count}/{max_items}\n\n"
                 f"Добавить еще изображение или продолжить?",
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
         else:
             await update.message.reply_text(
                 f"✅ Изображение {image_count} добавлено!\n\n"
-                f"Достигнут максимум (8 изображений). Продолжаю..."
+                f"Достигнут максимум ({max_items} изображений). Продолжаю..."
             )
             session['params'][image_param_name] = session[image_param_name]
             session['waiting_for'] = None
@@ -7491,7 +8218,16 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # Check if image is required (for image_urls or image_input)
             # IMPORTANT: z-image does NOT support image input (text-to-image only)
-            if session.get('has_image_input') and model_id != "z-image":
+            # Skip image input check for z-image - it's text-to-image only
+            if model_id == "z-image":
+                # z-image is text-to-image only, skip image input step completely
+                session['waiting_for'] = None
+                session['has_image_input'] = False  # Ensure flag is set correctly
+                # Continue to next parameter (aspect_ratio for z-image)
+                await start_next_parameter(update, context, user_id)
+                return INPUTTING_PARAMS
+            
+            if session.get('has_image_input'):
                 image_required = False
                 if 'image_urls' in input_params:
                     image_required = input_params['image_urls'].get('required', False)
@@ -7509,8 +8245,17 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
                 )
+                    # Determine which parameter name to use (image_input or image_urls)
+                    if 'image_urls' in input_params:
+                        image_param_name = 'image_urls'
+                    else:
+                        image_param_name = 'image_input'
+                    session['waiting_for'] = image_param_name
+                    session['current_param'] = image_param_name
+                    return INPUTTING_PARAMS
             else:
                 # Image is optional - show button with skip option
+                # Note: z-image is already handled above (line 7672), so it won't reach here
                 keyboard = [
                     [InlineKeyboardButton("📷 Добавить изображение", callback_data="add_image")],
                     [InlineKeyboardButton("⏭️ Пропустить", callback_data="skip_image")]
@@ -7528,13 +8273,46 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Check if there are more parameters
         required = session.get('required', [])
         params = session.get('params', {})
-        missing = [p for p in required if p not in params and p not in ['prompt', 'image_input', 'image_urls', 'audio_url', 'audio_input']]
+        properties = session.get('properties', {})
+        model_info = session.get('model_info', {})
+        input_params = model_info.get('input_params', {})
+        
+        # Don't exclude image_input/image_urls/audio_url/audio_input from missing if they're required but not yet provided
+        # Only exclude them if they're already in params (uploaded)
+        excluded_params = ['prompt']  # Always exclude prompt as it's already processed
+        # Only exclude image/audio params if they're already set in params
+        if 'image_input' in params or (session.get('image_input') and len(session.get('image_input', [])) > 0):
+            excluded_params.append('image_input')
+        if 'image_urls' in params or (session.get('image_urls') and len(session.get('image_urls', [])) > 0):
+            excluded_params.append('image_urls')
+        if 'mask_input' in params or (session.get('mask_input') and len(session.get('mask_input', [])) > 0):
+            excluded_params.append('mask_input')
+        if 'reference_image_input' in params or (session.get('reference_image_input') and len(session.get('reference_image_input', [])) > 0):
+            excluded_params.append('reference_image_input')
+        if 'audio_url' in params or session.get('audio_url'):
+            excluded_params.append('audio_url')
+        if 'audio_input' in params or session.get('audio_input'):
+            excluded_params.append('audio_input')
+        missing = [p for p in required if p not in params and p not in excluded_params]
+        
+        # Ensure image_input/image_urls/mask_input/reference_image_input are considered missing if required and not in params
+        if 'image_input' in input_params and input_params['image_input'].get('required', False) and 'image_input' not in params:
+            if 'image_input' not in excluded_params:
+                missing.append('image_input')
+        if 'image_urls' in input_params and input_params['image_urls'].get('required', False) and 'image_urls' not in params:
+            if 'image_urls' not in excluded_params:
+                missing.append('image_urls')
+        if 'mask_input' in input_params and input_params['mask_input'].get('required', False) and 'mask_input' not in params:
+            if 'mask_input' not in excluded_params:
+                missing.append('mask_input')
+        if 'reference_image_input' in input_params and input_params['reference_image_input'].get('required', False) and 'reference_image_input' not in params:
+            if 'reference_image_input' not in excluded_params:
+                missing.append('reference_image_input')
         
         # For elevenlabs/speech-to-text, also check optional parameters
         model_id = session.get('model_id', '')
         if model_id == "elevenlabs/speech-to-text":
             # Check optional parameters that haven't been set yet
-            properties = session.get('properties', {})
             for opt_param in ['language_code', 'tag_audio_events', 'diarize']:
                 if opt_param in properties and opt_param not in params:
                     missing.append(opt_param)
@@ -7626,9 +8404,10 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # Apply default values for parameters that are not set
     input_params = model_info.get('input_params', {})
     for param_name, param_info in input_params.items():
-        if param_name not in params and not param_info.get('required', False):
+        if param_name not in params:
             default_value = param_info.get('default')
             if default_value is not None:
+                # Apply default for both optional and required parameters (if they have default)
                 params[param_name] = default_value
     
     # Convert string boolean values to actual booleans
@@ -7824,27 +8603,41 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             elif isinstance(image_input, str):
                 api_params['image_url'] = image_input
         elif model_id == "ideogram/v3-edit":
-            # Convert image_input and mask_input for ideogram/v3-edit
+            # For ideogram/v3-edit, API expects image_input and mask_input as arrays (not image_url/mask_url)
+            # Keep as arrays, just ensure correct format
             if 'image_input' in api_params:
                 image_input = api_params.pop('image_input')
-                if isinstance(image_input, list) and len(image_input) > 0:
-                    api_params['image_url'] = image_input[0]
-                elif isinstance(image_input, str):
-                    api_params['image_url'] = image_input
+                if isinstance(image_input, str):
+                    # Convert string URL to array
+                    api_params['image_input'] = [image_input]
+                elif isinstance(image_input, list):
+                    # Ensure it's a list (API expects array)
+                    api_params['image_input'] = image_input
+                else:
+                    api_params['image_input'] = image_input if isinstance(image_input, list) else [str(image_input)]
             if 'mask_input' in api_params:
                 mask_input = api_params.pop('mask_input')
-                if isinstance(mask_input, list) and len(mask_input) > 0:
-                    api_params['mask_url'] = mask_input[0]
-                elif isinstance(mask_input, str):
-                    api_params['mask_url'] = mask_input
+                if isinstance(mask_input, str):
+                    # Convert string URL to array
+                    api_params['mask_input'] = [mask_input]
+                elif isinstance(mask_input, list):
+                    # Ensure it's a list (API expects array)
+                    api_params['mask_input'] = mask_input
+                else:
+                    api_params['mask_input'] = mask_input if isinstance(mask_input, list) else [str(mask_input)]
         elif model_id == "ideogram/v3-remix":
-            # Convert image_input to image_url for ideogram/v3-remix
+            # For ideogram/v3-remix, API expects image_input as array (not image_url)
+            # Keep image_input as array, just ensure it's in correct format
             if 'image_input' in api_params:
                 image_input = api_params.pop('image_input')
-                if isinstance(image_input, list) and len(image_input) > 0:
-                    api_params['image_url'] = image_input[0]
-                elif isinstance(image_input, str):
-                    api_params['image_url'] = image_input
+                if isinstance(image_input, str):
+                    # Convert string URL to array
+                    api_params['image_input'] = [image_input]
+                elif isinstance(image_input, list):
+                    # Ensure it's a list (API expects array)
+                    api_params['image_input'] = image_input
+                else:
+                    api_params['image_input'] = image_input if isinstance(image_input, list) else [str(image_input)]
         elif model_id == "bytedance/v1-pro-fast-image-to-video":
             # Convert image_input to image_url for bytedance/v1-pro-fast-image-to-video
             if 'image_input' in api_params:
@@ -7898,19 +8691,31 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 elif isinstance(audio_input, str):
                     api_params['audio_url'] = audio_input
         elif model_id == "qwen/image-to-image" and 'image_input' in api_params:
-            # Convert image_input to image_url for qwen/image-to-image
+            # For qwen/image-to-image, API expects image_input as array (not image_url)
+            # Keep image_input as array, just ensure it's in correct format
             image_input = api_params.pop('image_input')
-            if isinstance(image_input, list) and len(image_input) > 0:
-                api_params['image_url'] = image_input[0]
-            elif isinstance(image_input, str):
-                api_params['image_url'] = image_input
+            if isinstance(image_input, str):
+                # Convert string URL to array
+                api_params['image_input'] = [image_input]
+            elif isinstance(image_input, list):
+                # Ensure it's a list (API expects array)
+                api_params['image_input'] = image_input
+            else:
+                # If it's already set correctly, keep it
+                api_params['image_input'] = image_input if isinstance(image_input, list) else [str(image_input)]
         elif model_id == "qwen/image-edit" and 'image_input' in api_params:
-            # Convert image_input to image_url for qwen/image-edit
+            # For qwen/image-edit, API expects image_input as array (not image_url)
+            # Keep image_input as array, just ensure it's in correct format
             image_input = api_params.pop('image_input')
-            if isinstance(image_input, list) and len(image_input) > 0:
-                api_params['image_url'] = image_input[0]
-            elif isinstance(image_input, str):
-                api_params['image_url'] = image_input
+            if isinstance(image_input, str):
+                # Convert string URL to array
+                api_params['image_input'] = [image_input]
+            elif isinstance(image_input, list):
+                # Ensure it's a list (API expects array)
+                api_params['image_input'] = image_input
+            else:
+                # If it's already set correctly, keep it
+                api_params['image_input'] = image_input if isinstance(image_input, list) else [str(image_input)]
         elif model_id == "google/nano-banana-edit" and 'image_input' in api_params:
             # Convert image_input to image_urls for google/nano-banana-edit
             image_input = api_params.pop('image_input')
@@ -7919,25 +8724,38 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             elif isinstance(image_input, str):
                 api_params['image_urls'] = [image_input]
         elif model_id == "ideogram/character-edit":
-            # Convert image_input, mask_input, and reference_image_input for ideogram/character-edit
+            # For ideogram/character-edit, API expects image_input, mask_input, and reference_image_input as arrays
+            # Keep as arrays, just ensure correct format
             if 'image_input' in api_params:
                 image_input = api_params.pop('image_input')
-                if isinstance(image_input, list) and len(image_input) > 0:
-                    api_params['image_url'] = image_input[0]
-                elif isinstance(image_input, str):
-                    api_params['image_url'] = image_input
+                if isinstance(image_input, str):
+                    # Convert string URL to array
+                    api_params['image_input'] = [image_input]
+                elif isinstance(image_input, list):
+                    # Ensure it's a list (API expects array)
+                    api_params['image_input'] = image_input
+                else:
+                    api_params['image_input'] = image_input if isinstance(image_input, list) else [str(image_input)]
             if 'mask_input' in api_params:
                 mask_input = api_params.pop('mask_input')
-                if isinstance(mask_input, list) and len(mask_input) > 0:
-                    api_params['mask_url'] = mask_input[0]
-                elif isinstance(mask_input, str):
-                    api_params['mask_url'] = mask_input
+                if isinstance(mask_input, str):
+                    # Convert string URL to array
+                    api_params['mask_input'] = [mask_input]
+                elif isinstance(mask_input, list):
+                    # Ensure it's a list (API expects array)
+                    api_params['mask_input'] = mask_input
+                else:
+                    api_params['mask_input'] = mask_input if isinstance(mask_input, list) else [str(mask_input)]
             if 'reference_image_input' in api_params:
                 reference_image_input = api_params.pop('reference_image_input')
-                if isinstance(reference_image_input, list):
-                    api_params['reference_image_urls'] = reference_image_input
-                elif isinstance(reference_image_input, str):
-                    api_params['reference_image_urls'] = [reference_image_input]
+                if isinstance(reference_image_input, str):
+                    # Convert string URL to array
+                    api_params['reference_image_input'] = [reference_image_input]
+                elif isinstance(reference_image_input, list):
+                    # Ensure it's a list (API expects array)
+                    api_params['reference_image_input'] = reference_image_input
+                else:
+                    api_params['reference_image_input'] = reference_image_input if isinstance(reference_image_input, list) else [str(reference_image_input)]
         elif model_id == "ideogram/character-remix":
             # Convert image_input and reference_image_input for ideogram/character-remix
             if 'image_input' in api_params:
@@ -14160,6 +14978,273 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 if 'seed' in api_params:
                     del api_params['seed']
         
+        # For ideogram/v3-edit, validate and normalize parameters
+        # NOTE: Price depends on rendering_speed (TURBO: 3.5, BALANCED: 7, QUALITY: 10 credits, see calculate_price_rub())
+        if model_id == "ideogram/v3-edit":
+            # Validate prompt (required, string, max 5000 characters)
+            if 'prompt' not in api_params or not api_params.get('prompt'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> обязателен для модели ideogram/v3-edit.\n\n"
+                    "Укажите текстовое описание для заполнения замаскированной части изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter prompt for ideogram/v3-edit")
+                return ConversationHandler.END
+            
+            prompt = str(api_params['prompt']).strip()
+            if not prompt:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> не может быть пустым.\n\n"
+                    "Укажите текстовое описание для заполнения замаскированной части изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty prompt for ideogram/v3-edit")
+                return ConversationHandler.END
+            
+            if len(prompt) > 5000:
+                error_msg = (
+                    f"❌ <b>Ошибка валидации</b>\n\n"
+                    f"Параметр prompt слишком длинный (макс. 5000 символов).\n"
+                    f"Текущая длина: {len(prompt)} символов."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"prompt too long for ideogram/v3-edit: {len(prompt)} characters")
+                return ConversationHandler.END
+            api_params['prompt'] = prompt
+            
+            # Validate image_input (required, array with 1 URL)
+            # Note: API expects image_input as array, not image_url
+            if 'image_input' not in api_params or not api_params.get('image_input'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_input</b> обязателен для модели ideogram/v3-edit.\n\n"
+                    "Загрузите изображение для редактирования."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter image_input for ideogram/v3-edit")
+                return ConversationHandler.END
+            
+            # Ensure image_input is a list
+            image_input = api_params['image_input']
+            if not isinstance(image_input, list):
+                image_input = [image_input] if image_input else []
+            
+            if not image_input or len(image_input) == 0:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_input</b> не может быть пустым.\n\n"
+                    "Загрузите изображение для редактирования."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty image_input for ideogram/v3-edit")
+                return ConversationHandler.END
+            
+            if len(image_input) > 1:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_input</b> должен содержать только 1 изображение.\n\n"
+                    f"Получено: {len(image_input)} изображений"
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Too many images in image_input for ideogram/v3-edit: {len(image_input)}")
+                return ConversationHandler.END
+            
+            # Validate URL format
+            image_url = str(image_input[0]).strip()
+            if not image_url:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "URL изображения не может быть пустым.\n\n"
+                    "Загрузите изображение или укажите валидный URL."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty image URL in image_input for ideogram/v3-edit")
+                return ConversationHandler.END
+            
+            if not (image_url.startswith('http://') or image_url.startswith('https://')):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "URL изображения должен быть валидным (начинаться с http:// или https://).\n\n"
+                    f"Получено: {image_url[:50]}..."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Invalid image URL format for ideogram/v3-edit: {image_url[:50]}")
+                return ConversationHandler.END
+            
+            # Set image_input as array with validated URL
+            api_params['image_input'] = [image_url]
+            
+            # Validate mask_input (required, array with 1 URL)
+            # Note: API expects mask_input as array, not mask_url
+            if 'mask_input' not in api_params or not api_params.get('mask_input'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>mask_input</b> обязателен для модели ideogram/v3-edit.\n\n"
+                    "Загрузите маску для инпейнтинга изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter mask_input for ideogram/v3-edit")
+                return ConversationHandler.END
+            
+            # Ensure mask_input is a list
+            mask_input = api_params['mask_input']
+            if not isinstance(mask_input, list):
+                mask_input = [mask_input] if mask_input else []
+            
+            if not mask_input or len(mask_input) == 0:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>mask_input</b> не может быть пустым.\n\n"
+                    "Загрузите маску для инпейнтинга изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty mask_input for ideogram/v3-edit")
+                return ConversationHandler.END
+            
+            if len(mask_input) > 1:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>mask_input</b> должен содержать только 1 маску.\n\n"
+                    f"Получено: {len(mask_input)} масок"
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Too many masks in mask_input for ideogram/v3-edit: {len(mask_input)}")
+                return ConversationHandler.END
+            
+            # Validate URL format
+            mask_url = str(mask_input[0]).strip()
+            if not mask_url:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "URL маски не может быть пустым.\n\n"
+                    "Загрузите маску или укажите валидный URL."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty mask URL in mask_input for ideogram/v3-edit")
+                return ConversationHandler.END
+            
+            if not (mask_url.startswith('http://') or mask_url.startswith('https://')):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "URL маски должен быть валидным (начинаться с http:// или https://).\n\n"
+                    f"Получено: {mask_url[:50]}..."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Invalid mask URL format for ideogram/v3-edit: {mask_url[:50]}")
+                return ConversationHandler.END
+            
+            # Set mask_input as array with validated URL
+            api_params['mask_input'] = [mask_url]
+            
+            # Validate and normalize rendering_speed (optional, enum: "TURBO", "BALANCED", "QUALITY")
+            # Normalize to uppercase
+            if 'rendering_speed' in api_params and api_params.get('rendering_speed'):
+                rendering_speed = str(api_params['rendering_speed']).strip().upper()
+                
+                if rendering_speed not in ["TURBO", "BALANCED", "QUALITY"]:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>rendering_speed</b> должен быть одним из: <b>TURBO</b>, <b>BALANCED</b> или <b>QUALITY</b>.\n\n"
+                        f"Получено: {api_params['rendering_speed']}"
+                    )
+                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    logger.error(f"Invalid rendering_speed for ideogram/v3-edit: {api_params['rendering_speed']}")
+                    return ConversationHandler.END
+                api_params['rendering_speed'] = rendering_speed
+            else:
+                # Default rendering_speed if not provided
+                api_params['rendering_speed'] = "BALANCED"
+            
+            # Validate and normalize expand_prompt (optional, boolean)
+            if 'expand_prompt' in api_params and api_params.get('expand_prompt') is not None:
+                expand_prompt = api_params['expand_prompt']
+                # Convert string "true"/"false" to boolean if needed
+                if isinstance(expand_prompt, str):
+                    expand_prompt = expand_prompt.strip().lower()
+                    if expand_prompt in ['true', '1', 'yes']:
+                        expand_prompt = True
+                    elif expand_prompt in ['false', '0', 'no']:
+                        expand_prompt = False
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>expand_prompt</b> должен быть boolean (true/false).\n\n"
+                            f"Получено: {api_params['expand_prompt']}"
+                        )
+                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        logger.error(f"Invalid expand_prompt for ideogram/v3-edit: {api_params['expand_prompt']}")
+                        return ConversationHandler.END
+                elif not isinstance(expand_prompt, bool):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>expand_prompt</b> должен быть boolean (true/false).\n\n"
+                        f"Получено: {type(expand_prompt).__name__}"
+                    )
+                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    logger.error(f"Invalid expand_prompt type for ideogram/v3-edit: {type(expand_prompt)}")
+                    return ConversationHandler.END
+                api_params['expand_prompt'] = expand_prompt
+            else:
+                # Default expand_prompt if not provided
+                api_params['expand_prompt'] = True
+            
+            # Validate and normalize num_images (optional, enum: "1", "2", "3", "4")
+            if 'num_images' in api_params and api_params.get('num_images'):
+                num_images = str(api_params['num_images']).strip()
+                if num_images not in ["1", "2", "3", "4"]:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>num_images</b> должен быть одним из: <b>1</b>, <b>2</b>, <b>3</b> или <b>4</b>.\n\n"
+                        f"Получено: {api_params['num_images']}"
+                    )
+                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    logger.error(f"Invalid num_images for ideogram/v3-edit: {api_params['num_images']}")
+                    return ConversationHandler.END
+                api_params['num_images'] = num_images
+            else:
+                # Default num_images if not provided
+                api_params['num_images'] = "1"
+            
+            # Validate and normalize seed (optional, integer)
+            if 'seed' in api_params and api_params.get('seed') is not None:
+                seed = api_params['seed']
+                try:
+                    # Convert to integer
+                    if isinstance(seed, str):
+                        seed_str = seed.strip()
+                        # Remove any decimal part if present
+                        if '.' in seed_str:
+                            seed_str = seed_str.split('.')[0]
+                        seed = int(seed_str)
+                    elif isinstance(seed, (int, float)):
+                        seed = int(seed)
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>seed</b> должен быть числом (целым).\n\n"
+                            f"Получено: {type(seed).__name__}"
+                        )
+                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        logger.error(f"Invalid seed type for ideogram/v3-edit: {type(seed)}")
+                        return ConversationHandler.END
+                    
+                    api_params['seed'] = seed
+                except (ValueError, TypeError):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>seed</b> должен быть числом (целым).\n\n"
+                        f"Получено: {api_params.get('seed')}"
+                    )
+                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    logger.error(f"Invalid seed for ideogram/v3-edit: {api_params.get('seed')}")
+                    return ConversationHandler.END
+            else:
+                # Remove seed if it's empty or None
+                if 'seed' in api_params:
+                    del api_params['seed']
+        
         # For bytedance/seedream, validate and normalize parameters
         # NOTE: Price is fixed at 3.5 credits per image (see calculate_price_rub())
         if model_id == "bytedance/seedream":
@@ -14632,40 +15717,67 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 return ConversationHandler.END
             api_params['prompt'] = prompt
             
-            # Validate image_url (required, URL)
-            # Note: image_url should already be converted from image_input in the conversion block above
-            if 'image_url' not in api_params or not api_params.get('image_url'):
+            # Validate image_input (required, array with 1 URL)
+            # Note: API expects image_input as array, not image_url
+            if 'image_input' not in api_params or not api_params.get('image_input'):
                 error_msg = (
                     "❌ <b>Ошибка валидации</b>\n\n"
-                    "Параметр <b>image_url</b> обязателен для модели qwen/image-to-image.\n\n"
+                    "Параметр <b>image_input</b> обязателен для модели qwen/image-to-image.\n\n"
                     "Загрузите изображение или укажите URL эталонного изображения для генерации."
                 )
                 await query.edit_message_text(error_msg, parse_mode='HTML')
-                logger.error(f"Missing required parameter image_url for qwen/image-to-image")
+                logger.error(f"Missing required parameter image_input for qwen/image-to-image")
                 return ConversationHandler.END
             
-            image_url = str(api_params['image_url']).strip()
-            if not image_url:
+            # Ensure image_input is a list
+            image_input = api_params['image_input']
+            if not isinstance(image_input, list):
+                image_input = [image_input] if image_input else []
+            
+            if not image_input or len(image_input) == 0:
                 error_msg = (
                     "❌ <b>Ошибка валидации</b>\n\n"
-                    "Параметр <b>image_url</b> не может быть пустым.\n\n"
+                    "Параметр <b>image_input</b> не может быть пустым.\n\n"
                     "Загрузите изображение или укажите URL эталонного изображения для генерации."
                 )
                 await query.edit_message_text(error_msg, parse_mode='HTML')
-                logger.error(f"Empty image_url for qwen/image-to-image")
+                logger.error(f"Empty image_input for qwen/image-to-image")
+                return ConversationHandler.END
+            
+            if len(image_input) > 1:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_input</b> должен содержать только 1 изображение.\n\n"
+                    f"Получено: {len(image_input)} изображений"
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Too many images in image_input for qwen/image-to-image: {len(image_input)}")
                 return ConversationHandler.END
             
             # Validate URL format
+            image_url = str(image_input[0]).strip()
+            if not image_url:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "URL изображения не может быть пустым.\n\n"
+                    "Загрузите изображение или укажите валидный URL."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty image URL in image_input for qwen/image-to-image")
+                return ConversationHandler.END
+            
             if not (image_url.startswith('http://') or image_url.startswith('https://')):
                 error_msg = (
                     "❌ <b>Ошибка валидации</b>\n\n"
-                    "Параметр <b>image_url</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
+                    "URL изображения должен быть валидным (начинаться с http:// или https://).\n\n"
                     f"Получено: {image_url[:50]}..."
                 )
                 await query.edit_message_text(error_msg, parse_mode='HTML')
-                logger.error(f"Invalid image_url format for qwen/image-to-image: {image_url[:50]}")
+                logger.error(f"Invalid image URL format for qwen/image-to-image: {image_url[:50]}")
                 return ConversationHandler.END
-            api_params['image_url'] = image_url
+            
+            # Set image_input as array with validated URL
+            api_params['image_input'] = [image_url]
             
             # Validate and normalize strength (optional, number from 0.0 to 1.0)
             # Note: strength can be a float (e.g., 0.8), and may use comma as decimal separator
@@ -14975,40 +16087,67 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 return ConversationHandler.END
             api_params['prompt'] = prompt
             
-            # Validate image_url (required, URL)
-            # Note: image_url should already be converted from image_input in the conversion block above
-            if 'image_url' not in api_params or not api_params.get('image_url'):
+            # Validate image_input (required, array with 1 URL)
+            # Note: API expects image_input as array, not image_url
+            if 'image_input' not in api_params or not api_params.get('image_input'):
                 error_msg = (
                     "❌ <b>Ошибка валидации</b>\n\n"
-                    "Параметр <b>image_url</b> обязателен для модели qwen/image-edit.\n\n"
+                    "Параметр <b>image_input</b> обязателен для модели qwen/image-edit.\n\n"
                     "Загрузите изображение или укажите URL изображения для редактирования."
                 )
                 await query.edit_message_text(error_msg, parse_mode='HTML')
-                logger.error(f"Missing required parameter image_url for qwen/image-edit")
+                logger.error(f"Missing required parameter image_input for qwen/image-edit")
                 return ConversationHandler.END
             
-            image_url = str(api_params['image_url']).strip()
-            if not image_url:
+            # Ensure image_input is a list
+            image_input = api_params['image_input']
+            if not isinstance(image_input, list):
+                image_input = [image_input] if image_input else []
+            
+            if not image_input or len(image_input) == 0:
                 error_msg = (
                     "❌ <b>Ошибка валидации</b>\n\n"
-                    "Параметр <b>image_url</b> не может быть пустым.\n\n"
+                    "Параметр <b>image_input</b> не может быть пустым.\n\n"
                     "Загрузите изображение или укажите URL изображения для редактирования."
                 )
                 await query.edit_message_text(error_msg, parse_mode='HTML')
-                logger.error(f"Empty image_url for qwen/image-edit")
+                logger.error(f"Empty image_input for qwen/image-edit")
+                return ConversationHandler.END
+            
+            if len(image_input) > 1:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_input</b> должен содержать только 1 изображение.\n\n"
+                    f"Получено: {len(image_input)} изображений"
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Too many images in image_input for qwen/image-edit: {len(image_input)}")
                 return ConversationHandler.END
             
             # Validate URL format
+            image_url = str(image_input[0]).strip()
+            if not image_url:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "URL изображения не может быть пустым.\n\n"
+                    "Загрузите изображение или укажите валидный URL."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty image URL in image_input for qwen/image-edit")
+                return ConversationHandler.END
+            
             if not (image_url.startswith('http://') or image_url.startswith('https://')):
                 error_msg = (
                     "❌ <b>Ошибка валидации</b>\n\n"
-                    "Параметр <b>image_url</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
+                    "URL изображения должен быть валидным (начинаться с http:// или https://).\n\n"
                     f"Получено: {image_url[:50]}..."
                 )
                 await query.edit_message_text(error_msg, parse_mode='HTML')
-                logger.error(f"Invalid image_url format for qwen/image-edit: {image_url[:50]}")
+                logger.error(f"Invalid image URL format for qwen/image-edit: {image_url[:50]}")
                 return ConversationHandler.END
-            api_params['image_url'] = image_url
+            
+            # Set image_input as array with validated URL
+            api_params['image_input'] = [image_url]
             
             # Validate and normalize acceleration (optional, enum: "none", "regular", "high")
             # Normalize to lowercase: "none", "regular", "high"
@@ -15367,10 +16506,12 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 return ConversationHandler.END
             api_params['prompt'] = prompt
             
-            # Validate and normalize output_format (optional, enum: "PNG" or "JPEG")
+            # Validate and normalize output_format (optional, enum: "png" or "jpeg")
+            # NOTE: API expects lowercase format ("png", "jpeg"), not uppercase
             if 'output_format' in api_params and api_params.get('output_format'):
                 output_format = str(api_params['output_format']).strip().upper()
                 
+                # Validate uppercase input (PNG/JPEG)
                 if output_format not in ["PNG", "JPEG"]:
                     error_msg = (
                         "❌ <b>Ошибка валидации</b>\n\n"
@@ -15380,7 +16521,9 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     await query.edit_message_text(error_msg, parse_mode='HTML')
                     logger.error(f"Invalid output_format for google/nano-banana: {api_params['output_format']}")
                     return ConversationHandler.END
-                api_params['output_format'] = output_format
+                
+                # Convert to lowercase for API (API expects "png" or "jpeg")
+                api_params['output_format'] = output_format.lower()
             else:
                 # Remove output_format if it's empty or None
                 if 'output_format' in api_params:
@@ -15504,10 +16647,12 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             
             api_params['image_urls'] = validated_urls
             
-            # Validate and normalize output_format (optional, enum: "PNG" or "JPEG")
+            # Validate and normalize output_format (optional, enum: "png" or "jpeg")
+            # NOTE: API expects lowercase format ("png", "jpeg"), not uppercase
             if 'output_format' in api_params and api_params.get('output_format'):
                 output_format = str(api_params['output_format']).strip().upper()
                 
+                # Validate uppercase input (PNG/JPEG)
                 if output_format not in ["PNG", "JPEG"]:
                     error_msg = (
                         "❌ <b>Ошибка валидации</b>\n\n"
@@ -15517,7 +16662,9 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     await query.edit_message_text(error_msg, parse_mode='HTML')
                     logger.error(f"Invalid output_format for google/nano-banana-edit: {api_params['output_format']}")
                     return ConversationHandler.END
-                api_params['output_format'] = output_format
+                
+                # Convert to lowercase for API (API expects "png" or "jpeg")
+                api_params['output_format'] = output_format.lower()
             else:
                 # Remove output_format if it's empty or None
                 if 'output_format' in api_params:
@@ -15569,148 +16716,202 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 return ConversationHandler.END
             api_params['prompt'] = prompt
             
-            # Validate image_url (required, URL)
-            # Note: image_url should already be converted from image_input in the conversion block above
-            if 'image_url' not in api_params or not api_params.get('image_url'):
+            # Validate image_input (required, array with 1 URL)
+            # Note: API expects image_input as array, not image_url
+            if 'image_input' not in api_params or not api_params.get('image_input'):
                 error_msg = (
                     "❌ <b>Ошибка валидации</b>\n\n"
-                    "Параметр <b>image_url</b> обязателен для модели ideogram/character-edit.\n\n"
-                    "Загрузите изображение или укажите URL изображения для редактирования."
+                    "Параметр <b>image_input</b> обязателен для модели ideogram/character-edit.\n\n"
+                    "Загрузите изображение для редактирования."
                 )
                 await query.edit_message_text(error_msg, parse_mode='HTML')
-                logger.error(f"Missing required parameter image_url for ideogram/character-edit")
+                logger.error(f"Missing required parameter image_input for ideogram/character-edit")
                 return ConversationHandler.END
             
-            image_url = str(api_params['image_url']).strip()
+            # Ensure image_input is a list
+            image_input = api_params['image_input']
+            if not isinstance(image_input, list):
+                image_input = [image_input] if image_input else []
+            
+            if not image_input or len(image_input) == 0:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_input</b> не может быть пустым.\n\n"
+                    "Загрузите изображение для редактирования."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty image_input for ideogram/character-edit")
+                return ConversationHandler.END
+            
+            if len(image_input) > 1:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_input</b> должен содержать только 1 изображение.\n\n"
+                    f"Получено: {len(image_input)} изображений"
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Too many images in image_input for ideogram/character-edit: {len(image_input)}")
+                return ConversationHandler.END
+            
+            # Validate URL format
+            image_url = str(image_input[0]).strip()
             if not image_url:
                 error_msg = (
                     "❌ <b>Ошибка валидации</b>\n\n"
-                    "Параметр <b>image_url</b> не может быть пустым.\n\n"
-                    "Загрузите изображение или укажите URL изображения для редактирования."
+                    "URL изображения не может быть пустым.\n\n"
+                    "Загрузите изображение или укажите валидный URL."
                 )
                 await query.edit_message_text(error_msg, parse_mode='HTML')
-                logger.error(f"Empty image_url for ideogram/character-edit")
+                logger.error(f"Empty image URL in image_input for ideogram/character-edit")
                 return ConversationHandler.END
             
-            # Validate URL format
             if not (image_url.startswith('http://') or image_url.startswith('https://')):
                 error_msg = (
                     "❌ <b>Ошибка валидации</b>\n\n"
-                    "Параметр <b>image_url</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
+                    "URL изображения должен быть валидным (начинаться с http:// или https://).\n\n"
                     f"Получено: {image_url[:50]}..."
                 )
                 await query.edit_message_text(error_msg, parse_mode='HTML')
-                logger.error(f"Invalid image_url format for ideogram/character-edit: {image_url[:50]}")
-                return ConversationHandler.END
-            api_params['image_url'] = image_url
-            
-            # Validate mask_url (required, URL)
-            # Note: mask_url should already be converted from mask_input in the conversion block above
-            if 'mask_url' not in api_params or not api_params.get('mask_url'):
-                error_msg = (
-                    "❌ <b>Ошибка валидации</b>\n\n"
-                    "Параметр <b>mask_url</b> обязателен для модели ideogram/character-edit.\n\n"
-                    "Загрузите маску или укажите URL маски для инпейнтинга изображения."
-                )
-                await query.edit_message_text(error_msg, parse_mode='HTML')
-                logger.error(f"Missing required parameter mask_url for ideogram/character-edit")
+                logger.error(f"Invalid image URL format for ideogram/character-edit: {image_url[:50]}")
                 return ConversationHandler.END
             
-            mask_url = str(api_params['mask_url']).strip()
-            if not mask_url:
+            # Set image_input as array with validated URL
+            api_params['image_input'] = [image_url]
+            
+            # Validate mask_input (required, array with 1 URL)
+            # Note: API expects mask_input as array, not mask_url
+            if 'mask_input' not in api_params or not api_params.get('mask_input'):
                 error_msg = (
                     "❌ <b>Ошибка валидации</b>\n\n"
-                    "Параметр <b>mask_url</b> не может быть пустым.\n\n"
-                    "Загрузите маску или укажите URL маски для инпейнтинга изображения."
+                    "Параметр <b>mask_input</b> обязателен для модели ideogram/character-edit.\n\n"
+                    "Загрузите маску для инпейнтинга изображения."
                 )
                 await query.edit_message_text(error_msg, parse_mode='HTML')
-                logger.error(f"Empty mask_url for ideogram/character-edit")
+                logger.error(f"Missing required parameter mask_input for ideogram/character-edit")
+                return ConversationHandler.END
+            
+            # Ensure mask_input is a list
+            mask_input = api_params['mask_input']
+            if not isinstance(mask_input, list):
+                mask_input = [mask_input] if mask_input else []
+            
+            if not mask_input or len(mask_input) == 0:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>mask_input</b> не может быть пустым.\n\n"
+                    "Загрузите маску для инпейнтинга изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty mask_input for ideogram/character-edit")
+                return ConversationHandler.END
+            
+            if len(mask_input) > 1:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>mask_input</b> должен содержать только 1 маску.\n\n"
+                    f"Получено: {len(mask_input)} масок"
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Too many masks in mask_input for ideogram/character-edit: {len(mask_input)}")
                 return ConversationHandler.END
             
             # Validate URL format
+            mask_url = str(mask_input[0]).strip()
+            if not mask_url:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "URL маски не может быть пустым.\n\n"
+                    "Загрузите маску или укажите валидный URL."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty mask URL in mask_input for ideogram/character-edit")
+                return ConversationHandler.END
+            
             if not (mask_url.startswith('http://') or mask_url.startswith('https://')):
                 error_msg = (
                     "❌ <b>Ошибка валидации</b>\n\n"
-                    "Параметр <b>mask_url</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
+                    "URL маски должен быть валидным (начинаться с http:// или https://).\n\n"
                     f"Получено: {mask_url[:50]}..."
                 )
                 await query.edit_message_text(error_msg, parse_mode='HTML')
-                logger.error(f"Invalid mask_url format for ideogram/character-edit: {mask_url[:50]}")
+                logger.error(f"Invalid mask URL format for ideogram/character-edit: {mask_url[:50]}")
                 return ConversationHandler.END
-            api_params['mask_url'] = mask_url
             
-            # Validate reference_image_urls (required, array of URLs, max 1 image supported, max 10MB total)
-            # Note: reference_image_urls should already be converted from reference_image_input in the conversion block above
-            if 'reference_image_urls' not in api_params or not api_params.get('reference_image_urls'):
+            # Set mask_input as array with validated URL
+            api_params['mask_input'] = [mask_url]
+            
+            # Validate reference_image_input (required, array of URLs)
+            # Note: API expects reference_image_input as array, not reference_image_urls
+            if 'reference_image_input' not in api_params or not api_params.get('reference_image_input'):
                 error_msg = (
                     "❌ <b>Ошибка валидации</b>\n\n"
-                    "Параметр <b>reference_image_urls</b> обязателен для модели ideogram/character-edit.\n\n"
+                    "Параметр <b>reference_image_input</b> обязателен для модели ideogram/character-edit.\n\n"
                     "Загрузите изображение(я) для использования в качестве референсов персонажа."
                 )
                 await query.edit_message_text(error_msg, parse_mode='HTML')
-                logger.error(f"Missing required parameter reference_image_urls for ideogram/character-edit")
+                logger.error(f"Missing required parameter reference_image_input for ideogram/character-edit")
                 return ConversationHandler.END
             
-            reference_image_urls = api_params['reference_image_urls']
+            reference_image_input = api_params['reference_image_input']
             
-            # Ensure reference_image_urls is a list
-            if not isinstance(reference_image_urls, list):
+            # Ensure reference_image_input is a list
+            if not isinstance(reference_image_input, list):
                 # Convert single URL to list
-                if isinstance(reference_image_urls, str):
-                    reference_image_urls = [reference_image_urls]
+                if isinstance(reference_image_input, str):
+                    reference_image_input = [reference_image_input]
                 else:
                     error_msg = (
                         f"❌ <b>Ошибка валидации</b>\n\n"
-                        f"Параметр <b>reference_image_urls</b> должен быть массивом URL изображений.\n"
-                        f"Полученный тип: {type(reference_image_urls).__name__}"
+                        f"Параметр <b>reference_image_input</b> должен быть массивом URL изображений.\n"
+                        f"Полученный тип: {type(reference_image_input).__name__}"
                     )
                     await query.edit_message_text(error_msg, parse_mode='HTML')
-                    logger.error(f"Invalid reference_image_urls type for ideogram/character-edit: {type(reference_image_urls)}")
+                    logger.error(f"Invalid reference_image_input type for ideogram/character-edit: {type(reference_image_input)}")
                     return ConversationHandler.END
             
             # Validate that list has at least 1 item
-            if len(reference_image_urls) == 0:
+            if len(reference_image_input) == 0:
                 error_msg = (
                     f"❌ <b>Ошибка валидации</b>\n\n"
-                    f"Параметр <b>reference_image_urls</b> должен содержать хотя бы одно изображение.\n"
+                    f"Параметр <b>reference_image_input</b> должен содержать хотя бы одно изображение.\n"
                     f"Текущее количество: 0."
                 )
                 await query.edit_message_text(error_msg, parse_mode='HTML')
-                logger.error(f"Empty reference_image_urls for ideogram/character-edit")
+                logger.error(f"Empty reference_image_input for ideogram/character-edit")
                 return ConversationHandler.END
             
             # Note: Currently only 1 image is supported, rest will be ignored
             # But we allow multiple URLs in the array (API will ignore extras)
-            if len(reference_image_urls) > 1:
-                logger.warning(f"ideogram/character-edit: Only first image in reference_image_urls will be used, {len(reference_image_urls)} provided")
+            if len(reference_image_input) > 1:
+                logger.warning(f"ideogram/character-edit: Only first image in reference_image_input will be used, {len(reference_image_input)} provided")
             
             # Validate each URL is a string and has valid format
             validated_urls = []
-            for i, url in enumerate(reference_image_urls):
+            for i, url in enumerate(reference_image_input):
                 if not isinstance(url, str) or not url.strip():
                     error_msg = (
                         f"❌ <b>Ошибка валидации</b>\n\n"
-                        f"Все элементы в <b>reference_image_urls</b> должны быть непустыми строками (URL).\n"
+                        f"Все элементы в <b>reference_image_input</b> должны быть непустыми строками (URL).\n"
                         f"Ошибка в элементе {i+1}."
                     )
                     await query.edit_message_text(error_msg, parse_mode='HTML')
-                    logger.error(f"Invalid reference_image_urls[{i}] for ideogram/character-edit: {url}")
+                    logger.error(f"Invalid reference_image_input[{i}] for ideogram/character-edit: {url}")
                     return ConversationHandler.END
                 
                 url = url.strip()
                 if not (url.startswith('http://') or url.startswith('https://')):
                     error_msg = (
                         f"❌ <b>Ошибка валидации</b>\n\n"
-                        f"Все элементы в <b>reference_image_urls</b> должны быть валидными URL (начинаться с http:// или https://).\n"
+                        f"Все элементы в <b>reference_image_input</b> должны быть валидными URL (начинаться с http:// или https://).\n"
                         f"Ошибка в элементе {i+1}: {url[:50]}..."
                     )
                     await query.edit_message_text(error_msg, parse_mode='HTML')
-                    logger.error(f"Invalid reference_image_urls[{i}] format for ideogram/character-edit: {url[:50]}")
+                    logger.error(f"Invalid reference_image_input[{i}] format for ideogram/character-edit: {url[:50]}")
                     return ConversationHandler.END
                 
                 validated_urls.append(url)
             
-            api_params['reference_image_urls'] = validated_urls
+            api_params['reference_image_input'] = validated_urls
             
             # Validate and normalize rendering_speed (optional, enum: "TURBO", "BALANCED", "QUALITY")
             # Normalize to uppercase: "TURBO", "BALANCED", "QUALITY"
@@ -17231,7 +18432,7 @@ async def check_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
             result = await kie.get_credits()
             if result.get('ok'):
                 credits = result.get('credits', 0)
-                credits_rub = credits * CREDIT_TO_USD * USD_TO_RUB
+                credits_rub = credits * CREDIT_TO_USD * get_usd_to_rub_rate()
                 credits_rub_str = f"{credits_rub:.2f}".rstrip('0').rstrip('.')
                 keyboard = [
                     [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
@@ -17572,9 +18773,11 @@ def main():
             CommandHandler('generate', start_generation),
             CommandHandler('models', list_models),
             CallbackQueryHandler(button_callback, pattern='^show_models$'),
+            CallbackQueryHandler(button_callback, pattern='^show_all_models_list$'),
             CallbackQueryHandler(button_callback, pattern='^category:'),
             CallbackQueryHandler(button_callback, pattern='^all_models$'),
             CallbackQueryHandler(button_callback, pattern='^gen_type:'),
+            CallbackQueryHandler(button_callback, pattern='^free_tools$'),
             CallbackQueryHandler(button_callback, pattern='^check_balance$'),
             CallbackQueryHandler(button_callback, pattern='^language_select:'),
             CallbackQueryHandler(button_callback, pattern='^claim_gift$'),
@@ -17583,6 +18786,7 @@ def main():
             CallbackQueryHandler(button_callback, pattern='^select_model:'),
             CallbackQueryHandler(button_callback, pattern='^admin_stats$'),
             CallbackQueryHandler(button_callback, pattern='^admin_settings$'),
+            CallbackQueryHandler(button_callback, pattern='^admin_set_currency_rate$'),
             CallbackQueryHandler(button_callback, pattern='^admin_search$'),
             CallbackQueryHandler(button_callback, pattern='^admin_add$'),
             CallbackQueryHandler(button_callback, pattern='^admin_promocodes$'),
@@ -17610,9 +18814,11 @@ def main():
             SELECTING_MODEL: [
                 CallbackQueryHandler(button_callback, pattern='^select_model:'),
                 CallbackQueryHandler(button_callback, pattern='^show_models$'),
+                CallbackQueryHandler(button_callback, pattern='^show_all_models_list$'),
                 CallbackQueryHandler(button_callback, pattern='^category:'),
                 CallbackQueryHandler(button_callback, pattern='^all_models$'),
                 CallbackQueryHandler(button_callback, pattern='^gen_type:'),
+                CallbackQueryHandler(button_callback, pattern='^free_tools$'),
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
                 CallbackQueryHandler(button_callback, pattern='^check_balance$'),
                 CallbackQueryHandler(button_callback, pattern='^topup_balance$'),
@@ -17828,32 +19034,11 @@ def main():
                 CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
                 CallbackQueryHandler(button_callback, pattern='^check_balance$'),
                 CallbackQueryHandler(button_callback, pattern='^topup_balance$'),
-                CallbackQueryHandler(button_callback, pattern='^topup_amount:'),
-                CallbackQueryHandler(button_callback, pattern='^topup_custom$'),
-                CallbackQueryHandler(button_callback, pattern='^referral_info$'),
-                CallbackQueryHandler(button_callback, pattern='^help_menu$'),
-                CallbackQueryHandler(button_callback, pattern='^support_contact$'),
-                CallbackQueryHandler(button_callback, pattern='^generate_again$'),
-                CallbackQueryHandler(button_callback, pattern='^my_generations$'),
-                CallbackQueryHandler(button_callback, pattern='^gen_view:'),
-                CallbackQueryHandler(button_callback, pattern='^gen_repeat:'),
-                CallbackQueryHandler(button_callback, pattern='^gen_history:'),
-                CallbackQueryHandler(button_callback, pattern='^tutorial_start$'),
-                CallbackQueryHandler(button_callback, pattern='^tutorial_step'),
-                CallbackQueryHandler(button_callback, pattern='^tutorial_complete$'),
-                CallbackQueryHandler(button_callback, pattern='^admin_stats$'),
+            ],
+            WAITING_CURRENCY_RATE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, input_parameters),
+                CallbackQueryHandler(button_callback, pattern='^back_to_menu$'),
                 CallbackQueryHandler(button_callback, pattern='^admin_settings$'),
-                CallbackQueryHandler(button_callback, pattern='^admin_search$'),
-                CallbackQueryHandler(button_callback, pattern='^admin_add$'),
-                CallbackQueryHandler(button_callback, pattern='^admin_promocodes$'),
-                CallbackQueryHandler(button_callback, pattern='^admin_broadcast$'),
-                CallbackQueryHandler(button_callback, pattern='^admin_create_broadcast$'),
-                CallbackQueryHandler(button_callback, pattern='^admin_broadcast_stats$'),
-                CallbackQueryHandler(button_callback, pattern='^admin_test_ocr$'),
-                CallbackQueryHandler(button_callback, pattern='^admin_user_mode$'),
-                CallbackQueryHandler(button_callback, pattern='^admin_back_to_admin$'),
-                CallbackQueryHandler(button_callback, pattern='^select_model:'),
-                CallbackQueryHandler(button_callback, pattern='^gen_type:'),
                 CallbackQueryHandler(button_callback, pattern='^cancel$')
             ]
         },
@@ -18077,6 +19262,11 @@ def main():
     application.add_handler(CommandHandler("unblock_user", admin_unblock_user))
     application.add_handler(CommandHandler("user_balance", admin_user_balance))
     application.add_handler(CommandHandler("add_admin", admin_add_admin))
+    # Add separate handler for show_models and show_all_models_list buttons (works outside ConversationHandler)
+    # This ensures the buttons work from main menu
+    # NOTE: These handlers must be registered BEFORE generation_handler to catch callbacks first
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^show_models$'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^show_all_models_list$'))
     application.add_handler(generation_handler)
     application.add_handler(CommandHandler("models", list_models))
     

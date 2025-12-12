@@ -173,3 +173,4 @@ balance = storage_service.get_user_balance(user_id)
 5. ⏳ Миграция на SQLite (опционально)
 
 
+

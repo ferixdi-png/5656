@@ -2304,12 +2304,49 @@ KIE_MODELS = [
         "description": "Google DeepMind модель для генерации изображений из текста. Быстрая и эффективная генерация с поддержкой различных соотношений сторон.",
         "category": "Фото",
         "emoji": "🍌",
-        "pricing": "Уточняется",
+        "pricing": "4 кредита за изображение (~$0.02)",
         "input_params": {
             "prompt": {
                 "type": "string",
                 "description": "Текстовое описание изображения, которое вы хотите сгенерировать",
                 "required": True
+            },
+            "output_format": {
+                "type": "string",
+                "description": "Формат выходного изображения",
+                "required": False,
+                "default": "PNG",
+                "enum": ["PNG", "JPEG"]
+            },
+            "image_size": {
+                "type": "string",
+                "description": "Соотношение сторон изображения",
+                "required": False,
+                "default": "1:1",
+                "enum": ["1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "5:4", "4:5", "21:9", "auto"]
+            }
+        }
+    },
+    {
+        "id": "google/nano-banana-edit",
+        "name": "Google Nano Banana Edit",
+        "description": "Google DeepMind модель для редактирования изображений. Редактирование изображений на основе текстового описания с поддержкой различных соотношений сторон.",
+        "category": "Фото",
+        "emoji": "✏️",
+        "pricing": "4 кредита за изображение (~$0.02)",
+        "input_params": {
+            "prompt": {
+                "type": "string",
+                "description": "Текстовое описание изменений, которые вы хотите внести в изображение",
+                "required": True
+            },
+            "image_urls": {
+                "type": "array",
+                "description": "Изображение для редактирования (URL после загрузки)",
+                "required": True,
+                "item_type": "string",
+                "min_items": 1,
+                "max_items": 1
             },
             "output_format": {
                 "type": "string",
@@ -2360,6 +2397,263 @@ KIE_MODELS = [
                 "default": False
             }
         }
+    },
+    # Новые модели с сайта KIE.ai (скоро появятся в API)
+    {
+        "id": "grok/imagine",
+        "name": "Grok Imagine",
+        "description": "Grok Imagine - мультимодальная модель генерации изображений и видео от xAI. Преобразует текст или изображения в короткие визуальные выходы с согласованным движением и синхронизированным аудио.",
+        "category": "Изображения",
+        "emoji": "🤖",
+        "pricing": "Скоро появится",
+        "input_params": {
+            "prompt": {
+                "type": "string",
+                "description": "Текстовое описание (скоро появится)",
+                "required": True
+            }
+        },
+        "coming_soon": True
+    },
+    {
+        "id": "openai/4o-image",
+        "name": "OpenAI 4o Image",
+        "description": "GPT-Image-1 (ChatGPT 4o Image) - последняя модель генерации изображений от OpenAI. Понимает текст и визуальный контекст, создает и редактирует изображения с высокой точностью.",
+        "category": "Изображения",
+        "emoji": "🎨",
+        "pricing": "Скоро появится",
+        "input_params": {
+            "prompt": {
+                "type": "string",
+                "description": "Текстовое описание (скоро появится)",
+                "required": True
+            }
+        },
+        "coming_soon": True
+    },
+    {
+        "id": "flux/kontext",
+        "name": "Flux Kontext",
+        "description": "FLUX.1 Kontext API - редактирование изображений с помощью текстовых команд. Профессиональные результаты для e-commerce и маркетинга.",
+        "category": "Изображения",
+        "emoji": "🎭",
+        "pricing": "Скоро появится",
+        "input_params": {
+            "prompt": {
+                "type": "string",
+                "description": "Текстовое описание изменений (скоро появится)",
+                "required": True
+            }
+        },
+        "coming_soon": True
+    },
+    {
+        "id": "google/veo-3",
+        "name": "Google Veo 3",
+        "description": "Google Veo 3 - следующее поколение AI модели генерации видео от Google DeepMind. Поддерживает text-to-video и image-to-video с кинематографическим качеством.",
+        "category": "Видео",
+        "emoji": "🎬",
+        "pricing": "Скоро появится",
+        "input_params": {
+            "prompt": {
+                "type": "string",
+                "description": "Текстовое описание видео (скоро появится)",
+                "required": True
+            }
+        },
+        "coming_soon": True
+    },
+    {
+        "id": "google/veo-3.1",
+        "name": "Google Veo 3.1",
+        "description": "Google Veo 3.1 - обновленная AI модель генерации видео с реалистичным движением, расширенной длительностью клипов и синхронизированным аудио в нативном 1080p.",
+        "category": "Видео",
+        "emoji": "🎥",
+        "pricing": "Скоро появится",
+        "input_params": {
+            "prompt": {
+                "type": "string",
+                "description": "Текстовое описание видео (скоро появится)",
+                "required": True
+            }
+        },
+        "coming_soon": True
+    },
+    {
+        "id": "sora-2-pro-storyboard",
+        "name": "Sora 2 Pro Storyboard",
+        "description": "OpenAI Sora 2 Pro Storyboard - продвинутая AI модель для структурированной генерации видео, поддерживающая многосценовые последовательности и визуальную согласованность до 25 секунд.",
+        "category": "Видео",
+        "emoji": "📽️",
+        "pricing": "Скоро появится",
+        "input_params": {
+            "prompt": {
+                "type": "string",
+                "description": "Текстовое описание видео (скоро появится)",
+                "required": True
+            }
+        },
+        "coming_soon": True
+    },
+    {
+        "id": "kling/v2-5-turbo",
+        "name": "Kling 2.5 Turbo",
+        "description": "Kling 2.5 Turbo - последняя AI модель генерации видео от Kuaishou Kling для text-to-video и image-to-video. Улучшенное следование промптам, плавное движение и реалистичная физика.",
+        "category": "Видео",
+        "emoji": "⚡",
+        "pricing": "Скоро появится",
+        "input_params": {
+            "prompt": {
+                "type": "string",
+                "description": "Текстовое описание видео (скоро появится)",
+                "required": True
+            }
+        },
+        "coming_soon": True
+    },
+    {
+        "id": "hailuo/2.3",
+        "name": "Hailuo 2.3",
+        "description": "Hailuo 2.3 - высококачественная AI модель генерации видео от MiniMax для создания реалистичного движения, выразительных персонажей и кинематографических визуалов.",
+        "category": "Видео",
+        "emoji": "🎞️",
+        "pricing": "Скоро появится",
+        "input_params": {
+            "prompt": {
+                "type": "string",
+                "description": "Текстовое описание видео (скоро появится)",
+                "required": True
+            }
+        },
+        "coming_soon": True
+    },
+    {
+        "id": "infinitalk/from-audio",
+        "name": "Infinitalk API-AI lip-sync",
+        "description": "InfiniteTalk API - продвинутый AI генератор синхронизации губ от MeiGen-AI. Преобразует изображения или текст с аудио в естественные говорящие аватары с точной синхронизацией губ.",
+        "category": "Видео",
+        "emoji": "👄",
+        "pricing": "Скоро появится",
+        "input_params": {
+            "prompt": {
+                "type": "string",
+                "description": "Текстовое описание (скоро появится)",
+                "required": True
+            }
+        },
+        "coming_soon": True
+    },
+    {
+        "id": "elevenlabs/audio-isolation",
+        "name": "Elevenlabs Audio Isolation",
+        "description": "ElevenLabs Audio Isolation API использует AI для удаления фонового шума, музыки и помех, сохраняя четкую естественную речь. Идеально для подкастов, интервью и профессиональных записей.",
+        "category": "Аудио",
+        "emoji": "🎧",
+        "pricing": "Скоро появится",
+        "input_params": {
+            "audio_url": {
+                "type": "string",
+                "description": "URL аудиофайла (скоро появится)",
+                "required": True
+            }
+        },
+        "coming_soon": True
+    },
+    {
+        "id": "elevenlabs/sound-effect",
+        "name": "Elevenlabs Sound Effect",
+        "description": "Elevenlabs Sound Effect V2 API - обновленная версия модели звуковых эффектов, поддерживающая клипы 20+ секунд, бесшовное зацикливание и 48 кГц аудио.",
+        "category": "Аудио",
+        "emoji": "🔊",
+        "pricing": "Скоро появится",
+        "input_params": {
+            "prompt": {
+                "type": "string",
+                "description": "Текстовое описание звукового эффекта (скоро появится)",
+                "required": True
+            }
+        },
+        "coming_soon": True
+    },
+    {
+        "id": "elevenlabs/text-to-speech",
+        "name": "Elevenlabs Text to Speech",
+        "description": "ElevenLabs Text to Speech API - человеческий голос для вашего контента. Доступен через Kie.ai для подкастов, приложений и многого другого.",
+        "category": "Аудио",
+        "emoji": "🗣️",
+        "pricing": "Скоро появится",
+        "input_params": {
+            "text": {
+                "type": "string",
+                "description": "Текст для преобразования в речь (скоро появится)",
+                "required": True
+            }
+        },
+        "coming_soon": True
+    },
+    {
+        "id": "google/nanobanana-gemini-2.5-flash",
+        "name": "Google NanoBanana-Gemini 2.5 Flash",
+        "description": "Gemini 3 Image Preview (Nano Banana) - продвинутая AI модель, превосходящая в генерации и редактировании изображений на основе естественного языка. Создает гиперреалистичные, физически осознанные визуалы.",
+        "category": "Изображения",
+        "emoji": "🍌",
+        "pricing": "Скоро появится",
+        "input_params": {
+            "prompt": {
+                "type": "string",
+                "description": "Текстовое описание изображения (скоро появится)",
+                "required": True
+            }
+        },
+        "coming_soon": True
+    },
+    {
+        "id": "runway/gen-4",
+        "name": "Runway Video Generation",
+        "description": "Runway API на базе архитектуры Gen-4 от Runway AI. Преобразует идеи в потрясающие видео с помощью Runway Gen 4 Turbo API и Runway Aleph API.",
+        "category": "Видео",
+        "emoji": "🎬",
+        "pricing": "Скоро появится",
+        "input_params": {
+            "prompt": {
+                "type": "string",
+                "description": "Текстовое описание видео (скоро появится)",
+                "required": True
+            }
+        },
+        "coming_soon": True
+    },
+    {
+        "id": "suno/v5",
+        "name": "Suno API",
+        "description": "Kie AI Music API - AI модель генерации музыки, преобразующая текстовые промпты в полные вокальные и инструментальные треки с естественной динамикой. Поддерживает последнюю модель V5.",
+        "category": "Аудио",
+        "emoji": "🎵",
+        "pricing": "Скоро появится",
+        "input_params": {
+            "prompt": {
+                "type": "string",
+                "description": "Текстовое описание музыки (скоро появится)",
+                "required": True
+            }
+        },
+        "coming_soon": True
+    },
+    {
+        "id": "midjourney/api",
+        "name": "Midjourney API",
+        "description": "AI API от Kie.ai для генерации изображений и видео. Поддерживает text-to-image, image-to-image, image-to-video и upscaling с высоким качеством.",
+        "category": "Изображения",
+        "emoji": "🎨",
+        "pricing": "Скоро появится",
+        "input_params": {
+            "prompt": {
+                "type": "string",
+                "description": "Текстовое описание (скоро появится)",
+                "required": True
+            }
+        },
+        "coming_soon": True
     }
 ]
 
@@ -2391,12 +2685,12 @@ GENERATION_TYPES = {
     "text-to-video": {
         "name": "🎬 Текст в видео",
         "description": "Создавайте видео из текстового описания",
-        "models": ["sora-2-text-to-video", "kling-2.6/text-to-video", "kling/v2-5-turbo-text-to-video-pro", "wan/2-5-text-to-video", "hailuo/02-text-to-video-pro", "hailuo/02-text-to-video-standard", "kling/v2-1-master-text-to-video", "wan/2-2-a14b-text-to-video-turbo"]
+        "models": ["sora-2-text-to-video", "kling-2.6/text-to-video", "kling/v2-5-turbo-text-to-video-pro", "wan/2-5-text-to-video", "hailuo/02-text-to-video-pro", "hailuo/02-text-to-video-standard", "kling/v2-1-master-text-to-video", "wan/2-2-a14b-text-to-video-turbo", "grok/imagine", "google/veo-3", "google/veo-3.1", "sora-2-pro-storyboard", "kling/v2-5-turbo", "hailuo/2.3", "runway/gen-4"]
     },
     "image-to-video": {
         "name": "📸 Фото в видео",
         "description": "Превращайте изображения в динамичные видео",
-        "models": ["kling-2.6/image-to-video", "kling/v2-5-turbo-image-to-video-pro", "wan/2-5-image-to-video", "hailuo/02-image-to-video-pro", "hailuo/02-image-to-video-standard", "bytedance/v1-pro-fast-image-to-video", "kling/v2-1-master-image-to-video", "kling/v2-1-standard", "kling/v2-1-pro", "wan/2-2-a14b-image-to-video-turbo"]
+        "models": ["kling-2.6/image-to-video", "kling/v2-5-turbo-image-to-video-pro", "wan/2-5-image-to-video", "hailuo/02-image-to-video-pro", "hailuo/02-image-to-video-standard", "bytedance/v1-pro-fast-image-to-video", "kling/v2-1-master-image-to-video", "kling/v2-1-standard", "kling/v2-1-pro", "wan/2-2-a14b-image-to-video-turbo", "grok/imagine", "google/veo-3", "google/veo-3.1", "sora-2-pro-storyboard", "kling/v2-5-turbo", "hailuo/2.3", "runway/gen-4"]
     },
     "video-editing": {
         "name": "✂️ Редактирование видео",
@@ -2406,23 +2700,23 @@ GENERATION_TYPES = {
     "speech-to-video": {
         "name": "🎙️ Речь в видео",
         "description": "Создание видео из речи и аудио",
-        "models": ["wan/2-2-a14b-speech-to-video-turbo"]
+        "models": ["wan/2-2-a14b-speech-to-video-turbo", "infinitalk/from-audio"]
     },
     "lip-sync": {
         "name": "👄 Синхронизация губ",
         "description": "Синхронизация губ с аудио",
-        "models": ["kling/v1-avatar-standard", "kling/ai-avatar-v1-pro", "wan/2-2-animate-move", "wan/2-2-animate-replace"]
+        "models": ["kling/v1-avatar-standard", "kling/ai-avatar-v1-pro", "wan/2-2-animate-move", "wan/2-2-animate-replace", "infinitalk/from-audio"]
     },
     # Image Generation
     "text-to-image": {
         "name": "✨ Текст в фото",
         "description": "Создавайте изображения из текста",
-        "models": ["z-image", "nano-banana-pro", "google/nano-banana", "seedream/4.5-text-to-image", "flux-2/pro-text-to-image", "flux-2/flex-text-to-image", "bytedance/seedream-v4-text-to-image", "bytedance/seedream", "qwen/text-to-image", "ideogram/v3-text-to-image", "google/imagen4-ultra", "google/imagen4-fast", "google/imagen4"]
+        "models": ["z-image", "nano-banana-pro", "google/nano-banana", "seedream/4.5-text-to-image", "flux-2/pro-text-to-image", "flux-2/flex-text-to-image", "bytedance/seedream-v4-text-to-image", "bytedance/seedream", "qwen/text-to-image", "ideogram/v3-text-to-image", "google/imagen4-ultra", "google/imagen4-fast", "google/imagen4", "grok/imagine", "openai/4o-image", "flux/kontext", "google/nanobanana-gemini-2.5-flash", "midjourney/api"]
     },
     "image-to-image": {
         "name": "🎨 Фото в фото",
         "description": "Трансформация и стилизация изображений",
-        "models": ["seedream/4.5-edit", "flux-2/pro-image-to-image", "flux-2/flex-image-to-image", "nano-banana-pro", "bytedance/seedream-v4-edit", "qwen/image-to-image", "ideogram/v3-remix"]
+        "models": ["seedream/4.5-edit", "flux-2/pro-image-to-image", "flux-2/flex-image-to-image", "nano-banana-pro", "bytedance/seedream-v4-edit", "qwen/image-to-image", "ideogram/v3-remix", "openai/4o-image", "flux/kontext", "google/nanobanana-gemini-2.5-flash", "google/nano-banana-edit", "midjourney/api"]
     },
     "image-editing": {
         "name": "🖼️ Редактирование фото",
@@ -2433,6 +2727,21 @@ GENERATION_TYPES = {
         "name": "🎙️ Речь в текст",
         "description": "Преобразование речи в текст с высокой точностью",
         "models": ["elevenlabs/speech-to-text"]
+    },
+    "text-to-speech": {
+        "name": "🗣️ Текст в речь",
+        "description": "Преобразование текста в естественную речь",
+        "models": ["elevenlabs/text-to-speech"]
+    },
+    "text-to-music": {
+        "name": "🎵 Текст в музыку",
+        "description": "Генерация музыки из текстового описания",
+        "models": ["suno/v5"]
+    },
+    "audio-to-audio": {
+        "name": "🎧 Обработка аудио",
+        "description": "Обработка и улучшение аудио",
+        "models": ["elevenlabs/audio-isolation", "elevenlabs/sound-effect"]
     }
 }
 
