@@ -30,19 +30,22 @@ RUN pip3 install --upgrade pip setuptools wheel --break-system-packages --root-u
 # Copy only necessary application files
 COPY bot_kie.py run_bot.py index.js config.py translations.py kie_models.py kie_client.py knowledge_storage.py ./
 
-# Create empty directories first (code has try/except for imports, so it will work without these)
-RUN mkdir -p ./bot_kie_services ./bot_kie_utils
+# Create directories with empty __init__.py files
+# Code has try/except for imports (line 117-123 in bot_kie.py), so it will work without these modules
+# If you need these modules, ensure bot_kie_services/ and bot_kie_utils/ are committed to git
+RUN mkdir -p ./bot_kie_services ./bot_kie_utils && \
+    echo '"""Empty - modules not available in build context"""' > ./bot_kie_services/__init__.py && \
+    echo '"""Empty - modules not available in build context"""' > ./bot_kie_utils/__init__.py
 
-# Copy bot_kie_services directory
-# CRITICAL: These directories MUST exist in your build context!
-# If using git-based build (Render, etc.), ensure they are committed:
+# NOTE: bot_kie_services and bot_kie_utils are not copied because they don't exist in build context
+# The code will work without them due to try/except in bot_kie.py
+# To enable these modules, commit the directories to git:
 #   git add bot_kie_services/ bot_kie_utils/
-#   git commit -m "Add bot_kie directories"  
+#   git commit -m "Add bot_kie modules"
 #   git push
-COPY bot_kie_services ./bot_kie_services
-
-# Copy bot_kie_utils directory
-COPY bot_kie_utils ./bot_kie_utils
+# Then uncomment the COPY commands below:
+# COPY bot_kie_services ./bot_kie_services
+# COPY bot_kie_utils ./bot_kie_utils
 
 # bot_kie_handlers is empty (handlers are in bot_kie.py), so we skip it
 
