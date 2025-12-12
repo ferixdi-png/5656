@@ -18,7 +18,12 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 COPY package*.json ./
 
 # Install Node.js dependencies (only production)
-RUN npm ci --omit=dev --prefer-offline --no-audit
+# Use npm install if package-lock.json is not available (fallback)
+RUN if [ -f package-lock.json ]; then \
+        npm ci --omit=dev --prefer-offline --no-audit; \
+    else \
+        npm install --omit=dev --no-audit --prefer-offline; \
+    fi
 
 # Copy Python requirements
 COPY requirements.txt ./
