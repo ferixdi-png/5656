@@ -30,14 +30,13 @@ RUN pip3 install --upgrade pip setuptools wheel --break-system-packages --root-u
 # Copy only necessary application files
 COPY bot_kie.py run_bot.py index.js config.py translations.py kie_models.py kie_client.py knowledge_storage.py ./
 
-# Copy bot_kie_services directory (must exist in build context)
-COPY bot_kie_services/ ./bot_kie_services/
-
-# Copy bot_kie_utils directory (must exist in build context)
-COPY bot_kie_utils/ ./bot_kie_utils/
+# Copy bot_kie_services and bot_kie_utils directories
+# Using separate COPY commands to ensure they are included even if empty
+COPY bot_kie_services ./bot_kie_services
+COPY bot_kie_utils ./bot_kie_utils
 
 # bot_kie_handlers is empty (handlers are in bot_kie.py), so we skip it
-# COPY bot_kie_handlers/ ./bot_kie_handlers/
+# COPY bot_kie_handlers ./bot_kie_handlers
 
 COPY validate_*.py ./
 
