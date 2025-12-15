@@ -1195,11 +1195,23 @@ WAITING_CURRENCY_RATE = 7
 # Admin test OCR state
 ADMIN_TEST_OCR = 5
 
-# Store user sessions
+# Store user sessions - now supports multiple concurrent generations per user
+# Structure: user_sessions[user_id] = {session_data} for input/parameter collection
+# Once task is created, it moves to active_generations
 user_sessions = {}
+
+# Store active generations - allows multiple concurrent generations per user
+# Structure: active_generations[(user_id, task_id)] = {session_data}
+active_generations = {}
+
+# Async lock for active_generations operations
+active_generations_lock = asyncio.Lock()
 
 # Store saved generation data for "generate again" feature
 saved_generations = {}
+
+# Maximum concurrent generations per user (to prevent abuse)
+MAX_CONCURRENT_GENERATIONS_PER_USER = 5
 
 # Global HTTP client for connection pooling (optimized for 1000+ users)
 _http_client: Optional[aiohttp.ClientSession] = None
@@ -2990,6 +3002,91 @@ async def start_generation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return SELECTING_MODEL
 
 
+async def show_payment_screenshot(query, payment: dict, current_index: int, total_count: int):
+    """Show payment screenshot with navigation."""
+    try:
+        import datetime
+        
+        payment_id = payment.get('id', 0)
+        user_id = payment.get('user_id', 0)
+        amount = payment.get('amount', 0)
+        timestamp = payment.get('timestamp', 0)
+        screenshot_file_id = payment.get('screenshot_file_id')
+        
+        if not screenshot_file_id:
+            await query.edit_message_text("❌ Скриншот не найден для этого платежа.")
+            return
+        
+        # Format payment info
+        amount_str = f"{amount:.2f}".rstrip('0').rstrip('.')
+        if timestamp:
+            dt = datetime.datetime.fromtimestamp(timestamp)
+            date_str = dt.strftime("%d.%m.%Y %H:%M")
+        else:
+            date_str = "Неизвестно"
+        
+        user_link = f"tg://user?id={user_id}"
+        caption = (
+            f"📸 <b>Скриншот платежа #{payment_id}</b>\n\n"
+            f"👤 <a href=\"{user_link}\">Пользователь {user_id}</a>\n"
+            f"💵 Сумма: {amount_str} ₽\n"
+            f"📅 Дата: {date_str}\n\n"
+            f"📄 {current_index + 1} из {total_count}"
+        )
+        
+        # Create navigation keyboard
+        keyboard = []
+        nav_row = []
+        
+        if total_count > 1:
+            if current_index > 0:
+                nav_row.append(InlineKeyboardButton("◀️ Предыдущий", callback_data="payment_screenshot_nav:prev"))
+            if current_index < total_count - 1:
+                nav_row.append(InlineKeyboardButton("Следующий ▶️", callback_data="payment_screenshot_nav:next"))
+            
+            if nav_row:
+                keyboard.append(nav_row)
+        
+        keyboard.append([InlineKeyboardButton("📊 Назад к платежам", callback_data="admin_payments_back")])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
+        
+        # Send photo with caption
+        try:
+            # Edit original message first to show we're loading
+            await query.edit_message_text(
+                f"📸 <b>Загрузка скриншота...</b>\n\n"
+                f"Платеж #{payment_id}",
+                parse_mode='HTML'
+            )
+            
+            # Send photo as new message
+            await query.message.reply_photo(
+                photo=screenshot_file_id,
+                caption=caption,
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+        except Exception as e:
+            logger.error(f"Error sending payment screenshot: {e}")
+            await query.edit_message_text(
+                f"❌ <b>Ошибка при загрузке скриншота</b>\n\n"
+                f"Платеж #{payment_id}\n"
+                f"Пользователь: {user_id}\n"
+                f"Сумма: {amount_str} ₽\n"
+                f"Дата: {date_str}\n\n"
+                f"⚠️ Скриншот недоступен (возможно, файл удален или недоступен)",
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+    except Exception as e:
+        logger.error(f"Error in show_payment_screenshot: {e}", exc_info=True)
+        try:
+            await query.edit_message_text("❌ Произошла ошибка при отображении скриншота.")
+        except:
+            pass
+
+
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle button callbacks."""
     try:
@@ -4083,12 +4180,54 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_sessions[user_id]['required'] = [p for p, info in input_params.items() if info.get('required', False)]
             user_sessions[user_id]['current_param'] = None
             
-            # Start with prompt parameter first
+            # Start with prompt parameter first (or image_input/image_urls first for image-to-video models)
+            model_id = session.get('model_id', '')
+            # Special case: nano-banana-pro starts with image_input first
+            if model_id == "nano-banana-pro" and 'image_input' in input_params and input_params['image_input'].get('required', False):
+                # Start with image_input first for nano-banana-pro
+                has_image_input = True
+                image_param_name = 'image_input'
+                await query.edit_message_text(
+                    f"{model_info_text}\n\n"
+                    f"📷 <b>Шаг 1: Загрузите изображение</b>\n\n"
+                    f"Отправьте фото, которое хотите использовать как референс или для трансформации.\n\n"
+                    f"💡 <i>После загрузки изображения вы сможете ввести промпт</i>",
+                    parse_mode='HTML'
+                )
+                user_sessions[user_id]['current_param'] = 'image_input'
+                user_sessions[user_id]['waiting_for'] = 'image_input'
+                if 'image_input' not in user_sessions[user_id]:
+                    user_sessions[user_id]['image_input'] = []  # Initialize as array
+                await query.answer()
+                return INPUTTING_PARAMS
+            
+            # Special case: sora-2-pro-image-to-video starts with image_urls first
+            if model_id == "sora-2-pro-image-to-video" and 'image_urls' in input_params and input_params['image_urls'].get('required', False):
+                # Start with image_urls first for sora-2-pro-image-to-video
+                has_image_input = True
+                image_param_name = 'image_urls'
+                await query.edit_message_text(
+                    f"{model_info_text}\n\n"
+                    f"📷 <b>Шаг 1: Загрузите изображение</b>\n\n"
+                    f"Отправьте фото, которое будет использовано как первый кадр видео.\n\n"
+                    f"💡 <i>После загрузки изображения вы сможете ввести промпт</i>",
+                    parse_mode='HTML'
+                )
+                user_sessions[user_id]['current_param'] = 'image_urls'
+                user_sessions[user_id]['waiting_for'] = 'image_urls'
+                if 'image_urls' not in user_sessions[user_id]:
+                    user_sessions[user_id]['image_urls'] = []  # Initialize as array
+                await query.answer()
+                return INPUTTING_PARAMS
+            
+            # Start with prompt parameter first (default behavior)
             if 'prompt' in input_params:
                 # Check if model supports image input (image_input or image_urls)
                 # BUT: z-image does NOT support image input (text-to-image only)
-                model_id = session.get('model_id', '')
+                # AND: text-to-video models do NOT require image input (text-to-video only)
+                is_text_to_video = "text-to-video" in model_id.lower()
                 has_image_input = (model_id != "z-image" and 
+                                 not is_text_to_video and
                                  ('image_input' in input_params or 'image_urls' in input_params))
                 
                 prompt_text = (
@@ -4129,8 +4268,15 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             f"Опишите изображение, которое хотите сгенерировать:"
                         )
                 
+                # Add keyboard with "Главное меню" and "Отмена" buttons
+                keyboard = [
+                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")],
+                    [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
+                ]
+                
                 await query.edit_message_text(
                     prompt_text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
                 )
                 user_sessions[user_id]['current_param'] = 'prompt'
@@ -5209,6 +5355,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     return next_param_result
                 else:
                     # All parameters collected
+                    if user_id not in user_sessions:
+                        await query.edit_message_text("❌ Сессия не найдена.")
+                        return ConversationHandler.END
                     session = user_sessions[user_id]
                     model_name = session.get('model_info', {}).get('name', 'Unknown')
                     params = session.get('params', {})
@@ -5781,6 +5930,79 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
                 )
+                return ConversationHandler.END
+            
+            # Handle payment screenshots viewing
+            if data == "view_payment_screenshots":
+                await query.answer()
+                
+                # Get all payments with screenshots
+                payments = get_all_payments()
+                payments_with_screenshots = [p for p in payments if p.get('screenshot_file_id')]
+                
+                if not payments_with_screenshots:
+                    await query.edit_message_text(
+                        "📸 <b>Скриншоты платежей</b>\n\n"
+                        "Нет платежей со скриншотами.",
+                        parse_mode='HTML'
+                    )
+                    return ConversationHandler.END
+                
+                # Show first payment screenshot
+                first_payment = payments_with_screenshots[0]
+                payment_index = 0
+                
+                # Store current index in context for navigation
+                context.user_data['payment_screenshot_index'] = 0
+                context.user_data['payment_screenshots_list'] = [p.get('id') for p in payments_with_screenshots]
+                
+                await show_payment_screenshot(query, first_payment, payment_index, len(payments_with_screenshots))
+                return ConversationHandler.END
+            
+            # Handle navigation between payment screenshots
+            if data.startswith("payment_screenshot_nav:"):
+                await query.answer()
+                
+                parts = data.split(":")
+                if len(parts) < 2:
+                    await query.answer("Ошибка навигации", show_alert=True)
+                    return ConversationHandler.END
+                
+                direction = parts[1]  # "prev" or "next"
+                current_index = context.user_data.get('payment_screenshot_index', 0)
+                payment_ids = context.user_data.get('payment_screenshots_list', [])
+                
+                if not payment_ids:
+                    await query.answer("Список платежей не найден", show_alert=True)
+                    return ConversationHandler.END
+                
+                # Navigate
+                if direction == "prev":
+                    current_index = (current_index - 1) % len(payment_ids)
+                elif direction == "next":
+                    current_index = (current_index + 1) % len(payment_ids)
+                else:
+                    await query.answer("Неверное направление", show_alert=True)
+                    return ConversationHandler.END
+                
+                context.user_data['payment_screenshot_index'] = current_index
+                
+                # Get payment by ID
+                payment_id = payment_ids[current_index]
+                payments = get_all_payments()
+                payment = next((p for p in payments if p.get('id') == payment_id), None)
+                
+                if not payment:
+                    await query.answer("Платеж не найден", show_alert=True)
+                    return ConversationHandler.END
+                
+                await show_payment_screenshot(query, payment, current_index, len(payment_ids))
+                return ConversationHandler.END
+            
+            # Handle back to payments list
+            if data == "admin_payments_back":
+                await query.answer()
+                await show_admin_payments(query, context, is_callback=True)
                 return ConversationHandler.END
         
         if data == "admin_settings":
@@ -7162,12 +7384,52 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_sessions[user_id]['required'] = [p for p, info in input_params.items() if info.get('required', False)]
             user_sessions[user_id]['current_param'] = None
             
-            # Start with prompt parameter first (if exists)
+            # Start with prompt parameter first (or image_input/image_urls first for image-to-video models)
+            # Special case: nano-banana-pro starts with image_input first
+            if model_id == "nano-banana-pro" and 'image_input' in input_params and input_params['image_input'].get('required', False):
+                # Start with image_input first for nano-banana-pro
+                has_image_input = True
+                image_param_name = 'image_input'
+                await update.message.reply_text(
+                    f"{model_info_text}\n\n"
+                    f"📷 <b>Шаг 1: Загрузите изображение</b>\n\n"
+                    f"Отправьте фото, которое хотите использовать как референс или для трансформации.\n\n"
+                    f"💡 <i>После загрузки изображения вы сможете ввести промпт</i>",
+                    parse_mode='HTML'
+                )
+                user_sessions[user_id]['current_param'] = 'image_input'
+                user_sessions[user_id]['waiting_for'] = 'image_input'
+                if 'image_input' not in user_sessions[user_id]:
+                    user_sessions[user_id]['image_input'] = []  # Initialize as array
+                return INPUTTING_PARAMS
+            
+            # Special case: sora-2-pro-image-to-video starts with image_urls first
+            if model_id == "sora-2-pro-image-to-video" and 'image_urls' in input_params and input_params['image_urls'].get('required', False):
+                # Start with image_urls first for sora-2-pro-image-to-video
+                has_image_input = True
+                image_param_name = 'image_urls'
+                await update.message.reply_text(
+                    f"{model_info_text}\n\n"
+                    f"📷 <b>Шаг 1: Загрузите изображение</b>\n\n"
+                    f"Отправьте фото, которое будет использовано как первый кадр видео.\n\n"
+                    f"💡 <i>После загрузки изображения вы сможете ввести промпт</i>",
+                    parse_mode='HTML'
+                )
+                user_sessions[user_id]['current_param'] = 'image_urls'
+                user_sessions[user_id]['waiting_for'] = 'image_urls'
+                if 'image_urls' not in user_sessions[user_id]:
+                    user_sessions[user_id]['image_urls'] = []  # Initialize as array
+                return INPUTTING_PARAMS
+            
+            # Start with prompt parameter first (if exists) - default behavior
             # Or start with audio_url if no prompt and audio_url is required
             if 'prompt' in input_params:
                 # Check if model supports image input (image_input or image_urls)
                 # BUT: z-image does NOT support image input (text-to-image only)
+                # AND: text-to-video models do NOT require image input (text-to-video only)
+                is_text_to_video = "text-to-video" in model_id.lower()
                 has_image_input = (model_id != "z-image" and 
+                                 not is_text_to_video and
                                  ('image_input' in input_params or 'image_urls' in input_params))
                 has_audio_input = 'audio_url' in input_params or 'audio_input' in input_params
                 
@@ -7838,6 +8100,10 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id in user_sessions and user_sessions[user_id].get('waiting_for') == 'payment_screenshot':
         if update.message.photo:
             # User sent payment screenshot
+            if user_id not in user_sessions:
+                await update.message.reply_text("❌ Сессия не найдена. Начните заново.")
+                return ConversationHandler.END
+            
             photo = update.message.photo[-1]
             screenshot_file_id = photo.file_id
             
@@ -18275,6 +18541,25 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 logger.warning(f"Could not verify video URL accessibility: {e}")
                 # Don't fail if we can't verify, just log warning
         
+        # Check maximum concurrent generations per user BEFORE creating task
+        # This prevents race conditions and unnecessary API calls
+        async with active_generations_lock:
+            user_active_count = sum(1 for (uid, _) in active_generations.keys() if uid == user_id)
+            if user_active_count >= MAX_CONCURRENT_GENERATIONS_PER_USER:
+                await query.edit_message_text(
+                    f"⚠️ <b>Превышен лимит одновременных генераций</b>\n\n"
+                    f"У вас уже запущено {user_active_count} генераций.\n"
+                    f"Максимум: {MAX_CONCURRENT_GENERATIONS_PER_USER}.\n\n"
+                    f"Дождитесь завершения одной из генераций или отмените её.",
+                    parse_mode='HTML'
+                )
+                return ConversationHandler.END
+        
+        # Verify session still exists before proceeding
+        if user_id not in user_sessions:
+            await query.edit_message_text("❌ Сессия не найдена. Начните заново.")
+            return ConversationHandler.END
+        
         # Create task (for async models like z-image) with retry logic
         result = None
         max_retries = 3
@@ -18310,18 +18595,59 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if result.get('ok'):
             task_id = result.get('taskId')
             
-            # Store task ID for polling
+            # Verify session still exists before moving to active_generations
+            if user_id not in user_sessions:
+                logger.error(f"Session disappeared for user {user_id} after task creation")
+                await query.edit_message_text(
+                    f"❌ <b>Ошибка</b>\n\n"
+                    f"Сессия была потеряна. Задача создана, но отслеживание невозможно.\n"
+                    f"Task ID: {task_id}",
+                    parse_mode='HTML'
+                )
+                return ConversationHandler.END
+            
+            # Move session from user_sessions to active_generations
+            # This allows multiple concurrent generations per user
+            generation_key = (user_id, task_id)
+            
+            # Store task data for polling
             session['task_id'] = task_id
             session['poll_attempts'] = 0
             session['max_poll_attempts'] = 60  # Poll for up to 5 minutes (60 * 5 seconds)
             session['is_free_generation'] = is_free  # Store if this is a free generation
+            session['model_id'] = model_id
+            session['model_info'] = model_info
+            session['params'] = api_params.copy()
+            
+            # Move to active_generations atomically
+            async with active_generations_lock:
+                # Double-check limit hasn't changed (another generation might have started)
+                user_active_count_now = sum(1 for (uid, _) in active_generations.keys() if uid == user_id)
+                if user_active_count_now >= MAX_CONCURRENT_GENERATIONS_PER_USER:
+                    await query.edit_message_text(
+                        f"⚠️ <b>Превышен лимит одновременных генераций</b>\n\n"
+                        f"Пока создавалась задача, лимит был достигнут.\n"
+                        f"У вас уже запущено {user_active_count_now} генераций.\n"
+                        f"Максимум: {MAX_CONCURRENT_GENERATIONS_PER_USER}.\n\n"
+                        f"Дождитесь завершения одной из генераций.",
+                        parse_mode='HTML'
+                    )
+                    return ConversationHandler.END
+                
+                active_generations[generation_key] = session.copy()
+                final_count = user_active_count_now + 1
+            
+            # Remove from user_sessions (input collection is done)
+            if user_id in user_sessions:
+                del user_sessions[user_id]
             
             # Show Task ID only for admin
             if is_admin_user:
                 message_text = (
                     f"✅ <b>Задача создана!</b>\n\n"
                     f"Task ID: <code>{task_id}</code>\n\n"
-                    f"⏳ Ожидаю завершения генерации..."
+                    f"⏳ Ожидаю завершения генерации...\n\n"
+                    f"📊 Активных генераций: {final_count}/{MAX_CONCURRENT_GENERATIONS_PER_USER}"
                 )
             else:
                 message_text = (
@@ -18334,7 +18660,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 parse_mode='HTML'
             )
             
-            # Start polling for task completion
+            # Start polling for task completion (async, non-blocking)
             asyncio.create_task(poll_task_status(update, context, task_id, user_id))
         else:
             error = result.get('error', 'Unknown error')
@@ -18426,6 +18752,11 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                     text=f"❌ <b>Ошибка проверки статуса:</b>\n\n{error}",
                     parse_mode='HTML'
                 )
+                # Clean up active generation on error
+                generation_key = (user_id, task_id)
+                async with active_generations_lock:
+                    if generation_key in active_generations:
+                        del active_generations[generation_key]
                 break
             
             state = status_result.get('state')
@@ -18442,25 +18773,33 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                     logger.warning(f"Could not send completion notification: {e}")
                 
                 # Task completed successfully - deduct balance
-                # Save session data before cleanup (for "generate again" button)
+                # Get session data from active_generations (supports multiple concurrent generations)
+                generation_key = (user_id, task_id)
                 saved_session_data = None
                 model_id = ''
                 params = {}
-                if user_id in user_sessions:
-                    session = user_sessions[user_id]
-                    saved_session_data = {
-                        'model_id': session.get('model_id'),
-                        'model_info': session.get('model_info'),
-                        'params': session.get('params', {}).copy(),
-                        'properties': session.get('properties', {}).copy(),
-                        'required': session.get('required', []).copy()
-                    }
-                    
-                    # Get price and deduct from balance or limit
-                    model_id = session.get('model_id', '')
-                    params = session.get('params', {})
-                    is_admin_user = get_is_admin(user_id)
-                    is_free = session.get('is_free_generation', False)
+                
+                async with active_generations_lock:
+                    if generation_key in active_generations:
+                        session = active_generations[generation_key]
+                        saved_session_data = {
+                            'model_id': session.get('model_id'),
+                            'model_info': session.get('model_info'),
+                            'params': session.get('params', {}).copy(),
+                            'properties': session.get('properties', {}).copy(),
+                            'required': session.get('required', []).copy()
+                        }
+                        
+                        # Get price and deduct from balance or limit
+                        model_id = session.get('model_id', '')
+                        params = session.get('params', {})
+                        is_admin_user = get_is_admin(user_id)
+                        is_free = session.get('is_free_generation', False)
+                    else:
+                        # Session not found - might have been cleaned up
+                        logger.warning(f"Generation session not found for {generation_key}")
+                        is_admin_user = get_is_admin(user_id)
+                        is_free = False
                     
                     if is_free:
                         # Use free generation
@@ -18525,7 +18864,14 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                         )
                     
                     # Prepare buttons for last message
+                    # Save generation data for "generate_again" button
+                    if saved_session_data:
+                        if user_id not in saved_generations:
+                            saved_generations[user_id] = {}
+                        saved_generations[user_id] = saved_session_data.copy()
+                    
                     keyboard = [
+                        [InlineKeyboardButton("🔄 Сгенерировать еще", callback_data="generate_again")],
                         [InlineKeyboardButton("📚 Мои генерации", callback_data="my_generations")],
                         [InlineKeyboardButton("◀️ Вернуться в меню", callback_data="back_to_menu")]
                     ]
@@ -18690,9 +19036,11 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                         parse_mode='HTML'
                     )
                 
-                # Clean up session
-                if user_id in user_sessions:
-                    del user_sessions[user_id]
+                # Clean up active generation
+                generation_key = (user_id, task_id)
+                async with active_generations_lock:
+                    if generation_key in active_generations:
+                        del active_generations[generation_key]
                 break
             
             elif state == 'fail':
@@ -18711,9 +19059,11 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                     parse_mode='HTML'
                 )
                 
-                # Clean up session
-                if user_id in user_sessions:
-                    del user_sessions[user_id]
+                # Clean up active generation
+                generation_key = (user_id, task_id)
+                async with active_generations_lock:
+                    if generation_key in active_generations:
+                        del active_generations[generation_key]
                 break
             
             elif state in ['waiting', 'queuing', 'generating']:
@@ -18772,7 +19122,14 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                     text=f"❌ Превышено время ожидания. Попробуйте начать генерацию заново.",
                     parse_mode='HTML'
                 )
+                # Clean up active generation on timeout/error
+                generation_key = (user_id, task_id)
+                async with active_generations_lock:
+                    if generation_key in active_generations:
+                        del active_generations[generation_key]
                 break
+            # For non-fatal errors, continue polling (don't break the loop)
+            continue
     
     if attempt >= max_attempts:
         await context.bot.send_message(
@@ -18780,6 +19137,11 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
             text=f"⏰ Время ожидания истекло. Попробуйте начать генерацию заново.",
             parse_mode='HTML'
         )
+        # Clean up active generation on timeout
+        generation_key = (user_id, task_id)
+        async with active_generations_lock:
+            if generation_key in active_generations:
+                del active_generations[generation_key]
 
 
 async def check_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -19178,6 +19540,9 @@ def main():
             CallbackQueryHandler(button_callback, pattern='^admin_set_currency_rate$'),
             CallbackQueryHandler(button_callback, pattern='^admin_search$'),
             CallbackQueryHandler(button_callback, pattern='^admin_add$'),
+            CallbackQueryHandler(button_callback, pattern='^view_payment_screenshots$'),
+            CallbackQueryHandler(button_callback, pattern='^payment_screenshot_nav:'),
+            CallbackQueryHandler(button_callback, pattern='^admin_payments_back$'),
             CallbackQueryHandler(button_callback, pattern='^admin_promocodes$'),
             CallbackQueryHandler(button_callback, pattern='^admin_broadcast$'),
             CallbackQueryHandler(button_callback, pattern='^admin_create_broadcast$'),
@@ -19454,17 +19819,30 @@ def main():
     
     # Add handlers
     # Admin commands
-    async def admin_payments(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Show all payments (admin only)."""
-        if update.effective_user.id != ADMIN_ID:
-            await update.message.reply_text("❌ Эта команда доступна только администратору.")
+    async def show_admin_payments(update_or_query, context: ContextTypes.DEFAULT_TYPE, is_callback: bool = False):
+        """Show all payments (admin only). Can be called from command or callback."""
+        # Determine if it's a callback query or message
+        if is_callback:
+            query = update_or_query
+            user_id = query.from_user.id
+            message_func = query.edit_message_text
+        else:
+            update = update_or_query
+            user_id = update.effective_user.id
+            message_func = update.message.reply_text
+        
+        if user_id != ADMIN_ID:
+            if is_callback:
+                await query.answer("❌ Эта функция доступна только администратору.", show_alert=True)
+            else:
+                await update.message.reply_text("❌ Эта команда доступна только администратору.")
             return
         
         stats = get_payment_stats()
         payments = stats['payments']
         
         if not payments:
-            await update.message.reply_text("📊 <b>Платежи</b>\n\nНет зарегистрированных платежей.", parse_mode='HTML')
+            await message_func("📊 <b>Платежи</b>\n\nНет зарегистрированных платежей.", parse_mode='HTML')
             return
         
         # Show last 10 payments
@@ -19478,8 +19856,9 @@ def main():
         text += f"<b>Последние платежи:</b>\n\n"
         
         import datetime
+        payments_with_screenshots = 0
         for payment in payments[:10]:
-            user_id = payment.get('user_id', 0)
+            user_id_payment = payment.get('user_id', 0)
             amount = payment.get('amount', 0)
             timestamp = payment.get('timestamp', 0)
             amount_str = f"{amount:.2f}".rstrip('0').rstrip('.')
@@ -19490,12 +19869,31 @@ def main():
             else:
                 date_str = "Неизвестно"
             
-            text += f"👤 ID: {user_id} | 💵 {amount_str} ₽ | 📅 {date_str}\n"
+            # Create user link: tg://user?id=USER_ID
+            user_link = f"tg://user?id={user_id_payment}"
+            text += f"👤 <a href=\"{user_link}\">Пользователь {user_id_payment}</a> | 💵 {amount_str} ₽ | 📅 {date_str}\n"
+            
+            if payment.get('screenshot_file_id'):
+                payments_with_screenshots += 1
         
         if total_count > 10:
             text += f"\n... и еще {total_count - 10} платежей"
         
-        await update.message.reply_text(text, parse_mode='HTML')
+        # Count total payments with screenshots
+        total_with_screenshots = sum(1 for p in payments if p.get('screenshot_file_id'))
+        
+        # Add button to view screenshots
+        keyboard = []
+        if total_with_screenshots > 0:
+            keyboard.append([InlineKeyboardButton("📸 Просмотр скриншотов", callback_data="view_payment_screenshots")])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
+        
+        await message_func(text, parse_mode='HTML', reply_markup=reply_markup)
+    
+    async def admin_payments(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Show all payments (admin only)."""
+        await show_admin_payments(update, context, is_callback=False)
     
     async def admin_block_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Block a user (admin only)."""

@@ -57,7 +57,8 @@ logs/
 *.log.*
 
 # Bot specific
-admin_limits.json
+# NOTE: Data files are NOT ignored to preserve them during deploys
+# All JSON data files (user_balances.json, payments.json, etc.) are kept in repository
 *.db
 *.sqlite
 *.sqlite3

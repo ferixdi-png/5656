@@ -36,17 +36,17 @@ KIE_MODELS = [
         "emoji": "🍌",
         "pricing": "18 кредитов (1K/2K) или 24 кредита (4K)",
         "input_params": {
+            "image_input": {
+                "type": "array",
+                "description": "Входные изображения для трансформации или использования как референс (до 8 изображений, обязательно)",
+                "required": True,
+                "item_type": "string"
+            },
             "prompt": {
                 "type": "string",
                 "description": "Текстовое описание изображения (макс. 10000 символов)",
                 "required": True,
                 "max_length": 10000
-            },
-            "image_input": {
-                "type": "array",
-                "description": "Входные изображения для трансформации или использования как референс (до 8 изображений, опционально)",
-                "required": False,
-                "item_type": "string"
             },
             "aspect_ratio": {
                 "type": "string",
@@ -138,6 +138,57 @@ KIE_MODELS = [
         }
     },
     {
+        "id": "sora-2-pro-image-to-video",
+        "name": "Sora 2 Pro Image-to-Video",
+        "description": "OpenAI Sora 2 Pro - последняя AI модель генерации видео, поддерживающая text-to-video и image-to-video. Реалистичное движение, физическая согласованность, улучшенный контроль над стилем, сценой и соотношением сторон. Идеально для креативных приложений и контента для соцсетей. Генерация видео из изображений.",
+        "category": "Видео",
+        "emoji": "🎬",
+        "pricing": "150 кредитов (Standard 10s) или 270 кредитов (Standard 15s) или 330 кредитов (High 10s) или 630 кредитов (High 15s)",
+        "input_params": {
+            "image_urls": {
+                "type": "array",
+                "description": "URL изображения для использования как первый кадр (1 изображение, форматы: JPEG, PNG, WebP, макс. 10MB, должно быть публично доступным)",
+                "required": True,
+                "item_type": "string",
+                "min_items": 1,
+                "max_items": 1
+            },
+            "prompt": {
+                "type": "string",
+                "description": "Текстовое описание желаемого движения видео (макс. 10000 символов)",
+                "required": True,
+                "max_length": 10000
+            },
+            "aspect_ratio": {
+                "type": "string",
+                "description": "Соотношение сторон видео",
+                "required": False,
+                "default": "landscape",
+                "enum": ["portrait", "landscape"]
+            },
+            "n_frames": {
+                "type": "string",
+                "description": "Количество кадров (длительность видео)",
+                "required": False,
+                "default": "10",
+                "enum": ["10", "15"]
+            },
+            "size": {
+                "type": "string",
+                "description": "Качество видео (Standard = 150/270 кредитов, High = 330/630 кредитов)",
+                "required": False,
+                "default": "standard",
+                "enum": ["standard", "high"]
+            },
+            "remove_watermark": {
+                "type": "boolean",
+                "description": "Удалить водяной знак с сгенерированного видео",
+                "required": False,
+                "default": True
+            }
+        }
+    },
+    {
         "id": "sora-watermark-remover",
         "name": "Sora 2 Watermark Remover",
         "description": "Удаление динамических водяных знаков с видео Sora 2 с помощью AI-детекции и отслеживания движения. Сохраняет плавность и естественность кадров.",
@@ -170,7 +221,7 @@ KIE_MODELS = [
             "aspect_ratio": {
                 "type": "string",
                 "description": "Соотношение сторон видео",
-                "required": False,
+                "required": True,
                 "default": "landscape",
                 "enum": ["portrait", "landscape"]
             },
@@ -2692,7 +2743,7 @@ GENERATION_TYPES = {
     "image-to-video": {
         "name": "📸 Фото в видео",
         "description": "Превращайте изображения в динамичные видео",
-        "models": ["kling-2.6/image-to-video", "kling/v2-5-turbo-image-to-video-pro", "wan/2-5-image-to-video", "hailuo/02-image-to-video-pro", "hailuo/02-image-to-video-standard", "bytedance/v1-pro-fast-image-to-video", "kling/v2-1-master-image-to-video", "kling/v2-1-standard", "kling/v2-1-pro", "wan/2-2-a14b-image-to-video-turbo", "grok/imagine", "google/veo-3", "google/veo-3.1", "sora-2-pro-storyboard", "kling/v2-5-turbo", "hailuo/2.3", "runway/gen-4"]
+        "models": ["sora-2-pro-image-to-video", "kling-2.6/image-to-video", "kling/v2-5-turbo-image-to-video-pro", "wan/2-5-image-to-video", "hailuo/02-image-to-video-pro", "hailuo/02-image-to-video-standard", "bytedance/v1-pro-fast-image-to-video", "kling/v2-1-master-image-to-video", "kling/v2-1-standard", "kling/v2-1-pro", "wan/2-2-a14b-image-to-video-turbo", "grok/imagine", "google/veo-3", "google/veo-3.1", "sora-2-pro-storyboard", "kling/v2-5-turbo", "hailuo/2.3", "runway/gen-4"]
     },
     "video-editing": {
         "name": "✂️ Редактирование видео",
