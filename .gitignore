@@ -57,11 +57,20 @@ logs/
 *.log.*
 
 # Bot specific
-# NOTE: Data files are NOT ignored to preserve them during deploys
+# NOTE: Data files in ./data/ directory are NOT ignored to preserve them during deploys
 # All JSON data files (user_balances.json, payments.json, etc.) are kept in repository
+# However, data/ directory itself should be mounted as volume in production
 *.db
 *.sqlite
 *.sqlite3
+
+# Data directory (for local development - production uses volume)
+# Uncomment if you want to ignore local data directory
+# data/
+
+# Temporary data files
+*.tmp
+*.corrupted.*
 
 # Temporary files
 *.tmp

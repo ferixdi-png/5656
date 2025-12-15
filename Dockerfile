@@ -63,6 +63,11 @@ COPY validate_*.py ./
 ENV NODE_ENV=production
 ENV PYTHONUNBUFFERED=1
 ENV PORT=10000
+ENV DATA_DIR=/app/data
+
+# Create data directory for persistent storage
+# This directory should be mounted as a volume to preserve data between deploys
+RUN mkdir -p /app/data && chmod 755 /app/data
 
 # Ensure proper permissions
 RUN chmod +x index.js || true
