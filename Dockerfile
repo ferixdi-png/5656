@@ -2,13 +2,16 @@ FROM node:24-slim
 
 WORKDIR /app
 
-# Install system dependencies (only essential)
+# Install system dependencies (essential + OCR support)
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     python3-dev \
     build-essential \
+    tesseract-ocr \
+    tesseract-ocr-rus \
+    tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
 # Create symlink for python command

@@ -48,9 +48,10 @@ logger = logging.getLogger(__name__)
 try:
     from PIL import Image
     PIL_AVAILABLE = True
+    logger.info("✅ PIL/Pillow loaded successfully")
 except ImportError:
     PIL_AVAILABLE = False
-    logger.warning("PIL/Pillow not available. Image analysis will be limited.")
+    logger.info("ℹ️ PIL/Pillow not available. Image analysis will be limited. Install with: pip install Pillow")
 
 # Try to import pytesseract and configure Tesseract path
 try:
@@ -75,24 +76,27 @@ try:
                 logger.info(f"Tesseract found at: {path}")
                 break
     else:
-        # On Linux, assume Tesseract is in PATH (installed via apt-get in Dockerfile)
-        # Don't search PATH at import time - it can cause timeout
-        # pytesseract will try to find tesseract automatically when needed
-        logger.info("Tesseract should be in PATH (Linux). Will auto-detect when OCR is used.")
-        # Assume it's available if we're on Linux (installed in Dockerfile)
-        tesseract_found = True
+        # On Linux, Tesseract should be in PATH (installed via apt-get in Dockerfile)
+        # Try to verify it's available by checking if command exists
+        import shutil
+        if shutil.which('tesseract'):
+            logger.info("✅ Tesseract found in PATH (Linux)")
+            tesseract_found = True
+        else:
+            logger.info("ℹ️ Tesseract not found in PATH. OCR will be disabled. Install with: apt-get install tesseract-ocr")
+            tesseract_found = False
     
     if not tesseract_found:
-        logger.warning("Tesseract not found. OCR analysis will be disabled. Install tesseract-ocr package if needed.")
+        logger.info("ℹ️ Tesseract not found. OCR analysis will be disabled. Install tesseract-ocr package if needed.")
         OCR_AVAILABLE = False
     else:
         # Don't test Tesseract at import time - it can hang or timeout
         # Test will happen when OCR is actually needed
-        logger.info("Tesseract OCR path configured. Will be tested when needed.")
+        logger.info("✅ Tesseract OCR path configured. Will be tested when needed.")
 except ImportError:
     OCR_AVAILABLE = False
     tesseract_found = False
-    logger.warning("pytesseract not available. OCR analysis will be disabled.")
+    logger.info("ℹ️ pytesseract not available. OCR analysis will be disabled. Install with: pip install pytesseract")
 
 # Bot token from environment variable
 BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
@@ -147,9 +151,10 @@ try:
     from bot_kie_services import pricing_service, storage_service, model_validator
     from bot_kie_utils import is_admin as is_admin_new
     NEW_SERVICES_AVAILABLE = True
-except ImportError:
+    logger.info("✅ Новые сервисы загружены успешно")
+except ImportError as e:
     NEW_SERVICES_AVAILABLE = False
-    logger.warning("Новые сервисы не доступны, используется старая реализация")
+    logger.info(f"ℹ️ Новые сервисы не доступны, используется стандартная реализация (это нормально): {e}")
 
 # Initialize knowledge storage and KIE client (will be initialized in main() to avoid blocking import)
 storage = None
