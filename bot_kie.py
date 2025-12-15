@@ -1294,7 +1294,8 @@ def get_cache_key(filename: str) -> str:
     return cache_map.get(filename, filename)
 
 def load_json_file(filename: str, default: dict = None) -> dict:
-    """Load JSON file with caching and locking for performance (optimized for 1000+ users)."""
+    """Load JSON file with caching and locking for performance (optimized for 1000+ users).
+    Automatically creates file if it doesn't exist (for critical files)."""
     if default is None:
         default = {}
     
@@ -1325,14 +1326,44 @@ def load_json_file(filename: str, default: dict = None) -> dict:
                         _data_cache[cache_key] = data.copy()
                         _data_cache['cache_timestamps'][cache_key] = current_time
                     return data
+            else:
+                # For critical files, create empty file if it doesn't exist
+                critical_files = [BALANCES_FILE, GENERATIONS_HISTORY_FILE, PAYMENTS_FILE]
+                if filename in critical_files:
+                    try:
+                        # Ensure directory exists
+                        dir_path = os.path.dirname(filename)
+                        if dir_path and not os.path.exists(dir_path):
+                            os.makedirs(dir_path, exist_ok=True)
+                        
+                        # Create empty file
+                        with open(filename, 'w', encoding='utf-8') as f:
+                            json.dump(default, f, ensure_ascii=False, indent=2)
+                        logger.info(f"✅ Auto-created missing critical file: {filename}")
+                        return default
+                    except Exception as e:
+                        logger.error(f"Error auto-creating critical file {filename}: {e}")
+                        return default
+                return default
+        except json.JSONDecodeError as e:
+            logger.error(f"❌ JSON decode error in {filename}: {e}. File may be corrupted. Returning default.")
+            # Try to backup corrupted file
+            try:
+                backup_name = filename + '.corrupted.' + str(int(time.time()))
+                if os.path.exists(filename):
+                    os.rename(filename, backup_name)
+                    logger.warning(f"Backed up corrupted file to {backup_name}")
+            except:
+                pass
             return default
         except Exception as e:
-            logger.error(f"Error loading {filename}: {e}")
+            logger.error(f"Error loading {filename}: {e}", exc_info=True)
             return default
 
 
 def save_json_file(filename: str, data: dict, use_cache: bool = True):
-    """Save data to JSON file with batched writes (optimized for 1000+ users)."""
+    """Save data to JSON file with batched writes (optimized for 1000+ users).
+    Guarantees data persistence for critical files."""
     try:
         cache_key = get_cache_key(filename)
         current_time = time.time()
@@ -1343,8 +1374,8 @@ def save_json_file(filename: str, data: dict, use_cache: bool = True):
             _data_cache['cache_timestamps'][cache_key] = current_time
         
         # Batch writes: only save if enough time passed (reduce I/O)
-        # For critical files (balances, generations history), save immediately always
-        critical_files = [BALANCES_FILE, GENERATIONS_HISTORY_FILE]
+        # For critical files (balances, generations history, payments), save immediately always
+        critical_files = [BALANCES_FILE, GENERATIONS_HISTORY_FILE, PAYMENTS_FILE]
         is_critical = filename in critical_files
         
         if not is_critical and filename in _last_save_time:
@@ -1353,16 +1384,64 @@ def save_json_file(filename: str, data: dict, use_cache: bool = True):
             if time_since_last_save < 2.0:
                 return  # Skip write, will be saved later or by batch save
         
-        # Perform actual write
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-            f.flush()  # Force write to disk immediately
-            if hasattr(os, 'fsync'):
-                os.fsync(f.fileno())  # Force sync to disk (Unix/Linux)
+        # Ensure directory exists (for subdirectories like knowledge_store)
+        dir_path = os.path.dirname(filename)
+        if dir_path and not os.path.exists(dir_path):
+            try:
+                os.makedirs(dir_path, exist_ok=True)
+            except Exception as e:
+                logger.error(f"Error creating directory {dir_path}: {e}")
+        
+        # Perform actual write with atomic operation (write to temp file, then rename)
+        temp_filename = filename + '.tmp'
+        try:
+            # Write to temporary file first
+            with open(temp_filename, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+                f.flush()  # Force write to disk immediately
+                if hasattr(os, 'fsync'):
+                    os.fsync(f.fileno())  # Force sync to disk (Unix/Linux)
+            
+            # Atomic rename (works on Unix/Linux/Windows)
+            if os.path.exists(filename):
+                os.replace(temp_filename, filename)
+            else:
+                os.rename(temp_filename, filename)
+            
+            # Verify file was written correctly
+            if os.path.exists(filename):
+                file_size = os.path.getsize(filename)
+                if file_size == 0:
+                    logger.error(f"❌ CRITICAL: {filename} was written but is empty!")
+                else:
+                    logger.debug(f"✅ Saved {filename} ({file_size} bytes)")
+            else:
+                logger.error(f"❌ CRITICAL: {filename} does not exist after save!")
+            
+        except Exception as e:
+            # Clean up temp file on error
+            if os.path.exists(temp_filename):
+                try:
+                    os.remove(temp_filename)
+                except:
+                    pass
+            raise e
         
         _last_save_time[filename] = current_time
     except Exception as e:
-        logger.error(f"Error saving {filename}: {e}")
+        logger.error(f"❌ CRITICAL ERROR saving {filename}: {e}", exc_info=True)
+        # For critical files, try one more time
+        if filename in critical_files:
+            try:
+                logger.warning(f"Retrying save for critical file {filename}...")
+                with open(filename, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                    f.flush()
+                    if hasattr(os, 'fsync'):
+                        os.fsync(f.fileno())
+                logger.info(f"✅ Retry successful for {filename}")
+            except Exception as retry_error:
+                logger.error(f"❌ Retry failed for {filename}: {retry_error}", exc_info=True)
 
 
 async def get_http_client() -> aiohttp.ClientSession:
@@ -1433,6 +1512,15 @@ def get_user_balance(user_id: int) -> float:
 
 def set_user_balance(user_id: int, amount: float):
     """Set user balance in rubles (optimized with caching)."""
+    # Ensure balances file exists
+    if not os.path.exists(BALANCES_FILE):
+        try:
+            with open(BALANCES_FILE, 'w', encoding='utf-8') as f:
+                json.dump({}, f, ensure_ascii=False, indent=2)
+            logger.info(f"Created balances file {BALANCES_FILE}")
+        except Exception as e:
+            logger.error(f"Error creating balances file {BALANCES_FILE}: {e}")
+    
     user_key = str(user_id)
     balances = load_json_file(BALANCES_FILE, {})
     balances[user_key] = amount
@@ -1443,7 +1531,10 @@ def set_user_balance(user_id: int, amount: float):
     _data_cache['balances'][user_key] = amount
     _data_cache['cache_timestamps']['balances'] = time.time()
     
-    save_json_file(BALANCES_FILE, balances)
+    # Force immediate save for balances (critical data)
+    if BALANCES_FILE in _last_save_time:
+        del _last_save_time[BALANCES_FILE]
+    save_json_file(BALANCES_FILE, balances, use_cache=True)
 
 
 def add_user_balance(user_id: int, amount: float) -> float:
@@ -1792,6 +1883,15 @@ def save_generation_to_history(user_id: int, model_id: str, model_name: str, par
     """Save generation to user history."""
     import time
     try:
+        # Ensure history file exists
+        if not os.path.exists(GENERATIONS_HISTORY_FILE):
+            try:
+                with open(GENERATIONS_HISTORY_FILE, 'w', encoding='utf-8') as f:
+                    json.dump({}, f, ensure_ascii=False, indent=2)
+                logger.info(f"Created history file {GENERATIONS_HISTORY_FILE}")
+            except Exception as e:
+                logger.error(f"Error creating history file {GENERATIONS_HISTORY_FILE}: {e}")
+        
         history = load_json_file(GENERATIONS_HISTORY_FILE, {})
         user_key = str(user_id)
         
@@ -1844,10 +1944,16 @@ def save_generation_to_history(user_id: int, model_id: str, model_name: str, par
 def get_user_generations_history(user_id: int, limit: int = 20) -> list:
     """Get user's generation history."""
     try:
-        # Check if file exists
+        # Check if file exists, create if it doesn't
         if not os.path.exists(GENERATIONS_HISTORY_FILE):
-            logger.warning(f"History file {GENERATIONS_HISTORY_FILE} does not exist")
-            return []
+            # Create empty history file
+            try:
+                with open(GENERATIONS_HISTORY_FILE, 'w', encoding='utf-8') as f:
+                    json.dump({}, f, ensure_ascii=False, indent=2)
+                logger.info(f"Created history file {GENERATIONS_HISTORY_FILE}")
+            except Exception as e:
+                logger.error(f"Error creating history file {GENERATIONS_HISTORY_FILE}: {e}")
+                return []
         
         history = load_json_file(GENERATIONS_HISTORY_FILE, {})
         if not history:
@@ -2056,6 +2162,15 @@ def check_duplicate_payment(screenshot_file_id: str) -> bool:
 
 def add_payment(user_id: int, amount: float, screenshot_file_id: str = None) -> dict:
     """Add a payment record. Returns payment dict with id, timestamp, etc."""
+    # Ensure payments file exists
+    if not os.path.exists(PAYMENTS_FILE):
+        try:
+            with open(PAYMENTS_FILE, 'w', encoding='utf-8') as f:
+                json.dump({}, f, ensure_ascii=False, indent=2)
+            logger.info(f"Created payments file {PAYMENTS_FILE}")
+        except Exception as e:
+            logger.error(f"Error creating payments file {PAYMENTS_FILE}: {e}")
+    
     payments = load_json_file(PAYMENTS_FILE, {})
     payment_id = len(payments) + 1
     import time
@@ -2068,7 +2183,21 @@ def add_payment(user_id: int, amount: float, screenshot_file_id: str = None) -> 
         "status": "completed"  # Auto-completed
     }
     payments[str(payment_id)] = payment
-    save_json_file(PAYMENTS_FILE, payments)
+    
+    # Force immediate save for payments (critical data)
+    if PAYMENTS_FILE in _last_save_time:
+        del _last_save_time[PAYMENTS_FILE]
+    save_json_file(PAYMENTS_FILE, payments, use_cache=True)
+    
+    # Verify payment was saved
+    if os.path.exists(PAYMENTS_FILE):
+        verify_payments = load_json_file(PAYMENTS_FILE, {})
+        if str(payment_id) in verify_payments:
+            logger.info(f"✅ Saved payment: user_id={user_id}, amount={amount}, payment_id={payment_id}")
+        else:
+            logger.error(f"❌ Payment saved but not found in file! payment_id={payment_id}")
+    else:
+        logger.error(f"❌ Failed to save payment file: {PAYMENTS_FILE} does not exist after save!")
     
     # Auto-add balance
     add_user_balance(user_id, amount)
@@ -19399,6 +19528,15 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
         del user_sessions[user_id]
     
     # Save payment record
+    # Ensure payments file exists
+    if not os.path.exists(PAYMENTS_FILE):
+        try:
+            with open(PAYMENTS_FILE, 'w', encoding='utf-8') as f:
+                json.dump({}, f, ensure_ascii=False, indent=2)
+            logger.info(f"Created payments file {PAYMENTS_FILE}")
+        except Exception as e:
+            logger.error(f"Error creating payments file {PAYMENTS_FILE}: {e}")
+    
     payments = load_json_file(PAYMENTS_FILE, {})
     payment_id = f"stars_{user_id}_{int(time.time())}"
     payments[payment_id] = {
@@ -19410,7 +19548,21 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
         'timestamp': time.time(),
         'status': 'completed'
     }
-    save_json_file(PAYMENTS_FILE, payments)
+    
+    # Force immediate save for payments (critical data)
+    if PAYMENTS_FILE in _last_save_time:
+        del _last_save_time[PAYMENTS_FILE]
+    save_json_file(PAYMENTS_FILE, payments, use_cache=True)
+    
+    # Verify payment was saved
+    if os.path.exists(PAYMENTS_FILE):
+        verify_payments = load_json_file(PAYMENTS_FILE, {})
+        if payment_id in verify_payments:
+            logger.info(f"✅ Saved Stars payment: user_id={user_id}, amount={amount_rubles}, payment_id={payment_id}")
+        else:
+            logger.error(f"❌ Stars payment saved but not found in file! payment_id={payment_id}")
+    else:
+        logger.error(f"❌ Failed to save Stars payment file: {PAYMENTS_FILE} does not exist after save!")
     
     # Send confirmation message
     balance_str = f"{get_user_balance(user_id):.2f}".rstrip('0').rstrip('.')
@@ -19451,9 +19603,58 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
     logger.info(f"Successful Stars payment for user {user_id}: {amount_rubles} RUB ({amount_stars} stars)")
 
 
+def initialize_data_files():
+    """Initialize all data files if they don't exist."""
+    data_files = [
+        BALANCES_FILE,
+        USER_LANGUAGES_FILE,
+        GIFT_CLAIMED_FILE,
+        ADMIN_LIMITS_FILE,
+        PAYMENTS_FILE,
+        BLOCKED_USERS_FILE,
+        FREE_GENERATIONS_FILE,
+        PROMOCODES_FILE,
+        CURRENCY_RATE_FILE,
+        REFERRALS_FILE,
+        BROADCASTS_FILE,
+        GENERATIONS_HISTORY_FILE
+    ]
+    
+    created_count = 0
+    for filename in data_files:
+        if not os.path.exists(filename):
+            try:
+                # Create empty JSON file
+                with open(filename, 'w', encoding='utf-8') as f:
+                    json.dump({}, f, ensure_ascii=False, indent=2)
+                logger.info(f"✅ Created data file: {filename}")
+                created_count += 1
+            except Exception as e:
+                logger.error(f"❌ Failed to create {filename}: {e}")
+        else:
+            logger.debug(f"✓ Data file exists: {filename}")
+    
+    if created_count > 0:
+        logger.info(f"✅ Initialized {created_count} new data files")
+    else:
+        logger.info("✅ All data files already exist")
+    
+    # Also initialize knowledge store
+    try:
+        storage = KnowledgeStorage()
+        storage.ensure_storage_exists()
+        logger.info("✅ Knowledge store initialized")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize knowledge store: {e}")
+
+
 def main():
     """Start the bot."""
     global storage, kie
+    
+    # Initialize all data files first
+    logger.info("🔧 Initializing data files...")
+    initialize_data_files()
     
     # NOTE: Health check server is started by Node.js (index.js) to avoid port conflicts
     # Node.js starts it first, so Python doesn't need to start it again
