@@ -4473,23 +4473,83 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # Start with prompt parameter first (or image_input/image_urls first for image-to-video models)
             model_id = session.get('model_id', '')
-            # Special case: nano-banana-pro starts with image_input first
-            if model_id == "nano-banana-pro" and 'image_input' in input_params and input_params['image_input'].get('required', False):
-                # Start with image_input first for nano-banana-pro
+            # Special case: Models that require image_input first (nano-banana-pro, recraft models, etc.)
+            # These models need image before prompt
+            # Models that require image_input first (before prompt or other parameters)
+            # These models need image to be uploaded first
+            models_require_image_first = [
+                "nano-banana-pro",              # Requires image_input + prompt
+                "recraft/remove-background",    # Requires only image_input (no prompt)
+                "recraft/crisp-upscale",        # Requires only image_input (no prompt)
+                "ideogram/v3-reframe",          # Requires image_input first (no prompt)
+                "topaz/image-upscale",          # Requires image_input (no prompt)
+            ]
+            
+            # Check if model requires image_input first
+            requires_image_first = model_id in models_require_image_first
+            has_required_image = 'image_input' in input_params and input_params['image_input'].get('required', False)
+            
+            if requires_image_first or has_required_image:
+                # Determine parameter name
+                if 'image_input' in input_params:
+                    image_param_name = 'image_input'
+                elif 'image_urls' in input_params:
+                    image_param_name = 'image_urls'
+                else:
+                    image_param_name = 'image_input'  # Default
+                
+                # Start with image_input first
                 has_image_input = True
-                image_param_name = 'image_input'
+                user_lang = get_user_language(user_id)
+                
+                # Get translated text with model-specific messages
+                if user_lang == 'en':
+                    step_text = "📷 <b>Step 1: Upload image</b>\n\n"
+                    if model_id == "recraft/remove-background":
+                        step_text += "Send a photo to remove the background.\n\n"
+                    elif model_id == "recraft/crisp-upscale":
+                        step_text += "Send a photo to enhance quality.\n\n"
+                    elif model_id == "ideogram/v3-reframe":
+                        step_text += "Send a photo to reframe and change aspect ratio.\n\n"
+                    elif model_id == "topaz/image-upscale":
+                        step_text += "Send a photo to upscale and enhance resolution.\n\n"
+                    elif model_id == "nano-banana-pro":
+                        step_text += "Send a photo to use as reference or for transformation.\n\n"
+                        step_text += "💡 <i>After uploading the image, you can enter a prompt</i>"
+                    else:
+                        step_text += "Send a photo to use as reference or for transformation.\n\n"
+                        # Check if model has prompt parameter
+                        if 'prompt' in input_params:
+                            step_text += "💡 <i>After uploading the image, you can enter a prompt</i>"
+                else:
+                    step_text = "📷 <b>Шаг 1: Загрузите изображение</b>\n\n"
+                    if model_id == "recraft/remove-background":
+                        step_text += "Отправьте фото для удаления фона.\n\n"
+                    elif model_id == "recraft/crisp-upscale":
+                        step_text += "Отправьте фото для улучшения качества.\n\n"
+                    elif model_id == "ideogram/v3-reframe":
+                        step_text += "Отправьте фото для изменения кадра и соотношения сторон.\n\n"
+                    elif model_id == "topaz/image-upscale":
+                        step_text += "Отправьте фото для увеличения разрешения.\n\n"
+                    elif model_id == "nano-banana-pro":
+                        step_text += "Отправьте фото, которое хотите использовать как референс или для трансформации.\n\n"
+                        step_text += "💡 <i>После загрузки изображения вы сможете ввести промпт</i>"
+                    else:
+                        step_text += "Отправьте фото, которое хотите использовать как референс или для трансформации.\n\n"
+                        # Check if model has prompt parameter
+                        if 'prompt' in input_params:
+                            step_text += "💡 <i>После загрузки изображения вы сможете ввести промпт</i>"
+                
                 await query.edit_message_text(
-                    f"{model_info_text}\n\n"
-                    f"📷 <b>Шаг 1: Загрузите изображение</b>\n\n"
-                    f"Отправьте фото, которое хотите использовать как референс или для трансформации.\n\n"
-                    f"💡 <i>После загрузки изображения вы сможете ввести промпт</i>",
+                    f"{model_info_text}\n\n{step_text}",
                     parse_mode='HTML'
                 )
-                user_sessions[user_id]['current_param'] = 'image_input'
-                user_sessions[user_id]['waiting_for'] = 'image_input'
-                if 'image_input' not in user_sessions[user_id]:
-                    user_sessions[user_id]['image_input'] = []  # Initialize as array
+                user_sessions[user_id]['current_param'] = image_param_name
+                user_sessions[user_id]['waiting_for'] = image_param_name
+                if image_param_name not in user_sessions[user_id]:
+                    user_sessions[user_id][image_param_name] = []  # Initialize as array
                 await query.answer()
+                logger.info(f"Started image input first for model {model_id}, user {user_id}")
                 return INPUTTING_PARAMS
             
             # Special case: sora-2-pro-image-to-video starts with image_urls first
@@ -9548,11 +9608,17 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return SELECTING_AMOUNT
     
     if user_id not in user_sessions:
-        await update.message.reply_text("❌ Сессия не найдена. Начните заново с /start")
+        logger.warning(f"Session not found for user {user_id} in input_parameters")
+        user_lang = get_user_language(user_id)
+        error_msg = t('error_session_empty', lang=user_lang) if user_lang else "❌ Сессия не найдена. Начните заново с /start"
+        await update.message.reply_text(error_msg)
         return ConversationHandler.END
     
     session = user_sessions[user_id]
     properties = session.get('properties', {})
+    
+    # CRITICAL: Log session state for debugging
+    logger.info(f"Session state: user_id={user_id}, model_id={session.get('model_id', 'Unknown')}, waiting_for={session.get('waiting_for', 'None')}, has_properties={bool(properties)}")
     
     # Handle audio input (for audio_url or audio_input)
     waiting_for_audio = session.get('waiting_for') in ['audio_url', 'audio_input']
@@ -9743,6 +9809,58 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Handle image input (for image_input, image_urls, mask_input, reference_image_input or 'image')
     waiting_for = session.get('waiting_for')
     waiting_for_image = waiting_for in ['image_input', 'image_urls', 'image', 'mask_input', 'reference_image_input']
+    
+    # CRITICAL: Log for debugging
+    logger.info(f"Image input check: user_id={user_id}, waiting_for={waiting_for}, waiting_for_image={waiting_for_image}, has_photo={bool(update.message.photo)}, model_id={session.get('model_id', 'Unknown')}")
+    
+    # If photo sent but not waiting for image, show helpful message
+    if update.message.photo and not waiting_for_image:
+        model_id = session.get('model_id', 'Unknown')
+        user_lang = get_user_language(user_id)
+        
+        # Check if model requires image_input
+        properties = session.get('properties', {})
+        has_image_param = 'image_input' in properties or 'image_urls' in properties
+        
+        # CRITICAL: Auto-fix session for models that require image_input
+        # This handles cases where photo is sent but session state is lost or incorrect
+        if has_image_param:
+            # Check which parameter name to use
+            if 'image_input' in properties:
+                image_param_name = 'image_input'
+            elif 'image_urls' in properties:
+                image_param_name = 'image_urls'
+            else:
+                image_param_name = 'image_input'  # Default fallback
+            
+            # Auto-fix for models that require image (nano-banana-pro, recraft models, etc.)
+            if model_id in ["nano-banana-pro", "recraft/remove-background", "recraft/crisp-upscale"] or \
+               (properties.get(image_param_name, {}).get('required', False)):
+                logger.warning(f"Photo sent for {model_id} but waiting_for={waiting_for}, fixing session...")
+                session['waiting_for'] = image_param_name
+                session['current_param'] = image_param_name
+                if image_param_name not in session:
+                    session[image_param_name] = []
+                # Retry processing
+                waiting_for_image = True
+                logger.info(f"Session fixed: waiting_for={image_param_name}, model={model_id}")
+        else:
+            # Photo sent but not expected - show helpful message
+            if user_lang == 'en':
+                error_msg = (
+                    "⚠️ <b>Image not expected now</b>\n\n"
+                    f"Current step: {waiting_for or 'none'}\n\n"
+                    "Please follow the instructions or use /cancel to start over."
+                )
+            else:
+                error_msg = (
+                    "⚠️ <b>Изображение не ожидается сейчас</b>\n\n"
+                    f"Текущий шаг: {waiting_for or 'нет'}\n\n"
+                    "Пожалуйста, следуйте инструкциям или используйте /cancel для начала заново."
+                )
+            await update.message.reply_text(error_msg, parse_mode='HTML')
+            return INPUTTING_PARAMS
+    
     if update.message.photo and waiting_for_image:
         photo = update.message.photo[-1]  # Get largest photo
         file = await context.bot.get_file(photo.file_id)
@@ -9880,29 +9998,110 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # If max_items is 1, immediately move to next parameter
         if max_items == 1:
-            await update.message.reply_text(
-                f"✅ Изображение загружено!\n\n"
-                f"Продолжаю..."
-            )
+            user_lang = get_user_language(user_id)
+            if user_lang == 'en':
+                success_msg = "✅ Image uploaded!\n\nContinuing..."
+            else:
+                success_msg = "✅ Изображение загружено!\n\nПродолжаю..."
+            await update.message.reply_text(success_msg)
+            
             if 'params' not in session:
                 session['params'] = {}
-            session['params'][image_param_name] = session[image_param_name]
+            
+            # Store image_input as array (API expects array)
+            if isinstance(session[image_param_name], list):
+                session['params'][image_param_name] = session[image_param_name]
+            else:
+                session['params'][image_param_name] = [session[image_param_name]]
+            
             session['waiting_for'] = None
-            # Move to next parameter
+            session['current_param'] = None
+            
+            # CRITICAL: For models without prompt (like recraft/remove-background),
+            # check if all required parameters are collected
+            model_id = session.get('model_id', 'Unknown')
+            required = session.get('required', [])
+            properties = session.get('properties', {})
+            
+            # Check if all required parameters are in params
+            all_required_collected = True
+            for req_param in required:
+                if req_param not in session.get('params', {}):
+                    # Check if it's an image parameter that was just uploaded
+                    if req_param in ['image_input', 'image_urls'] and req_param == image_param_name:
+                        continue  # This was just added
+                    all_required_collected = False
+                    break
+            
+            # Also check if image_input/image_urls are required and collected
+            if 'image_input' in properties and properties['image_input'].get('required', False):
+                if 'image_input' not in session.get('params', {}):
+                    all_required_collected = False
+            if 'image_urls' in properties and properties['image_urls'].get('required', False):
+                if 'image_urls' not in session.get('params', {}):
+                    all_required_collected = False
+            
+            logger.info(f"After image upload for {model_id}: all_required_collected={all_required_collected}, required={required}, params={list(session.get('params', {}).keys())}")
+            
+            # If all required parameters collected, show confirmation immediately
+            if all_required_collected:
+                model_name = session.get('model_info', {}).get('name', 'Unknown')
+                params = session.get('params', {})
+                logger.info(f"All parameters collected for {model_id}, showing confirmation")
+                
+                # Format params text
+                params_text = ""
+                for k, v in params.items():
+                    if isinstance(v, list):
+                        params_text += f"  • {k}: {len(v)} image(s)\n"
+                    else:
+                        display_val = str(v)[:50] + '...' if len(str(v)) > 50 else str(v)
+                        params_text += f"  • {k}: {display_val}\n"
+                
+                keyboard = [
+                    [InlineKeyboardButton(t('btn_confirm_generate', lang=user_lang), callback_data="confirm_generate")],
+                    [
+                        InlineKeyboardButton(t('btn_back', lang=user_lang), callback_data="back_to_previous_step"),
+                        InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")
+                    ],
+                    [InlineKeyboardButton(t('btn_cancel', lang=user_lang), callback_data="cancel")]
+                ]
+                
+                if user_lang == 'en':
+                    confirm_text = (
+                        f"📋 <b>Confirmation:</b>\n\n"
+                        f"Model: <b>{model_name}</b>\n"
+                        f"Parameters:\n{params_text}\n\n"
+                        f"Continue generation?"
+                    )
+                else:
+                    confirm_text = (
+                        f"📋 <b>Подтверждение:</b>\n\n"
+                        f"Модель: <b>{model_name}</b>\n"
+                        f"Параметры:\n{params_text}\n\n"
+                        f"Продолжить генерацию?"
+                    )
+                
+                await update.message.reply_text(
+                    confirm_text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+                return CONFIRMING_GENERATION
+            
+            # Move to next parameter if not all collected
             try:
                 next_param_result = await start_next_parameter(update, context, user_id)
-                logger.info(f"start_next_parameter returned: {next_param_result} for model {session.get('model_id', 'Unknown')}")
+                logger.info(f"start_next_parameter returned: {next_param_result} for model {model_id}")
                 if next_param_result:
                     return next_param_result
                 else:
                     # All parameters collected, show confirmation
                     model_name = session.get('model_info', {}).get('name', 'Unknown')
-                    model_id = session.get('model_id', 'Unknown')
                     params = session.get('params', {})
                     logger.info(f"All parameters collected for {model_id}, params: {list(params.keys())}")
                     params_text = "\n".join([f"  • {k}: {str(v)[:50]}..." for k, v in params.items()])
                     
-                    user_lang = get_user_language(user_id)
                     keyboard = [
                         [InlineKeyboardButton(t('btn_confirm_generate', lang=user_lang), callback_data="confirm_generate")],
                         [
@@ -9912,17 +10111,35 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         [InlineKeyboardButton(t('btn_cancel', lang=user_lang), callback_data="cancel")]
                     ]
                     
+                    if user_lang == 'en':
+                        confirm_text = (
+                            f"📋 <b>Confirmation:</b>\n\n"
+                            f"Model: <b>{model_name}</b>\n"
+                            f"Parameters:\n{params_text}\n\n"
+                            f"Continue generation?"
+                        )
+                    else:
+                        confirm_text = (
+                            f"📋 <b>Подтверждение:</b>\n\n"
+                            f"Модель: <b>{model_name}</b>\n"
+                            f"Параметры:\n{params_text}\n\n"
+                            f"Продолжить генерацию?"
+                        )
+                    
                     await update.message.reply_text(
-                        f"📋 <b>Подтверждение:</b>\n\n"
-                        f"Модель: <b>{model_name}</b>\n"
-                        f"Параметры:\n{params_text}\n\n"
-                        f"Продолжить генерацию?",
+                        confirm_text,
                         reply_markup=InlineKeyboardMarkup(keyboard),
                         parse_mode='HTML'
                     )
                     return CONFIRMING_GENERATION
             except Exception as e:
                 logger.error(f"Error after image input: {e}", exc_info=True)
+                await update.message.reply_text(
+                    f"❌ <b>Ошибка</b>\n\n"
+                    f"Не удалось перейти к следующему шагу.\n"
+                    f"Попробуйте еще раз или используйте /cancel.",
+                    parse_mode='HTML'
+                )
         elif image_count < min(max_items, 8):
             keyboard = [
                 [InlineKeyboardButton("📷 Добавить еще", callback_data="add_image")],
