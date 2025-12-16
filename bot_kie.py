@@ -10203,61 +10203,23 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     logger.error(f"   session[{image_param_name}]: {session.get(image_param_name)}")
                     all_required_collected = False
             
-            # If all required parameters collected, check if auto-start generation
+            # If all required parameters collected, show "Generate" button with price
             if all_required_collected:
                 model_name = session.get('model_info', {}).get('name', 'Unknown')
                 params = session.get('params', {})
-                
-                # CRITICAL: For models that only require image (no prompt), auto-start generation
-                models_only_image = [
-                    "recraft/remove-background",
-                    "recraft/crisp-upscale",
-                    "topaz/image-upscale",
-                    "ideogram/v3-reframe"
-                ]
-                
-                if model_id in models_only_image:
-                    logger.info(f"🚀🚀🚀 AUTO-STARTING generation for {model_id} (image-only model). Params: {list(params.keys())}")
-                    user_lang = get_user_language(user_id)
-                    
-                    # Show "Generation started" message
-                    if user_lang == 'en':
-                        start_msg = f"🚀 <b>Generation started!</b>\n\nProcessing your image with <b>{model_name}</b>...\n\nPlease wait, this may take a moment."
-                    else:
-                        start_msg = f"🚀 <b>Генерация началась!</b>\n\nОбрабатываю ваше изображение с помощью <b>{model_name}</b>...\n\nПожалуйста, подождите, это может занять некоторое время."
-                    
-                    try:
-                        status_msg = await update.message.reply_text(start_msg, parse_mode='HTML')
-                    except Exception as e:
-                        logger.error(f"Error sending start message: {e}", exc_info=True)
-                        status_msg = update.message  # Fallback to original message
-                    
-                    # Call start_generation_directly function
-                    try:
-                        result = await start_generation_directly(
-                            user_id=user_id,
-                            model_id=model_id,
-                            params=params,
-                            model_info=session.get('model_info', {}),
-                            status_message=status_msg,
-                            context=context
-                        )
-                        logger.info(f"✅✅✅ Auto-started generation for {model_id}, result: {result}")
-                        return result
-                    except Exception as e:
-                        logger.error(f"❌❌❌ Error auto-starting generation: {e}", exc_info=True)
-                        # Fallback to showing confirmation
-                        try:
-                            await status_msg.edit_text(
-                                "❌ <b>Ошибка</b>\n\nНе удалось автоматически начать генерацию. Пожалуйста, используйте кнопку подтверждения.",
-                                parse_mode='HTML'
-                            )
-                        except:
-                            pass
-                
-                # For other models, show confirmation
-                logger.info(f"✅ All parameters collected for {model_id}, showing confirmation. Params: {list(params.keys())}")
                 user_lang = get_user_language(user_id)
+                is_admin_user = get_is_admin(user_id)
+                
+                logger.info(f"✅ All parameters collected for {model_id}, showing generate button with price. Params: {list(params.keys())}")
+                
+                # Calculate price
+                is_free = is_free_generation_available(user_id, model_id)
+                price = calculate_price_rub(model_id, params, is_admin_user)
+                if is_free:
+                    price = 0.0
+                
+                # Format price string
+                price_str = f"{price:.2f}".rstrip('0').rstrip('.')
                 
                 # Format params text
                 params_text = ""
@@ -10268,8 +10230,39 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         display_val = str(v)[:50] + '...' if len(str(v)) > 50 else str(v)
                         params_text += f"  • {k}: {display_val}\n"
                 
+                # Prepare price info
+                if is_free:
+                    remaining = get_user_free_generations_remaining(user_id)
+                    if user_lang == 'en':
+                        price_info = f"\n\n🎁 <b>FREE GENERATION!</b>\nRemaining free: {remaining}/{FREE_GENERATIONS_PER_DAY} per day"
+                    else:
+                        price_info = f"\n\n🎁 <b>БЕСПЛАТНАЯ ГЕНЕРАЦИЯ!</b>\nОсталось бесплатных: {remaining}/{FREE_GENERATIONS_PER_DAY} в день"
+                else:
+                    if user_lang == 'en':
+                        price_info = f"\n\n💰 <b>Cost:</b> {price_str} ₽"
+                    else:
+                        price_info = f"\n\n💰 <b>Стоимость:</b> {price_str} ₽"
+                
+                # Show message with "Generate" button and price
+                if user_lang == 'en':
+                    message_text = (
+                        f"✅ <b>Ready to generate!</b>\n\n"
+                        f"Model: <b>{model_name}</b>\n"
+                        f"Parameters:\n{params_text}{price_info}\n\n"
+                        f"Click the button below to start generation."
+                    )
+                    button_text = "🚀 Start Generation"
+                else:
+                    message_text = (
+                        f"✅ <b>Готово к генерации!</b>\n\n"
+                        f"Модель: <b>{model_name}</b>\n"
+                        f"Параметры:\n{params_text}{price_info}\n\n"
+                        f"Нажмите кнопку ниже для запуска генерации."
+                    )
+                    button_text = "🚀 Отправить на генерацию"
+                
                 keyboard = [
-                    [InlineKeyboardButton(t('btn_confirm_generate', lang=user_lang), callback_data="confirm_generate")],
+                    [InlineKeyboardButton(button_text, callback_data="confirm_generate")],
                     [
                         InlineKeyboardButton(t('btn_back', lang=user_lang), callback_data="back_to_previous_step"),
                         InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")
@@ -10277,33 +10270,19 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     [InlineKeyboardButton(t('btn_cancel', lang=user_lang), callback_data="cancel")]
                 ]
                 
-                if user_lang == 'en':
-                    confirm_text = (
-                        f"📋 <b>Confirmation:</b>\n\n"
-                        f"Model: <b>{model_name}</b>\n"
-                        f"Parameters:\n{params_text}\n\n"
-                        f"Continue generation?"
-                    )
-                else:
-                    confirm_text = (
-                        f"📋 <b>Подтверждение:</b>\n\n"
-                        f"Модель: <b>{model_name}</b>\n"
-                        f"Параметры:\n{params_text}\n\n"
-                        f"Продолжить генерацию?"
-                    )
-                
                 try:
                     await update.message.reply_text(
-                        confirm_text,
+                        message_text,
                         reply_markup=InlineKeyboardMarkup(keyboard),
                         parse_mode='HTML'
                     )
-                    logger.info(f"✅ Confirmation message sent for {model_id}")
+                    logger.info(f"✅✅✅ Generate button with price shown for {model_id}, price: {price_str} ₽, returning CONFIRMING_GENERATION")
+                    logger.info(f"🔍 State transition: INPUTTING_PARAMS -> CONFIRMING_GENERATION for user {user_id}, model {model_id}")
                     return CONFIRMING_GENERATION
                 except Exception as e:
-                    logger.error(f"❌ Error sending confirmation message: {e}", exc_info=True)
+                    logger.error(f"❌ Error showing generate button: {e}", exc_info=True)
                     await update.message.reply_text(
-                        "❌ <b>Ошибка</b>\n\nНе удалось показать форму подтверждения. Попробуйте еще раз.",
+                        "❌ <b>Ошибка</b>\n\nНе удалось показать кнопку генерации.",
                         parse_mode='HTML'
                     )
                     return INPUTTING_PARAMS
@@ -10819,7 +10798,9 @@ async def start_generation_directly(
             return ConversationHandler.END
     
     # Create task
+    logger.info(f"🚀🚀🚀 Creating task for model {model_id}, user {user_id}, params keys: {list(api_params.keys())}")
     result = await kie.create_task(model_id, api_params)
+    logger.info(f"📋 Task creation result: ok={result.get('ok')}, taskId={result.get('taskId')}, error={result.get('error')}")
     
     if result.get('ok'):
         task_id = result.get('taskId')
@@ -10882,7 +10863,9 @@ async def start_generation_directly(
                 self.message = message
         
         mock_update = MockUpdate(user_id, status_message)
+        logger.info(f"🚀🚀🚀 Starting polling for task {task_id}, user {user_id}, model {model_id}")
         asyncio.create_task(poll_task_status(mock_update, context, task_id, user_id))
+        logger.info(f"✅✅✅ Polling task created for task {task_id}")
         
         # Deduct balance
         if not is_free:
@@ -10905,9 +10888,11 @@ async def start_generation_directly(
 async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle generation confirmation."""
     query = update.callback_query
-    await query.answer()
+    if query:
+        await query.answer()
     
     user_id = update.effective_user.id
+    logger.info(f"🚀🚀🚀 confirm_generation CALLED for user {user_id}")
     is_admin_user = get_is_admin(user_id)
     
     # Check if user is blocked
@@ -20457,12 +20442,15 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             return ConversationHandler.END
         
         # Create task (for async models like z-image) with retry logic
+        logger.info(f"🚀🚀🚀 Creating task for model {model_id}, user {user_id}, params keys: {list(api_params.keys())}")
         result = None
         max_retries = 3
         retry_delay = 2
         
         for attempt in range(max_retries):
+            logger.info(f"🔄 Task creation attempt {attempt + 1}/{max_retries} for {model_id}")
             result = await kie.create_task(model_id, api_params)
+            logger.info(f"📋 Task creation result: ok={result.get('ok')}, taskId={result.get('taskId')}, error={result.get('error')}")
             
             # Log result for debugging (only for admin)
             if is_admin_user:
@@ -20557,7 +20545,9 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             )
             
             # Start polling for task completion (async, non-blocking)
+            logger.info(f"🚀🚀🚀 Starting polling for task {task_id}, user {user_id}, model {model_id}")
             asyncio.create_task(poll_task_status(update, context, task_id, user_id))
+            logger.info(f"✅✅✅ Polling task created for task {task_id}")
         else:
             error = result.get('error', 'Unknown error')
             error_details = ""
