@@ -1,0 +1,104 @@
+═══════════════════════════════════════════════════════════════════════════════
+            ИСПРАВЛЕНИЕ ПЕРЕВОДОВ ТИПОВ ГЕНЕРАЦИИ
+═══════════════════════════════════════════════════════════════════════════════
+
+ПРОБЛЕМА:
+При выборе английского языка названия типов генерации оставались на русском:
+- "Текст в фото" вместо "Text to Image"
+- "Текст в видео" вместо "Text to Video"
+- "Фото в видео" вместо "Image to Video"
+- И т.д.
+
+═══════════════════════════════════════════════════════════════════════════════
+                            ВЫПОЛНЕННЫЕ ИСПРАВЛЕНИЯ
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ 1. ДОБАВЛЕНЫ ПЕРЕВОДЫ ДЛЯ ВСЕХ ТИПОВ ГЕНЕРАЦИИ
+
+   В translations.py добавлены ключи:
+   - gen_type_text_to_image: '✨ Текст в фото' / '✨ Text to Image'
+   - gen_type_image_to_image: '🎨 Фото в фото' / '🎨 Image to Image'
+   - gen_type_image_editing: '🖼️ Редактирование фото' / '🖼️ Image Editing'
+   - gen_type_text_to_video: '🎬 Текст в видео' / '🎬 Text to Video'
+   - gen_type_image_to_video: '📸 Фото в видео' / '📸 Image to Video'
+   - gen_type_video_editing: '✂️ Редактирование видео' / '✂️ Video Editing'
+   - gen_type_speech_to_video: '🎙️ Речь в видео' / '🎙️ Speech to Video'
+   - gen_type_lip_sync: '👄 Синхронизация губ' / '👄 Lip Sync'
+   - gen_type_speech_to_text: '🎙️ Речь в текст' / '🎙️ Speech to Text'
+   - gen_type_text_to_speech: '🗣️ Текст в речь' / '🗣️ Text to Speech'
+   - gen_type_text_to_music: '🎵 Текст в музыку' / '🎵 Text to Music'
+   - gen_type_audio_to_audio: '🎧 Обработка аудио' / '🎧 Audio Processing'
+
+✅ 2. ДОБАВЛЕНЫ ПЕРЕВОДЫ ДЛЯ ОПИСАНИЙ ТИПОВ ГЕНЕРАЦИИ
+
+   - gen_type_desc_text_to_image: 'Создавайте изображения из текста' / 'Create images from text'
+   - gen_type_desc_image_to_image: 'Трансформация и стилизация изображений' / 'Transform and style images'
+   - gen_type_desc_image_editing: 'Редактирование и улучшение изображений' / 'Edit and enhance images'
+   - gen_type_desc_text_to_video: 'Создавайте видео из текстового описания' / 'Create videos from text descriptions'
+   - gen_type_desc_image_to_video: 'Превращайте изображения в динамичные видео' / 'Turn images into dynamic videos'
+   - gen_type_desc_video_editing: 'Редактирование и обработка видео' / 'Edit and process videos'
+   - gen_type_desc_speech_to_video: 'Создание видео из речи и аудио' / 'Create videos from speech and audio'
+   - gen_type_desc_lip_sync: 'Синхронизация губ с аудио' / 'Lip synchronization with audio'
+   - gen_type_desc_speech_to_text: 'Преобразование речи в текст с высокой точностью' / 'Convert speech to text with high accuracy'
+   - gen_type_desc_text_to_speech: 'Преобразование текста в естественную речь' / 'Convert text to natural speech'
+   - gen_type_desc_text_to_music: 'Генерация музыки из текстового описания' / 'Generate music from text descriptions'
+   - gen_type_desc_audio_to_audio: 'Обработка и улучшение аудио' / 'Process and enhance audio'
+
+✅ 3. ИСПРАВЛЕНЫ ВСЕ МЕСТА ИСПОЛЬЗОВАНИЯ НАЗВАНИЙ ТИПОВ
+
+   Заменено во всех местах:
+   - gen_info.get('name', gen_type) → t(gen_type_key, lang=user_lang, default=gen_info.get('name', gen_type))
+   
+   Исправлены места:
+   - Строка 3053-3056: кнопки типов генерации в главном меню
+   - Строка 3083-3085: кнопка text-to-image в главном меню
+   - Строка 3566-3568: кнопки типов генерации после выбора языка
+   - Строка 3591-3593: кнопка text-to-image после выбора языка
+   - Строка 4193-4194: кнопки типов генерации в другом месте
+   - Строка 4211-4212: кнопка text-to-image в другом месте
+   - Строка 4684-4691: заголовок и описание типа генерации
+   - Строка 5186-5187: кнопки типов генерации в еще одном месте
+   - Строка 5215-5216: кнопка text-to-image в еще одном месте
+
+✅ 4. УЛУЧШЕНА ФУНКЦИЯ t() В translations.py
+
+   Добавлен параметр default для fallback значения
+   Теперь: t(key, lang='ru', default='fallback', **kwargs)
+
+✅ 5. ДОБАВЛЕНЫ ПЕРЕВОДЫ ДЛЯ СООБЩЕНИЙ О ТИПАХ ГЕНЕРАЦИИ
+
+   - msg_gen_type_title: '🎨 <b>{name}</b>'
+   - msg_gen_type_description: '📝 <b>Описание:</b>\n{description}' / '📝 <b>Description:</b>\n{description}'
+   - msg_gen_type_free: '🎁 <b>БЕСПЛАТНО:</b> {remaining} генераций Z-Image доступно!' / '🎁 <b>FREE:</b> {remaining} Z-Image generations available!'
+   - msg_gen_type_models_available: '🤖 <b>Доступные нейросети ({count}):</b>' / '🤖 <b>Available AI models ({count}):</b>'
+   - msg_gen_type_select_model: '💡 <b>Выберите модель ниже</b>' / '💡 <b>Select a model below</b>'
+   - msg_gen_type_no_models: '❌ Модели для этого типа генерации не найдены.' / '❌ No models found for this generation type.'
+
+═══════════════════════════════════════════════════════════════════════════════
+                            РЕЗУЛЬТАТ
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ При выборе английского языка:
+   - Все названия типов генерации на английском
+   - Все описания типов генерации на английском
+   - Все сообщения о типах генерации на английском
+   - Все кнопки корректно переводятся
+
+✅ При выборе русского языка:
+   - Всё остается на русском (как было)
+
+✅ Fallback механизм:
+   - Если перевод не найден, используется значение из kie_models.py
+   - Система надежна и не сломается при отсутствии перевода
+
+═══════════════════════════════════════════════════════════════════════════════
+                            ПРОВЕРКА
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ Линтер: ошибок нет
+✅ Синтаксис: корректен
+✅ Переводы: добавлены для всех типов
+✅ Использование: все места исправлены
+
+═══════════════════════════════════════════════════════════════════════════════
+

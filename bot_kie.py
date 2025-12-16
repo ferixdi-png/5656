@@ -154,7 +154,8 @@ try:
     logger.info("✅ Новые сервисы загружены успешно")
 except ImportError as e:
     NEW_SERVICES_AVAILABLE = False
-    logger.info(f"ℹ️ Новые сервисы не доступны, используется стандартная реализация (это нормально): {e}")
+    # Это нормально, если модуль bot_kie_services не настроен
+    logger.debug(f"ℹ️ Новые сервисы не доступны, используется стандартная реализация (это нормально): {e}")
 
 # Импорт модуля БД для сохранения баланса и истории
 try:
@@ -172,7 +173,15 @@ try:
     logger.info("✅ Модуль БД загружен успешно")
 except ImportError as e:
     DATABASE_AVAILABLE = False
-    logger.warning(f"⚠️ Модуль БД не доступен, используется JSON хранилище: {e}")
+    # Это нормально, если psycopg2 не установлен или database.py отсутствует
+    # Проверяем, что именно не найдено
+    error_msg = str(e)
+    if 'database' in error_msg.lower():
+        logger.info(f"ℹ️ Модуль database.py не найден, используется JSON хранилище (это нормально, если БД не настроена)")
+    elif 'psycopg2' in error_msg.lower():
+        logger.info(f"ℹ️ psycopg2 не установлен, используется JSON хранилище (это нормально, если БД не используется)")
+    else:
+        logger.info(f"ℹ️ Модуль БД не доступен, используется JSON хранилище: {e}")
 except Exception as e:
     DATABASE_AVAILABLE = False
     logger.warning(f"⚠️ Ошибка при загрузке модуля БД, используется JSON хранилище: {e}")
@@ -3041,7 +3050,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text_to_image_type = gen_type
             continue
             
-        button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
+        # Get translated name for generation type
+        gen_type_key = f'gen_type_{gen_type.replace("-", "_")}'
+        gen_type_name = t(gen_type_key, lang=user_lang, default=gen_info.get('name', gen_type))
+        button_text = f"{gen_type_name} ({models_count})"
         
         # Add buttons in pairs (2 per row)
         if gen_type_index % 2 == 0:
@@ -3068,7 +3080,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         gen_info = get_generation_type_info(text_to_image_type)
         models_count = len(get_models_by_generation_type(text_to_image_type))
         if models_count > 0:
-            button_text = f"{gen_info.get('name', text_to_image_type)} ({models_count})"
+            gen_type_key = f'gen_type_{text_to_image_type.replace("-", "_")}'
+            gen_type_name = t(gen_type_key, lang=user_lang, default=gen_info.get('name', text_to_image_type))
+            button_text = f"{gen_type_name} ({models_count})"
             keyboard.append([
                 InlineKeyboardButton(button_text, callback_data=f"gen_type:{text_to_image_type}")
             ])
@@ -3405,28 +3419,59 @@ async def show_payment_screenshot(query, payment: dict, current_index: int, tota
 
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle button callbacks."""
+    """Handle button callbacks. CRITICAL: Always calls query.answer() to prevent button hanging."""
+    query = None
+    user_id = None
+    data = None
+    user_lang = 'ru'
+    
+    # CRITICAL: Always answer callback query to prevent button hanging
+    # This must be done FIRST, before any other operations
     try:
         query = update.callback_query
         if not query:
             logger.error("No callback_query in update")
             return ConversationHandler.END
         
-        user_id = update.effective_user.id
-        data = query.data
+        user_id = update.effective_user.id if update.effective_user else None
+        data = query.data if query else None
+        
+        # ALWAYS answer callback immediately to prevent button hanging
+        # This is critical - if we don't answer, button will hang
+        try:
+            await query.answer()
+        except Exception as answer_error:
+            logger.warning(f"Could not answer callback query: {answer_error}")
+            # Continue anyway - better to process than to fail completely
         
         logger.info(f"Button callback received: user_id={user_id}, data='{data}'")
         
         if not data:
             logger.error("No data in callback_query")
             try:
-                user_lang = get_user_language(query.from_user.id)
+                user_lang = get_user_language(user_id) if user_id else 'ru'
                 await query.answer(t('error_no_data', lang=user_lang), show_alert=True)
             except:
-                pass
+                try:
+                    await query.answer("❌ Ошибка: нет данных в кнопке", show_alert=True)
+                except:
+                    pass
             return ConversationHandler.END
+        
+        # Get user language early for error messages
+        try:
+            user_lang = get_user_language(user_id) if user_id else 'ru'
+        except:
+            user_lang = 'ru'
+            
     except Exception as e:
         logger.error(f"Error in button_callback setup: {e}", exc_info=True)
+        # Try to answer anyway if we have query
+        if query:
+            try:
+                await query.answer("❌ Ошибка обработки кнопки. Попробуйте /start", show_alert=True)
+            except:
+                pass
         return ConversationHandler.END
     
     # Wrap all callback handling in try-except for error handling
@@ -3548,7 +3593,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         text_to_image_type = gen_type
                         continue
                         
-                    button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
+                    # Get translated name for generation type
+                    gen_type_key = f'gen_type_{gen_type.replace("-", "_")}'
+                    gen_type_name = t(gen_type_key, lang=user_lang, default=gen_info.get('name', gen_type))
+                    button_text = f"{gen_type_name} ({models_count})"
                     
                     if i % 2 == 0:
                         gen_type_rows.append([InlineKeyboardButton(
@@ -3571,7 +3619,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if text_to_image_type:
                     gen_info = get_generation_type_info(text_to_image_type)
                     models_count = len(get_models_by_generation_type(text_to_image_type))
-                    button_text = f"{gen_info.get('name', text_to_image_type)} ({models_count})"
+                    gen_type_key = f'gen_type_{text_to_image_type.replace("-", "_")}'
+                    gen_type_name = t(gen_type_key, lang=user_lang, default=gen_info.get('name', text_to_image_type))
+                    button_text = f"{gen_type_name} ({models_count})"
                     keyboard.append([
                         InlineKeyboardButton(button_text, callback_data=f"gen_type:{text_to_image_type}")
                     ])
@@ -4169,7 +4219,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         text_to_image_type = gen_type
                         continue
                         
-                    button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
+                    # Get translated name for generation type
+                    gen_type_key = f'gen_type_{gen_type.replace("-", "_")}'
+                    gen_type_name = t(gen_type_key, lang=user_lang, default=gen_info.get('name', gen_type))
+                    button_text = f"{gen_type_name} ({models_count})"
                     
                     if gen_type_index % 2 == 0:
                         gen_type_rows.append([InlineKeyboardButton(button_text, callback_data=f"gen_type:{gen_type}")])
@@ -4185,7 +4238,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     gen_info = get_generation_type_info(text_to_image_type)
                     models_count = len(get_models_by_generation_type(text_to_image_type))
                     if models_count > 0:
-                        button_text = f"{gen_info.get('name', text_to_image_type)} ({models_count})"
+                        gen_type_key = f'gen_type_{text_to_image_type.replace("-", "_")}'
+                        gen_type_name = t(gen_type_key, lang=user_lang, default=gen_info.get('name', text_to_image_type))
+                        button_text = f"{gen_type_name} ({models_count})"
                         keyboard.append([
                             InlineKeyboardButton(button_text, callback_data=f"gen_type:{text_to_image_type}")
                         ])
@@ -4631,15 +4686,17 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             models = get_models_by_generation_type(gen_type)
             
             if not models:
+                user_lang = get_user_language(user_id)
+                error_text = t('msg_gen_type_no_models', lang=user_lang)
                 try:
                     await query.edit_message_text(
-                        f"❌ Модели для этого типа генерации не найдены.",
+                        error_text,
                         parse_mode='HTML'
                     )
                 except:
                     try:
                         await query.message.reply_text(
-                            f"❌ Модели для этого типа генерации не найдены.",
+                            error_text,
                             parse_mode='HTML'
                         )
                     except:
@@ -4651,24 +4708,30 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # Show generation type info and models with marketing text
             remaining_free = get_user_free_generations_remaining(user_id)
+            user_lang = get_user_language(user_id)
+            
+            # Get translated name and description
+            gen_type_key = f'gen_type_{gen_type.replace("-", "_")}'
+            gen_type_name = t(gen_type_key, lang=user_lang, default=gen_info.get('name', gen_type))
+            gen_desc_key = f'gen_type_desc_{gen_type.replace("-", "_")}'
+            gen_type_description = t(gen_desc_key, lang=user_lang, default=gen_info.get('description', ''))
             
             gen_type_text = (
-                f"🎨 <b>{gen_info.get('name', gen_type)}</b>\n\n"
+                f"{t('msg_gen_type_title', lang=user_lang, name=gen_type_name)}\n\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"📝 <b>Описание:</b>\n"
-                f"{gen_info.get('description', '')}\n\n"
+                f"{t('msg_gen_type_description', lang=user_lang, description=gen_type_description)}\n\n"
             )
             
             if remaining_free > 0 and gen_type == "text-to-image":
                 gen_type_text += (
-                    f"🎁 <b>БЕСПЛАТНО:</b> {remaining_free} генераций Z-Image доступно!\n"
-                    f"💡 Пригласи друга → получи +{REFERRAL_BONUS_GENERATIONS} генераций\n\n"
+                    f"{t('msg_gen_type_free', lang=user_lang, remaining=remaining_free)}\n"
+                    f"💡 {t('btn_invite_friend', lang=user_lang, bonus=REFERRAL_BONUS_GENERATIONS)}\n\n"
                 )
             
             gen_type_text += (
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"🤖 <b>Доступные нейросети ({len(models)}):</b>\n\n"
-                f"💡 <b>Выберите модель ниже</b>"
+                f"{t('msg_gen_type_models_available', lang=user_lang, count=len(models))}\n\n"
+                f"{t('msg_gen_type_select_model', lang=user_lang)}"
             )
             
             # Create keyboard with models (2 per row for compact display)
@@ -5149,7 +5212,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     text_to_image_type = gen_type
                     continue
                 
-                button_text = f"{gen_info.get('name', gen_type)} ({models_count})"
+                # Get translated name for generation type
+                gen_type_key = f'gen_type_{gen_type.replace("-", "_")}'
+                gen_type_name = t(gen_type_key, lang=user_lang, default=gen_info.get('name', gen_type))
+                button_text = f"{gen_type_name} ({models_count})"
                 
                 # Add buttons in pairs (2 per row)
                 if gen_type_index % 2 == 0:
@@ -5176,7 +5242,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 gen_info = get_generation_type_info(text_to_image_type)
                 models_count = len(get_models_by_generation_type(text_to_image_type))
                 if models_count > 0:
-                    button_text = f"{gen_info.get('name', text_to_image_type)} ({models_count})"
+                    gen_type_key = f'gen_type_{text_to_image_type.replace("-", "_")}'
+                    gen_type_name = t(gen_type_key, lang=user_lang, default=gen_info.get('name', text_to_image_type))
+                    button_text = f"{gen_type_name} ({models_count})"
                     keyboard.append([
                         InlineKeyboardButton(button_text, callback_data=f"gen_type:{text_to_image_type}")
                     ])
@@ -20771,6 +20839,7 @@ def main():
             logger.info("🗄️ Initializing database...")
             init_database()
             logger.info("✅ Database initialized successfully")
+            logger.info("✅ Data will be saved to PostgreSQL")
         except Exception as e:
             logger.error(f"❌ Failed to initialize database: {e}")
             logger.warning("⚠️ Bot will continue with JSON fallback storage")
@@ -20778,6 +20847,7 @@ def main():
             DATABASE_AVAILABLE = False
     else:
         logger.info("ℹ️ Database not available, using JSON storage")
+        logger.info("ℹ️ To enable database, install psycopg2-binary and set DATABASE_URL")
     
     # Initialize all data files first (for JSON fallback)
     logger.info("🔧 Initializing data files...")
@@ -20869,10 +20939,11 @@ def main():
     application = Application.builder().token(BOT_TOKEN).build()
     
     # Create conversation handler for generation
+    # Note: per_message=True requires all entry points to be CallbackQueryHandler
+    # So we handle commands separately and use only callbacks for conversation
     generation_handler = ConversationHandler(
         entry_points=[
-            CommandHandler('generate', start_generation),
-            CommandHandler('models', list_models),
+            # Only CallbackQueryHandler for per_message=True
             CallbackQueryHandler(button_callback, pattern='^show_models$'),
             CallbackQueryHandler(button_callback, pattern='^show_all_models_list$'),
             CallbackQueryHandler(button_callback, pattern='^category:'),
@@ -21192,11 +21263,16 @@ def main():
             ]
         },
         fallbacks=[
-            CommandHandler('cancel', cancel),
+            # Only CallbackQueryHandler for per_message=True
             CallbackQueryHandler(cancel, pattern='^cancel$')
         ],
         per_message=True
     )
+    
+    # Add command handlers separately (not in conversation, as per_message=True requires only CallbackQueryHandler)
+    application.add_handler(CommandHandler('generate', start_generation))
+    application.add_handler(CommandHandler('models', list_models))
+    application.add_handler(CommandHandler('cancel', cancel))
     
     # Add handlers
     # Admin commands
@@ -21445,11 +21521,42 @@ def main():
     application.add_handler(CommandHandler("unblock_user", admin_unblock_user))
     application.add_handler(CommandHandler("user_balance", admin_user_balance))
     application.add_handler(CommandHandler("add_admin", admin_add_admin))
-    # Add separate handler for show_models and show_all_models_list buttons (works outside ConversationHandler)
+    # Add separate handlers for main menu buttons (works outside ConversationHandler)
     # This ensures the buttons work from main menu
     # NOTE: These handlers must be registered BEFORE generation_handler to catch callbacks first
     application.add_handler(CallbackQueryHandler(button_callback, pattern='^show_models$'))
     application.add_handler(CallbackQueryHandler(button_callback, pattern='^show_all_models_list$'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^back_to_menu$'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^gen_type:'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^category:'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^all_models$'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^check_balance$'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^topup_balance$'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^topup_amount:'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^topup_custom$'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^referral_info$'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^my_generations$'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^gen_view:'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^gen_repeat:'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^gen_history:'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^help_menu$'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^support_contact$'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^change_language$'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^language_select:'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^free_tools$'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^claim_gift$'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^generate_again$'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^copy_bot$'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^tutorial_start$'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^tutorial_step'))
+    application.add_handler(CallbackQueryHandler(button_callback, pattern='^tutorial_complete$'))
+    
+    # CRITICAL: Add universal fallback handler for ALL other callbacks
+    # This ensures NO button is left unhandled - catches everything not matched above
+    # Must be registered AFTER specific handlers but BEFORE generation_handler
+    # This handler will catch any callback_data that doesn't match patterns above
+    application.add_handler(CallbackQueryHandler(button_callback))
+    
     application.add_handler(generation_handler)
     application.add_handler(CommandHandler("models", list_models))
     
