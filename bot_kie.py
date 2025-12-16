@@ -4406,123 +4406,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.answer("Неверный язык / Invalid language")
             return ConversationHandler.END
         
-        if data == "claim_gift":
-            # Handle gift claiming
-            user_lang = get_user_language(user_id)
-            if has_claimed_gift(user_id):
-                await query.answer(t('error_already_claimed', lang=user_lang), show_alert=True)
-                if user_lang == 'ru':
-                    gift_message = (
-                        "🎁 <b>ПОДАРОК УЖЕ ИСПОЛЬЗОВАН</b> 🎁\n\n"
-                        "Ты уже забрал свой подарок! 🎉\n\n"
-                        "💡 Используй бесплатные генерации или пополни баланс для создания контента."
-                    )
-                else:
-                    gift_message = (
-                        "🎁 <b>GIFT ALREADY CLAIMED</b> 🎁\n\n"
-                        "You have already claimed your gift! 🎉\n\n"
-                        "💡 Use free generations or top up your balance to create content."
-                    )
-                keyboard = [
-                    [InlineKeyboardButton(t('btn_free_tools', lang=user_lang), callback_data="free_tools")],
-                    [InlineKeyboardButton(t('btn_top_up_balance', lang=user_lang), callback_data="topup_balance")],
-                    [InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")]
-                ]
-                await query.edit_message_text(
-                    gift_message,
-                    reply_markup=InlineKeyboardMarkup(keyboard),
-                    parse_mode='HTML'
-                )
-                return ConversationHandler.END
-            
-            # Show initial spinning message
-            await query.answer("🎰 Крутим колесо фортуны...")
-            
-            spin_message = await query.edit_message_text(
-                "🎰 <b>КОЛЕСО ФОРТУНЫ</b> 🎰\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "🎲 <b>Крутим колесо...</b>\n\n"
-                "⏳ Подождите, определяем ваш выигрыш...",
-                parse_mode='HTML'
-            )
-            
-            # Animate wheel spinning with different sectors
-            wheel_sectors = [
-                ("🎯", "🎪", "🎨", "🎭", "🎪", "🎯"),
-                ("💰", "💎", "🎁", "⭐", "💎", "💰"),
-                ("🎰", "🎲", "🎯", "🎪", "🎲", "🎰"),
-                ("💫", "✨", "🌟", "⭐", "✨", "💫"),
-                ("🎊", "🎉", "🎈", "🎁", "🎉", "🎊")
-            ]
-            
-            progress_steps = [
-                ("🔄", "🔄", "🔄", "🔄", "🔄", "🔄"),
-                ("⚡", "⚡", "⚡", "⚡", "⚡", "⚡"),
-                ("✨", "✨", "✨", "✨", "✨", "✨"),
-                ("💫", "💫", "💫", "💫", "💫", "💫"),
-                ("🎯", "🎯", "🎯", "🎯", "🎯", "🎯")
-            ]
-            
-            # Show spinning animation
-            for i in range(8):
-                await asyncio.sleep(0.25)
-                sector_idx = i % len(wheel_sectors)
-                progress_idx = min(i, len(progress_steps) - 1)
-                
-                wheel_display = " ".join(wheel_sectors[sector_idx])
-                progress_display = " ".join(progress_steps[progress_idx])
-                
-                # Progress bar simulation
-                progress_percent = min((i + 1) * 12.5, 100)
-                progress_bar = "█" * int(progress_percent / 5) + "░" * (20 - int(progress_percent / 5))
-                
-                try:
-                    await spin_message.edit_text(
-                        f"🎰 <b>КОЛЕСО ФОРТУНЫ</b> 🎰\n\n"
-                        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                        f"{wheel_display}\n\n"
-                        f"<b>Крутим...</b> {progress_display}\n\n"
-                        f"📊 [{progress_bar}] {progress_percent:.0f}%\n\n"
-                        f"⏳ Подождите, определяем ваш выигрыш...",
-                        parse_mode='HTML'
-                    )
-                except:
-                    pass
-            
-            # Final spin - slow down
-            await asyncio.sleep(0.4)
-            
-            # Get random gift amount
-            gift_amount = spin_gift_wheel()
-            
-            # Add to user balance
-            add_user_balance(user_id, gift_amount)
-            set_gift_claimed(user_id)
-            
-            # Show result with celebration
-            keyboard = [
-                [InlineKeyboardButton("🎁 Генерировать бесплатно", callback_data="select_model:z-image")],
-                [InlineKeyboardButton("🤖 Все модели", callback_data="show_models")],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
-            ]
-            
-            await spin_message.edit_text(
-                f"🎉 <b>ПОЗДРАВЛЯЕМ!</b> 🎉\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"🎰 <b>КОЛЕСО ОСТАНОВИЛОСЬ!</b> 🎰\n\n"
-                f"💰 <b>ТВОЙ ВЫИГРЫШ:</b> {gift_amount:.2f} ₽\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"✅ <b>Баланс успешно пополнен!</b>\n\n"
-                f"🎯 Теперь ты можешь:\n"
-                f"• Создавать изображения\n"
-                f"• Генерировать видео\n"
-                f"• Тестировать разные модели!\n\n"
-                f"💡 <b>Удачной генерации!</b> ✨",
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
-            return ConversationHandler.END
-        
         if data == "cancel":
             user_lang = get_user_language(user_id)
             await query.answer(t('btn_cancel', lang=user_lang).replace('❌ ', ''))
@@ -5317,6 +5200,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return SELECTING_MODEL
         
         if data == "add_image":
+            # Answer callback immediately
+            try:
+                await query.answer()
+            except:
+                pass
+            
             session = user_sessions.get(user_id, {})
             # Determine which parameter name to use (image_input or image_urls)
             model_info = session.get('model_info', {})
@@ -5336,10 +5225,15 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Можно загрузить до 8 изображений.",
                 parse_mode='HTML'
             )
-            await query.answer()
             return INPUTTING_PARAMS
         
         if data == "image_done":
+            # Answer callback immediately
+            try:
+                await query.answer()
+            except:
+                pass
+            
             if user_id not in user_sessions:
                 await query.edit_message_text("❌ Сессия не найдена.")
                 return ConversationHandler.END
@@ -6076,6 +5970,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Admin functions (only for admin)
         if user_id == ADMIN_ID:
             if data == "admin_stats":
+                # Answer callback immediately
+                try:
+                    await query.answer()
+                except:
+                    pass
+                
                 # Show full admin panel menu with extended statistics
                 generation_types = get_generation_types()
                 total_models = len(KIE_MODELS)
@@ -6801,151 +6701,313 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ADMIN_TEST_OCR
         
         if data == "tutorial_start":
-            # Interactive tutorial for new users
-            tutorial_text = (
-                '🎓 <b>ИНТЕРАКТИВНЫЙ ТУТОРИАЛ</b>\n\n'
-                '━━━━━━━━━━━━━━━━━━━━\n\n'
-                '👋 Добро пожаловать! Давайте разберемся, как пользоваться ботом.\n\n'
-                '📚 <b>Что вы узнаете:</b>\n'
-                '• Что такое AI-генерация\n'
-                '• Как выбрать модель\n'
-                '• Как создать контент\n'
-                '• Как пополнить баланс\n\n'
-                '💡 <b>Это займет 2 минуты!</b>'
-            )
+            # Answer callback immediately
+            try:
+                await query.answer()
+            except:
+                pass
             
-            keyboard = [
-                [InlineKeyboardButton("▶️ Начать туториал", callback_data="tutorial_step1")],
-                [InlineKeyboardButton("⏭️ Пропустить", callback_data="back_to_menu")]
-            ]
-            
-            await query.edit_message_text(
-                tutorial_text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
-            return ConversationHandler.END
+            try:
+                # Interactive tutorial for new users
+                tutorial_text = (
+                    '🎓 <b>ИНТЕРАКТИВНЫЙ ТУТОРИАЛ</b>\n\n'
+                    '━━━━━━━━━━━━━━━━━━━━\n\n'
+                    '👋 Добро пожаловать! Давайте разберемся, как пользоваться ботом.\n\n'
+                    '📚 <b>Что вы узнаете:</b>\n'
+                    '• Что такое AI-генерация\n'
+                    '• Как выбрать модель\n'
+                    '• Как создать контент\n'
+                    '• Как пополнить баланс\n\n'
+                    '💡 <b>Это займет 2 минуты!</b>'
+                )
+                
+                keyboard = [
+                    [InlineKeyboardButton("▶️ Начать туториал", callback_data="tutorial_step1")],
+                    [InlineKeyboardButton("⏭️ Пропустить", callback_data="back_to_menu")]
+                ]
+                
+                try:
+                    await query.edit_message_text(
+                        tutorial_text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                except Exception as edit_error:
+                    logger.warning(f"Could not edit message in tutorial_start: {edit_error}, sending new message")
+                    try:
+                        await query.message.reply_text(
+                            tutorial_text,
+                            reply_markup=InlineKeyboardMarkup(keyboard),
+                            parse_mode='HTML'
+                        )
+                        try:
+                            await query.message.delete()
+                        except:
+                            pass
+                    except Exception as send_error:
+                        logger.error(f"Could not send new message in tutorial_start: {send_error}", exc_info=True)
+                        await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
+                
+                return ConversationHandler.END
+            except Exception as e:
+                logger.error(f"Error in tutorial_start: {e}", exc_info=True)
+                try:
+                    await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
+                except:
+                    pass
+                return ConversationHandler.END
         
         if data == "tutorial_step1":
-            tutorial_text = (
-                '📖 <b>ШАГ 1: Что такое AI-генерация?</b>\n\n'
-                '━━━━━━━━━━━━━━━━━━━━\n\n'
-                '🤖 <b>Искусственный интеллект</b> может создавать:\n\n'
-                '🎨 <b>Изображения</b>\n'
-                'Опишите картинку словами, и AI создаст её!\n'
-                'Пример: "Кот в космосе, пиксель-арт"\n\n'
-                '🎬 <b>Видео</b>\n'
-                'Создавайте короткие видео из текста\n'
-                'Пример: "Летящий дракон над городом"\n\n'
-                '🖼️ <b>Улучшение качества</b>\n'
-                'Увеличивайте разрешение фото в 4-8 раз\n\n'
-                '💡 <b>Все это без VPN!</b> Прямой доступ к лучшим AI-моделям.'
-            )
+            # Answer callback immediately
+            try:
+                await query.answer()
+            except:
+                pass
             
-            keyboard = [
-                [InlineKeyboardButton("▶️ Далее", callback_data="tutorial_step2")],
-                [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_start")],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
-            ]
-            
-            await query.edit_message_text(
-                tutorial_text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
-            return ConversationHandler.END
+            try:
+                tutorial_text = (
+                    '📖 <b>ШАГ 1: Что такое AI-генерация?</b>\n\n'
+                    '━━━━━━━━━━━━━━━━━━━━\n\n'
+                    '🤖 <b>Искусственный интеллект</b> может создавать:\n\n'
+                    '🎨 <b>Изображения</b>\n'
+                    'Опишите картинку словами, и AI создаст её!\n'
+                    'Пример: "Кот в космосе, пиксель-арт"\n\n'
+                    '🎬 <b>Видео</b>\n'
+                    'Создавайте короткие видео из текста\n'
+                    'Пример: "Летящий дракон над городом"\n\n'
+                    '🖼️ <b>Улучшение качества</b>\n'
+                    'Увеличивайте разрешение фото в 4-8 раз\n\n'
+                    '💡 <b>Все это без VPN!</b> Прямой доступ к лучшим AI-моделям.'
+                )
+                
+                keyboard = [
+                    [InlineKeyboardButton("▶️ Далее", callback_data="tutorial_step2")],
+                    [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_start")],
+                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+                ]
+                
+                try:
+                    await query.edit_message_text(
+                        tutorial_text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                except Exception as edit_error:
+                    logger.warning(f"Could not edit message in tutorial_step1: {edit_error}, sending new message")
+                    try:
+                        await query.message.reply_text(
+                            tutorial_text,
+                            reply_markup=InlineKeyboardMarkup(keyboard),
+                            parse_mode='HTML'
+                        )
+                        try:
+                            await query.message.delete()
+                        except:
+                            pass
+                    except Exception as send_error:
+                        logger.error(f"Could not send new message in tutorial_step1: {send_error}", exc_info=True)
+                        await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
+                
+                return ConversationHandler.END
+            except Exception as e:
+                logger.error(f"Error in tutorial_step1: {e}", exc_info=True)
+                try:
+                    await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
+                except:
+                    pass
+                return ConversationHandler.END
         
         if data == "tutorial_step2":
-            categories = get_categories()
-            total_models = len(KIE_MODELS)
-            tutorial_text = (
-                f'📖 <b>ШАГ 2: Как выбрать модель?</b>\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'🎯 <b>У нас {total_models} моделей в {len(categories)} категориях:</b>\n\n'
-                f'🖼️ <b>Изображения</b>\n'
-                f'• Z-Image - быстрая генерация (бесплатно 5 раз в день!)\n'
-                f'• Nano Banana Pro - качество 2K/4K\n'
-                f'• Imagen 4 Ultra - новейшая от Google\n\n'
-                f'🎬 <b>Видео</b>\n'
-                f'• Sora 2 - реалистичные видео\n'
-                f'• Grok Imagine - мультимодальная модель\n\n'
-                f'💡 <b>Совет:</b> Начните с Z-Image - она бесплатная!'
-            )
+            # Answer callback immediately
+            try:
+                await query.answer()
+            except:
+                pass
             
-            keyboard = [
-                [InlineKeyboardButton("▶️ Далее", callback_data="tutorial_step3")],
-                [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_step1")],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
-            ]
-            
-            await query.edit_message_text(
-                tutorial_text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
-            return ConversationHandler.END
+            try:
+                categories = get_categories()
+                total_models = len(KIE_MODELS)
+                tutorial_text = (
+                    f'📖 <b>ШАГ 2: Как выбрать модель?</b>\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'🎯 <b>У нас {total_models} моделей в {len(categories)} категориях:</b>\n\n'
+                    f'🖼️ <b>Изображения</b>\n'
+                    f'• Z-Image - быстрая генерация (бесплатно 5 раз в день!)\n'
+                    f'• Nano Banana Pro - качество 2K/4K\n'
+                    f'• Imagen 4 Ultra - новейшая от Google\n\n'
+                    f'🎬 <b>Видео</b>\n'
+                    f'• Sora 2 - реалистичные видео\n'
+                    f'• Grok Imagine - мультимодальная модель\n\n'
+                    f'💡 <b>Совет:</b> Начните с Z-Image - она бесплатная!'
+                )
+                
+                keyboard = [
+                    [InlineKeyboardButton("▶️ Далее", callback_data="tutorial_step3")],
+                    [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_step1")],
+                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+                ]
+                
+                try:
+                    await query.edit_message_text(
+                        tutorial_text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                except Exception as edit_error:
+                    logger.warning(f"Could not edit message in tutorial_step2: {edit_error}, sending new message")
+                    try:
+                        await query.message.reply_text(
+                            tutorial_text,
+                            reply_markup=InlineKeyboardMarkup(keyboard),
+                            parse_mode='HTML'
+                        )
+                        try:
+                            await query.message.delete()
+                        except:
+                            pass
+                    except Exception as send_error:
+                        logger.error(f"Could not send new message in tutorial_step2: {send_error}", exc_info=True)
+                        await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
+                
+                return ConversationHandler.END
+            except Exception as e:
+                logger.error(f"Error in tutorial_step2: {e}", exc_info=True)
+                try:
+                    await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
+                except:
+                    pass
+                return ConversationHandler.END
         
         if data == "tutorial_step3":
-            tutorial_text = (
-                '📖 <b>ШАГ 3: Как создать контент?</b>\n\n'
-                '━━━━━━━━━━━━━━━━━━━━\n\n'
-                '📝 <b>Простой процесс:</b>\n\n'
-                '1️⃣ Нажмите "📋 Все модели"\n'
-                '2️⃣ Выберите модель (например, Z-Image)\n'
-                '3️⃣ Введите описание (промпт)\n'
-                '   Пример: "Красивый закат над океаном"\n'
-                '4️⃣ Выберите параметры (размер, стиль и т.д.)\n'
-                '5️⃣ Нажмите "✅ Генерировать"\n'
-                '6️⃣ Подождите 10-60 секунд\n'
-                '7️⃣ Получите результат! 🎉\n\n'
-                '💡 <b>Совет:</b> Чем подробнее описание, тем лучше результат!'
-            )
+            # Answer callback immediately
+            try:
+                await query.answer()
+            except:
+                pass
             
-            keyboard = [
-                [InlineKeyboardButton("▶️ Далее", callback_data="tutorial_step4")],
-                [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_step2")],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
-            ]
-            
-            await query.edit_message_text(
-                tutorial_text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
-            return ConversationHandler.END
+            try:
+                tutorial_text = (
+                    '📖 <b>ШАГ 3: Как создать контент?</b>\n\n'
+                    '━━━━━━━━━━━━━━━━━━━━\n\n'
+                    '📝 <b>Простой процесс:</b>\n\n'
+                    '1️⃣ Нажмите "📋 Все модели"\n'
+                    '2️⃣ Выберите модель (например, Z-Image)\n'
+                    '3️⃣ Введите описание (промпт)\n'
+                    '   Пример: "Красивый закат над океаном"\n'
+                    '4️⃣ Выберите параметры (размер, стиль и т.д.)\n'
+                    '5️⃣ Нажмите "✅ Генерировать"\n'
+                    '6️⃣ Подождите 10-60 секунд\n'
+                    '7️⃣ Получите результат! 🎉\n\n'
+                    '💡 <b>Совет:</b> Чем подробнее описание, тем лучше результат!'
+                )
+                
+                keyboard = [
+                    [InlineKeyboardButton("▶️ Далее", callback_data="tutorial_step4")],
+                    [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_step2")],
+                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+                ]
+                
+                try:
+                    await query.edit_message_text(
+                        tutorial_text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                except Exception as edit_error:
+                    logger.warning(f"Could not edit message in tutorial_step3: {edit_error}, sending new message")
+                    try:
+                        await query.message.reply_text(
+                            tutorial_text,
+                            reply_markup=InlineKeyboardMarkup(keyboard),
+                            parse_mode='HTML'
+                        )
+                        try:
+                            await query.message.delete()
+                        except:
+                            pass
+                    except Exception as send_error:
+                        logger.error(f"Could not send new message in tutorial_step3: {send_error}", exc_info=True)
+                        await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
+                
+                return ConversationHandler.END
+            except Exception as e:
+                logger.error(f"Error in tutorial_step3: {e}", exc_info=True)
+                try:
+                    await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
+                except:
+                    pass
+                return ConversationHandler.END
         
         if data == "tutorial_step4":
-            remaining_free = get_user_free_generations_remaining(user_id)
-            tutorial_text = (
-                '📖 <b>ШАГ 4: Баланс и оплата</b>\n\n'
-                '━━━━━━━━━━━━━━━━━━━━\n\n'
-                '💰 <b>Как это работает:</b>\n\n'
-                '🎁 <b>Бесплатно:</b>\n'
-                f'• {remaining_free if remaining_free > 0 else FREE_GENERATIONS_PER_DAY} генераций Z-Image в день\n'
-                '• Пригласите друга - получите +5 генераций!\n\n'
-                '💳 <b>Пополнение баланса:</b>\n'
-                '• Минимальная сумма: 50 ₽\n'
-                '• Быстрый выбор: 50, 100, 150 ₽\n'
-                '• Или укажите свою сумму\n'
-                '• Оплата через СБП (Система быстрых платежей)\n\n'
-                '💡 <b>Совет:</b> Начните с бесплатных генераций!'
-            )
+            # Answer callback immediately
+            try:
+                await query.answer()
+            except:
+                pass
             
-            keyboard = [
-                [InlineKeyboardButton("▶️ Завершить", callback_data="tutorial_complete")],
-                [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_step3")],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
-            ]
-            
-            await query.edit_message_text(
-                tutorial_text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
-            return ConversationHandler.END
+            try:
+                remaining_free = get_user_free_generations_remaining(user_id)
+                tutorial_text = (
+                    '📖 <b>ШАГ 4: Баланс и оплата</b>\n\n'
+                    '━━━━━━━━━━━━━━━━━━━━\n\n'
+                    '💰 <b>Как это работает:</b>\n\n'
+                    '🎁 <b>Бесплатно:</b>\n'
+                    f'• {remaining_free if remaining_free > 0 else FREE_GENERATIONS_PER_DAY} генераций Z-Image в день\n'
+                    '• Пригласите друга - получите +5 генераций!\n\n'
+                    '💳 <b>Пополнение баланса:</b>\n'
+                    '• Минимальная сумма: 50 ₽\n'
+                    '• Быстрый выбор: 50, 100, 150 ₽\n'
+                    '• Или укажите свою сумму\n'
+                    '• Оплата через СБП (Система быстрых платежей)\n\n'
+                    '💡 <b>Совет:</b> Начните с бесплатных генераций!'
+                )
+                
+                keyboard = [
+                    [InlineKeyboardButton("▶️ Завершить", callback_data="tutorial_complete")],
+                    [InlineKeyboardButton("◀️ Назад", callback_data="tutorial_step3")],
+                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+                ]
+                
+                try:
+                    await query.edit_message_text(
+                        tutorial_text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                except Exception as edit_error:
+                    logger.warning(f"Could not edit message in tutorial_step4: {edit_error}, sending new message")
+                    try:
+                        await query.message.reply_text(
+                            tutorial_text,
+                            reply_markup=InlineKeyboardMarkup(keyboard),
+                            parse_mode='HTML'
+                        )
+                        try:
+                            await query.message.delete()
+                        except:
+                            pass
+                    except Exception as send_error:
+                        logger.error(f"Could not send new message in tutorial_step4: {send_error}", exc_info=True)
+                        await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
+                
+                return ConversationHandler.END
+            except Exception as e:
+                logger.error(f"Error in tutorial_step4: {e}", exc_info=True)
+                try:
+                    await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
+                except:
+                    pass
+                return ConversationHandler.END
         
         if data == "tutorial_complete":
-            tutorial_text = (
+            # Answer callback immediately
+            try:
+                await query.answer()
+            except:
+                pass
+            
+            try:
+                tutorial_text = (
                 '🎉 <b>ТУТОРИАЛ ЗАВЕРШЕН!</b>\n\n'
                 '━━━━━━━━━━━━━━━━━━━━\n\n'
                 '✅ Теперь вы знаете:\n'
@@ -6959,18 +7021,42 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 'Просто выберите модель и опишите, что хотите создать.'
             )
             
-            keyboard = [
-                [InlineKeyboardButton("📋 Все модели", callback_data="all_models")],
-                [InlineKeyboardButton("🖼️ Z-Image (бесплатно)", callback_data="select_model:z-image")],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
-            ]
-            
-            await query.edit_message_text(
-                tutorial_text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
-            return ConversationHandler.END
+                keyboard = [
+                    [InlineKeyboardButton("📋 Все модели", callback_data="all_models")],
+                    [InlineKeyboardButton("🖼️ Z-Image (бесплатно)", callback_data="select_model:z-image")],
+                    [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")]
+                ]
+                
+                try:
+                    await query.edit_message_text(
+                        tutorial_text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                except Exception as edit_error:
+                    logger.warning(f"Could not edit message in tutorial_complete: {edit_error}, sending new message")
+                    try:
+                        await query.message.reply_text(
+                            tutorial_text,
+                            reply_markup=InlineKeyboardMarkup(keyboard),
+                            parse_mode='HTML'
+                        )
+                        try:
+                            await query.message.delete()
+                        except:
+                            pass
+                    except Exception as send_error:
+                        logger.error(f"Could not send new message in tutorial_complete: {send_error}", exc_info=True)
+                        await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
+                
+                return ConversationHandler.END
+            except Exception as e:
+                logger.error(f"Error in tutorial_complete: {e}", exc_info=True)
+                try:
+                    await query.answer("❌ Ошибка. Попробуйте еще раз", show_alert=True)
+                except:
+                    pass
+                return ConversationHandler.END
         
         if data == "help_menu":
             # Answer callback immediately to show button was pressed
@@ -8052,6 +8138,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Handle confirm_generate as fallback (in case state didn't switch properly)
         if data == "confirm_generate":
+            # Answer callback immediately
+            try:
+                await query.answer()
+            except:
+                pass
+            
             logger.info(f"confirm_generate callback received in button_callback (fallback)")
             # Call confirm_generation function directly
             try:
@@ -8074,12 +8166,67 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
         return ConversationHandler.END
     
-    # Fallback - should never reach here if all handlers work correctly
-    logger.warning(f"Unhandled callback data: {data} from user {user_id}")
+    # Fallback - универсальный обработчик для необработанных callback_data
+    # Это защита от сбоев при обновлениях - если какая-то кнопка не обработана,
+    # пользователь получит понятное сообщение вместо ошибки
+    logger.warning(f"Unhandled callback data: '{data}' from user {user_id}")
+    
+    # Всегда отвечаем на callback, даже если не знаем что делать
     try:
-        await query.answer("❌ Неизвестная команда. Используйте /start", show_alert=True)
+        await query.answer()
     except:
         pass
+    
+    # Пытаемся показать понятное сообщение
+    try:
+        user_lang = get_user_language(user_id)
+        if user_lang == 'ru':
+            error_text = (
+                "⚠️ <b>Кнопка временно недоступна</b>\n\n"
+                "Эта функция может быть в разработке или временно отключена.\n\n"
+                "Попробуйте:\n"
+                "• Использовать /start для возврата в меню\n"
+                "• Выбрать другую функцию\n"
+                "• Обратиться в поддержку"
+            )
+        else:
+            error_text = (
+                "⚠️ <b>Button temporarily unavailable</b>\n\n"
+                "This feature may be under development or temporarily disabled.\n\n"
+                "Try:\n"
+                "• Use /start to return to menu\n"
+                "• Choose another function\n"
+                "• Contact support"
+            )
+        
+        keyboard = [
+            [InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")],
+            [InlineKeyboardButton(t('btn_support', lang=user_lang), callback_data="support_contact")]
+        ]
+        
+        try:
+            await query.edit_message_text(
+                error_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+        except:
+            # Если не удалось отредактировать, отправляем новое сообщение
+            try:
+                await query.message.reply_text(
+                    error_text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+            except:
+                pass
+    except Exception as e:
+        logger.error(f"Error in fallback handler: {e}", exc_info=True)
+        try:
+            await query.answer("❌ Ошибка. Используйте /start", show_alert=True)
+        except:
+            pass
+    
     return ConversationHandler.END
 
 
@@ -20615,7 +20762,8 @@ def main():
         fallbacks=[
             CommandHandler('cancel', cancel),
             CallbackQueryHandler(cancel, pattern='^cancel$')
-        ]
+        ],
+        per_message=True
     )
     
     # Add handlers
