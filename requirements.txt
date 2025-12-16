@@ -14,3 +14,6 @@ typing-extensions>=4.5.0
 # Image processing (optional, but recommended for payment screenshot analysis)
 Pillow>=10.0.0
 pytesseract>=0.3.10
+
+# PostgreSQL database
+psycopg2-binary>=2.9.0

@@ -156,6 +156,27 @@ except ImportError as e:
     NEW_SERVICES_AVAILABLE = False
     logger.info(f"ℹ️ Новые сервисы не доступны, используется стандартная реализация (это нормально): {e}")
 
+# Импорт модуля БД для сохранения баланса и истории
+try:
+    from database import (
+        init_database,
+        get_user_balance as db_get_user_balance,
+        update_user_balance as db_update_user_balance,
+        add_to_balance as db_add_to_balance,
+        create_operation,
+        get_user_operations,
+        log_kie_operation,
+        get_or_create_user
+    )
+    DATABASE_AVAILABLE = True
+    logger.info("✅ Модуль БД загружен успешно")
+except ImportError as e:
+    DATABASE_AVAILABLE = False
+    logger.warning(f"⚠️ Модуль БД не доступен, используется JSON хранилище: {e}")
+except Exception as e:
+    DATABASE_AVAILABLE = False
+    logger.warning(f"⚠️ Ошибка при загрузке модуля БД, используется JSON хранилище: {e}")
+
 # Initialize knowledge storage and KIE client (will be initialized in main() to avoid blocking import)
 storage = None
 kie = None
@@ -1519,7 +1540,19 @@ def update_session_activity(user_id: int):
 
 
 def get_user_balance(user_id: int) -> float:
-    """Get user balance in rubles (optimized with caching)."""
+    """Get user balance in rubles (from DB or JSON fallback)."""
+    # Try to get from database first
+    if DATABASE_AVAILABLE:
+        try:
+            from decimal import Decimal
+            balance = db_get_user_balance(user_id)
+            return float(balance)
+        except Exception as e:
+            logger.error(f"Ошибка получения баланса из БД: {e}, используем JSON fallback")
+            # Fallback to JSON
+            pass
+    
+    # Fallback to JSON (original method)
     user_key = str(user_id)
     
     # Check cache first
@@ -1535,7 +1568,29 @@ def get_user_balance(user_id: int) -> float:
 
 
 def set_user_balance(user_id: int, amount: float):
-    """Set user balance in rubles (optimized with caching)."""
+    """Set user balance in rubles (save to DB or JSON fallback)."""
+    # Try to save to database first
+    if DATABASE_AVAILABLE:
+        try:
+            from decimal import Decimal
+            success = db_update_user_balance(user_id, Decimal(str(amount)))
+            if success:
+                logger.debug(f"✅ Balance saved to DB: user_id={user_id}, balance={amount}")
+                # Also update cache
+                user_key = str(user_id)
+                if 'balances' not in _data_cache:
+                    _data_cache['balances'] = {}
+                _data_cache['balances'][user_key] = amount
+                _data_cache['cache_timestamps']['balances'] = time.time()
+                return
+            else:
+                logger.warning(f"⚠️ Failed to save balance to DB, using JSON fallback")
+        except Exception as e:
+            logger.error(f"Ошибка сохранения баланса в БД: {e}, используем JSON fallback")
+            # Fallback to JSON
+            pass
+    
+    # Fallback to JSON (original method)
     # Ensure balances file exists
     if not os.path.exists(BALANCES_FILE):
         try:
@@ -1582,6 +1637,23 @@ def set_user_balance(user_id: int, amount: float):
 
 def add_user_balance(user_id: int, amount: float) -> float:
     """Add amount to user balance, return new balance."""
+    # Try to add to database first
+    if DATABASE_AVAILABLE:
+        try:
+            from decimal import Decimal
+            success = db_add_to_balance(user_id, Decimal(str(amount)))
+            if success:
+                new_balance = get_user_balance(user_id)  # Get updated balance
+                logger.debug(f"✅ Balance added in DB: user_id={user_id}, added={amount}, new_balance={new_balance}")
+                return new_balance
+            else:
+                logger.warning(f"⚠️ Failed to add balance to DB, using JSON fallback")
+        except Exception as e:
+            logger.error(f"Ошибка добавления баланса в БД: {e}, используем JSON fallback")
+            # Fallback to JSON
+            pass
+    
+    # Fallback to JSON (original method)
     current = get_user_balance(user_id)
     new_balance = current + amount
     set_user_balance(user_id, new_balance)
@@ -1599,10 +1671,31 @@ def subtract_user_balance(user_id: int, amount: float) -> bool:
 
 # ==================== User Language System ====================
 
+# Кэш для языков пользователей (для производительности)
+_user_language_cache = {}
+_user_language_cache_time = {}
+CACHE_TTL_LANGUAGE = 300  # 5 минут
+
 def get_user_language(user_id: int) -> str:
-    """Get user language preference (default: 'ru')."""
+    """Get user language preference (default: 'ru') with caching."""
+    user_key = str(user_id)
+    
+    # Проверяем кэш
+    current_time = time.time()
+    if user_key in _user_language_cache:
+        cache_time = _user_language_cache_time.get(user_key, 0)
+        if current_time - cache_time < CACHE_TTL_LANGUAGE:
+            return _user_language_cache[user_key]
+    
+    # Загружаем из файла
     languages = load_json_file(USER_LANGUAGES_FILE, {})
-    return languages.get(str(user_id), 'ru')  # Default to Russian
+    lang = languages.get(user_key, 'ru')  # Default to Russian
+    
+    # Обновляем кэш
+    _user_language_cache[user_key] = lang
+    _user_language_cache_time[user_key] = current_time
+    
+    return lang
 
 def has_user_language_set(user_id: int) -> bool:
     """Check if user has explicitly set their language preference."""
@@ -1611,10 +1704,15 @@ def has_user_language_set(user_id: int) -> bool:
 
 
 def set_user_language(user_id: int, language: str):
-    """Set user language preference ('ru' or 'en')."""
+    """Set user language preference ('ru' or 'en') and update cache."""
+    user_key = str(user_id)
     languages = load_json_file(USER_LANGUAGES_FILE, {})
-    languages[str(user_id)] = language
+    languages[user_key] = language
     save_json_file(USER_LANGUAGES_FILE, languages)
+    
+    # Обновляем кэш
+    _user_language_cache[user_key] = language
+    _user_language_cache_time[user_key] = time.time()
 
 
 # ==================== Gift System ====================
@@ -1923,8 +2021,42 @@ def get_broadcast(broadcast_id: int) -> dict:
 # ==================== Generations History System ====================
 
 def save_generation_to_history(user_id: int, model_id: str, model_name: str, params: dict, result_urls: list, task_id: str, price: float = 0.0, is_free: bool = False):
-    """Save generation to user history."""
+    """Save generation to user history (save to DB or JSON fallback)."""
     import time
+    
+    # Try to save to database first
+    if DATABASE_AVAILABLE:
+        try:
+            from decimal import Decimal
+            # Get first result URL (if available)
+            result_url = result_urls[0] if result_urls else None
+            # Get prompt from params (truncate to 1000 chars)
+            prompt = params.get('prompt', '')
+            if prompt and len(prompt) > 1000:
+                prompt = prompt[:1000]
+            
+            # Create operation in DB
+            operation_id = create_operation(
+                user_id=user_id,
+                operation_type='generation',
+                amount=Decimal(f'-{price}') if price > 0 else Decimal('0'),
+                model=model_id,
+                result_url=result_url,
+                prompt=prompt if prompt else None
+            )
+            
+            if operation_id:
+                logger.info(f"✅ Saved generation to DB: user_id={user_id}, model_id={model_id}, operation_id={operation_id}")
+                # Return operation_id as generation_id for compatibility
+                return operation_id
+            else:
+                logger.warning(f"⚠️ Failed to save generation to DB, using JSON fallback")
+        except Exception as e:
+            logger.error(f"Ошибка сохранения генерации в БД: {e}, используем JSON fallback", exc_info=True)
+            # Fallback to JSON
+            pass
+    
+    # Fallback to JSON (original method)
     try:
         # Ensure history file exists
         if not os.path.exists(GENERATIONS_HISTORY_FILE):
@@ -2795,8 +2927,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineKeyboardButton("🇬🇧 English", callback_data="language_select:en")
             ]
         ]
+        # Определяем язык пользователя по его Telegram языку или используем английский как более универсальный
+        user_lang_code = update.effective_user.language_code or 'en'
+        # Если язык не русский, показываем на английском
+        display_lang = 'ru' if user_lang_code.startswith('ru') else 'en'
+        
         await update.message.reply_html(
-            t('select_language', lang='ru'),
+            t('select_language', lang=display_lang),
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
         return
@@ -3155,19 +3292,19 @@ async def show_admin_generation(query, context, gen: dict, current_index: int, t
         # Navigation buttons
         if total_count > 1:
             keyboard.append([
-                InlineKeyboardButton("◀️ Предыдущая" if user_lang == 'ru' else "◀️ Previous", callback_data=f"admin_gen_nav:prev"),
-                InlineKeyboardButton("Следующая ▶️" if user_lang == 'ru' else "Next ▶️", callback_data=f"admin_gen_nav:next")
+                InlineKeyboardButton(t('btn_previous', lang=user_lang), callback_data=f"admin_gen_nav:prev"),
+                InlineKeyboardButton(t('btn_next', lang=user_lang), callback_data=f"admin_gen_nav:next")
             ])
         
         # View result button
         if result_urls:
             keyboard.append([
-                InlineKeyboardButton("👁️ Показать результат" if user_lang == 'ru' else "👁️ View Result", callback_data=f"admin_gen_view:{current_index}")
+                InlineKeyboardButton(t('btn_view_result', lang=user_lang), callback_data=f"admin_gen_view:{current_index}")
             ])
         
         # Back button
         keyboard.append([
-            InlineKeyboardButton("◀️ Назад в админ-панель" if user_lang == 'ru' else "◀️ Back to admin panel", callback_data="admin_stats")
+            InlineKeyboardButton(t('btn_back_to_admin', lang=user_lang), callback_data="admin_stats")
         ])
         
         await query.edit_message_text(
@@ -3178,7 +3315,8 @@ async def show_admin_generation(query, context, gen: dict, current_index: int, t
         )
     except Exception as e:
         logger.error(f"Error showing admin generation: {e}", exc_info=True)
-        await query.answer("Ошибка при отображении генерации", show_alert=True)
+        user_lang = get_user_language(query.from_user.id)
+        await query.answer(t('error_display_generation', lang=user_lang), show_alert=True)
 
 
 async def show_payment_screenshot(query, payment: dict, current_index: int, total_count: int):
@@ -3282,7 +3420,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not data:
             logger.error("No data in callback_query")
             try:
-                await query.answer("Ошибка: нет данных в запросе", show_alert=True)
+                user_lang = get_user_language(query.from_user.id)
+                await query.answer(t('error_no_data', lang=user_lang), show_alert=True)
             except:
                 pass
             return ConversationHandler.END
@@ -3518,8 +3657,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_lang = get_user_language(user_id)
             
             # Show initial spinning message
+            await query.answer(t('msg_spinning_wheel', lang=user_lang))
             if user_lang == 'ru':
-                await query.answer("🎰 Крутим колесо фортуны...")
                 spin_message = await query.edit_message_text(
                     "🎰 <b>КОЛЕСО ФОРТУНЫ</b> 🎰\n\n"
                     "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -3528,7 +3667,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     parse_mode='HTML'
                 )
             else:
-                await query.answer("🎰 Spinning the wheel of fortune...")
                 spin_message = await query.edit_message_text(
                     "🎰 <b>WHEEL OF FORTUNE</b> 🎰\n\n"
                     "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -3624,7 +3762,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             
             keyboard = [
-                [InlineKeyboardButton("💰 Проверить баланс" if user_lang == 'ru' else "💰 Check Balance", callback_data="check_balance")],
+                [InlineKeyboardButton(t('btn_check_balance', lang=user_lang), callback_data="check_balance")],
                 [InlineKeyboardButton(t('btn_back_to_menu', lang=user_lang), callback_data="back_to_menu")]
             ]
             
@@ -3650,7 +3788,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             if not current_mode:
                 # Switching to user mode - send new message directly
-                await query.answer("Режим пользователя включен")
+                user_lang = get_user_language(user_id)
+                await query.answer(t('msg_user_mode_enabled', lang=user_lang))
                 user = update.effective_user
                 categories = get_categories()
                 total_models = len(KIE_MODELS)
@@ -3709,7 +3848,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 # Switching back to admin mode - send new message with full admin panel
                 user_sessions[user_id]['admin_user_mode'] = False
-                await query.answer("Возврат в админ-панель")
+                user_lang = get_user_language(user_id)
+                await query.answer(t('msg_returning_to_admin', lang=user_lang))
                 user = update.effective_user
                 generation_types = get_generation_types()
                 total_models = len(KIE_MODELS)
@@ -4214,19 +4354,17 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             
             if is_admin:
-                model_info_text += f"✅ <b>Доступно:</b> Безлимит\n\n"
+                model_info_text += t('msg_unlimited_available', lang=user_lang) + "\n\n"
             else:
                 if available_count > 0:
-                    model_info_text += f"✅ <b>Доступно генераций:</b> {available_count}\n"
-                    model_info_text += f"💳 <b>Ваш баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n\n"
+                    model_info_text += t('msg_available_generations', lang=user_lang, 
+                                        count=available_count, 
+                                        balance=format_price_rub(user_balance, is_admin)) + "\n\n"
                 else:
                     # Not enough balance - show warning
-                    model_info_text += (
-                        f"❌ <b>Недостаточно средств</b>\n"
-                        f"💳 <b>Ваш баланс:</b> {format_price_rub(user_balance, is_admin)} ₽\n"
-                        f"💵 <b>Требуется:</b> {price_text} ₽\n\n"
-                        f"Пополните баланс для генерации."
-                    )
+                    model_info_text += t('msg_insufficient_funds', lang=user_lang,
+                                        balance=format_price_rub(user_balance, is_admin),
+                                        required=price_text)
                     
                     keyboard = [
                         [InlineKeyboardButton(t('btn_top_up_balance', lang=user_lang), callback_data="topup_balance")],
@@ -4393,7 +4531,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Handle language selection
             parts = data.split(":", 1)
             if len(parts) < 2:
-                await query.answer("Ошибка: неверный формат запроса", show_alert=True)
+                user_lang = get_user_language(query.from_user.id)
+                await query.answer(t('error_invalid_format', lang=user_lang), show_alert=True)
                 return ConversationHandler.END
             lang = parts[1]
             if lang in ['ru', 'en']:
@@ -4475,17 +4614,36 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # User selected a generation type
             parts = data.split(":", 1)
             if len(parts) < 2:
-                await query.edit_message_text("❌ Ошибка: неверный формат запроса.")
+                try:
+                    await query.answer("Ошибка: неверный формат запроса", show_alert=True)
+                except:
+                    pass
+                try:
+                    await query.edit_message_text("❌ Ошибка: неверный формат запроса.")
+                except:
+                    try:
+                        await query.message.reply_text("❌ Ошибка: неверный формат запроса.")
+                    except:
+                        pass
                 return ConversationHandler.END
             gen_type = parts[1]
             gen_info = get_generation_type_info(gen_type)
             models = get_models_by_generation_type(gen_type)
             
             if not models:
-                await query.edit_message_text(
-                    f"❌ Модели для этого типа генерации не найдены.",
-                    parse_mode='HTML'
-                )
+                try:
+                    await query.edit_message_text(
+                        f"❌ Модели для этого типа генерации не найдены.",
+                        parse_mode='HTML'
+                    )
+                except:
+                    try:
+                        await query.message.reply_text(
+                            f"❌ Модели для этого типа генерации не найдены.",
+                            parse_mode='HTML'
+                        )
+                    except:
+                        pass
                 return ConversationHandler.END
             
             # Get admin status for price calculations
@@ -4649,15 +4807,37 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return SELECTING_MODEL
         
         if data.startswith("category:"):
+            # Answer callback immediately
+            try:
+                await query.answer()
+            except:
+                pass
+            
             parts = data.split(":", 1)
             if len(parts) < 2:
-                await query.edit_message_text("❌ Ошибка: неверный формат запроса.")
+                try:
+                    await query.answer("Ошибка: неверный формат запроса", show_alert=True)
+                except:
+                    pass
+                try:
+                    await query.edit_message_text("❌ Ошибка: неверный формат запроса.")
+                except:
+                    try:
+                        await query.message.reply_text("❌ Ошибка: неверный формат запроса.")
+                    except:
+                        pass
                 return ConversationHandler.END
             category = parts[1]
             models = get_models_by_category(category)
             
             if not models:
-                await query.edit_message_text(f"❌ В категории {category} нет моделей.")
+                try:
+                    await query.edit_message_text(f"❌ В категории {category} нет моделей.")
+                except:
+                    try:
+                        await query.message.reply_text(f"❌ В категории {category} нет моделей.")
+                    except:
+                        pass
                 return ConversationHandler.END
             
             # Get user balance for showing available generations
@@ -4741,8 +4921,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     button_text_with_price,
                     callback_data=callback_data
                 )])
-            keyboard.append([InlineKeyboardButton("◀️ Назад к категориям", callback_data="show_models")])
-            keyboard.append([InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")])
+            user_lang = get_user_language(query.from_user.id)
+            keyboard.append([InlineKeyboardButton(t('btn_back_to_categories', lang=user_lang), callback_data="show_models")])
+            keyboard.append([InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")])
             
             # Premium formatted header
             category_emoji = {
@@ -4860,7 +5041,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         )])
             
             keyboard.extend(model_rows)
-            keyboard.append([InlineKeyboardButton("◀️ Назад в меню" if user_lang == 'ru' else "◀️ Back to menu", callback_data="back_to_menu")])
+            keyboard.append([InlineKeyboardButton(t('btn_back_to_menu', lang=user_lang), callback_data="back_to_menu")])
             
             try:
                 await query.edit_message_text(
@@ -5033,11 +5214,22 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ])
             keyboard.append([InlineKeyboardButton(t('btn_cancel', lang=user_lang), callback_data="cancel")])
             
-            await query.edit_message_text(
-                models_text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
+            try:
+                await query.edit_message_text(
+                    models_text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.error(f"Error editing message in show_models: {e}", exc_info=True)
+                try:
+                    await query.message.reply_text(
+                        models_text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                except:
+                    pass
             return SELECTING_MODEL
         
         if data == "show_all_models_list":
@@ -5184,8 +5376,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     keyboard.extend(category_rows)
                     keyboard.append([])  # Empty row between categories
             
-            keyboard.append([InlineKeyboardButton("◀️ Назад", callback_data="show_models")])
-            keyboard.append([InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")])
+            user_lang = get_user_language(query.from_user.id)
+            keyboard.append([InlineKeyboardButton(t('btn_back', lang=user_lang), callback_data="show_models")])
+            keyboard.append([InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")])
             
             try:
                 await query.edit_message_text(
@@ -5305,16 +5498,18 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             session = user_sessions.get(user_id, {})
             if not session:
-                await query.edit_message_text("❌ Ошибка: сессия пуста.")
+                user_lang = get_user_language(query.from_user.id)
+                await query.edit_message_text(t('error_session_empty', lang=user_lang))
                 return ConversationHandler.END
             model_info = session.get('model_info', {})
             input_params = model_info.get('input_params', {})
             
             audio_param_name = 'audio_url' if 'audio_url' in input_params else 'audio_input'
+            user_lang = get_user_language(query.from_user.id)
             
             keyboard = [
-                [InlineKeyboardButton("🏠 Главное меню", callback_data="back_to_menu")],
-                [InlineKeyboardButton("⏭️ Пропустить", callback_data="skip_audio")]
+                [InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")],
+                [InlineKeyboardButton(t('btn_skip', lang=user_lang), callback_data="skip_audio")]
             ]
             
             await query.edit_message_text(
@@ -5559,49 +5754,74 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return ConversationHandler.END
         
         if data == "check_balance":
+            # Answer callback immediately to show button was pressed
+            try:
+                await query.answer()
+            except:
+                pass
+            
             # Check user's personal balance (NOT KIE balance)
-            user_balance = get_user_balance(user_id)
-            balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
-            is_admin = get_is_admin(user_id)
-            
-            keyboard = [
-                [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
-                [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
-            ]
-            
-            balance_text = (
-                f'💳 <b>ВАШ БАЛАНС</b> 💳\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'💰 <b>Доступно:</b> {balance_str} ₽\n\n'
-            )
-            
-            if is_admin:
-                balance_text += (
-                    f'👑 <b>Статус:</b> Администратор\n'
-                    f'✅ Безлимитный доступ ко всем моделям\n\n'
+            try:
+                user_balance = get_user_balance(user_id)
+                balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
+                is_admin = get_is_admin(user_id)
+                user_lang = get_user_language(user_id)
+                
+                keyboard = [
+                    [InlineKeyboardButton(t('btn_top_up_balance', lang=user_lang), callback_data="topup_balance")],
+                    [InlineKeyboardButton(t('btn_back_to_menu', lang=user_lang), callback_data="back_to_menu")]
+                ]
+                
+                balance_text = (
+                    f'💳 <b>ВАШ БАЛАНС</b> 💳\n\n'
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'💰 <b>Доступно:</b> {balance_str} ₽\n\n'
                 )
-            else:
-                if user_balance > 0:
+                
+                if is_admin:
                     balance_text += (
-                        f'💡 <b>Доступно для генерации:</b>\n'
-                        f'• ~{int(user_balance / 0.62)} изображений (Z-Image)\n'
-                        f'• ~{int(user_balance / 3.86)} видео (базовая модель)\n\n'
+                        f'👑 <b>Статус:</b> Администратор\n'
+                        f'✅ Безлимитный доступ ко всем моделям\n\n'
                     )
                 else:
-                    balance_text += (
-                        f'💡 <b>Пополните баланс для генерации контента</b>\n\n'
+                    if user_balance > 0:
+                        balance_text += (
+                            f'💡 <b>Доступно для генерации:</b>\n'
+                            f'• ~{int(user_balance / 0.62)} изображений (Z-Image)\n'
+                            f'• ~{int(user_balance / 3.86)} видео (базовая модель)\n\n'
+                        )
+                    else:
+                        balance_text += (
+                            f'💡 <b>Пополните баланс для генерации контента</b>\n\n'
+                        )
+                
+                balance_text += (
+                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                    f'🎁 <b>Не забудьте:</b> У вас есть бесплатные генерации Z-Image!'
+                )
+                
+                try:
+                    await query.edit_message_text(
+                        balance_text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
                     )
-            
-            balance_text += (
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'🎁 <b>Не забудьте:</b> У вас есть бесплатные генерации Z-Image!'
-            )
-            
-            await query.edit_message_text(
-                balance_text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
+                except Exception as e:
+                    logger.error(f"Error editing message in check_balance: {e}", exc_info=True)
+                    try:
+                        await query.message.reply_text(
+                            balance_text,
+                            reply_markup=InlineKeyboardMarkup(keyboard),
+                            parse_mode='HTML'
+                        )
+                    except:
+                        pass
+            except Exception as e:
+                logger.error(f"Error in check_balance: {e}", exc_info=True)
+                try:
+                    await query.answer("❌ Ошибка при проверке баланса", show_alert=True)
+                except:
+                    pass
             return ConversationHandler.END
         
         if data == "topup_balance":
@@ -5622,6 +5842,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # Get payment details to show immediately
             payment_details = get_payment_details()
+            user_lang = get_user_language(user_id)
             
             # Show amount selection - focus on small amounts with marketing
             keyboard = [
@@ -5631,9 +5852,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     InlineKeyboardButton("💎 150 ₽", callback_data="topup_amount:150")
                 ],
                 [
-                    InlineKeyboardButton("💰 Своя сумма", callback_data="topup_custom")
+                    InlineKeyboardButton(t('btn_custom_amount', lang=user_lang), callback_data="topup_custom")
                 ],
-                [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
+                [InlineKeyboardButton(t('btn_back_to_menu', lang=user_lang), callback_data="back_to_menu")]
             ]
             
             current_balance = get_user_balance(user_id)
@@ -6161,7 +6382,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                 
                 keyboard = [
-                    [InlineKeyboardButton("◀️ Назад в админ-панель" if user_lang == 'ru' else "◀️ Back to admin panel", callback_data="admin_stats")]
+                    [InlineKeyboardButton(t('btn_back_to_admin', lang=user_lang), callback_data="admin_stats")]
                 ]
                 await query.edit_message_text(
                     message_text,
@@ -6199,7 +6420,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                 
                 keyboard = [
-                    [InlineKeyboardButton("◀️ Назад в админ-панель" if user_lang == 'ru' else "◀️ Back to admin panel", callback_data="admin_stats")]
+                    [InlineKeyboardButton(t('btn_back_to_admin', lang=user_lang), callback_data="admin_stats")]
                 ]
                 await query.edit_message_text(
                     message_text,
@@ -6292,8 +6513,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             keyboard = []
                             if is_last:
                                 keyboard = [
-                                    [InlineKeyboardButton("◀️ Назад к списку" if user_lang == 'ru' else "◀️ Back to list", callback_data="admin_view_generations")],
-                                    [InlineKeyboardButton("◀️ Назад в админ-панель" if user_lang == 'ru' else "◀️ Back to admin panel", callback_data="admin_stats")]
+                                    [InlineKeyboardButton(t('btn_back_to_list', lang=user_lang), callback_data="admin_view_generations")],
+                                    [InlineKeyboardButton(t('btn_back_to_admin', lang=user_lang), callback_data="admin_stats")]
                                 ]
                             
                             if is_video:
@@ -7196,11 +7417,22 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineKeyboardButton(t('btn_back_to_menu', lang=user_lang), callback_data="back_to_menu")
             ])
             
-            await query.edit_message_text(
-                help_text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
+            try:
+                await query.edit_message_text(
+                    help_text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.error(f"Error editing message in help_menu: {e}", exc_info=True)
+                try:
+                    await query.message.reply_text(
+                        help_text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                except:
+                    pass
             return ConversationHandler.END
         
         if data == "support_contact":
@@ -7229,11 +7461,22 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [InlineKeyboardButton(t('btn_back', lang=user_lang), callback_data="back_to_menu")]
             ]
             
-            await query.edit_message_text(
-                support_info,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
+            try:
+                await query.edit_message_text(
+                    support_info,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.error(f"Error editing message in support_contact: {e}", exc_info=True)
+                try:
+                    await query.message.reply_text(
+                        support_info,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                except:
+                    pass
             return ConversationHandler.END
         
         # Handle copy bot request
@@ -7272,12 +7515,24 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")]
             ]
             
-            await query.edit_message_text(
-                copy_message,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML',
-                disable_web_page_preview=False
-            )
+            try:
+                await query.edit_message_text(
+                    copy_message,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML',
+                    disable_web_page_preview=False
+                )
+            except Exception as e:
+                logger.error(f"Error editing message in copy_bot: {e}", exc_info=True)
+                try:
+                    await query.message.reply_text(
+                        copy_message,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML',
+                        disable_web_page_preview=False
+                    )
+                except:
+                    pass
             return ConversationHandler.END
         
         # Handle language change request
@@ -7305,11 +7560,22 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [InlineKeyboardButton("◀️ Назад" if current_lang == 'ru' else "◀️ Back", callback_data="back_to_menu")]
             ]
             
-            await query.edit_message_text(
-                text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
+            try:
+                await query.edit_message_text(
+                    text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.error(f"Error editing message in change_language: {e}", exc_info=True)
+                try:
+                    await query.message.reply_text(
+                        text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                except:
+                    pass
             return ConversationHandler.END
         
         if data == "referral_info":
@@ -7324,37 +7590,42 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             referrals_count = len(get_user_referrals(user_id))
             remaining_free = get_user_free_generations_remaining(user_id)
             
-            referral_text = (
-                f'🎁 <b>РЕФЕРАЛЬНАЯ СИСТЕМА</b> 🎁\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'💡 <b>КАК ЭТО РАБОТАЕТ:</b>\n\n'
-                f'1️⃣ Пригласи друга по вашей ссылке\n'
-                f'2️⃣ Он зарегистрируется через бота\n'
-                f'3️⃣ Вы получите <b>+{REFERRAL_BONUS_GENERATIONS} бесплатных генераций в Z-Image</b>!\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'📊 <b>ВАША СТАТИСТИКА:</b>\n'
-                f'• Приглашено друзей: <b>{referrals_count}</b>\n'
-                f'• Получено бонусов: <b>{referrals_count * REFERRAL_BONUS_GENERATIONS}</b> генераций\n'
-                f'• Доступно бесплатно: <b>{remaining_free}</b> генераций в Z-Image\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'⚠️ <b>ВАЖНО:</b> Бесплатные генерации доступны только для модели <b>Z-Image</b>!\n\n'
-                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                f'🔗 <b>ВАША РЕФЕРАЛЬНАЯ ССЫЛКА:</b>\n\n'
-                f'<code>{referral_link}</code>\n\n'
-                f'💬 <b>Отправьте эту ссылку другу!</b>\n'
-                f'После его регистрации вы получите бонус автоматически.'
-            )
+            user_lang = get_user_language(user_id)
             
+            referral_text = (
+                f'{t("msg_referral_title", lang=user_lang)}\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'{t("msg_referral_how_it_works", lang=user_lang, bonus=REFERRAL_BONUS_GENERATIONS)}\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'{t("msg_referral_stats", lang=user_lang, count=referrals_count, bonus_total=referrals_count * REFERRAL_BONUS_GENERATIONS, remaining=remaining_free)}\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'{t("msg_referral_important", lang=user_lang)}\n\n'
+                f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+                f'{t("msg_referral_link_title", lang=user_lang)}\n\n'
+                f'<code>{referral_link}</code>\n\n'
+                f'{t("msg_referral_send", lang=user_lang)}'
+            )
             keyboard = [
-                [InlineKeyboardButton("📋 Скопировать ссылку", url=referral_link)],
-                [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
+                [InlineKeyboardButton(t('btn_copy_link', lang=user_lang), url=referral_link)],
+                [InlineKeyboardButton(t('btn_back_to_menu', lang=user_lang), callback_data="back_to_menu")]
             ]
             
-            await query.edit_message_text(
-                referral_text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
+            try:
+                await query.edit_message_text(
+                    referral_text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.error(f"Error editing message in referral_info: {e}", exc_info=True)
+                try:
+                    await query.message.reply_text(
+                        referral_text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                except:
+                    pass
             return ConversationHandler.END
         
         if data == "my_generations":
@@ -7420,92 +7691,143 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     message_text += "💡 After creating content, all your works will be saved here."
                 
                 keyboard = [[InlineKeyboardButton("◀️ Назад в меню" if user_lang == 'ru' else "◀️ Back to menu", callback_data="back_to_menu")]]
-                await query.edit_message_text(
-                    message_text,
-                    reply_markup=InlineKeyboardMarkup(keyboard),
-                    parse_mode='HTML'
-                )
+                try:
+                    await query.edit_message_text(
+                        message_text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                except Exception as e:
+                    logger.error(f"Error editing message in my_generations (empty): {e}", exc_info=True)
+                    try:
+                        await query.message.reply_text(
+                            message_text,
+                            reply_markup=InlineKeyboardMarkup(keyboard),
+                            parse_mode='HTML'
+                        )
+                    except:
+                        pass
                 return ConversationHandler.END
             
             # Show first generation with navigation
-            from datetime import datetime
-            
-            gen = history[0]
-            timestamp = gen.get('timestamp', 0)
-            if timestamp:
-                date_str = datetime.fromtimestamp(timestamp).strftime('%d.%m.%Y %H:%M')
-            else:
-                date_str = 'Неизвестно'
-            
-            model_name = gen.get('model_name', gen.get('model_id', 'Unknown'))
-            result_urls = gen.get('result_urls', [])
-            price = gen.get('price', 0)
-            is_free = gen.get('is_free', False)
-            
-            history_text = (
-                f"📚 <b>Мои генерации</b>\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"📊 <b>Всего:</b> {len(history)} генераций\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"🎨 <b>Генерация #{gen.get('id', 1)}</b>\n"
-                f"📅 <b>Дата:</b> {date_str}\n"
-                f"🤖 <b>Модель:</b> {model_name}\n"
-                f"💰 <b>Стоимость:</b> {'🎁 Бесплатно' if is_free else f'{price:.2f} ₽'}\n"
-                f"📦 <b>Результатов:</b> {len(result_urls)}\n\n"
-            )
-            
-            if len(history) > 1:
-                history_text += f"💡 <b>Показана последняя генерация</b>\n"
-                history_text += f"Используйте кнопки для навигации\n\n"
-            
-            keyboard = []
-            
-            # Navigation buttons if more than 1 generation
-            if len(history) > 1:
-                keyboard.append([
-                    InlineKeyboardButton("◀️ Предыдущая", callback_data=f"gen_history:{gen.get('id', 1)}:prev"),
-                    InlineKeyboardButton("Следующая ▶️", callback_data=f"gen_history:{gen.get('id', 1)}:next")
-                ])
-            
-            # Action buttons
-            if result_urls:
-                keyboard.append([
-                    InlineKeyboardButton("👁️ Показать результат", callback_data=f"gen_view:{gen.get('id', 1)}")
-                ])
-                keyboard.append([
-                    InlineKeyboardButton("🔄 Повторить", callback_data=f"gen_repeat:{gen.get('id', 1)}")
-                ])
-            
-            keyboard.append([InlineKeyboardButton(t('btn_back_to_menu', lang=user_lang), callback_data="back_to_menu")])
-            
-            await query.edit_message_text(
-                history_text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
+            try:
+                from datetime import datetime
+                
+                gen = history[0]
+                timestamp = gen.get('timestamp', 0)
+                if timestamp:
+                    date_str = datetime.fromtimestamp(timestamp).strftime('%d.%m.%Y %H:%M')
+                else:
+                    date_str = 'Неизвестно'
+                
+                model_name = gen.get('model_name', gen.get('model_id', 'Unknown'))
+                result_urls = gen.get('result_urls', [])
+                price = gen.get('price', 0)
+                is_free = gen.get('is_free', False)
+                
+                user_lang = get_user_language(user_id)
+                
+                history_text = (
+                    f"📚 <b>Мои генерации</b>\n\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"📊 <b>Всего:</b> {len(history)} генераций\n\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"🎨 <b>Генерация #{gen.get('id', 1)}</b>\n"
+                    f"📅 <b>Дата:</b> {date_str}\n"
+                    f"🤖 <b>Модель:</b> {model_name}\n"
+                    f"💰 <b>Стоимость:</b> {'🎁 Бесплатно' if is_free else f'{price:.2f} ₽'}\n"
+                    f"📦 <b>Результатов:</b> {len(result_urls)}\n\n"
+                )
+                
+                if len(history) > 1:
+                    history_text += f"💡 <b>Показана последняя генерация</b>\n"
+                    history_text += f"Используйте кнопки для навигации\n\n"
+                
+                keyboard = []
+                
+                # Navigation buttons if more than 1 generation
+                if len(history) > 1:
+                    keyboard.append([
+                        InlineKeyboardButton(t('btn_previous', lang=user_lang), callback_data=f"gen_history:{gen.get('id', 1)}:prev"),
+                        InlineKeyboardButton(t('btn_next', lang=user_lang), callback_data=f"gen_history:{gen.get('id', 1)}:next")
+                    ])
+                
+                # Action buttons
+                if result_urls:
+                    keyboard.append([
+                        InlineKeyboardButton("👁️ Показать результат", callback_data=f"gen_view:{gen.get('id', 1)}")
+                    ])
+                    keyboard.append([
+                        InlineKeyboardButton("🔄 Повторить", callback_data=f"gen_repeat:{gen.get('id', 1)}")
+                    ])
+                
+                keyboard.append([InlineKeyboardButton(t('btn_back_to_menu', lang=user_lang), callback_data="back_to_menu")])
+                
+                try:
+                    await query.edit_message_text(
+                        history_text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                except Exception as e:
+                    logger.error(f"Error editing message in my_generations: {e}", exc_info=True)
+                    try:
+                        await query.message.reply_text(
+                            history_text,
+                            reply_markup=InlineKeyboardMarkup(keyboard),
+                            parse_mode='HTML'
+                        )
+                    except:
+                        pass
+            except Exception as e:
+                logger.error(f"Error in my_generations: {e}", exc_info=True)
+                try:
+                    await query.answer("❌ Ошибка при загрузке истории", show_alert=True)
+                except:
+                    pass
             return ConversationHandler.END
         
         if data.startswith("gen_view:"):
+            # Answer callback immediately
+            try:
+                await query.answer()
+            except:
+                pass
+            
             # View specific generation result
             parts = data.split(":", 1)
             if len(parts) < 2:
-                await query.answer("Ошибка: неверный формат запроса", show_alert=True)
+                try:
+                    await query.answer("Ошибка: неверный формат запроса", show_alert=True)
+                except:
+                    pass
                 return ConversationHandler.END
             try:
                 gen_id = int(parts[1])
             except (ValueError, TypeError):
-                await query.answer("Ошибка: неверный ID генерации", show_alert=True)
+                try:
+                    await query.answer("Ошибка: неверный ID генерации", show_alert=True)
+                except:
+                    pass
                 return ConversationHandler.END
             gen = get_generation_by_id(user_id, gen_id)
             
             if not gen:
-                await query.answer("❌ Генерация не найдена", show_alert=True)
+                try:
+                    await query.answer("❌ Генерация не найдена", show_alert=True)
+                except:
+                    pass
                 return ConversationHandler.END
             
             result_urls = gen.get('result_urls', [])
             if not result_urls:
-                await query.answer("❌ Результаты не найдены", show_alert=True)
+                try:
+                    await query.answer("❌ Результаты не найдены", show_alert=True)
+                except:
+                    pass
                 return ConversationHandler.END
+            
+            user_lang = get_user_language(user_id)
             
             # Send media
             session_http = await get_http_client()
@@ -7521,7 +7843,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 keyboard = []
                                 if is_last:
                                     keyboard = [
-                                        [InlineKeyboardButton("◀️ Назад к истории", callback_data="my_generations")],
+                                        [InlineKeyboardButton(t('btn_back_to_history', lang=user_lang), callback_data="my_generations")],
                                         [InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")]
                                     ]
                                 
@@ -7544,24 +7866,42 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 except Exception as e:
                     logger.error(f"Error sending generation result: {e}")
             
-            await query.answer("✅ Результаты отправлены")
+            try:
+                await query.answer("✅ Результаты отправлены")
+            except:
+                pass
             return ConversationHandler.END
         
         if data.startswith("gen_repeat:"):
+            # Answer callback immediately
+            try:
+                await query.answer()
+            except:
+                pass
+            
             # Repeat generation with same parameters
             parts = data.split(":", 1)
             if len(parts) < 2:
-                await query.answer("Ошибка: неверный формат запроса", show_alert=True)
+                try:
+                    await query.answer("Ошибка: неверный формат запроса", show_alert=True)
+                except:
+                    pass
                 return ConversationHandler.END
             try:
                 gen_id = int(parts[1])
             except (ValueError, TypeError):
-                await query.answer("Ошибка: неверный ID генерации", show_alert=True)
+                try:
+                    await query.answer("Ошибка: неверный ID генерации", show_alert=True)
+                except:
+                    pass
                 return ConversationHandler.END
             gen = get_generation_by_id(user_id, gen_id)
             
             if not gen:
-                await query.answer("❌ Генерация не найдена", show_alert=True)
+                try:
+                    await query.answer("❌ Генерация не найдена", show_alert=True)
+                except:
+                    pass
                 return ConversationHandler.END
             
             # Restore session from history
@@ -7570,8 +7910,13 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             model_info = get_model_by_id(model_id)
             
             if not model_info:
-                await query.answer("❌ Модель не найдена", show_alert=True)
+                try:
+                    await query.answer("❌ Модель не найдена", show_alert=True)
+                except:
+                    pass
                 return ConversationHandler.END
+            
+            user_lang = get_user_language(user_id)
             
             user_sessions[user_id] = {
                 'model_id': model_id,
@@ -7582,34 +7927,76 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }
             
             # Go directly to confirmation
-            await query.answer("✅ Параметры восстановлены")
-            await query.edit_message_text(
-                "🔄 <b>Повторная генерация</b>\n\n"
-                f"Модель: <b>{model_info.get('name', model_id)}</b>\n"
-                f"Параметры восстановлены из истории.\n\n"
-                "Подтвердите генерацию:",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("✅ Генерировать", callback_data="confirm_generate")],
-                    [InlineKeyboardButton("◀️ Назад к истории", callback_data="my_generations")],
-                    [InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")]
-                ]),
-                parse_mode='HTML'
-            )
+            try:
+                await query.answer("✅ Параметры восстановлены")
+            except:
+                pass
+            
+            try:
+                await query.edit_message_text(
+                    "🔄 <b>Повторная генерация</b>\n\n"
+                    f"Модель: <b>{model_info.get('name', model_id)}</b>\n"
+                    f"Параметры восстановлены из истории.\n\n"
+                    "Подтвердите генерацию:",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton(t('btn_confirm_generate_text', lang=user_lang), callback_data="confirm_generate")],
+                        [InlineKeyboardButton(t('btn_back_to_history', lang=user_lang), callback_data="my_generations")],
+                        [InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")]
+                    ]),
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                logger.error(f"Error editing message in gen_repeat: {e}", exc_info=True)
+                try:
+                    await query.message.reply_text(
+                        "🔄 <b>Повторная генерация</b>\n\n"
+                        f"Модель: <b>{model_info.get('name', model_id)}</b>\n"
+                        f"Параметры восстановлены из истории.\n\n"
+                        "Подтвердите генерацию:",
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton("✅ Генерировать", callback_data="confirm_generate")],
+                            [InlineKeyboardButton("◀️ Назад к истории", callback_data="my_generations")],
+                            [InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")]
+                        ]),
+                        parse_mode='HTML'
+                    )
+                except:
+                    pass
             return CONFIRMING_GENERATION
         
         if data.startswith("gen_history:"):
+            # Answer callback immediately
+            try:
+                await query.answer()
+            except:
+                pass
+            
             # Navigate through generation history
             parts = data.split(":")
             if len(parts) < 3:
-                await query.answer("❌ Ошибка навигации", show_alert=True)
+                try:
+                    await query.answer("❌ Ошибка навигации", show_alert=True)
+                except:
+                    pass
                 return ConversationHandler.END
             
-            current_gen_id = int(parts[1])
+            try:
+                current_gen_id = int(parts[1])
+            except (ValueError, TypeError):
+                try:
+                    await query.answer("❌ Ошибка: неверный ID генерации", show_alert=True)
+                except:
+                    pass
+                return ConversationHandler.END
+            
             direction = parts[2]  # prev or next
             
             history = get_user_generations_history(user_id, limit=100)
             if not history:
-                await query.answer("❌ История пуста", show_alert=True)
+                try:
+                    await query.answer("❌ История пуста", show_alert=True)
+                except:
+                    pass
                 return ConversationHandler.END
             
             # Find current generation index
@@ -7620,7 +8007,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     break
             
             if current_index == -1:
-                await query.answer("❌ Генерация не найдена", show_alert=True)
+                try:
+                    await query.answer("❌ Генерация не найдена", show_alert=True)
+                except:
+                    pass
                 return ConversationHandler.END
             
             # Navigate
@@ -7629,8 +8019,13 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif direction == 'next' and current_index > 0:
                 new_index = current_index - 1
             else:
-                await query.answer("⚠️ Это первая/последняя генерация", show_alert=True)
+                try:
+                    await query.answer("⚠️ Это первая/последняя генерация", show_alert=True)
+                except:
+                    pass
                 return ConversationHandler.END
+            
+            user_lang = get_user_language(user_id)
             
             gen = history[new_index]
             from datetime import datetime
@@ -7694,7 +8089,17 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             parts = data.split(":", 1)
             if len(parts) < 2:
-                await query.edit_message_text("❌ Ошибка: неверный формат запроса.")
+                try:
+                    await query.answer("Ошибка: неверный формат запроса", show_alert=True)
+                except:
+                    pass
+                try:
+                    await query.edit_message_text("❌ Ошибка: неверный формат запроса.")
+                except:
+                    try:
+                        await query.message.reply_text("❌ Ошибка: неверный формат запроса.")
+                    except:
+                        pass
                 return ConversationHandler.END
             model_id = parts[1]
             
@@ -7702,8 +8107,14 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             model_info = get_model_by_id(model_id)
             
             if not model_info:
-                await query.edit_message_text(f"❌ Модель {model_id} не найдена.")
-                return
+                try:
+                    await query.edit_message_text(f"❌ Модель {model_id} не найдена.")
+                except:
+                    try:
+                        await query.message.reply_text(f"❌ Модель {model_id} не найдена.")
+                    except:
+                        pass
+                return ConversationHandler.END
             
             # Check if model is coming soon
             if model_info.get('coming_soon', False):
@@ -20166,6 +20577,22 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
     # Add balance to user
     add_user_balance(user_id, amount_rubles)
     
+    # Save payment operation to database
+    if DATABASE_AVAILABLE:
+        try:
+            from decimal import Decimal
+            create_operation(
+                user_id=user_id,
+                operation_type='payment',
+                amount=Decimal(str(amount_rubles)),
+                model=None,
+                result_url=None,
+                prompt=None
+            )
+            logger.info(f"✅ Payment operation saved to DB: user_id={user_id}, amount={amount_rubles}")
+        except Exception as e:
+            logger.error(f"Ошибка сохранения операции платежа в БД: {e}")
+    
     # Clear payment session
     if user_id in user_sessions:
         del user_sessions[user_id]
@@ -20227,31 +20654,20 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
     # Send confirmation message
     balance_str = f"{get_user_balance(user_id):.2f}".rstrip('0').rstrip('.')
     
-    if user_lang == 'ru':
-        success_text = (
-            f'✅ <b>ОПЛАТА УСПЕШНА!</b> ✅\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'💰 <b>Зачислено:</b> {amount_rubles:.2f} ₽\n'
-            f'⭐ <b>Способ:</b> Telegram Stars ({amount_stars} ⭐)\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'💳 <b>Ваш баланс:</b> {balance_str} ₽\n\n'
-            f'🎉 Теперь вы можете использовать средства для генерации контента!'
-        )
-    else:
-        success_text = (
-            f'✅ <b>PAYMENT SUCCESSFUL!</b> ✅\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'💰 <b>Added:</b> {amount_rubles:.2f} ₽\n'
-            f'⭐ <b>Method:</b> Telegram Stars ({amount_stars} ⭐)\n\n'
-            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            f'💳 <b>Your balance:</b> {balance_str} ₽\n\n'
-            f'🎉 You can now use funds for content generation!'
-        )
+    success_text = (
+        f'{t("msg_payment_success", lang=user_lang)}\n\n'
+        f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+        f'{t("msg_payment_added", lang=user_lang, amount=amount_rubles)}\n'
+        f'{t("msg_payment_method", lang=user_lang, stars=amount_stars)}\n\n'
+        f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+        f'{t("msg_payment_balance", lang=user_lang, balance=balance_str)}\n\n'
+        f'{t("msg_payment_use_funds", lang=user_lang)}'
+    )
     
     keyboard = [
-        [InlineKeyboardButton("💰 Проверить баланс" if user_lang == 'ru' else "💰 Check Balance", callback_data="check_balance")],
-        [InlineKeyboardButton("🎨 Начать генерацию" if user_lang == 'ru' else "🎨 Start Generation", callback_data="show_models")],
-        [InlineKeyboardButton("◀️ Главное меню" if user_lang == 'ru' else "◀️ Main Menu", callback_data="back_to_menu")]
+        [InlineKeyboardButton(t('btn_check_balance', lang=user_lang), callback_data="check_balance")],
+        [InlineKeyboardButton(t('btn_start_generation', lang=user_lang), callback_data="show_models")],
+        [InlineKeyboardButton(t('btn_back_to_menu', lang=user_lang), callback_data="back_to_menu")]
     ]
     
     await update.message.reply_text(
@@ -20330,7 +20746,7 @@ def initialize_data_files():
 
 def main():
     """Start the bot."""
-    global storage, kie
+    global storage, kie, DATABASE_AVAILABLE
     
     # CRITICAL: Ensure data directory exists and is writable before anything else
     logger.info("🔒 Ensuring data persistence...")
@@ -20349,11 +20765,25 @@ def main():
     else:
         logger.info(f"✅ Data directory {DATA_DIR} is writable")
     
-    # Initialize all data files first
+    # Initialize database if available
+    if DATABASE_AVAILABLE:
+        try:
+            logger.info("🗄️ Initializing database...")
+            init_database()
+            logger.info("✅ Database initialized successfully")
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize database: {e}")
+            logger.warning("⚠️ Bot will continue with JSON fallback storage")
+            # Set DATABASE_AVAILABLE to False to use JSON fallback
+            DATABASE_AVAILABLE = False
+    else:
+        logger.info("ℹ️ Database not available, using JSON storage")
+    
+    # Initialize all data files first (for JSON fallback)
     logger.info("🔧 Initializing data files...")
     initialize_data_files()
     
-    # Final verification of critical files
+    # Final verification of critical files (for JSON fallback)
     logger.info("🔒 Verifying critical data files...")
     critical_files = [BALANCES_FILE, GENERATIONS_HISTORY_FILE, PAYMENTS_FILE, GIFT_CLAIMED_FILE]
     all_critical_ok = True
@@ -20369,8 +20799,10 @@ def main():
             logger.warning(f"⚠️ Critical file missing: {critical_file}")
             all_critical_ok = False
     
-    if all_critical_ok:
-        logger.info("✅ All critical data files verified and ready")
+    if DATABASE_AVAILABLE:
+        logger.info("✅ Database is ready, data will be saved to PostgreSQL")
+    elif all_critical_ok:
+        logger.info("✅ All critical data files verified and ready (JSON storage)")
     else:
         logger.warning("⚠️ Some critical files need attention, but bot will continue")
     

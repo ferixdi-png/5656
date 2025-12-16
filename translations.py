@@ -167,6 +167,60 @@ TRANSLATIONS = {
         'btn_skip': '⏭️ Пропустить',
         'btn_top_up_balance': '💳 Пополнить баланс',
         'error_try_start': '❌ Ошибка. Попробуйте /start',
+        'btn_start_generation': '🎨 Начать генерацию',
+        'msg_referral_title': '🎁 <b>РЕФЕРАЛЬНАЯ СИСТЕМА</b> 🎁',
+        'msg_referral_how_it_works': (
+            '💡 <b>КАК ЭТО РАБОТАЕТ:</b>\n\n'
+            '1️⃣ Пригласи друга по вашей ссылке\n'
+            '2️⃣ Он зарегистрируется через бота\n'
+            '3️⃣ Вы получите <b>+{bonus} бесплатных генераций в Z-Image</b>!'
+        ),
+        'msg_referral_stats': (
+            '📊 <b>ВАША СТАТИСТИКА:</b>\n\n'
+            '• Приглашено друзей: <b>{count}</b>\n'
+            '• Получено бонусов: <b>{bonus_total}</b> генераций\n'
+            '• Доступно бесплатно: <b>{remaining}</b> генераций в Z-Image'
+        ),
+        'msg_referral_important': '⚠️ <b>ВАЖНО:</b> Бесплатные генерации доступны только для модели <b>Z-Image</b>!',
+        'msg_referral_link_title': '🔗 <b>ВАША РЕФЕРАЛЬНАЯ ССЫЛКА:</b>',
+        'msg_referral_send': '💬 <b>Отправьте эту ссылку другу!</b>\nПосле его регистрации вы получите бонус автоматически.',
+        'msg_payment_success': '✅ <b>ОПЛАТА УСПЕШНА!</b> ✅',
+        'msg_payment_added': '💰 <b>Зачислено:</b> {amount:.2f} ₽',
+        'msg_payment_method': '⭐ <b>Способ:</b> Telegram Stars ({stars} ⭐)',
+        'msg_payment_balance': '💳 <b>Ваш баланс:</b> {balance} ₽',
+        'msg_payment_use_funds': '🎉 Теперь вы можете использовать средства для генерации контента!',
+        'error_session_empty': '❌ Ошибка: сессия пуста. Пожалуйста, начните заново.',
+        'error_no_data': '❌ Ошибка: нет данных в запросе. Попробуйте еще раз.',
+        'error_invalid_format': '❌ Ошибка: неверный формат запроса. Попробуйте еще раз.',
+        'error_unknown': '❌ Произошла ошибка. Пожалуйста, попробуйте позже или используйте /start',
+        'error_insufficient_balance': '❌ Недостаточно средств на балансе',
+        'error_operation_failed': '❌ Операция не выполнена. Попробуйте еще раз.',
+        'error_timeout': '⏱️ Превышено время ожидания. Попробуйте еще раз.',
+        'error_network': '🌐 Ошибка сети. Проверьте подключение и попробуйте позже.',
+        'error_display_generation': '❌ Ошибка при отображении генерации',
+        'msg_spinning_wheel': '🎰 Крутим колесо фортуны...',
+        'msg_admin_only': 'Эта функция доступна только администратору.',
+        'msg_user_mode_enabled': 'Режим пользователя включен',
+        'msg_returning_to_admin': 'Возврат в админ-панель',
+        'msg_insufficient_funds': '❌ <b>Недостаточно средств</b>\n💳 <b>Ваш баланс:</b> {balance} ₽\n💵 <b>Требуется:</b> {required} ₽\n\nПополните баланс для генерации.',
+        'msg_available_generations': '✅ <b>Доступно генераций:</b> {count}\n💳 <b>Ваш баланс:</b> {balance} ₽',
+        'msg_unlimited_available': '✅ <b>Доступно:</b> Безлимит',
+        'btn_check_balance': '💰 Проверить баланс',
+        'btn_back_to_categories': '◀️ Назад к категориям',
+        'btn_previous': '◀️ Предыдущая',
+        'btn_next': 'Следующая ▶️',
+        'btn_back_to_admin': '◀️ Назад в админ-панель',
+        'btn_back_to_list': '◀️ Назад к списку',
+        'btn_back_to_history': '◀️ Назад к истории',
+        'btn_confirm_generate_text': '✅ Генерировать',
+        'btn_copy_link': '📋 Скопировать ссылку',
+        'btn_all_models_text': '📋 Все модели',
+        'btn_z_image_free': '🖼️ Z-Image (бесплатно)',
+        'btn_next_step': '▶️ Далее',
+        'btn_complete': '▶️ Завершить',
+        'btn_custom_amount': '💰 Своя сумма',
+        'btn_return_to_admin': '🔙 Вернуться в админ-панель',
+        'btn_view_result': '👁️ Показать результат',
     },
     'en': {
         'welcome_new': (
@@ -331,6 +385,60 @@ TRANSLATIONS = {
         'btn_skip': '⏭️ Skip',
         'btn_top_up_balance': '💳 Top Up Balance',
         'error_try_start': '❌ Error. Try /start',
+        'btn_start_generation': '🎨 Start Generation',
+        'msg_referral_title': '🎁 <b>REFERRAL SYSTEM</b> 🎁',
+        'msg_referral_how_it_works': (
+            '💡 <b>HOW IT WORKS:</b>\n\n'
+            '1️⃣ Invite a friend using your link\n'
+            '2️⃣ They register through the bot\n'
+            '3️⃣ You get <b>+{bonus} free Z-Image generations</b>!'
+        ),
+        'msg_referral_stats': (
+            '📊 <b>YOUR STATISTICS:</b>\n\n'
+            '• Friends invited: <b>{count}</b>\n'
+            '• Bonuses received: <b>{bonus_total}</b> generations\n'
+            '• Available free: <b>{remaining}</b> Z-Image generations'
+        ),
+        'msg_referral_important': '⚠️ <b>IMPORTANT:</b> Free generations are only available for <b>Z-Image</b> model!',
+        'msg_referral_link_title': '🔗 <b>YOUR REFERRAL LINK:</b>',
+        'msg_referral_send': '💬 <b>Send this link to a friend!</b>\nAfter they register, you will receive the bonus automatically.',
+        'msg_payment_success': '✅ <b>PAYMENT SUCCESSFUL!</b> ✅',
+        'msg_payment_added': '💰 <b>Added:</b> {amount:.2f} ₽',
+        'msg_payment_method': '⭐ <b>Method:</b> Telegram Stars ({stars} ⭐)',
+        'msg_payment_balance': '💳 <b>Your balance:</b> {balance} ₽',
+        'msg_payment_use_funds': '🎉 You can now use funds for content generation!',
+        'error_session_empty': '❌ Error: session is empty. Please start again.',
+        'error_no_data': '❌ Error: no data in request. Please try again.',
+        'error_invalid_format': '❌ Error: invalid request format. Please try again.',
+        'error_unknown': '❌ An error occurred. Please try later or use /start',
+        'error_insufficient_balance': '❌ Insufficient balance',
+        'error_operation_failed': '❌ Operation failed. Please try again.',
+        'error_timeout': '⏱️ Timeout exceeded. Please try again.',
+        'error_network': '🌐 Network error. Check your connection and try later.',
+        'error_display_generation': '❌ Error displaying generation',
+        'msg_spinning_wheel': '🎰 Spinning the wheel of fortune...',
+        'msg_admin_only': 'This function is available only to administrator.',
+        'msg_user_mode_enabled': 'User mode enabled',
+        'msg_returning_to_admin': 'Returning to admin panel',
+        'msg_insufficient_funds': '❌ <b>Insufficient funds</b>\n💳 <b>Your balance:</b> {balance} ₽\n💵 <b>Required:</b> {required} ₽\n\nTop up your balance to generate.',
+        'msg_available_generations': '✅ <b>Available generations:</b> {count}\n💳 <b>Your balance:</b> {balance} ₽',
+        'msg_unlimited_available': '✅ <b>Available:</b> Unlimited',
+        'btn_check_balance': '💰 Check Balance',
+        'btn_back_to_categories': '◀️ Back to Categories',
+        'btn_previous': '◀️ Previous',
+        'btn_next': 'Next ▶️',
+        'btn_back_to_admin': '◀️ Back to Admin Panel',
+        'btn_back_to_list': '◀️ Back to List',
+        'btn_back_to_history': '◀️ Back to History',
+        'btn_confirm_generate_text': '✅ Generate',
+        'btn_copy_link': '📋 Copy Link',
+        'btn_all_models_text': '📋 All Models',
+        'btn_z_image_free': '🖼️ Z-Image (free)',
+        'btn_next_step': '▶️ Next',
+        'btn_complete': '▶️ Complete',
+        'btn_custom_amount': '💰 Custom Amount',
+        'btn_return_to_admin': '🔙 Return to Admin',
+        'btn_view_result': '👁️ View Result',
     }
 }
 
