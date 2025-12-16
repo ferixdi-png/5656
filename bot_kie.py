@@ -4550,7 +4550,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if image_param_name not in user_sessions[user_id]:
                     user_sessions[user_id][image_param_name] = []  # Initialize as array
                 await query.answer()
-                logger.info(f"Started image input first for model {model_id}, user {user_id}")
+                logger.info(f"✅✅✅ Started image input first for model {model_id}, user {user_id}, waiting_for={image_param_name}, session_keys={list(user_sessions[user_id].keys())[:10]}")
                 return INPUTTING_PARAMS
             
             # Special case: sora-2-pro-image-to-video starts with image_urls first
@@ -9087,6 +9087,21 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle parameter input."""
     user_id = update.effective_user.id
     
+    # CRITICAL: Log ALL input_parameters calls to debug photo processing
+    has_photo = bool(update.message and update.message.photo)
+    has_text = bool(update.message and update.message.text)
+    has_audio = bool(update.message and (update.message.audio or update.message.voice))
+    logger.info(f"🔍 input_parameters CALLED: user_id={user_id}, has_photo={has_photo}, has_text={has_text}, has_audio={has_audio}")
+    
+    if user_id not in user_sessions:
+        logger.warning(f"⚠️ User {user_id} not in user_sessions in input_parameters!")
+        if update.message:
+            await update.message.reply_text("❌ Сессия не найдена. Начните заново с /start")
+        return ConversationHandler.END
+    
+    session = user_sessions[user_id]
+    logger.info(f"🔍 Session exists: model_id={session.get('model_id', 'None')}, waiting_for={session.get('waiting_for', 'None')}, session_keys={list(session.keys())[:10]}")
+    
     # Handle admin OCR test
     if user_id == ADMIN_ID and user_id in user_sessions and user_sessions[user_id].get('waiting_for') == 'admin_test_ocr':
         if update.message.photo:
@@ -9812,7 +9827,8 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     waiting_for_image = waiting_for in ['image_input', 'image_urls', 'image', 'mask_input', 'reference_image_input']
     
     # CRITICAL: Log for debugging
-    logger.info(f"Image input check: user_id={user_id}, waiting_for={waiting_for}, waiting_for_image={waiting_for_image}, has_photo={bool(update.message.photo)}, model_id={session.get('model_id', 'Unknown')}")
+    model_id = session.get('model_id', 'Unknown')
+    logger.info(f"🔍🔍🔍 Image input check: user_id={user_id}, waiting_for={waiting_for}, waiting_for_image={waiting_for_image}, has_photo={bool(update.message.photo)}, model_id={model_id}, session_keys={list(session.keys())[:10]}")
     
     # If photo sent but not waiting for image, show helpful message
     if update.message.photo and not waiting_for_image:
@@ -9844,14 +9860,15 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
             if model_id in models_require_image_first or \
                (properties.get(image_param_name, {}).get('required', False)):
-                logger.warning(f"Photo sent for {model_id} but waiting_for={waiting_for}, fixing session...")
+                logger.warning(f"⚠️ Photo sent for {model_id} but waiting_for={waiting_for}, fixing session...")
                 session['waiting_for'] = image_param_name
                 session['current_param'] = image_param_name
                 if image_param_name not in session:
                     session[image_param_name] = []
                 # Retry processing
                 waiting_for_image = True
-                logger.info(f"✅ Session fixed: waiting_for={image_param_name}, model={model_id}")
+                waiting_for = image_param_name  # Update local variable
+                logger.info(f"✅✅✅ Session fixed: waiting_for={image_param_name}, model={model_id}, retrying image processing...")
         else:
             # Photo sent but not expected - show helpful message
             if user_lang == 'en':
@@ -9870,7 +9887,7 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return INPUTTING_PARAMS
     
     if update.message.photo and waiting_for_image:
-        logger.info(f"✅ Processing image for user {user_id}, waiting_for={waiting_for}, model={session.get('model_id', 'Unknown')}")
+        logger.info(f"✅✅✅ Processing image for user {user_id}, waiting_for={waiting_for}, model={session.get('model_id', 'Unknown')}, image_param_name will be determined from waiting_for")
         photo = update.message.photo[-1]  # Get largest photo
         file = await context.bot.get_file(photo.file_id)
         
@@ -10186,11 +10203,103 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     logger.error(f"   session[{image_param_name}]: {session.get(image_param_name)}")
                     all_required_collected = False
             
-            # If all required parameters collected, show confirmation immediately
+            # If all required parameters collected, check if auto-start generation
             if all_required_collected:
                 model_name = session.get('model_info', {}).get('name', 'Unknown')
                 params = session.get('params', {})
+                
+                # CRITICAL: For models that only require image (no prompt), auto-start generation
+                models_only_image = [
+                    "recraft/remove-background",
+                    "recraft/crisp-upscale",
+                    "topaz/image-upscale",
+                    "ideogram/v3-reframe"
+                ]
+                
+                if model_id in models_only_image:
+                    logger.info(f"🚀🚀🚀 AUTO-STARTING generation for {model_id} (image-only model). Params: {list(params.keys())}")
+                    user_lang = get_user_language(user_id)
+                    
+                    # Show "Generation started" message
+                    if user_lang == 'en':
+                        start_msg = f"🚀 <b>Generation started!</b>\n\nProcessing your image with <b>{model_name}</b>...\n\nPlease wait, this may take a moment."
+                    else:
+                        start_msg = f"🚀 <b>Генерация началась!</b>\n\nОбрабатываю ваше изображение с помощью <b>{model_name}</b>...\n\nПожалуйста, подождите, это может занять некоторое время."
+                    
+                    try:
+                        status_msg = await update.message.reply_text(start_msg, parse_mode='HTML')
+                    except Exception as e:
+                        logger.error(f"Error sending start message: {e}", exc_info=True)
+                        status_msg = None
+                    
+                    # Create a mock callback query to call confirm_generation
+                    # This allows us to reuse all the logic in confirm_generation
+                    try:
+                        class MockUser:
+                            def __init__(self, user_id):
+                                self.id = user_id
+                        
+                        class MockMessage:
+                            def __init__(self, original_message, status_msg):
+                                self.message_id = original_message.message_id
+                                self.chat = original_message.chat
+                                self._bot = original_message._bot
+                                self.status_msg = status_msg
+                            
+                            async def edit_message_text(self, text, **kwargs):
+                                # Edit the status message instead of the original
+                                if self.status_msg:
+                                    try:
+                                        await self.status_msg.edit_text(text, **kwargs)
+                                    except:
+                                        # If edit fails, send new message
+                                        await self._bot.send_message(
+                                            chat_id=self.chat.id,
+                                            text=text,
+                                            **kwargs
+                                        )
+                            
+                            async def reply_text(self, text, **kwargs):
+                                return await self._bot.send_message(
+                                    chat_id=self.chat.id,
+                                    text=text,
+                                    **kwargs
+                                )
+                        
+                        class MockCallbackQuery:
+                            def __init__(self, user_id, message, status_msg):
+                                self.from_user = MockUser(user_id)
+                                self.message = MockMessage(message, status_msg)
+                                self.data = "confirm_generate"
+                            
+                            async def answer(self, text=None, show_alert=False):
+                                pass
+                        
+                        mock_query = MockCallbackQuery(user_id, update.message, status_msg)
+                        mock_update = type('obj', (object,), {
+                            'callback_query': mock_query,
+                            'effective_user': update.effective_user
+                        })()
+                        
+                        # Call confirm_generation with mock update
+                        result = await confirm_generation(mock_update, context)
+                        logger.info(f"✅✅✅ Auto-started generation for {model_id}, result: {result}")
+                        return result
+                    except Exception as e:
+                        logger.error(f"❌❌❌ Error auto-starting generation: {e}", exc_info=True)
+                        # Fallback to showing confirmation
+                        if status_msg:
+                            try:
+                                await status_msg.edit_text(
+                                    "❌ <b>Ошибка</b>\n\nНе удалось автоматически начать генерацию. Пожалуйста, используйте кнопку подтверждения.",
+                                    parse_mode='HTML'
+                                )
+                            except:
+                                pass
+                
+                # For other models, show confirmation
                 logger.info(f"✅ All parameters collected for {model_id}, showing confirmation. Params: {list(params.keys())}")
+                user_lang = get_user_language(user_id)
                 
                 # Format params text
                 params_text = ""
@@ -21643,10 +21752,11 @@ def main():
             ]
         },
         fallbacks=[
-            # Only CallbackQueryHandler for per_message=True
-            CallbackQueryHandler(cancel, pattern='^cancel$')
-        ],
-        per_message=True
+            CallbackQueryHandler(cancel, pattern='^cancel$'),
+            CommandHandler('cancel', cancel)
+        ]
+        # REMOVED per_message=True - it prevents MessageHandler from working!
+        # per_message=True requires ALL handlers to be CallbackQueryHandler, which breaks photo/audio handling
     )
     
     # Add command handlers separately (not in conversation, as per_message=True requires only CallbackQueryHandler)
