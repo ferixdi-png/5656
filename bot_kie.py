@@ -10230,72 +10230,30 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         status_msg = await update.message.reply_text(start_msg, parse_mode='HTML')
                     except Exception as e:
                         logger.error(f"Error sending start message: {e}", exc_info=True)
-                        status_msg = None
+                        status_msg = update.message  # Fallback to original message
                     
-                    # Create a mock callback query to call confirm_generation
-                    # This allows us to reuse all the logic in confirm_generation
+                    # Call start_generation_directly function
                     try:
-                        class MockUser:
-                            def __init__(self, user_id):
-                                self.id = user_id
-                        
-                        class MockMessage:
-                            def __init__(self, original_message, status_msg):
-                                self.message_id = original_message.message_id
-                                self.chat = original_message.chat
-                                self._bot = original_message._bot
-                                self.status_msg = status_msg
-                            
-                            async def edit_message_text(self, text, **kwargs):
-                                # Edit the status message instead of the original
-                                if self.status_msg:
-                                    try:
-                                        await self.status_msg.edit_text(text, **kwargs)
-                                    except:
-                                        # If edit fails, send new message
-                                        await self._bot.send_message(
-                                            chat_id=self.chat.id,
-                                            text=text,
-                                            **kwargs
-                                        )
-                            
-                            async def reply_text(self, text, **kwargs):
-                                return await self._bot.send_message(
-                                    chat_id=self.chat.id,
-                                    text=text,
-                                    **kwargs
-                                )
-                        
-                        class MockCallbackQuery:
-                            def __init__(self, user_id, message, status_msg):
-                                self.from_user = MockUser(user_id)
-                                self.message = MockMessage(message, status_msg)
-                                self.data = "confirm_generate"
-                            
-                            async def answer(self, text=None, show_alert=False):
-                                pass
-                        
-                        mock_query = MockCallbackQuery(user_id, update.message, status_msg)
-                        mock_update = type('obj', (object,), {
-                            'callback_query': mock_query,
-                            'effective_user': update.effective_user
-                        })()
-                        
-                        # Call confirm_generation with mock update
-                        result = await confirm_generation(mock_update, context)
+                        result = await start_generation_directly(
+                            user_id=user_id,
+                            model_id=model_id,
+                            params=params,
+                            model_info=session.get('model_info', {}),
+                            status_message=status_msg,
+                            context=context
+                        )
                         logger.info(f"✅✅✅ Auto-started generation for {model_id}, result: {result}")
                         return result
                     except Exception as e:
                         logger.error(f"❌❌❌ Error auto-starting generation: {e}", exc_info=True)
                         # Fallback to showing confirmation
-                        if status_msg:
-                            try:
-                                await status_msg.edit_text(
-                                    "❌ <b>Ошибка</b>\n\nНе удалось автоматически начать генерацию. Пожалуйста, используйте кнопку подтверждения.",
-                                    parse_mode='HTML'
-                                )
-                            except:
-                                pass
+                        try:
+                            await status_msg.edit_text(
+                                "❌ <b>Ошибка</b>\n\nНе удалось автоматически начать генерацию. Пожалуйста, используйте кнопку подтверждения.",
+                                parse_mode='HTML'
+                            )
+                        except:
+                            pass
                 
                 # For other models, show confirmation
                 logger.info(f"✅ All parameters collected for {model_id}, showing confirmation. Params: {list(params.keys())}")
@@ -10743,6 +10701,205 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
     
     return INPUTTING_PARAMS
+
+
+async def start_generation_directly(
+    user_id: int,
+    model_id: str,
+    params: dict,
+    model_info: dict,
+    status_message,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    """Start generation directly without callback query. Used for auto-start after photo upload."""
+    logger.info(f"🚀 start_generation_directly called for user {user_id}, model {model_id}")
+    
+    is_admin_user = get_is_admin(user_id)
+    
+    # Check if user is blocked
+    if not is_admin_user and is_user_blocked(user_id):
+        await status_message.edit_text(
+            "❌ <b>Ваш аккаунт заблокирован</b>\n\n"
+            "Обратитесь к администратору для разблокировки.",
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    
+    # Apply default values for parameters that are not set
+    input_params = model_info.get('input_params', {})
+    for param_name, param_info in input_params.items():
+        if param_name not in params:
+            default_value = param_info.get('default')
+            if default_value is not None:
+                params[param_name] = default_value
+    
+    # Convert string boolean values to actual booleans
+    for param_name, param_value in params.items():
+        if param_name in input_params:
+            param_info = input_params[param_name]
+            if param_info.get('type') == 'boolean':
+                if isinstance(param_value, str):
+                    if param_value.lower() == 'true':
+                        params[param_name] = True
+                    elif param_value.lower() == 'false':
+                        params[param_name] = False
+    
+    # Check if this is a free generation
+    is_free = is_free_generation_available(user_id, model_id)
+    
+    # Calculate price
+    price = calculate_price_rub(model_id, params, is_admin_user)
+    if is_free:
+        price = 0.0
+    
+    # Check balance/limit before generation
+    if not is_admin_user:
+        if not is_free:
+            user_balance = get_user_balance(user_id)
+            if user_balance < price:
+                price_str = f"{price:.2f}".rstrip('0').rstrip('.')
+                balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
+                await status_message.edit_text(
+                    f"❌ <b>Недостаточно средств</b>\n\n"
+                    f"💰 <b>Требуется:</b> {price_str} ₽\n"
+                    f"💳 <b>Ваш баланс:</b> {balance_str} ₽\n\n"
+                    f"Пополните баланс для продолжения.",
+                    parse_mode='HTML'
+                )
+                return ConversationHandler.END
+    elif user_id != ADMIN_ID:
+        remaining = get_admin_remaining(user_id)
+        if remaining < price:
+            await status_message.edit_text(
+                f"❌ <b>Превышен лимит</b>\n\n"
+                f"Обратитесь к главному администратору для увеличения лимита.",
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
+    
+    await status_message.edit_text("🔄 Создаю задачу генерации... Пожалуйста, подождите.", parse_mode='HTML')
+    
+    # Prepare params for API
+    api_params = params.copy()
+    if model_id == "recraft/remove-background" and 'image_input' in api_params:
+        image_input = api_params.pop('image_input')
+        if isinstance(image_input, list) and len(image_input) > 0:
+            api_params['image'] = image_input[0]
+        elif isinstance(image_input, str):
+            api_params['image'] = image_input
+    elif model_id == "recraft/crisp-upscale" and 'image_input' in api_params:
+        image_input = api_params.pop('image_input')
+        if isinstance(image_input, list) and len(image_input) > 0:
+            api_params['image'] = image_input[0]
+        elif isinstance(image_input, str):
+            api_params['image'] = image_input
+    elif model_id == "ideogram/v3-reframe" and 'image_input' in api_params:
+        image_input = api_params.pop('image_input')
+        if isinstance(image_input, list) and len(image_input) > 0:
+            api_params['image_url'] = image_input[0]
+        elif isinstance(image_input, str):
+            api_params['image_url'] = image_input
+    elif model_id == "topaz/image-upscale" and 'image_input' in api_params:
+        image_input = api_params.pop('image_input')
+        if isinstance(image_input, list) and len(image_input) > 0:
+            api_params['image_url'] = image_input[0]
+        elif isinstance(image_input, str):
+            api_params['image_url'] = image_input
+    
+    # Check maximum concurrent generations
+    async with active_generations_lock:
+        user_active_count = sum(1 for (uid, _) in active_generations.keys() if uid == user_id)
+        if user_active_count >= MAX_CONCURRENT_GENERATIONS_PER_USER:
+            await status_message.edit_text(
+                f"⚠️ <b>Превышен лимит одновременных генераций</b>\n\n"
+                f"У вас уже запущено {user_active_count} генераций.\n"
+                f"Максимум: {MAX_CONCURRENT_GENERATIONS_PER_USER}.",
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
+    
+    # Create task
+    result = await kie.create_task(model_id, api_params)
+    
+    if result.get('ok'):
+        task_id = result.get('taskId')
+        
+        # Get session
+        if user_id not in user_sessions:
+            logger.error(f"Session not found for user {user_id}")
+            await status_message.edit_text("❌ Сессия не найдена.", parse_mode='HTML')
+            return ConversationHandler.END
+        
+        session = user_sessions[user_id]
+        generation_key = (user_id, task_id)
+        
+        # Store task data
+        session['task_id'] = task_id
+        session['poll_attempts'] = 0
+        session['max_poll_attempts'] = 60
+        session['is_free_generation'] = is_free
+        session['model_id'] = model_id
+        session['model_info'] = model_info
+        session['params'] = api_params.copy()
+        
+        # Move to active_generations
+        async with active_generations_lock:
+            user_active_count_now = sum(1 for (uid, _) in active_generations.keys() if uid == user_id)
+            if user_active_count_now >= MAX_CONCURRENT_GENERATIONS_PER_USER:
+                await status_message.edit_text(
+                    f"⚠️ <b>Превышен лимит одновременных генераций</b>",
+                    parse_mode='HTML'
+                )
+                return ConversationHandler.END
+            
+            active_generations[generation_key] = session.copy()
+            final_count = user_active_count_now + 1
+        
+        # Remove from user_sessions
+        if user_id in user_sessions:
+            del user_sessions[user_id]
+        
+        # Update status message
+        if is_admin_user:
+            message_text = (
+                f"✅ <b>Задача создана!</b>\n\n"
+                f"Task ID: <code>{task_id}</code>\n\n"
+                f"⏳ Ожидаю завершения генерации...\n\n"
+                f"📊 Активных генераций: {final_count}/{MAX_CONCURRENT_GENERATIONS_PER_USER}"
+            )
+        else:
+            message_text = (
+                f"✅ <b>Задача создана!</b>\n\n"
+                f"⏳ Ожидаю завершения генерации..."
+            )
+        
+        await status_message.edit_text(message_text, parse_mode='HTML')
+        
+        # Start polling - create mock update for poll_task_status
+        class MockUpdate:
+            def __init__(self, user_id, message):
+                self.effective_user = type('obj', (object,), {'id': user_id})()
+                self.message = message
+        
+        mock_update = MockUpdate(user_id, status_message)
+        asyncio.create_task(poll_task_status(mock_update, context, task_id, user_id))
+        
+        # Deduct balance
+        if not is_free:
+            subtract_user_balance(user_id, price)
+            create_operation(user_id, "generation", -price, model_id, None, None)
+        else:
+            use_free_generation(user_id, model_id)
+            create_operation(user_id, "free_generation", Decimal('0.00'), model_id, None, None)
+        
+        return ConversationHandler.END
+    else:
+        error = result.get('error', 'Unknown error')
+        await status_message.edit_text(
+            f"❌ <b>Ошибка создания задачи</b>\n\n{error}",
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
 
 
 async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE):
