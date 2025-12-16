@@ -2159,7 +2159,8 @@ def get_user_generations_history(user_id: int, limit: int = 20) -> list:
         
         history = load_json_file(GENERATIONS_HISTORY_FILE, {})
         if not history:
-            logger.warning(f"History file {GENERATIONS_HISTORY_FILE} is empty")
+            # Empty history file is normal for new users or first run - use INFO instead of WARNING
+            logger.info(f"History file {GENERATIONS_HISTORY_FILE} is empty (normal for new users)")
             return []
         
         # Try both string and integer keys (for compatibility)
@@ -10005,6 +10006,9 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
         param_info = properties.get(image_param_name, {})
         max_items = param_info.get('max_items', 8)  # Default to 8 if not specified
         
+        model_id = session.get('model_id', 'Unknown')
+        logger.info(f"🔍 Image processing: model={model_id}, image_param_name={image_param_name}, max_items={max_items}, image_count={image_count}, session_keys={list(session.keys())}")
+        
         # If max_items is 1, immediately move to next parameter
         if max_items == 1:
             user_lang = get_user_language(user_id)
@@ -10153,6 +10157,7 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
             
             if model_id in models_only_image:
+                logger.info(f"🔍 CRITICAL: {model_id} is in models_only_image list! Checking image...")
                 # For these models, if image_input is in params, we're done
                 params_check = session.get('params', {})
                 image_in_params = image_param_name in params_check and params_check.get(image_param_name)
@@ -10160,8 +10165,10 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 # Also check if it's in session (fallback)
                 image_in_session = image_param_name in session and session.get(image_param_name)
                 
+                logger.info(f"🔍 {model_id} check: image_in_params={image_in_params}, image_in_session={image_in_session}, params_keys={list(params_check.keys())}, session_has_{image_param_name}={image_param_name in session}, session_value={session.get(image_param_name)}")
+                
                 if image_in_params:
-                    logger.info(f"✅ Model {model_id} only requires {image_param_name}, which is collected in params. Showing confirmation immediately.")
+                    logger.info(f"✅✅✅ Model {model_id} only requires {image_param_name}, which is collected in params. Setting all_required_collected=True.")
                     all_required_collected = True
                 elif image_in_session:
                     # Image is in session but not in params - fix it
@@ -10170,19 +10177,20 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         session['params'][image_param_name] = session[image_param_name].copy()
                     else:
                         session['params'][image_param_name] = [session[image_param_name]]
-                    logger.info(f"✅ Fixed: {image_param_name} now in params. Showing confirmation.")
+                    logger.info(f"✅✅✅ Fixed: {image_param_name} now in params. Setting all_required_collected=True.")
                     all_required_collected = True
                 else:
-                    logger.error(f"❌ ERROR: {model_id} requires {image_param_name} but it's not in params or session!")
+                    logger.error(f"❌❌❌ CRITICAL ERROR: {model_id} requires {image_param_name} but it's not in params or session!")
                     logger.error(f"   params keys: {list(params_check.keys())}")
                     logger.error(f"   session keys: {list(session.keys())}")
+                    logger.error(f"   session[{image_param_name}]: {session.get(image_param_name)}")
                     all_required_collected = False
             
             # If all required parameters collected, show confirmation immediately
             if all_required_collected:
                 model_name = session.get('model_info', {}).get('name', 'Unknown')
                 params = session.get('params', {})
-                logger.info(f"All parameters collected for {model_id}, showing confirmation")
+                logger.info(f"✅ All parameters collected for {model_id}, showing confirmation. Params: {list(params.keys())}")
                 
                 # Format params text
                 params_text = ""
@@ -10217,12 +10225,21 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         f"Продолжить генерацию?"
                     )
                 
-                await update.message.reply_text(
-                    confirm_text,
-                    reply_markup=InlineKeyboardMarkup(keyboard),
-                    parse_mode='HTML'
-                )
-                return CONFIRMING_GENERATION
+                try:
+                    await update.message.reply_text(
+                        confirm_text,
+                        reply_markup=InlineKeyboardMarkup(keyboard),
+                        parse_mode='HTML'
+                    )
+                    logger.info(f"✅ Confirmation message sent for {model_id}")
+                    return CONFIRMING_GENERATION
+                except Exception as e:
+                    logger.error(f"❌ Error sending confirmation message: {e}", exc_info=True)
+                    await update.message.reply_text(
+                        "❌ <b>Ошибка</b>\n\nНе удалось показать форму подтверждения. Попробуйте еще раз.",
+                        parse_mode='HTML'
+                    )
+                    return INPUTTING_PARAMS
             
             # Move to next parameter if not all collected
             try:
