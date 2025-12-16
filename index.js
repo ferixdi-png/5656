@@ -138,11 +138,16 @@ async function startBot() {
     process.exit(1);
   }
   
-  // Check if run_bot.py exists
-  const botScript = path.join(__dirname, 'run_bot.py');
+  // Check if bot script exists (try bot_kie.py first, then run_bot.py)
+  let botScript = path.join(__dirname, 'bot_kie.py');
   if (!fs.existsSync(botScript)) {
-    console.error(`❌ Bot script not found: ${botScript}`);
-    process.exit(1);
+    botScript = path.join(__dirname, 'run_bot.py');
+    if (!fs.existsSync(botScript)) {
+      console.error(`❌ Bot script not found. Tried: bot_kie.py and run_bot.py`);
+      console.error(`❌ Current directory: ${__dirname}`);
+      console.error(`❌ Files in directory:`, fs.readdirSync(__dirname).filter(f => f.endsWith('.py')).join(', '));
+      process.exit(1);
+    }
   }
   
   console.log(`📝 Starting bot script: ${botScript}`);
@@ -151,11 +156,18 @@ async function startBot() {
   console.log('');
   
   // Spawn Python process with explicit output handling
-  const botProcess = spawn(pythonCmd, [botScript], {
+  // CRITICAL: Use unbuffered output for immediate logging
+  const env = {
+    ...process.env,
+    PYTHONUNBUFFERED: '1', // Force unbuffered output
+    PYTHONIOENCODING: 'utf-8' // Ensure UTF-8 encoding
+  };
+  
+  const botProcess = spawn(pythonCmd, ['-u', botScript], { // -u flag for unbuffered
     cwd: __dirname,
     stdio: ['ignore', 'pipe', 'pipe'], // Use pipes to capture output
     shell: true,
-    env: process.env
+    env: env
   });
   
   // Forward stdout to console
@@ -204,21 +216,44 @@ async function startBot() {
   console.log('');
   
   // Handle graceful shutdown
+  let isShuttingDown = false;
+  
   process.on('SIGINT', () => {
-    console.log('\n🛑 Shutting down bot...');
-    botProcess.kill('SIGINT');
-    setTimeout(() => {
-      botProcess.kill('SIGTERM');
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    console.log('\n🛑 Received SIGINT, shutting down bot gracefully...');
+    if (botProcess && !botProcess.killed) {
+      botProcess.kill('SIGINT');
+      setTimeout(() => {
+        if (botProcess && !botProcess.killed) {
+          botProcess.kill('SIGTERM');
+        }
+        setTimeout(() => {
+          process.exit(0);
+        }, 2000);
+      }, 5000);
+    } else {
       process.exit(0);
-    }, 5000);
+    }
   });
   
   process.on('SIGTERM', () => {
-    console.log('\n🛑 Shutting down bot...');
-    botProcess.kill('SIGTERM');
-    setTimeout(() => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    console.log('\n🛑 Received SIGTERM, shutting down bot gracefully...');
+    if (botProcess && !botProcess.killed) {
+      botProcess.kill('SIGTERM');
+      setTimeout(() => {
+        if (botProcess && !botProcess.killed) {
+          botProcess.kill('SIGKILL');
+        }
+        setTimeout(() => {
+          process.exit(0);
+        }, 2000);
+      }, 5000);
+    } else {
       process.exit(0);
-    }, 5000);
+    }
   });
 }
 
@@ -227,6 +262,7 @@ console.log('🏥 Starting health check server FIRST...');
 startHealthCheck();
 
 // Give health check server time to bind to port
+// CRITICAL: Increase timeout to ensure health check is ready before Render.com checks
 setTimeout(() => {
   console.log('✅ Health check server should be responding now');
   console.log('');
@@ -238,18 +274,27 @@ setTimeout(() => {
   console.log(`Node.js version: ${process.version}`);
   console.log(`Platform: ${process.platform}`);
   console.log(`Working directory: ${__dirname}`);
+  console.log(`Process ID: ${process.pid}`);
   console.log('='.repeat(60));
   console.log('');
 
   // Ensure output is flushed immediately
   process.stdout.setEncoding('utf8');
   process.stderr.setEncoding('utf8');
+  
+  // Force immediate output flush
+  if (process.stdout.isTTY) {
+    process.stdout.write('');
+  }
 
   startBot().catch((error) => {
     console.error('❌ Fatal error:', error);
     console.error('Error stack:', error.stack);
-    process.exit(1);
+    // Don't exit immediately - give health check time to respond
+    setTimeout(() => {
+      process.exit(1);
+    }, 2000);
   });
-}, 500); // Wait 500ms for health check server to start
+}, 1000); // Wait 1 second for health check server to start (increased from 500ms)
 
 

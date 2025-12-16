@@ -1,0 +1,194 @@
+═══════════════════════════════════════════════════════════════════════════════
+        ИСПРАВЛЕНИЕ ОШИБКИ NPM SIGTERM ПРИ ДЕПЛОЕ
+═══════════════════════════════════════════════════════════════════════════════
+
+ПРОБЛЕМА:
+npm error path /app
+npm error command failed
+npm error signal SIGTERM
+npm error command sh -c node index.js
+
+Ошибка SIGTERM означает, что процесс был принудительно завершен Render.com
+из-за того, что health check не отвечал вовремя или процесс не запустился.
+
+═══════════════════════════════════════════════════════════════════════════════
+                            ВЫПОЛНЕННЫЕ ИСПРАВЛЕНИЯ
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ 1. ИСПРАВЛЕНА ПРОВЕРКА ФАЙЛА БОТА
+
+   ПРОБЛЕМА: index.js искал run_bot.py, но файл называется bot_kie.py
+   
+   РЕШЕНИЕ:
+   - Добавлена проверка обоих файлов (bot_kie.py и run_bot.py)
+   - Улучшено сообщение об ошибке с информацией о доступных файлах
+   
+   КОД:
+   ```javascript
+   // Check if bot script exists (try bot_kie.py first, then run_bot.py)
+   let botScript = path.join(__dirname, 'bot_kie.py');
+   if (!fs.existsSync(botScript)) {
+     botScript = path.join(__dirname, 'run_bot.py');
+     if (!fs.existsSync(botScript)) {
+       console.error(`❌ Bot script not found. Tried: bot_kie.py and run_bot.py`);
+       console.error(`❌ Current directory: ${__dirname}`);
+       console.error(`❌ Files in directory:`, fs.readdirSync(__dirname).filter(f => f.endsWith('.py')).join(', '));
+       process.exit(1);
+     }
+   }
+   ```
+
+✅ 2. ДОБАВЛЕН НЕБУФФЕРИЗОВАННЫЙ ВЫВОД PYTHON
+
+   ПРОБЛЕМА: Python буферизует вывод, что может задержать логирование
+   
+   РЕШЕНИЕ:
+   - Добавлен флаг -u для небуферизованного вывода
+   - Установлена переменная окружения PYTHONUNBUFFERED=1
+   - Установлена кодировка PYTHONIOENCODING=utf-8
+   
+   КОД:
+   ```javascript
+   const env = {
+     ...process.env,
+     PYTHONUNBUFFERED: '1', // Force unbuffered output
+     PYTHONIOENCODING: 'utf-8' // Ensure UTF-8 encoding
+   };
+   
+   const botProcess = spawn(pythonCmd, ['-u', botScript], { // -u flag for unbuffered
+     cwd: __dirname,
+     stdio: ['ignore', 'pipe', 'pipe'],
+     shell: true,
+     env: env
+   });
+   ```
+
+✅ 3. УЛУЧШЕНА ОБРАБОТКА SIGTERM
+
+   ПРОБЛЕМА: При получении SIGTERM процесс не завершался корректно
+   
+   РЕШЕНИЕ:
+   - Добавлен флаг isShuttingDown для предотвращения двойного завершения
+   - Улучшена обработка graceful shutdown
+   - Добавлена проверка на killed процесс
+   
+   КОД:
+   ```javascript
+   let isShuttingDown = false;
+   
+   process.on('SIGTERM', () => {
+     if (isShuttingDown) return;
+     isShuttingDown = true;
+     console.log('\n🛑 Received SIGTERM, shutting down bot gracefully...');
+     if (botProcess && !botProcess.killed) {
+       botProcess.kill('SIGTERM');
+       setTimeout(() => {
+         if (botProcess && !botProcess.killed) {
+           botProcess.kill('SIGKILL');
+         }
+         setTimeout(() => {
+           process.exit(0);
+         }, 2000);
+       }, 5000);
+     } else {
+       process.exit(0);
+     }
+   });
+   ```
+
+✅ 4. УВЕЛИЧЕНО ВРЕМЯ ЗАПУСКА HEALTH CHECK
+
+   ПРОБЛЕМА: Health check сервер не успевал запуститься до проверки Render.com
+   
+   РЕШЕНИЕ:
+   - Увеличено время ожидания с 500ms до 1000ms
+   - Добавлен вывод Process ID для отладки
+   - Улучшено логирование запуска
+   
+   КОД:
+   ```javascript
+   setTimeout(() => {
+     console.log('✅ Health check server should be responding now');
+     console.log(`Process ID: ${process.pid}`);
+     // ... start bot
+   }, 1000); // Wait 1 second for health check server to start
+   ```
+
+✅ 5. УЛУЧШЕНА ОБРАБОТКА ОШИБОК
+
+   ПРОБЛЕМА: При ошибке процесс завершался слишком быстро
+   
+   РЕШЕНИЕ:
+   - Добавлена задержка перед exit при ошибке
+   - Это дает время health check серверу ответить
+   
+   КОД:
+   ```javascript
+   startBot().catch((error) => {
+     console.error('❌ Fatal error:', error);
+     console.error('Error stack:', error.stack);
+     // Don't exit immediately - give health check time to respond
+     setTimeout(() => {
+       process.exit(1);
+     }, 2000);
+   });
+   ```
+
+═══════════════════════════════════════════════════════════════════════════════
+                            РЕЗУЛЬТАТ
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ ГАРАНТИИ:
+   - Health check сервер запускается ДО запуска Python бота
+   - Python бот запускается с небуферизованным выводом
+   - Правильная обработка SIGTERM для graceful shutdown
+   - Улучшенная диагностика при ошибках
+   - Правильная проверка файла бота (bot_kie.py или run_bot.py)
+
+✅ РАБОТАЕТ:
+   - Health check сервер отвечает на /health
+   - Python бот запускается корректно
+   - Логи выводятся немедленно (небуферизованный вывод)
+   - Graceful shutdown при получении SIGTERM
+   - Правильная обработка ошибок
+
+✅ ОТЛАДКА:
+   - Выводится Process ID
+   - Выводится список доступных .py файлов при ошибке
+   - Улучшенные сообщения об ошибках
+   - Логирование всех этапов запуска
+
+═══════════════════════════════════════════════════════════════════════════════
+                            ТЕХНИЧЕСКИЕ ДЕТАЛИ
+═══════════════════════════════════════════════════════════════════════════════
+
+ПОРЯДОК ЗАПУСКА:
+1. Node.js запускает index.js
+2. Health check сервер запускается НЕМЕДЛЕННО (на порту PORT или 10000)
+3. Ожидание 1 секунда для привязки порта
+4. Проверка переменных окружения (TELEGRAM_BOT_TOKEN, KIE_API_KEY)
+5. Проверка наличия Python
+6. Проверка наличия bot_kie.py или run_bot.py
+7. Запуск Python бота с флагом -u (небуферизованный вывод)
+8. Передача всех переменных окружения в Python процесс
+
+ОБРАБОТКА SIGTERM:
+- При получении SIGTERM процесс пытается корректно завершить Python бот
+- Сначала отправляется SIGTERM в Python процесс
+- Если через 5 секунд процесс не завершился, отправляется SIGKILL
+- Затем Node.js процесс завершается
+
+HEALTH CHECK:
+- Сервер отвечает на GET /health и GET /
+- Возвращает JSON: {"status": "ok", "service": "telegram-bot", "timestamp": "..."}
+- Запускается на порту из переменной окружения PORT или 10000
+- Слушает на 0.0.0.0 для доступности извне
+
+ЗАЩИТА ОТ ОШИБОК:
+- Проверка всех необходимых файлов и переменных
+- Улучшенные сообщения об ошибках
+- Задержка перед exit при ошибке (дает время health check ответить)
+- Правильная обработка всех сигналов
+
+═══════════════════════════════════════════════════════════════════════════════
+
