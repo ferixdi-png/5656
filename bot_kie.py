@@ -585,20 +585,20 @@ def calculate_price_rub(model_id: str, params: dict = None, is_admin: bool = Fal
         else:  # 480p
             base_credits = 12 * default_duration  # 12 credits per second
     elif model_id == "wan/2-2-a14b-text-to-video-turbo" or model_id == "wan/2-2-a14b-image-to-video-turbo":
-        # WAN 2.2 A14B Turbo pricing:
-        # 480p: 8 credits per second
-        # 580p: 12 credits per second
-        # 720p: 16 credits per second
-        # For pricing calculation, we'll use a default of 5 seconds as minimum
+        # WAN 2.2 A14B Turbo pricing (according to API documentation):
+        # 480p: 8 credits per video second ($0.04)
+        # 580p: 12 credits per video second ($0.06)
+        # 720p: 16 credits per video second ($0.08)
+        # NOTE: Video duration is fixed by the model, so we use a default of 5 seconds for pricing calculation
         resolution = params.get("resolution", "720p") if params else "720p"
-        default_duration = 5
+        default_duration = 5  # Default video duration in seconds
         
         if resolution == "720p":
-            base_credits = 16 * default_duration  # 16 credits per second
+            base_credits = 16 * default_duration  # 16 credits per video second
         elif resolution == "580p":
-            base_credits = 12 * default_duration  # 12 credits per second
+            base_credits = 12 * default_duration  # 12 credits per video second
         else:  # 480p
-            base_credits = 8 * default_duration  # 8 credits per second
+            base_credits = 8 * default_duration  # 8 credits per video second
     elif model_id == "bytedance/seedream":
         # Seedream 3.0 pricing:
         # 3.5 credits per image
@@ -839,8 +839,26 @@ def calculate_price_rub(model_id: str, params: dict = None, is_admin: bool = Fal
                 base_credits = 20  # 480p, 10s (estimated)
             else:  # duration == "5"
                 base_credits = 10  # 480p, 5s (estimated)
-    elif model_id == "kling/v2-1-master-image-to-video" or model_id == "kling/v2-1-standard" or model_id == "kling/v2-1-pro":
-        # Kling V2.1 pricing (same for master, standard, and pro):
+    elif model_id == "kling/v2-1-pro":
+        # Kling V2.1 Pro pricing:
+        # 5 seconds = 50 credits ($0.25)
+        # 10 seconds = 100 credits ($0.5)
+        duration = params.get("duration", "5") if params else "5"
+        if duration == "10":
+            base_credits = 100  # 10s = 100 credits
+        else:  # duration == "5"
+            base_credits = 50  # 5s = 50 credits
+    elif model_id == "kling/v2-1-standard":
+        # Kling V2.1 Standard pricing:
+        # 5 seconds = 25 credits ($0.125)
+        # 10 seconds = 50 credits ($0.25)
+        duration = params.get("duration", "5") if params else "5"
+        if duration == "10":
+            base_credits = 50  # 10s = 50 credits
+        else:  # duration == "5"
+            base_credits = 25  # 5s = 25 credits
+    elif model_id == "kling/v2-1-master-image-to-video":
+        # Kling V2.1 Master pricing:
         # NOTE: Price calculation - Need to check pricing in calculate_price_rub()
         # Price likely depends on duration parameter
         # For now, use default pricing until confirmed
@@ -2834,11 +2852,31 @@ async def analyze_payment_screenshot(image_data: bytes, expected_amount: float, 
 
 
 async def upload_image_to_hosting(image_data: bytes, filename: str = "image.jpg") -> str:
-    """Upload image to public hosting and return public URL."""
+    """
+    Upload image to public hosting and return public URL.
+    
+    🔴 КРИТИЧЕСКОЕ ПРАВИЛО: ЭТА ФУНКЦИЯ ДОЛЖНА БЫТЬ ЗАМЕНЕНА НА KIE AI FILE UPLOAD API!
+    
+    ВСЕ файлы (изображения, видео, аудио) ДОЛЖНЫ загружаться через KIE AI File Upload API:
+    - Base URL: https://kieai.redpandaai.co
+    - Endpoints:
+      * POST /api/file-stream-upload - для локальных файлов (рекомендуется)
+      * POST /api/file-base64-upload - для маленьких файлов (≤10MB)
+      * POST /api/file-url-upload - для удаленных файлов
+    - Authentication: Authorization: Bearer YOUR_API_KEY
+    - Документация: https://docs.kie.ai/file-upload-api
+    
+    ⚠️ НЕ использовать внешние хостинги (0x0.st, catbox.moe, transfer.sh)!
+    ⚠️ Файлы в KIE AI File Upload API автоматически удаляются через 3 дня!
+    
+    TODO: Заменить эту функцию на использование KIE AI File Upload API
+    """
     if not image_data or len(image_data) == 0:
         logger.error("Empty image data provided")
         return None
     
+    # 🔴 ВРЕМЕННОЕ РЕШЕНИЕ: Используются внешние хостинги
+    # TODO: ЗАМЕНИТЬ НА KIE AI FILE UPLOAD API (https://kieai.redpandaai.co/api/file-stream-upload)
     # Try multiple hosting services
     hosting_services = [
         # 0x0.st - simple file hosting (most reliable)
@@ -10529,21 +10567,54 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 self.message_id = status_msg.message_id if hasattr(status_msg, 'message_id') else None
                         
                         class MockCallbackQuery:
-                            def __init__(self, user_id, status_msg):
+                            def __init__(self, user_id, status_msg, context):
                                 self.from_user = MockUser(user_id)
                                 self.message = MockMessage(status_msg)
                                 self.data = "confirm_generate"
                                 self.id = f"auto_{user_id}_{int(time.time())}"
+                                self._status_msg = status_msg
+                                self._context = context
+                                self._user_id = user_id
                             
                             async def answer(self, text=None, show_alert=False):
                                 pass
+                            
+                            async def edit_message_text(self, text, parse_mode='HTML', reply_markup=None):
+                                """Mock edit_message_text that uses status_msg.edit_text or context.bot"""
+                                try:
+                                    if hasattr(self._status_msg, 'edit_text'):
+                                        await self._status_msg.edit_text(text, parse_mode=parse_mode, reply_markup=reply_markup)
+                                    elif hasattr(self._status_msg, 'message_id') and hasattr(self._status_msg, 'chat'):
+                                        await self._context.bot.edit_message_text(
+                                            chat_id=self._status_msg.chat.id,
+                                            message_id=self._status_msg.message_id,
+                                            text=text,
+                                            parse_mode=parse_mode,
+                                            reply_markup=reply_markup
+                                        )
+                                    else:
+                                        # Fallback: send new message
+                                        await self._context.bot.send_message(
+                                            chat_id=self._user_id,
+                                            text=text,
+                                            parse_mode=parse_mode,
+                                            reply_markup=reply_markup
+                                        )
+                                except Exception as e:
+                                    logger.warning(f"MockCallbackQuery.edit_message_text failed: {e}, trying send_message")
+                                    await self._context.bot.send_message(
+                                        chat_id=self._user_id,
+                                        text=text,
+                                        parse_mode=parse_mode,
+                                        reply_markup=reply_markup
+                                    )
                         
                         # CRITICAL: Create effective_user that matches the real user
                         class MockEffectiveUser:
                             def __init__(self, user_id):
                                 self.id = user_id
                         
-                        mock_query = MockCallbackQuery(user_id, status_msg)
+                        mock_query = MockCallbackQuery(user_id, status_msg, context)
                         mock_effective_user = MockEffectiveUser(user_id)
                         
                         mock_update = type('obj', (object,), {
@@ -10566,16 +10637,27 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             logger.info(f"🚀🚀🚀 About to call confirm_generation: user_id={user_id}, model_id={model_id}, session_exists={user_id in user_sessions}")
                             result = await confirm_generation(mock_update, context)
                             logger.info(f"🚀🚀🚀 confirm_generation returned: {result} for {model_id}")
+                            # CRITICAL: If confirm_generation succeeded, return immediately - don't show button
+                            logger.info(f"✅✅✅ Auto-start succeeded, NOT showing button for {model_id}")
                             return result
                         except Exception as confirm_error:
                             logger.error(f"❌❌❌ Error in confirm_generation: {confirm_error}", exc_info=True)
                             logger.error(f"❌❌❌ Error type: {type(confirm_error).__name__}, error message: {str(confirm_error)}")
+                            # CRITICAL: Check if task was already created before error
+                            # If task_id exists in session, task was created and we should NOT show button
+                            if user_id in user_sessions:
+                                session_check = user_sessions[user_id]
+                                if 'task_id' in session_check:
+                                    task_id = session_check.get('task_id')
+                                    logger.warning(f"⚠️⚠️⚠️ Task {task_id} was already created before error, NOT showing button to prevent duplicate")
+                                    # Task was created, don't show button - just return
+                                    return ConversationHandler.END
                             # Restore session if it was lost
                             if user_id not in user_sessions:
                                 logger.warning(f"⚠️⚠️⚠️ Session lost during confirm_generation, restoring from backup...")
                                 user_sessions[user_id] = session_backup.copy()
-                            # Don't raise - fall through to show button
-                            logger.warning(f"⚠️⚠️⚠️ Falling through to show button due to confirm_generation error")
+                            # Don't raise - fall through to show button only if task was NOT created
+                            logger.warning(f"⚠️⚠️⚠️ Falling through to show button due to confirm_generation error (task was NOT created)")
                     except Exception as auto_start_error:
                         logger.error(f"❌❌❌ CRITICAL Error auto-starting generation for {model_id}: {auto_start_error}", exc_info=True)
                         logger.error(f"❌❌❌ Error type: {type(auto_start_error).__name__}, error message: {str(auto_start_error)}")
@@ -11221,12 +11303,24 @@ async def start_generation_directly(
     
     # Prepare params for API
     api_params = params.copy()
+    
+    # 🔴 КРИТИЧЕСКОЕ ПРАВИЛО: ВСЕ модели ДОЛЖНЫ использовать API Endpoints строго по официальной документации
+    # 📚 ИСТОЧНИКИ:
+    # - https://docs.kie.ai/ - Comprehensive API Documentation
+    # - https://docs.kie.ai/market - Market Documentation (все модели: Image, Video, Audio)
+    # - https://kie.ai/ru - Русская версия сайта
+    # НИКАКИХ отклонений от официальной документации API Endpoints!
+    # Все параметры, конвертации и валидации должны соответствовать официальной документации
+    
+    # CRITICAL: KIE API compliance - recraft/remove-background requires input.image (string URL)
+    # Documentation: https://docs.kie.ai/market/recraft/remove-background
+    # API expects: {"model": "recraft/remove-background", "input": {"image": "https://..."}}
     if model_id == "recraft/remove-background" and 'image_input' in api_params:
         image_input = api_params.pop('image_input')
         if isinstance(image_input, list) and len(image_input) > 0:
-            api_params['image'] = image_input[0]
+            api_params['image'] = image_input[0]  # Take first URL from array
         elif isinstance(image_input, str):
-            api_params['image'] = image_input
+            api_params['image'] = image_input  # Use string URL directly
     elif model_id == "recraft/crisp-upscale" and 'image_input' in api_params:
         image_input = api_params.pop('image_input')
         if isinstance(image_input, list) and len(image_input) > 0:
@@ -11259,7 +11353,10 @@ async def start_generation_directly(
             return ConversationHandler.END
     
     # Create task
-    logger.info(f"🚀🚀🚀 Creating task for model {model_id}, user {user_id}, params keys: {list(api_params.keys())}")
+    # CRITICAL: Log exact API parameters being sent (for KIE API compliance)
+    import json
+    logger.info(f"🚀🚀🚀 Creating task for model {model_id}, user {user_id}")
+    logger.info(f"📋 API Parameters (KIE API format): model={model_id}, input={json.dumps(api_params, ensure_ascii=False, indent=2)}")
     result = await kie.create_task(model_id, api_params)
     logger.info(f"📋 Task creation result: ok={result.get('ok')}, taskId={result.get('taskId')}, error={result.get('error')}")
     
@@ -11347,7 +11444,37 @@ async def start_generation_directly(
 
 
 async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle generation confirmation."""
+    """
+    Handle generation confirmation.
+    
+    ⚠️ КРИТИЧЕСКИЕ ПРАВИЛА KIE AI - ЗАФИКСИРОВАНО НАВСЕГДА:
+    
+    🔴 ОБЯЗАТЕЛЬНОЕ ПРАВИЛО #0 (ГЛАВНОЕ):
+    ВСЕ модели ДОЛЖНЫ использовать API Endpoints строго по официальной документации:
+    https://docs.kie.ai/market - Market Documentation (ОБЯЗАТЕЛЬНО!)
+    https://docs.kie.ai/ - Comprehensive API Documentation
+    https://kie.ai/ru - Русская версия сайта
+    НИКАКИХ отклонений от официальной документации API Endpoints!
+    
+    1. ВСЕ параметры ДОЛЖНЫ строго соответствовать инструкциям KIE AI API
+    2. НИЧЕГО от себя не придумывать - только по документации KIE AI
+    3. ВСЕ обязательные параметры ДОЛЖНЫ быть запрошены у пользователя
+    4. ВСЕ обязательные параметры ДОЛЖНЫ быть валидированы перед отправкой
+    5. Формат параметров строго по валидационным файлам (validate_*.py)
+    6. Конвертация параметров только согласно инструкциям KIE API
+    7. Числа округляются согласно step (0.01 для strength, 0.1 для guidance_scale)
+    8. output_format в lowercase для qwen моделей (png, jpeg)
+    9. Никаких дополнительных параметров, которых нет в документации
+    10. Логирование всех параметров перед отправкой в KIE API
+    
+    📚 ИСТОЧНИКИ ПРАВИЛ:
+    - https://docs.kie.ai/market - Market Documentation (ОБЯЗАТЕЛЬНО! Image/Video/Audio Models)
+    - https://docs.kie.ai/ - Comprehensive API Documentation
+    - https://kie.ai/ru - Русская версия сайта
+    - llms.txt: https://docs.kie.ai/llms.txt - для навигации по документации
+    
+    См. KIE_AI_STRICT_RULES.md и KIE_AI_API_ENDPOINTS_RULE.md для полных правил всех моделей.
+    """
     import time
     start_time = time.time()
     query = update.callback_query
@@ -11416,9 +11543,42 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     session = user_sessions[user_id]
     logger.info(f"✅✅✅ Session found in confirm_generation: user_id={user_id}, model_id={session.get('model_id')}, params_keys={list(session.get('params', {}).keys())}")
+    
+    # CRITICAL: Check if task_id already exists in session (prevent duplicate)
+    if 'task_id' in session:
+        task_id_existing = session.get('task_id')
+        logger.warning(f"⚠️⚠️⚠️ Task {task_id_existing} already exists in session for user {user_id}, preventing duplicate")
+        await send_or_edit_message(
+            f"⚠️ <b>Генерация уже запущена</b>\n\n"
+            f"Задача уже создана.\n"
+            f"Task ID: <code>{task_id_existing}</code>",
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
     model_id = session.get('model_id')
     params = session.get('params', {})
     model_info = session.get('model_info', {})
+    
+    # CRITICAL: Check if task already exists in active_generations to prevent duplicate
+    async with active_generations_lock:
+        user_active_generations = [(uid, tid) for (uid, tid) in active_generations.keys() if uid == user_id]
+        if user_active_generations:
+            # Check if there's a recent generation for this model (within last 10 seconds)
+            import time
+            current_time = time.time()
+            for (uid, tid) in user_active_generations:
+                gen_session = active_generations.get((uid, tid))
+                if gen_session and gen_session.get('model_id') == model_id:
+                    created_time = gen_session.get('created_at', current_time)
+                    if current_time - created_time < 10:  # Within 10 seconds
+                        logger.warning(f"⚠️⚠️⚠️ Duplicate generation detected! Task {tid} was created recently for user {user_id}, model {model_id}")
+                        await send_or_edit_message(
+                            f"⚠️ <b>Генерация уже запущена</b>\n\n"
+                            f"Задача уже создана и обрабатывается.\n"
+                            f"Task ID: <code>{tid}</code>",
+                            parse_mode='HTML'
+                        )
+                        return ConversationHandler.END
     
     # Apply default values for parameters that are not set
     input_params = model_info.get('input_params', {})
@@ -11496,6 +11656,9 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     try:
         # Prepare params for API (convert image_input to appropriate parameter name if needed)
+        # ⚠️ КРИТИЧНО: Конвертация параметров ТОЛЬКО согласно инструкциям KIE API
+        # НИЧЕГО от себя не придумывать - только по документации!
+        # См. KIE_AI_STRICT_RULES.md для правил конвертации каждой модели
         api_params = params.copy()
         if model_id == "seedream/4.5-edit" and 'image_input' in api_params:
             # Convert image_input to image_urls for seedream/4.5-edit
@@ -11554,8 +11717,24 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 api_params['video_url'] = video_input[0]  # Take first video
             elif isinstance(video_input, str):
                 api_params['video_url'] = video_input
-        elif model_id == "wan/2-2-animate-move" or model_id == "wan/2-2-animate-replace":
-            # Convert video_input and image_input for wan/2-2-animate models
+        elif model_id == "wan/2-2-animate-move":
+            # Convert video_input and image_input for wan/2-2-animate-move
+            if 'video_input' in api_params:
+                video_input = api_params.pop('video_input')
+                if isinstance(video_input, list) and len(video_input) > 0:
+                    api_params['video_url'] = video_input[0]
+                elif isinstance(video_input, str):
+                    api_params['video_url'] = video_input
+            if 'image_input' in api_params:
+                image_input = api_params.pop('image_input')
+                if isinstance(image_input, list) and len(image_input) > 0:
+                    api_params['image_url'] = image_input[0]
+                elif isinstance(image_input, str):
+                    api_params['image_url'] = image_input
+        elif model_id == "wan/2-2-animate-replace":
+            # CRITICAL: wan/2-2-animate-replace uses video_url (string) and image_url (string), NOT video_input/image_input (arrays)
+            # According to API documentation: input.video_url (required, string URL) and input.image_url (required, string URL)
+            # Convert video_input to video_url and image_input to image_url
             if 'video_input' in api_params:
                 video_input = api_params.pop('video_input')
                 if isinstance(video_input, list) and len(video_input) > 0:
@@ -11597,19 +11776,24 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 elif isinstance(audio_input, str):
                     api_params['audio_url'] = audio_input
         elif model_id == "recraft/remove-background" and 'image_input' in api_params:
-            # Convert image_input to image for recraft/remove-background
+            # CRITICAL: KIE API requires "input.image" (string URL) for recraft/remove-background
+            # Documentation: https://docs.kie.ai/market/recraft/remove-background
+            # API expects: {"model": "recraft/remove-background", "input": {"image": "https://..."}}
+            # Convert image_input to image (as per KIE API specification)
             image_input = api_params.pop('image_input')
             if isinstance(image_input, list) and len(image_input) > 0:
-                api_params['image'] = image_input[0]
+                api_params['image'] = image_input[0]  # Take first URL from array
             elif isinstance(image_input, str):
-                api_params['image'] = image_input
+                api_params['image'] = image_input  # Use string URL directly
+            # NOTE: api_params now contains only 'image' key, which will be sent as input.image to KIE API
         elif model_id == "recraft/crisp-upscale" and 'image_input' in api_params:
-            # Convert image_input to image for recraft/crisp-upscale
+            # CRITICAL: KIE API requires "input.image" (string URL) for recraft/crisp-upscale
+            # Convert image_input to image (as per KIE API specification)
             image_input = api_params.pop('image_input')
             if isinstance(image_input, list) and len(image_input) > 0:
-                api_params['image'] = image_input[0]
+                api_params['image'] = image_input[0]  # Take first URL from array
             elif isinstance(image_input, str):
-                api_params['image'] = image_input
+                api_params['image'] = image_input  # Use string URL directly
         elif model_id == "ideogram/v3-reframe" and 'image_input' in api_params:
             # Convert image_input to image_url for ideogram/v3-reframe
             image_input = api_params.pop('image_input')
@@ -12653,6 +12837,10 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 api_params['resolution'] = resolution
         
         # For nano-banana-pro, validate and normalize parameters
+        # CRITICAL: KIE API expects "input.image_input" as array of URLs (up to 8 images)
+        # Documentation: https://docs.kie.ai/market/google/pro-image-to-image
+        # API expects: {"model": "nano-banana-pro", "input": {"prompt": "...", "image_input": ["url1", ...], ...}}
+        # NOTE: image_input is kept as-is (array), NOT converted to another parameter name
         # NOTE: Price calculation - Price depends on resolution parameter
         # 1K/2K: 18 credits, 4K: 24 credits
         if model_id == "nano-banana-pro":
@@ -17160,6 +17348,1375 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 return ConversationHandler.END
             api_params['prompt'] = prompt
         
+        # For kling/v2-1-pro, validate and normalize parameters
+        # CRITICAL: KIE API expects parameters according to API documentation
+        # NOTE: Price depends on duration (5s = 50 credits, 10s = 100 credits, see calculate_price_rub())
+        if model_id == "kling/v2-1-pro":
+            # Validate prompt (required, string, max 5000 characters)
+            if 'prompt' not in api_params or not api_params.get('prompt'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> обязателен для модели kling/v2-1-pro.\n\n"
+                    "Укажите текстовое описание желаемого видео."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter prompt for kling/v2-1-pro")
+                return ConversationHandler.END
+            
+            prompt = str(api_params['prompt']).strip()
+            if not prompt:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> не может быть пустым.\n\n"
+                    "Укажите текстовое описание желаемого видео."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty prompt for kling/v2-1-pro")
+                return ConversationHandler.END
+            
+            if len(prompt) > 5000:
+                error_msg = (
+                    f"❌ <b>Ошибка валидации</b>\n\n"
+                    f"Параметр prompt слишком длинный (макс. 5000 символов).\n"
+                    f"Текущая длина: {len(prompt)} символов."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"prompt too long for kling/v2-1-pro: {len(prompt)} characters")
+                return ConversationHandler.END
+            api_params['prompt'] = prompt
+            
+            # Validate image_url (required, URL)
+            # Note: image_input is converted to image_url earlier in the code
+            if 'image_url' not in api_params or not api_params.get('image_url'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_url</b> обязателен для модели kling/v2-1-pro.\n\n"
+                    "Загрузите изображение или укажите URL изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter image_url for kling/v2-1-pro")
+                return ConversationHandler.END
+            
+            image_url = str(api_params['image_url']).strip()
+            if not image_url:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_url</b> не может быть пустым.\n\n"
+                    "Загрузите изображение или укажите URL изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty image_url for kling/v2-1-pro")
+                return ConversationHandler.END
+            
+            # Validate URL format
+            if not (image_url.startswith('http://') or image_url.startswith('https://')):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_url</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
+                    f"Получено: {image_url[:50]}..."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Invalid image_url format for kling/v2-1-pro: {image_url[:50]}")
+                return ConversationHandler.END
+            api_params['image_url'] = image_url
+            
+            # Validate and normalize duration (optional, enum: "5" or "10" seconds)
+            # CRITICAL: API expects string format ("5" or "10"), not integer
+            # Normalize by removing "s" or "seconds" suffix if present
+            if 'duration' in api_params and api_params.get('duration'):
+                duration = str(api_params['duration']).strip()
+                # Remove "s" or "seconds" suffix if present
+                if duration.lower().endswith('seconds'):
+                    duration = duration[:-7].strip()
+                elif duration.lower().endswith('s'):
+                    duration = duration[:-1].strip()
+                
+                if duration not in ["5", "10"]:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>duration</b> должен быть одним из: <b>5</b> или <b>10</b> секунд.\n\n"
+                        f"Получено: {api_params['duration']}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid duration for kling/v2-1-pro: {api_params['duration']}")
+                    return ConversationHandler.END
+                api_params['duration'] = duration
+            else:
+                # Default duration if not provided
+                api_params['duration'] = "5"
+            
+            # Validate negative_prompt (optional, string, max 500 characters)
+            if 'negative_prompt' in api_params and api_params.get('negative_prompt'):
+                negative_prompt = str(api_params['negative_prompt']).strip()
+                if negative_prompt:
+                    if len(negative_prompt) > 500:
+                        error_msg = (
+                            f"❌ <b>Ошибка валидации</b>\n\n"
+                            f"Параметр negative_prompt слишком длинный (макс. 500 символов).\n"
+                            f"Текущая длина: {len(negative_prompt)} символов."
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"negative_prompt too long for kling/v2-1-pro: {len(negative_prompt)} characters")
+                        return ConversationHandler.END
+                    api_params['negative_prompt'] = negative_prompt
+                else:
+                    # Remove negative_prompt if it's empty
+                    if 'negative_prompt' in api_params:
+                        del api_params['negative_prompt']
+            else:
+                # Remove negative_prompt if it's empty or None
+                if 'negative_prompt' in api_params:
+                    del api_params['negative_prompt']
+            
+            # Validate and normalize cfg_scale (optional, number, min: 0, max: 1, step: 0.1)
+            # CRITICAL: API expects number (float), not string
+            # Normalize by rounding to 1 decimal place (step 0.1)
+            if 'cfg_scale' in api_params and api_params.get('cfg_scale') is not None:
+                cfg_scale = api_params['cfg_scale']
+                try:
+                    # Convert to float
+                    if isinstance(cfg_scale, str):
+                        cfg_scale_str = cfg_scale.strip()
+                        # Replace comma with dot for decimal separator
+                        if ',' in cfg_scale_str:
+                            cfg_scale_str = cfg_scale_str.replace(',', '.')
+                        cfg_scale = float(cfg_scale_str)
+                    elif isinstance(cfg_scale, (int, float)):
+                        cfg_scale = float(cfg_scale)
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>cfg_scale</b> должен быть числом.\n\n"
+                            f"Получено: {type(cfg_scale).__name__}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid cfg_scale type for kling/v2-1-pro: {type(cfg_scale)}")
+                        return ConversationHandler.END
+                    
+                    # Check range (0 to 1)
+                    if cfg_scale < 0 or cfg_scale > 1:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>cfg_scale</b> должен быть в диапазоне от <b>0</b> до <b>1</b>.\n\n"
+                            f"Получено: {cfg_scale}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid cfg_scale value for kling/v2-1-pro: {cfg_scale}")
+                        return ConversationHandler.END
+                    
+                    # Round to 1 decimal place (step 0.1)
+                    cfg_scale = round(cfg_scale, 1)
+                    api_params['cfg_scale'] = cfg_scale
+                except (ValueError, TypeError):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>cfg_scale</b> должен быть числом от 0 до 1.\n\n"
+                        f"Получено: {api_params.get('cfg_scale')}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid cfg_scale for kling/v2-1-pro: {api_params.get('cfg_scale')}")
+                    return ConversationHandler.END
+            else:
+                # Remove cfg_scale if it's empty or None
+                if 'cfg_scale' in api_params:
+                    del api_params['cfg_scale']
+            
+            # Validate tail_image_url (optional, URL)
+            if 'tail_image_url' in api_params and api_params.get('tail_image_url'):
+                tail_image_url = str(api_params['tail_image_url']).strip()
+                if tail_image_url:
+                    # Check for placeholder values
+                    if tail_image_url.lower() in ['click to upload', 'click to upload or drag and drop', 'upload successfully', 'file 1', 'preview']:
+                        # Remove placeholder
+                        if 'tail_image_url' in api_params:
+                            del api_params['tail_image_url']
+                    else:
+                        # Validate URL format
+                        if not (tail_image_url.startswith('http://') or tail_image_url.startswith('https://')):
+                            error_msg = (
+                                "❌ <b>Ошибка валидации</b>\n\n"
+                                "Параметр <b>tail_image_url</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
+                                f"Получено: {tail_image_url[:50]}..."
+                            )
+                            await send_or_edit_message(error_msg)
+                            logger.error(f"Invalid tail_image_url format for kling/v2-1-pro: {tail_image_url[:50]}")
+                            return ConversationHandler.END
+                        api_params['tail_image_url'] = tail_image_url
+                else:
+                    # Remove tail_image_url if it's empty
+                    if 'tail_image_url' in api_params:
+                        del api_params['tail_image_url']
+            else:
+                # Remove tail_image_url if it's empty or None
+                if 'tail_image_url' in api_params:
+                    del api_params['tail_image_url']
+        
+        # For kling/v2-1-standard, validate and normalize parameters
+        # CRITICAL: KIE API expects parameters according to API documentation
+        # NOTE: Price depends on duration (5s = 25 credits, 10s = 50 credits, see calculate_price_rub())
+        # CRITICAL: API uses image_url (string), NOT image_input (array) - same as kling/v2-1-pro
+        if model_id == "kling/v2-1-standard":
+            # Validate prompt (required, string, max 5000 characters)
+            if 'prompt' not in api_params or not api_params.get('prompt'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> обязателен для модели kling/v2-1-standard.\n\n"
+                    "Укажите текстовое описание желаемого видео."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter prompt for kling/v2-1-standard")
+                return ConversationHandler.END
+            
+            prompt = str(api_params['prompt']).strip()
+            if not prompt:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> не может быть пустым.\n\n"
+                    "Укажите текстовое описание желаемого видео."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty prompt for kling/v2-1-standard")
+                return ConversationHandler.END
+            
+            if len(prompt) > 5000:
+                error_msg = (
+                    f"❌ <b>Ошибка валидации</b>\n\n"
+                    f"Параметр prompt слишком длинный (макс. 5000 символов).\n"
+                    f"Текущая длина: {len(prompt)} символов."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"prompt too long for kling/v2-1-standard: {len(prompt)} characters")
+                return ConversationHandler.END
+            api_params['prompt'] = prompt
+            
+            # Validate image_url (required, URL)
+            # CRITICAL: API expects image_url (string), not image_input (array) - same as kling/v2-1-pro
+            # Note: image_input is converted to image_url earlier in the code
+            if 'image_url' not in api_params or not api_params.get('image_url'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_url</b> обязателен для модели kling/v2-1-standard.\n\n"
+                    "Загрузите изображение или укажите URL изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter image_url for kling/v2-1-standard")
+                return ConversationHandler.END
+            
+            image_url = str(api_params['image_url']).strip()
+            if not image_url:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_url</b> не может быть пустым.\n\n"
+                    "Загрузите изображение или укажите URL изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty image_url for kling/v2-1-standard")
+                return ConversationHandler.END
+            
+            # Validate URL format
+            if not (image_url.startswith('http://') or image_url.startswith('https://')):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_url</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
+                    f"Получено: {image_url[:50]}..."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Invalid image_url format for kling/v2-1-standard: {image_url[:50]}")
+                return ConversationHandler.END
+            api_params['image_url'] = image_url
+            
+            # Validate and normalize duration (optional, enum: "5" or "10" seconds)
+            # CRITICAL: API expects string format ("5" or "10"), not integer
+            # Normalize by removing "s" or "seconds" suffix if present
+            if 'duration' in api_params and api_params.get('duration'):
+                duration = str(api_params['duration']).strip()
+                # Remove "s" or "seconds" suffix if present
+                if duration.lower().endswith('seconds'):
+                    duration = duration[:-7].strip()
+                elif duration.lower().endswith('s'):
+                    duration = duration[:-1].strip()
+                
+                if duration not in ["5", "10"]:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>duration</b> должен быть одним из: <b>5</b> или <b>10</b> секунд.\n\n"
+                        f"Получено: {api_params['duration']}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid duration for kling/v2-1-standard: {api_params['duration']}")
+                    return ConversationHandler.END
+                api_params['duration'] = duration
+            else:
+                # Default duration if not provided
+                api_params['duration'] = "5"
+            
+            # Validate negative_prompt (optional, string, max 500 characters)
+            if 'negative_prompt' in api_params and api_params.get('negative_prompt'):
+                negative_prompt = str(api_params['negative_prompt']).strip()
+                if negative_prompt:
+                    if len(negative_prompt) > 500:
+                        error_msg = (
+                            f"❌ <b>Ошибка валидации</b>\n\n"
+                            f"Параметр negative_prompt слишком длинный (макс. 500 символов).\n"
+                            f"Текущая длина: {len(negative_prompt)} символов."
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"negative_prompt too long for kling/v2-1-standard: {len(negative_prompt)} characters")
+                        return ConversationHandler.END
+                    api_params['negative_prompt'] = negative_prompt
+                else:
+                    # Remove negative_prompt if it's empty
+                    if 'negative_prompt' in api_params:
+                        del api_params['negative_prompt']
+            else:
+                # Remove negative_prompt if it's empty or None
+                if 'negative_prompt' in api_params:
+                    del api_params['negative_prompt']
+            
+            # Validate and normalize cfg_scale (optional, number, min: 0, max: 1, step: 0.1)
+            # CRITICAL: API expects number (float), not string
+            # Normalize by rounding to 1 decimal place (step 0.1)
+            if 'cfg_scale' in api_params and api_params.get('cfg_scale') is not None:
+                cfg_scale = api_params['cfg_scale']
+                try:
+                    # Convert to float
+                    if isinstance(cfg_scale, str):
+                        cfg_scale_str = cfg_scale.strip()
+                        # Replace comma with dot for decimal separator
+                        if ',' in cfg_scale_str:
+                            cfg_scale_str = cfg_scale_str.replace(',', '.')
+                        cfg_scale = float(cfg_scale_str)
+                    elif isinstance(cfg_scale, (int, float)):
+                        cfg_scale = float(cfg_scale)
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>cfg_scale</b> должен быть числом.\n\n"
+                            f"Получено: {type(cfg_scale).__name__}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid cfg_scale type for kling/v2-1-standard: {type(cfg_scale)}")
+                        return ConversationHandler.END
+                    
+                    # Check range (0 to 1)
+                    if cfg_scale < 0 or cfg_scale > 1:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>cfg_scale</b> должен быть в диапазоне от <b>0</b> до <b>1</b>.\n\n"
+                            f"Получено: {cfg_scale}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid cfg_scale value for kling/v2-1-standard: {cfg_scale}")
+                        return ConversationHandler.END
+                    
+                    # Round to 1 decimal place (step 0.1)
+                    cfg_scale = round(cfg_scale, 1)
+                    api_params['cfg_scale'] = cfg_scale
+                except (ValueError, TypeError):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>cfg_scale</b> должен быть числом от 0 до 1.\n\n"
+                        f"Получено: {api_params.get('cfg_scale')}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid cfg_scale for kling/v2-1-standard: {api_params.get('cfg_scale')}")
+                    return ConversationHandler.END
+            else:
+                # Remove cfg_scale if it's empty or None
+                if 'cfg_scale' in api_params:
+                    del api_params['cfg_scale']
+        
+        # For wan/2-2-a14b-text-to-video-turbo, validate and normalize parameters
+        # CRITICAL: KIE API expects parameters according to validation file
+        # NOTE: Price depends on resolution (480p: 8 credits/sec, 580p: 12 credits/sec, 720p: 16 credits/sec, see calculate_price_rub())
+        if model_id == "wan/2-2-a14b-text-to-video-turbo":
+            # Validate prompt (required, string, max 5000 characters)
+            if 'prompt' not in api_params or not api_params.get('prompt'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> обязателен для модели wan/2-2-a14b-text-to-video-turbo.\n\n"
+                    "Укажите текстовое описание желаемого видео."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter prompt for wan/2-2-a14b-text-to-video-turbo")
+                return ConversationHandler.END
+            
+            prompt = str(api_params['prompt']).strip()
+            if not prompt:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> не может быть пустым.\n\n"
+                    "Укажите текстовое описание желаемого видео."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty prompt for wan/2-2-a14b-text-to-video-turbo")
+                return ConversationHandler.END
+            
+            if len(prompt) > 5000:
+                error_msg = (
+                    f"❌ <b>Ошибка валидации</b>\n\n"
+                    f"Параметр prompt слишком длинный (макс. 5000 символов).\n"
+                    f"Текущая длина: {len(prompt)} символов."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"prompt too long for wan/2-2-a14b-text-to-video-turbo: {len(prompt)} characters")
+                return ConversationHandler.END
+            api_params['prompt'] = prompt
+            
+            # Validate and normalize resolution (optional, enum: "480p", "580p", or "720p", default: "720p")
+            # CRITICAL: API expects lowercase with "p" suffix
+            valid_resolutions = ["480p", "580p", "720p"]
+            if 'resolution' in api_params and api_params.get('resolution'):
+                resolution = str(api_params['resolution']).strip().lower()
+                # Ensure "p" suffix
+                if not resolution.endswith('p'):
+                    resolution = resolution + 'p'
+                
+                if resolution not in valid_resolutions:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        f"Параметр <b>resolution</b> должен быть одним из: {', '.join(valid_resolutions)}.\n\n"
+                        f"Получено: {api_params['resolution']}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid resolution for wan/2-2-a14b-text-to-video-turbo: {api_params['resolution']}")
+                    return ConversationHandler.END
+                api_params['resolution'] = resolution
+            else:
+                # Default resolution if not provided
+                api_params['resolution'] = "720p"
+            
+            # Validate and normalize aspect_ratio (optional, enum: "16:9", "9:16", or "1:1", default: "16:9")
+            valid_aspect_ratios = ["16:9", "9:16", "1:1"]
+            if 'aspect_ratio' in api_params and api_params.get('aspect_ratio'):
+                aspect_ratio = str(api_params['aspect_ratio']).strip()
+                if aspect_ratio not in valid_aspect_ratios:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        f"Параметр <b>aspect_ratio</b> должен быть одним из: {', '.join(valid_aspect_ratios)}.\n\n"
+                        f"Получено: {aspect_ratio}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid aspect_ratio for wan/2-2-a14b-text-to-video-turbo: {aspect_ratio}")
+                    return ConversationHandler.END
+                api_params['aspect_ratio'] = aspect_ratio
+            else:
+                # Default aspect_ratio if not provided
+                api_params['aspect_ratio'] = "16:9"
+            
+            # Validate and normalize enable_prompt_expansion (optional, boolean, default: False)
+            if 'enable_prompt_expansion' in api_params and api_params.get('enable_prompt_expansion') is not None:
+                enable_prompt_expansion = api_params['enable_prompt_expansion']
+                # Convert string "true"/"false" to boolean if needed
+                if isinstance(enable_prompt_expansion, str):
+                    enable_prompt_expansion = enable_prompt_expansion.strip().lower()
+                    if enable_prompt_expansion in ['true', '1', 'yes']:
+                        enable_prompt_expansion = True
+                    elif enable_prompt_expansion in ['false', '0', 'no']:
+                        enable_prompt_expansion = False
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>enable_prompt_expansion</b> должен быть boolean (true/false).\n\n"
+                            f"Получено: {api_params['enable_prompt_expansion']}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid enable_prompt_expansion for wan/2-2-a14b-text-to-video-turbo: {api_params['enable_prompt_expansion']}")
+                        return ConversationHandler.END
+                elif not isinstance(enable_prompt_expansion, bool):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>enable_prompt_expansion</b> должен быть boolean (true/false).\n\n"
+                        f"Получено: {type(enable_prompt_expansion).__name__}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid enable_prompt_expansion type for wan/2-2-a14b-text-to-video-turbo: {type(enable_prompt_expansion)}")
+                    return ConversationHandler.END
+                api_params['enable_prompt_expansion'] = enable_prompt_expansion
+            else:
+                # Default enable_prompt_expansion if not provided
+                api_params['enable_prompt_expansion'] = False
+            
+            # Validate and normalize seed (optional, integer, range: 0 to 2147483647)
+            if 'seed' in api_params and api_params.get('seed') is not None:
+                seed = api_params['seed']
+                try:
+                    # Convert to integer
+                    if isinstance(seed, str):
+                        seed_str = seed.strip()
+                        # Remove any decimal part if present
+                        if '.' in seed_str:
+                            seed_str = seed_str.split('.')[0]
+                        seed = int(seed_str)
+                    elif isinstance(seed, (int, float)):
+                        seed = int(seed)
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>seed</b> должен быть числом (целым).\n\n"
+                            f"Получено: {type(seed).__name__}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid seed type for wan/2-2-a14b-text-to-video-turbo: {type(seed)}")
+                        return ConversationHandler.END
+                    
+                    # Check range (0 to 2147483647)
+                    if seed < 0 or seed > 2147483647:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>seed</b> должен быть в диапазоне от <b>0</b> до <b>2147483647</b>.\n\n"
+                            f"Получено: {seed}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid seed value for wan/2-2-a14b-text-to-video-turbo: {seed}")
+                        return ConversationHandler.END
+                    
+                    api_params['seed'] = seed
+                except (ValueError, TypeError):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>seed</b> должен быть числом (целым).\n\n"
+                        f"Получено: {api_params.get('seed')}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid seed for wan/2-2-a14b-text-to-video-turbo: {api_params.get('seed')}")
+                    return ConversationHandler.END
+            else:
+                # Remove seed if it's empty or None
+                if 'seed' in api_params:
+                    del api_params['seed']
+            
+            # Validate and normalize acceleration (optional, enum: "none" or "regular", default: "none")
+            valid_accelerations = ["none", "regular"]
+            if 'acceleration' in api_params and api_params.get('acceleration'):
+                acceleration = str(api_params['acceleration']).strip().lower()
+                if acceleration not in valid_accelerations:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        f"Параметр <b>acceleration</b> должен быть одним из: {', '.join(valid_accelerations)}.\n\n"
+                        f"Получено: {api_params['acceleration']}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid acceleration for wan/2-2-a14b-text-to-video-turbo: {api_params['acceleration']}")
+                    return ConversationHandler.END
+                api_params['acceleration'] = acceleration
+            else:
+                # Default acceleration if not provided
+                api_params['acceleration'] = "none"
+        
+        # For wan/2-2-a14b-image-to-video-turbo, validate and normalize parameters
+        # CRITICAL: KIE API expects parameters according to API documentation
+        # NOTE: Price depends on resolution (480p: 8 credits/sec, 580p: 12 credits/sec, 720p: 16 credits/sec, see calculate_price_rub())
+        # CRITICAL: aspect_ratio has "auto" option and defaults to "auto" (unlike text-to-video which defaults to "16:9")
+        if model_id == "wan/2-2-a14b-image-to-video-turbo":
+            # Validate image_url (required, URL)
+            # Note: image_input is converted to image_url earlier in the code
+            if 'image_url' not in api_params or not api_params.get('image_url'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_url</b> обязателен для модели wan/2-2-a14b-image-to-video-turbo.\n\n"
+                    "Загрузите изображение или укажите URL изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter image_url for wan/2-2-a14b-image-to-video-turbo")
+                return ConversationHandler.END
+            
+            image_url = str(api_params['image_url']).strip()
+            if not image_url:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_url</b> не может быть пустым.\n\n"
+                    "Загрузите изображение или укажите URL изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty image_url for wan/2-2-a14b-image-to-video-turbo")
+                return ConversationHandler.END
+            
+            # Validate URL format
+            if not (image_url.startswith('http://') or image_url.startswith('https://')):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_url</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
+                    f"Получено: {image_url[:50]}..."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Invalid image_url format for wan/2-2-a14b-image-to-video-turbo: {image_url[:50]}")
+                return ConversationHandler.END
+            api_params['image_url'] = image_url
+            
+            # Validate prompt (required, string, max 5000 characters)
+            if 'prompt' not in api_params or not api_params.get('prompt'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> обязателен для модели wan/2-2-a14b-image-to-video-turbo.\n\n"
+                    "Укажите текстовое описание желаемого видео."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter prompt for wan/2-2-a14b-image-to-video-turbo")
+                return ConversationHandler.END
+            
+            prompt = str(api_params['prompt']).strip()
+            if not prompt:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> не может быть пустым.\n\n"
+                    "Укажите текстовое описание желаемого видео."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty prompt for wan/2-2-a14b-image-to-video-turbo")
+                return ConversationHandler.END
+            
+            if len(prompt) > 5000:
+                error_msg = (
+                    f"❌ <b>Ошибка валидации</b>\n\n"
+                    f"Параметр prompt слишком длинный (макс. 5000 символов).\n"
+                    f"Текущая длина: {len(prompt)} символов."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"prompt too long for wan/2-2-a14b-image-to-video-turbo: {len(prompt)} characters")
+                return ConversationHandler.END
+            api_params['prompt'] = prompt
+            
+            # Validate and normalize resolution (optional, enum: "480p", "580p", or "720p", default: "720p")
+            # CRITICAL: API expects lowercase with "p" suffix
+            valid_resolutions = ["480p", "580p", "720p"]
+            if 'resolution' in api_params and api_params.get('resolution'):
+                resolution = str(api_params['resolution']).strip().lower()
+                # Ensure "p" suffix
+                if not resolution.endswith('p'):
+                    resolution = resolution + 'p'
+                
+                if resolution not in valid_resolutions:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        f"Параметр <b>resolution</b> должен быть одним из: {', '.join(valid_resolutions)}.\n\n"
+                        f"Получено: {api_params['resolution']}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid resolution for wan/2-2-a14b-image-to-video-turbo: {api_params['resolution']}")
+                    return ConversationHandler.END
+                api_params['resolution'] = resolution
+            else:
+                # Default resolution if not provided
+                api_params['resolution'] = "720p"
+            
+            # Validate and normalize aspect_ratio (optional, enum: "auto", "16:9", "9:16", or "1:1", default: "auto")
+            # CRITICAL: aspect_ratio has "auto" option and defaults to "auto" (unlike text-to-video which defaults to "16:9")
+            valid_aspect_ratios = ["auto", "16:9", "9:16", "1:1"]
+            if 'aspect_ratio' in api_params and api_params.get('aspect_ratio'):
+                aspect_ratio = str(api_params['aspect_ratio']).strip().lower()
+                # Normalize "Auto" to "auto"
+                if aspect_ratio == "auto":
+                    aspect_ratio = "auto"
+                elif aspect_ratio not in valid_aspect_ratios:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        f"Параметр <b>aspect_ratio</b> должен быть одним из: {', '.join(valid_aspect_ratios)}.\n\n"
+                        f"Получено: {api_params['aspect_ratio']}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid aspect_ratio for wan/2-2-a14b-image-to-video-turbo: {aspect_ratio}")
+                    return ConversationHandler.END
+                api_params['aspect_ratio'] = aspect_ratio
+            else:
+                # Default aspect_ratio if not provided
+                api_params['aspect_ratio'] = "auto"
+            
+            # Validate and normalize enable_prompt_expansion (optional, boolean, default: False)
+            if 'enable_prompt_expansion' in api_params and api_params.get('enable_prompt_expansion') is not None:
+                enable_prompt_expansion = api_params['enable_prompt_expansion']
+                # Convert string "true"/"false" to boolean if needed
+                if isinstance(enable_prompt_expansion, str):
+                    enable_prompt_expansion = enable_prompt_expansion.strip().lower()
+                    if enable_prompt_expansion in ['true', '1', 'yes']:
+                        enable_prompt_expansion = True
+                    elif enable_prompt_expansion in ['false', '0', 'no']:
+                        enable_prompt_expansion = False
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>enable_prompt_expansion</b> должен быть boolean (true/false).\n\n"
+                            f"Получено: {api_params['enable_prompt_expansion']}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid enable_prompt_expansion for wan/2-2-a14b-image-to-video-turbo: {api_params['enable_prompt_expansion']}")
+                        return ConversationHandler.END
+                elif not isinstance(enable_prompt_expansion, bool):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>enable_prompt_expansion</b> должен быть boolean (true/false).\n\n"
+                        f"Получено: {type(enable_prompt_expansion).__name__}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid enable_prompt_expansion type for wan/2-2-a14b-image-to-video-turbo: {type(enable_prompt_expansion)}")
+                    return ConversationHandler.END
+                api_params['enable_prompt_expansion'] = enable_prompt_expansion
+            else:
+                # Default enable_prompt_expansion if not provided
+                api_params['enable_prompt_expansion'] = False
+            
+            # Validate and normalize seed (optional, integer, range: 0 to 2147483647)
+            if 'seed' in api_params and api_params.get('seed') is not None:
+                seed = api_params['seed']
+                try:
+                    # Convert to integer
+                    if isinstance(seed, str):
+                        seed_str = seed.strip()
+                        # Remove any decimal part if present
+                        if '.' in seed_str:
+                            seed_str = seed_str.split('.')[0]
+                        seed = int(seed_str)
+                    elif isinstance(seed, (int, float)):
+                        seed = int(seed)
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>seed</b> должен быть числом (целым).\n\n"
+                            f"Получено: {type(seed).__name__}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid seed type for wan/2-2-a14b-image-to-video-turbo: {type(seed)}")
+                        return ConversationHandler.END
+                    
+                    # Check range (0 to 2147483647)
+                    if seed < 0 or seed > 2147483647:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>seed</b> должен быть в диапазоне от <b>0</b> до <b>2147483647</b>.\n\n"
+                            f"Получено: {seed}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid seed value for wan/2-2-a14b-image-to-video-turbo: {seed}")
+                        return ConversationHandler.END
+                    
+                    api_params['seed'] = seed
+                except (ValueError, TypeError):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>seed</b> должен быть числом (целым).\n\n"
+                        f"Получено: {api_params.get('seed')}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid seed for wan/2-2-a14b-image-to-video-turbo: {api_params.get('seed')}")
+                    return ConversationHandler.END
+            else:
+                # Remove seed if it's empty or None
+                if 'seed' in api_params:
+                    del api_params['seed']
+            
+            # Validate and normalize acceleration (optional, enum: "none" or "regular", default: "none")
+            valid_accelerations = ["none", "regular"]
+            if 'acceleration' in api_params and api_params.get('acceleration'):
+                acceleration = str(api_params['acceleration']).strip().lower()
+                if acceleration not in valid_accelerations:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        f"Параметр <b>acceleration</b> должен быть одним из: {', '.join(valid_accelerations)}.\n\n"
+                        f"Получено: {api_params['acceleration']}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid acceleration for wan/2-2-a14b-image-to-video-turbo: {api_params['acceleration']}")
+                    return ConversationHandler.END
+                api_params['acceleration'] = acceleration
+            else:
+                # Default acceleration if not provided
+                api_params['acceleration'] = "none"
+        
+        # For wan/2-2-a14b-speech-to-video-turbo, validate and normalize parameters
+        # CRITICAL: KIE API expects parameters according to validation file
+        # NOTE: Price depends on resolution and audio duration (480p: 12 credits/sec, 580p: 18 credits/sec, 720p: 24 credits/sec, see calculate_price_rub())
+        if model_id == "wan/2-2-a14b-speech-to-video-turbo":
+            # Validate prompt (required, string, max 5000 characters)
+            if 'prompt' not in api_params or not api_params.get('prompt'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> обязателен для модели wan/2-2-a14b-speech-to-video-turbo.\n\n"
+                    "Укажите текстовое описание желаемого видео."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter prompt for wan/2-2-a14b-speech-to-video-turbo")
+                return ConversationHandler.END
+            
+            prompt = str(api_params['prompt']).strip()
+            if not prompt:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> не может быть пустым.\n\n"
+                    "Укажите текстовое описание желаемого видео."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty prompt for wan/2-2-a14b-speech-to-video-turbo")
+                return ConversationHandler.END
+            
+            if len(prompt) > 5000:
+                error_msg = (
+                    f"❌ <b>Ошибка валидации</b>\n\n"
+                    f"Параметр prompt слишком длинный (макс. 5000 символов).\n"
+                    f"Текущая длина: {len(prompt)} символов."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"prompt too long for wan/2-2-a14b-speech-to-video-turbo: {len(prompt)} characters")
+                return ConversationHandler.END
+            api_params['prompt'] = prompt
+            
+            # Validate image_url (required, URL)
+            # Note: image_input is converted to image_url earlier in the code
+            if 'image_url' not in api_params or not api_params.get('image_url'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_url</b> обязателен для модели wan/2-2-a14b-speech-to-video-turbo.\n\n"
+                    "Загрузите изображение или укажите URL изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter image_url for wan/2-2-a14b-speech-to-video-turbo")
+                return ConversationHandler.END
+            
+            image_url = str(api_params['image_url']).strip()
+            if not image_url:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_url</b> не может быть пустым.\n\n"
+                    "Загрузите изображение или укажите URL изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty image_url for wan/2-2-a14b-speech-to-video-turbo")
+                return ConversationHandler.END
+            
+            # Validate URL format
+            if not (image_url.startswith('http://') or image_url.startswith('https://')):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_url</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
+                    f"Получено: {image_url[:50]}..."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Invalid image_url format for wan/2-2-a14b-speech-to-video-turbo: {image_url[:50]}")
+                return ConversationHandler.END
+            api_params['image_url'] = image_url
+            
+            # Validate audio_url (required, URL)
+            # Note: audio_input is converted to audio_url earlier in the code
+            if 'audio_url' not in api_params or not api_params.get('audio_url'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>audio_url</b> обязателен для модели wan/2-2-a14b-speech-to-video-turbo.\n\n"
+                    "Загрузите аудио файл или укажите URL аудио файла."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter audio_url for wan/2-2-a14b-speech-to-video-turbo")
+                return ConversationHandler.END
+            
+            audio_url = str(api_params['audio_url']).strip()
+            if not audio_url:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>audio_url</b> не может быть пустым.\n\n"
+                    "Загрузите аудио файл или укажите URL аудио файла."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty audio_url for wan/2-2-a14b-speech-to-video-turbo")
+                return ConversationHandler.END
+            
+            # Validate URL format
+            if not (audio_url.startswith('http://') or audio_url.startswith('https://')):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>audio_url</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
+                    f"Получено: {audio_url[:50]}..."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Invalid audio_url format for wan/2-2-a14b-speech-to-video-turbo: {audio_url[:50]}")
+                return ConversationHandler.END
+            api_params['audio_url'] = audio_url
+            
+            # Validate and normalize num_frames (optional, integer, range: 40-120, must be multiple of 4, default: 80)
+            if 'num_frames' in api_params and api_params.get('num_frames') is not None:
+                num_frames = api_params['num_frames']
+                try:
+                    # Convert to integer
+                    if isinstance(num_frames, str):
+                        num_frames_str = num_frames.strip()
+                        # Remove any decimal part if present
+                        if '.' in num_frames_str:
+                            num_frames_str = num_frames_str.split('.')[0]
+                        num_frames = int(num_frames_str)
+                    elif isinstance(num_frames, (int, float)):
+                        num_frames = int(num_frames)
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>num_frames</b> должен быть числом (целым).\n\n"
+                            f"Получено: {type(num_frames).__name__}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid num_frames type for wan/2-2-a14b-speech-to-video-turbo: {type(num_frames)}")
+                        return ConversationHandler.END
+                    
+                    # Check range (40 to 120)
+                    if num_frames < 40 or num_frames > 120:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>num_frames</b> должен быть в диапазоне от <b>40</b> до <b>120</b>.\n\n"
+                            f"Получено: {num_frames}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid num_frames value for wan/2-2-a14b-speech-to-video-turbo: {num_frames}")
+                        return ConversationHandler.END
+                    
+                    # Check if multiple of 4
+                    if num_frames % 4 != 0:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>num_frames</b> должен быть кратен <b>4</b>.\n\n"
+                            f"Получено: {num_frames}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid num_frames (not multiple of 4) for wan/2-2-a14b-speech-to-video-turbo: {num_frames}")
+                        return ConversationHandler.END
+                    
+                    api_params['num_frames'] = num_frames
+                except (ValueError, TypeError):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>num_frames</b> должен быть числом от 40 до 120 (кратным 4).\n\n"
+                        f"Получено: {api_params.get('num_frames')}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid num_frames for wan/2-2-a14b-speech-to-video-turbo: {api_params.get('num_frames')}")
+                    return ConversationHandler.END
+            else:
+                # Default num_frames if not provided
+                api_params['num_frames'] = 80
+            
+            # Validate and normalize frames_per_second (optional, integer, range: 4-60, default: 16)
+            if 'frames_per_second' in api_params and api_params.get('frames_per_second') is not None:
+                frames_per_second = api_params['frames_per_second']
+                try:
+                    # Convert to integer
+                    if isinstance(frames_per_second, str):
+                        frames_per_second_str = frames_per_second.strip()
+                        # Remove any decimal part if present
+                        if '.' in frames_per_second_str:
+                            frames_per_second_str = frames_per_second_str.split('.')[0]
+                        frames_per_second = int(frames_per_second_str)
+                    elif isinstance(frames_per_second, (int, float)):
+                        frames_per_second = int(frames_per_second)
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>frames_per_second</b> должен быть числом (целым).\n\n"
+                            f"Получено: {type(frames_per_second).__name__}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid frames_per_second type for wan/2-2-a14b-speech-to-video-turbo: {type(frames_per_second)}")
+                        return ConversationHandler.END
+                    
+                    # Check range (4 to 60)
+                    if frames_per_second < 4 or frames_per_second > 60:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>frames_per_second</b> должен быть в диапазоне от <b>4</b> до <b>60</b>.\n\n"
+                            f"Получено: {frames_per_second}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid frames_per_second value for wan/2-2-a14b-speech-to-video-turbo: {frames_per_second}")
+                        return ConversationHandler.END
+                    
+                    api_params['frames_per_second'] = frames_per_second
+                except (ValueError, TypeError):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>frames_per_second</b> должен быть числом от 4 до 60.\n\n"
+                        f"Получено: {api_params.get('frames_per_second')}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid frames_per_second for wan/2-2-a14b-speech-to-video-turbo: {api_params.get('frames_per_second')}")
+                    return ConversationHandler.END
+            else:
+                # Default frames_per_second if not provided
+                api_params['frames_per_second'] = 16
+            
+            # Validate and normalize resolution (optional, enum: "480p", "580p", or "720p", default: "480p")
+            # CRITICAL: API expects lowercase with "p" suffix
+            valid_resolutions = ["480p", "580p", "720p"]
+            if 'resolution' in api_params and api_params.get('resolution'):
+                resolution = str(api_params['resolution']).strip().lower()
+                # Ensure "p" suffix
+                if not resolution.endswith('p'):
+                    resolution = resolution + 'p'
+                
+                if resolution not in valid_resolutions:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        f"Параметр <b>resolution</b> должен быть одним из: {', '.join(valid_resolutions)}.\n\n"
+                        f"Получено: {api_params['resolution']}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid resolution for wan/2-2-a14b-speech-to-video-turbo: {api_params['resolution']}")
+                    return ConversationHandler.END
+                api_params['resolution'] = resolution
+            else:
+                # Default resolution if not provided
+                api_params['resolution'] = "480p"
+            
+            # Validate negative_prompt (optional, string, max 500 characters)
+            if 'negative_prompt' in api_params and api_params.get('negative_prompt'):
+                negative_prompt = str(api_params['negative_prompt']).strip()
+                if negative_prompt:
+                    if len(negative_prompt) > 500:
+                        error_msg = (
+                            f"❌ <b>Ошибка валидации</b>\n\n"
+                            f"Параметр negative_prompt слишком длинный (макс. 500 символов).\n"
+                            f"Текущая длина: {len(negative_prompt)} символов."
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"negative_prompt too long for wan/2-2-a14b-speech-to-video-turbo: {len(negative_prompt)} characters")
+                        return ConversationHandler.END
+                    api_params['negative_prompt'] = negative_prompt
+                else:
+                    # Remove negative_prompt if it's empty
+                    if 'negative_prompt' in api_params:
+                        del api_params['negative_prompt']
+            else:
+                # Remove negative_prompt if it's empty or None
+                if 'negative_prompt' in api_params:
+                    del api_params['negative_prompt']
+            
+            # Validate and normalize seed (optional, integer, range: 0 to 2147483647)
+            if 'seed' in api_params and api_params.get('seed') is not None:
+                seed = api_params['seed']
+                try:
+                    # Convert to integer
+                    if isinstance(seed, str):
+                        seed_str = seed.strip()
+                        # Remove any decimal part if present
+                        if '.' in seed_str:
+                            seed_str = seed_str.split('.')[0]
+                        seed = int(seed_str)
+                    elif isinstance(seed, (int, float)):
+                        seed = int(seed)
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>seed</b> должен быть числом (целым).\n\n"
+                            f"Получено: {type(seed).__name__}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid seed type for wan/2-2-a14b-speech-to-video-turbo: {type(seed)}")
+                        return ConversationHandler.END
+                    
+                    # Check range (0 to 2147483647)
+                    if seed < 0 or seed > 2147483647:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>seed</b> должен быть в диапазоне от <b>0</b> до <b>2147483647</b>.\n\n"
+                            f"Получено: {seed}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid seed value for wan/2-2-a14b-speech-to-video-turbo: {seed}")
+                        return ConversationHandler.END
+                    
+                    api_params['seed'] = seed
+                except (ValueError, TypeError):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>seed</b> должен быть числом (целым).\n\n"
+                        f"Получено: {api_params.get('seed')}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid seed for wan/2-2-a14b-speech-to-video-turbo: {api_params.get('seed')}")
+                    return ConversationHandler.END
+            else:
+                # Remove seed if it's empty or None
+                if 'seed' in api_params:
+                    del api_params['seed']
+            
+            # Validate and normalize num_inference_steps (optional, integer, range: 2-40, default: 27)
+            if 'num_inference_steps' in api_params and api_params.get('num_inference_steps') is not None:
+                num_inference_steps = api_params['num_inference_steps']
+                try:
+                    # Convert to integer
+                    if isinstance(num_inference_steps, str):
+                        num_inference_steps_str = num_inference_steps.strip()
+                        # Remove any decimal part if present
+                        if '.' in num_inference_steps_str:
+                            num_inference_steps_str = num_inference_steps_str.split('.')[0]
+                        num_inference_steps = int(num_inference_steps_str)
+                    elif isinstance(num_inference_steps, (int, float)):
+                        num_inference_steps = int(num_inference_steps)
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>num_inference_steps</b> должен быть числом (целым).\n\n"
+                            f"Получено: {type(num_inference_steps).__name__}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid num_inference_steps type for wan/2-2-a14b-speech-to-video-turbo: {type(num_inference_steps)}")
+                        return ConversationHandler.END
+                    
+                    # Check range (2 to 40)
+                    if num_inference_steps < 2 or num_inference_steps > 40:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>num_inference_steps</b> должен быть в диапазоне от <b>2</b> до <b>40</b>.\n\n"
+                            f"Получено: {num_inference_steps}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid num_inference_steps value for wan/2-2-a14b-speech-to-video-turbo: {num_inference_steps}")
+                        return ConversationHandler.END
+                    
+                    api_params['num_inference_steps'] = num_inference_steps
+                except (ValueError, TypeError):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>num_inference_steps</b> должен быть числом от 2 до 40.\n\n"
+                        f"Получено: {api_params.get('num_inference_steps')}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid num_inference_steps for wan/2-2-a14b-speech-to-video-turbo: {api_params.get('num_inference_steps')}")
+                    return ConversationHandler.END
+            else:
+                # Default num_inference_steps if not provided
+                api_params['num_inference_steps'] = 27
+            
+            # Validate and normalize guidance_scale (optional, number, range: 1.0-10.0, step: 0.1, default: 3.5)
+            # CRITICAL: API expects number (float), not string
+            # Normalize by rounding to 1 decimal place (step 0.1)
+            if 'guidance_scale' in api_params and api_params.get('guidance_scale') is not None:
+                guidance_scale = api_params['guidance_scale']
+                try:
+                    # Convert to float
+                    if isinstance(guidance_scale, str):
+                        guidance_scale_str = guidance_scale.strip()
+                        # Replace comma with dot for decimal separator
+                        if ',' in guidance_scale_str:
+                            guidance_scale_str = guidance_scale_str.replace(',', '.')
+                        guidance_scale = float(guidance_scale_str)
+                    elif isinstance(guidance_scale, (int, float)):
+                        guidance_scale = float(guidance_scale)
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>guidance_scale</b> должен быть числом.\n\n"
+                            f"Получено: {type(guidance_scale).__name__}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid guidance_scale type for wan/2-2-a14b-speech-to-video-turbo: {type(guidance_scale)}")
+                        return ConversationHandler.END
+                    
+                    # Check range (1.0 to 10.0)
+                    if guidance_scale < 1.0 or guidance_scale > 10.0:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>guidance_scale</b> должен быть в диапазоне от <b>1.0</b> до <b>10.0</b>.\n\n"
+                            f"Получено: {guidance_scale}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid guidance_scale value for wan/2-2-a14b-speech-to-video-turbo: {guidance_scale}")
+                        return ConversationHandler.END
+                    
+                    # Round to 1 decimal place (step 0.1)
+                    guidance_scale = round(guidance_scale, 1)
+                    api_params['guidance_scale'] = guidance_scale
+                except (ValueError, TypeError):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>guidance_scale</b> должен быть числом от 1.0 до 10.0.\n\n"
+                        f"Получено: {api_params.get('guidance_scale')}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid guidance_scale for wan/2-2-a14b-speech-to-video-turbo: {api_params.get('guidance_scale')}")
+                    return ConversationHandler.END
+            else:
+                # Default guidance_scale if not provided
+                api_params['guidance_scale'] = 3.5
+            
+            # Validate and normalize shift (optional, number, range: 1.0-10.0, step: 0.1, default: 5.0)
+            # CRITICAL: API expects number (float), not string
+            # Normalize by rounding to 1 decimal place (step 0.1)
+            if 'shift' in api_params and api_params.get('shift') is not None:
+                shift = api_params['shift']
+                try:
+                    # Convert to float
+                    if isinstance(shift, str):
+                        shift_str = shift.strip()
+                        # Replace comma with dot for decimal separator
+                        if ',' in shift_str:
+                            shift_str = shift_str.replace(',', '.')
+                        shift = float(shift_str)
+                    elif isinstance(shift, (int, float)):
+                        shift = float(shift)
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>shift</b> должен быть числом.\n\n"
+                            f"Получено: {type(shift).__name__}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid shift type for wan/2-2-a14b-speech-to-video-turbo: {type(shift)}")
+                        return ConversationHandler.END
+                    
+                    # Check range (1.0 to 10.0)
+                    if shift < 1.0 or shift > 10.0:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>shift</b> должен быть в диапазоне от <b>1.0</b> до <b>10.0</b>.\n\n"
+                            f"Получено: {shift}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid shift value for wan/2-2-a14b-speech-to-video-turbo: {shift}")
+                        return ConversationHandler.END
+                    
+                    # Round to 1 decimal place (step 0.1)
+                    shift = round(shift, 1)
+                    api_params['shift'] = shift
+                except (ValueError, TypeError):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>shift</b> должен быть числом от 1.0 до 10.0.\n\n"
+                        f"Получено: {api_params.get('shift')}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid shift for wan/2-2-a14b-speech-to-video-turbo: {api_params.get('shift')}")
+                    return ConversationHandler.END
+            else:
+                # Default shift if not provided
+                api_params['shift'] = 5.0
+            
+            # Validate and normalize enable_safety_checker (optional, boolean, default: True)
+            if 'enable_safety_checker' in api_params and api_params.get('enable_safety_checker') is not None:
+                enable_safety_checker = api_params['enable_safety_checker']
+                # Convert string "true"/"false" to boolean if needed
+                if isinstance(enable_safety_checker, str):
+                    enable_safety_checker = enable_safety_checker.strip().lower()
+                    if enable_safety_checker in ['true', '1', 'yes']:
+                        enable_safety_checker = True
+                    elif enable_safety_checker in ['false', '0', 'no']:
+                        enable_safety_checker = False
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>enable_safety_checker</b> должен быть boolean (true/false).\n\n"
+                            f"Получено: {api_params['enable_safety_checker']}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid enable_safety_checker for wan/2-2-a14b-speech-to-video-turbo: {api_params['enable_safety_checker']}")
+                        return ConversationHandler.END
+                elif not isinstance(enable_safety_checker, bool):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>enable_safety_checker</b> должен быть boolean (true/false).\n\n"
+                        f"Получено: {type(enable_safety_checker).__name__}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid enable_safety_checker type for wan/2-2-a14b-speech-to-video-turbo: {type(enable_safety_checker)}")
+                    return ConversationHandler.END
+                api_params['enable_safety_checker'] = enable_safety_checker
+            else:
+                # Default enable_safety_checker if not provided
+                api_params['enable_safety_checker'] = True
+        
+        # For wan/2-2-animate-replace, validate and normalize parameters
+        # CRITICAL: KIE API expects parameters according to API documentation
+        # NOTE: Price depends on resolution (480p: 6 credits/sec, 580p: 9.5 credits/sec, 720p: 12.5 credits/sec, see calculate_price_rub())
+        # CRITICAL: API uses video_url (string) and image_url (string), NOT video_input/image_input (arrays)
+        # CRITICAL: API does NOT require prompt parameter (unlike wan/2-2-animate-move)
+        if model_id == "wan/2-2-animate-replace":
+            # Validate video_url (required, URL)
+            # Note: video_input is converted to video_url earlier in the code
+            if 'video_url' not in api_params or not api_params.get('video_url'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>video_url</b> обязателен для модели wan/2-2-animate-replace.\n\n"
+                    "Загрузите видео файл или укажите URL видео."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter video_url for wan/2-2-animate-replace")
+                return ConversationHandler.END
+            
+            video_url = str(api_params['video_url']).strip()
+            if not video_url:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>video_url</b> не может быть пустым.\n\n"
+                    "Загрузите видео файл или укажите URL видео."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty video_url for wan/2-2-animate-replace")
+                return ConversationHandler.END
+            
+            # Validate URL format
+            if not (video_url.startswith('http://') or video_url.startswith('https://')):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>video_url</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
+                    f"Получено: {video_url[:50]}..."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Invalid video_url format for wan/2-2-animate-replace: {video_url[:50]}")
+                return ConversationHandler.END
+            api_params['video_url'] = video_url
+            
+            # Validate image_url (required, URL)
+            # Note: image_input is converted to image_url earlier in the code
+            if 'image_url' not in api_params or not api_params.get('image_url'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_url</b> обязателен для модели wan/2-2-animate-replace.\n\n"
+                    "Загрузите изображение или укажите URL изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter image_url for wan/2-2-animate-replace")
+                return ConversationHandler.END
+            
+            image_url = str(api_params['image_url']).strip()
+            if not image_url:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_url</b> не может быть пустым.\n\n"
+                    "Загрузите изображение или укажите URL изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty image_url for wan/2-2-animate-replace")
+                return ConversationHandler.END
+            
+            # Validate URL format
+            if not (image_url.startswith('http://') or image_url.startswith('https://')):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>image_url</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
+                    f"Получено: {image_url[:50]}..."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Invalid image_url format for wan/2-2-animate-replace: {image_url[:50]}")
+                return ConversationHandler.END
+            api_params['image_url'] = image_url
+            
+            # Validate and normalize resolution (optional, enum: "480p", "580p", or "720p")
+            # CRITICAL: API expects lowercase with "p" suffix
+            valid_resolutions = ["480p", "580p", "720p"]
+            if 'resolution' in api_params and api_params.get('resolution'):
+                resolution = str(api_params['resolution']).strip().lower()
+                # Ensure "p" suffix
+                if not resolution.endswith('p'):
+                    resolution = resolution + 'p'
+                
+                if resolution not in valid_resolutions:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        f"Параметр <b>resolution</b> должен быть одним из: {', '.join(valid_resolutions)}.\n\n"
+                        f"Получено: {api_params['resolution']}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid resolution for wan/2-2-animate-replace: {api_params['resolution']}")
+                    return ConversationHandler.END
+                api_params['resolution'] = resolution
+            # NOTE: resolution is optional, no default value needed
+            
+            # Remove prompt if present (API does not require it for wan/2-2-animate-replace)
+            if 'prompt' in api_params:
+                del api_params['prompt']
+        
         # For bytedance/seedream-v4-text-to-image, validate and normalize parameters
         # NOTE: Price is 5 credits per image, depends on max_images (see calculate_price_rub())
         if model_id == "bytedance/seedream-v4-text-to-image":
@@ -17849,16 +19406,40 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 logger.error(f"Empty image_size for ideogram/v3-reframe")
                 return ConversationHandler.END
             
-            if image_size not in ["Square HD"]:
+            # CRITICAL: Normalize image_size format according to validation file
+            # Valid values: "square", "square_hd", "portrait_4_3", "portrait_16_9", "landscape_4_3", "landscape_16_9"
+            valid_image_sizes = ["square", "square_hd", "portrait_4_3", "portrait_16_9", "landscape_4_3", "landscape_16_9"]
+            image_size_mapping = {
+                "square": "square",
+                "square hd": "square_hd",
+                "squarehd": "square_hd",
+                "Square HD": "square_hd",
+                "SQUARE HD": "square_hd",
+                "portrait 3:4": "portrait_4_3",
+                "portrait 4:3": "portrait_4_3",
+                "portrait 9:16": "portrait_16_9",
+                "portrait 16:9": "portrait_16_9",
+                "landscape 4:3": "landscape_4_3",
+                "landscape 16:9": "landscape_16_9"
+            }
+            
+            image_size_normalized = image_size.lower().replace(' ', '_').replace(':', '_')
+            # Check mapping
+            if image_size in image_size_mapping:
+                image_size_normalized = image_size_mapping[image_size]
+            elif image_size_normalized in image_size_mapping:
+                image_size_normalized = image_size_mapping[image_size_normalized]
+            
+            if image_size_normalized not in valid_image_sizes:
                 error_msg = (
                     "❌ <b>Ошибка валидации</b>\n\n"
-                    "Параметр <b>image_size</b> должен быть: <b>Square HD</b>.\n\n"
+                    f"Параметр <b>image_size</b> должен быть одним из: {', '.join(valid_image_sizes)}.\n\n"
                     f"Получено: {image_size}"
                 )
                 await query.edit_message_text(error_msg, parse_mode='HTML')
                 logger.error(f"Invalid image_size for ideogram/v3-reframe: {image_size}")
                 return ConversationHandler.END
-            api_params['image_size'] = image_size
+            api_params['image_size'] = image_size_normalized
             
             # Validate and normalize rendering_speed (optional, enum: "Turbo", "Balanced", "Quality")
             # Normalize to uppercase: "TURBO", "BALANCED", "QUALITY"
@@ -17892,14 +19473,15 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 # Default rendering_speed if not provided
                 api_params['rendering_speed'] = "BALANCED"
             
-            # Validate and normalize style (optional, enum: "Auto", "General", "Realistic", "Design")
+            # Validate and normalize style (optional, enum: "AUTO", "GENERAL", "REALISTIC", "DESIGN")
+            # CRITICAL: KIE API expects uppercase format according to validation file
             if 'style' in api_params and api_params.get('style'):
-                style = str(api_params['style']).strip()
+                style = str(api_params['style']).strip().upper()
                 
-                if style not in ["Auto", "General", "Realistic", "Design"]:
+                if style not in ["AUTO", "GENERAL", "REALISTIC", "DESIGN"]:
                     error_msg = (
                         "❌ <b>Ошибка валидации</b>\n\n"
-                        "Параметр <b>style</b> должен быть одним из: <b>Auto</b>, <b>General</b>, <b>Realistic</b> или <b>Design</b>.\n\n"
+                        "Параметр <b>style</b> должен быть одним из: <b>AUTO</b>, <b>GENERAL</b>, <b>REALISTIC</b> или <b>DESIGN</b>.\n\n"
                         f"Получено: {api_params['style']}"
                     )
                     await send_or_edit_message(error_msg)
@@ -17907,9 +19489,8 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     return ConversationHandler.END
                 api_params['style'] = style
             else:
-                # Remove style if it's empty or None
-                if 'style' in api_params:
-                    del api_params['style']
+                # Default style if not provided
+                api_params['style'] = "AUTO"
             
             # Validate and normalize num_images (optional, integer, default: 1)
             # NOTE: num_images affects price (price per image * num_images)
@@ -18260,6 +19841,232 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 if 'seed' in api_params:
                     del api_params['seed']
         
+        # For ideogram/v3-text-to-image, validate and normalize parameters
+        # CRITICAL: KIE API expects parameters according to validation file
+        # NOTE: Price depends on rendering_speed (TURBO: 3.5, BALANCED: 7, QUALITY: 10 credits, see calculate_price_rub())
+        if model_id == "ideogram/v3-text-to-image":
+            # Validate prompt (required, string, max 5000 characters)
+            if 'prompt' not in api_params or not api_params.get('prompt'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> обязателен для модели ideogram/v3-text-to-image.\n\n"
+                    "Укажите текстовое описание для генерации изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter prompt for ideogram/v3-text-to-image")
+                return ConversationHandler.END
+            
+            prompt = str(api_params['prompt']).strip()
+            if not prompt:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> не может быть пустым.\n\n"
+                    "Укажите текстовое описание для генерации изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty prompt for ideogram/v3-text-to-image")
+                return ConversationHandler.END
+            
+            if len(prompt) > 5000:
+                error_msg = (
+                    f"❌ <b>Ошибка валидации</b>\n\n"
+                    f"Параметр prompt слишком длинный (макс. 5000 символов).\n"
+                    f"Текущая длина: {len(prompt)} символов."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"prompt too long for ideogram/v3-text-to-image: {len(prompt)} characters")
+                return ConversationHandler.END
+            api_params['prompt'] = prompt
+            
+            # Validate and normalize rendering_speed (optional, enum: "TURBO", "BALANCED", "QUALITY", default: "BALANCED")
+            # CRITICAL: KIE API expects uppercase format
+            if 'rendering_speed' in api_params and api_params.get('rendering_speed'):
+                rendering_speed = str(api_params['rendering_speed']).strip().upper()
+                
+                if rendering_speed not in ["TURBO", "BALANCED", "QUALITY"]:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>rendering_speed</b> должен быть одним из: <b>TURBO</b>, <b>BALANCED</b> или <b>QUALITY</b>.\n\n"
+                        f"Получено: {api_params['rendering_speed']}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid rendering_speed for ideogram/v3-text-to-image: {api_params['rendering_speed']}")
+                    return ConversationHandler.END
+                api_params['rendering_speed'] = rendering_speed
+            else:
+                # Default rendering_speed if not provided
+                api_params['rendering_speed'] = "BALANCED"
+            
+            # Validate and normalize style (optional, enum: "AUTO", "GENERAL", "REALISTIC", "DESIGN", default: "AUTO")
+            # CRITICAL: KIE API expects uppercase format
+            if 'style' in api_params and api_params.get('style'):
+                style = str(api_params['style']).strip().upper()
+                
+                if style not in ["AUTO", "GENERAL", "REALISTIC", "DESIGN"]:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>style</b> должен быть одним из: <b>AUTO</b>, <b>GENERAL</b>, <b>REALISTIC</b> или <b>DESIGN</b>.\n\n"
+                        f"Получено: {api_params['style']}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid style for ideogram/v3-text-to-image: {api_params['style']}")
+                    return ConversationHandler.END
+                api_params['style'] = style
+            else:
+                # Default style if not provided
+                api_params['style'] = "AUTO"
+            
+            # Validate and normalize expand_prompt (optional, boolean, default: True)
+            if 'expand_prompt' in api_params and api_params.get('expand_prompt') is not None:
+                expand_prompt = api_params['expand_prompt']
+                # Convert string "true"/"false" to boolean if needed
+                if isinstance(expand_prompt, str):
+                    expand_prompt = expand_prompt.strip().lower()
+                    if expand_prompt in ['true', '1', 'yes']:
+                        expand_prompt = True
+                    elif expand_prompt in ['false', '0', 'no']:
+                        expand_prompt = False
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>expand_prompt</b> должен быть boolean (true/false).\n\n"
+                            f"Получено: {api_params['expand_prompt']}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid expand_prompt for ideogram/v3-text-to-image: {api_params['expand_prompt']}")
+                        return ConversationHandler.END
+                elif not isinstance(expand_prompt, bool):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>expand_prompt</b> должен быть boolean (true/false).\n\n"
+                        f"Получено: {type(expand_prompt).__name__}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid expand_prompt type for ideogram/v3-text-to-image: {type(expand_prompt)}")
+                    return ConversationHandler.END
+                api_params['expand_prompt'] = expand_prompt
+            else:
+                # Default expand_prompt if not provided (True)
+                api_params['expand_prompt'] = True
+            
+            # Validate and normalize image_size (optional, enum, default: "square_hd")
+            # CRITICAL: Normalize format (e.g., "Square HD" -> "square_hd")
+            valid_image_sizes = ["square", "square_hd", "portrait_4_3", "portrait_16_9", "landscape_4_3", "landscape_16_9"]
+            image_size_mapping = {
+                "square": "square",
+                "square hd": "square_hd",
+                "squarehd": "square_hd",
+                "portrait 3:4": "portrait_4_3",
+                "portrait 9:16": "portrait_16_9",
+                "landscape 4:3": "landscape_4_3",
+                "landscape 16:9": "landscape_16_9"
+            }
+            
+            if 'image_size' in api_params and api_params.get('image_size'):
+                image_size = str(api_params['image_size']).strip().lower()
+                # Normalize: replace spaces and colons with underscores
+                image_size_normalized = image_size.replace(' ', '_').replace(':', '_')
+                # Check mapping
+                if image_size in image_size_mapping:
+                    image_size_normalized = image_size_mapping[image_size]
+                elif image_size_normalized in image_size_mapping:
+                    image_size_normalized = image_size_mapping[image_size_normalized]
+                
+                if image_size_normalized not in valid_image_sizes:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        f"Параметр <b>image_size</b> должен быть одним из: {', '.join(valid_image_sizes)}.\n\n"
+                        f"Получено: {api_params['image_size']}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid image_size for ideogram/v3-text-to-image: {api_params['image_size']}")
+                    return ConversationHandler.END
+                api_params['image_size'] = image_size_normalized
+            else:
+                # Default image_size if not provided
+                api_params['image_size'] = "square_hd"
+            
+            # Validate and normalize num_images (optional, enum as string: "1", "2", "3", "4", default: "1")
+            # CRITICAL: KIE API expects string format, not integer
+            valid_num_images = ["1", "2", "3", "4"]
+            if 'num_images' in api_params and api_params.get('num_images'):
+                num_images = str(api_params['num_images']).strip()
+                
+                if num_images not in valid_num_images:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        f"Параметр <b>num_images</b> должен быть одним из: {', '.join(valid_num_images)}.\n\n"
+                        f"Получено: {api_params['num_images']}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid num_images for ideogram/v3-text-to-image: {api_params['num_images']}")
+                    return ConversationHandler.END
+                api_params['num_images'] = num_images
+            else:
+                # Default num_images if not provided
+                api_params['num_images'] = "1"
+            
+            # Validate and normalize seed (optional, integer)
+            if 'seed' in api_params and api_params.get('seed') is not None:
+                seed = api_params['seed']
+                try:
+                    # Convert to integer
+                    if isinstance(seed, str):
+                        seed_str = seed.strip()
+                        # Remove any decimal part if present
+                        if '.' in seed_str:
+                            seed_str = seed_str.split('.')[0]
+                        seed = int(seed_str)
+                    elif isinstance(seed, (int, float)):
+                        seed = int(seed)
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>seed</b> должен быть числом (целым).\n\n"
+                            f"Получено: {type(seed).__name__}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid seed type for ideogram/v3-text-to-image: {type(seed)}")
+                        return ConversationHandler.END
+                    
+                    api_params['seed'] = seed
+                except (ValueError, TypeError):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>seed</b> должен быть числом (целым).\n\n"
+                        f"Получено: {api_params.get('seed')}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid seed for ideogram/v3-text-to-image: {api_params.get('seed')}")
+                    return ConversationHandler.END
+            else:
+                # Remove seed if it's empty or None
+                if 'seed' in api_params:
+                    del api_params['seed']
+            
+            # Validate negative_prompt (optional, string, max 5000 characters)
+            if 'negative_prompt' in api_params and api_params.get('negative_prompt'):
+                negative_prompt = str(api_params['negative_prompt']).strip()
+                if negative_prompt:
+                    if len(negative_prompt) > 5000:
+                        error_msg = (
+                            f"❌ <b>Ошибка валидации</b>\n\n"
+                            f"Параметр negative_prompt слишком длинный (макс. 5000 символов).\n"
+                            f"Текущая длина: {len(negative_prompt)} символов."
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"negative_prompt too long for ideogram/v3-text-to-image: {len(negative_prompt)} characters")
+                        return ConversationHandler.END
+                    api_params['negative_prompt'] = negative_prompt
+                else:
+                    # Remove negative_prompt if it's empty
+                    if 'negative_prompt' in api_params:
+                        del api_params['negative_prompt']
+            else:
+                # Remove negative_prompt if it's empty or None
+                if 'negative_prompt' in api_params:
+                    del api_params['negative_prompt']
+        
         # For bytedance/seedream, validate and normalize parameters
         # NOTE: Price is fixed at 3.5 credits per image (see calculate_price_rub())
         if model_id == "bytedance/seedream":
@@ -18428,6 +20235,572 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 if 'enable_safety_checker' in api_params:
                     del api_params['enable_safety_checker']
         
+        # For google/imagen4, validate and normalize parameters
+        # CRITICAL: KIE API expects parameters according to validation file
+        # NOTE: Price is 8 credits per image (see calculate_price_rub())
+        if model_id == "google/imagen4":
+            # Validate prompt (required, string, max 5000 characters)
+            if 'prompt' not in api_params or not api_params.get('prompt'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> обязателен для модели google/imagen4.\n\n"
+                    "Укажите текстовое описание для генерации изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter prompt for google/imagen4")
+                return ConversationHandler.END
+            
+            prompt = str(api_params['prompt']).strip()
+            if not prompt:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> не может быть пустым.\n\n"
+                    "Укажите текстовое описание для генерации изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty prompt for google/imagen4")
+                return ConversationHandler.END
+            
+            if len(prompt) > 5000:
+                error_msg = (
+                    f"❌ <b>Ошибка валидации</b>\n\n"
+                    f"Параметр prompt слишком длинный (макс. 5000 символов).\n"
+                    f"Текущая длина: {len(prompt)} символов."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"prompt too long for google/imagen4: {len(prompt)} characters")
+                return ConversationHandler.END
+            api_params['prompt'] = prompt
+            
+            # Validate negative_prompt (optional, string, max 5000 characters)
+            if 'negative_prompt' in api_params and api_params.get('negative_prompt'):
+                negative_prompt = str(api_params['negative_prompt']).strip()
+                if negative_prompt:
+                    if len(negative_prompt) > 5000:
+                        error_msg = (
+                            f"❌ <b>Ошибка валидации</b>\n\n"
+                            f"Параметр negative_prompt слишком длинный (макс. 5000 символов).\n"
+                            f"Текущая длина: {len(negative_prompt)} символов."
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"negative_prompt too long for google/imagen4: {len(negative_prompt)} characters")
+                        return ConversationHandler.END
+                    api_params['negative_prompt'] = negative_prompt
+                else:
+                    # Remove negative_prompt if it's empty
+                    if 'negative_prompt' in api_params:
+                        del api_params['negative_prompt']
+            else:
+                # Remove negative_prompt if it's empty or None
+                if 'negative_prompt' in api_params:
+                    del api_params['negative_prompt']
+            
+            # Validate aspect_ratio (optional, enum, default: "1:1")
+            valid_aspect_ratios = ["1:1", "16:9", "9:16", "3:4", "4:3"]
+            if 'aspect_ratio' in api_params and api_params.get('aspect_ratio'):
+                aspect_ratio = str(api_params['aspect_ratio']).strip()
+                if aspect_ratio not in valid_aspect_ratios:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        f"Параметр <b>aspect_ratio</b> должен быть одним из: {', '.join(valid_aspect_ratios)}.\n\n"
+                        f"Получено: {aspect_ratio}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid aspect_ratio for google/imagen4: {aspect_ratio}")
+                    return ConversationHandler.END
+                api_params['aspect_ratio'] = aspect_ratio
+            else:
+                # Default aspect_ratio if not provided
+                api_params['aspect_ratio'] = "1:1"
+            
+            # Validate num_images (optional, enum as string: "1", "2", "3", "4", default: "1")
+            # CRITICAL: KIE API expects string format, not integer
+            valid_num_images = ["1", "2", "3", "4"]
+            if 'num_images' in api_params and api_params.get('num_images'):
+                num_images = str(api_params['num_images']).strip()
+                if num_images not in valid_num_images:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        f"Параметр <b>num_images</b> должен быть одним из: {', '.join(valid_num_images)}.\n\n"
+                        f"Получено: {api_params['num_images']}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid num_images for google/imagen4: {api_params['num_images']}")
+                    return ConversationHandler.END
+                api_params['num_images'] = num_images
+            else:
+                # Default num_images if not provided
+                api_params['num_images'] = "1"
+            
+            # Validate seed (optional, string, max 500 characters)
+            # CRITICAL: KIE API expects string format, not integer (unlike imagen4-fast)
+            if 'seed' in api_params and api_params.get('seed'):
+                seed = str(api_params['seed']).strip()
+                if seed:
+                    if len(seed) > 500:
+                        error_msg = (
+                            f"❌ <b>Ошибка валидации</b>\n\n"
+                            f"Параметр seed слишком длинный (макс. 500 символов).\n"
+                            f"Текущая длина: {len(seed)} символов."
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"seed too long for google/imagen4: {len(seed)} characters")
+                        return ConversationHandler.END
+                    api_params['seed'] = seed
+                else:
+                    # Remove seed if it's empty
+                    if 'seed' in api_params:
+                        del api_params['seed']
+            else:
+                # Remove seed if it's empty or None
+                if 'seed' in api_params:
+                    del api_params['seed']
+        
+        # For google/imagen4-fast, validate and normalize parameters
+        # CRITICAL: KIE API expects parameters according to validation file
+        # NOTE: Price is 8 credits per image (see calculate_price_rub())
+        # NOTE: seed is integer (unlike imagen4 where seed is string)
+        if model_id == "google/imagen4-fast":
+            # Validate prompt (required, string, max 5000 characters)
+            if 'prompt' not in api_params or not api_params.get('prompt'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> обязателен для модели google/imagen4-fast.\n\n"
+                    "Укажите текстовое описание для генерации изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter prompt for google/imagen4-fast")
+                return ConversationHandler.END
+            
+            prompt = str(api_params['prompt']).strip()
+            if not prompt:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> не может быть пустым.\n\n"
+                    "Укажите текстовое описание для генерации изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty prompt for google/imagen4-fast")
+                return ConversationHandler.END
+            
+            if len(prompt) > 5000:
+                error_msg = (
+                    f"❌ <b>Ошибка валидации</b>\n\n"
+                    f"Параметр prompt слишком длинный (макс. 5000 символов).\n"
+                    f"Текущая длина: {len(prompt)} символов."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"prompt too long for google/imagen4-fast: {len(prompt)} characters")
+                return ConversationHandler.END
+            api_params['prompt'] = prompt
+            
+            # Validate negative_prompt (optional, string, max 5000 characters)
+            if 'negative_prompt' in api_params and api_params.get('negative_prompt'):
+                negative_prompt = str(api_params['negative_prompt']).strip()
+                if negative_prompt:
+                    if len(negative_prompt) > 5000:
+                        error_msg = (
+                            f"❌ <b>Ошибка валидации</b>\n\n"
+                            f"Параметр negative_prompt слишком длинный (макс. 5000 символов).\n"
+                            f"Текущая длина: {len(negative_prompt)} символов."
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"negative_prompt too long for google/imagen4-fast: {len(negative_prompt)} characters")
+                        return ConversationHandler.END
+                    api_params['negative_prompt'] = negative_prompt
+                else:
+                    # Remove negative_prompt if it's empty
+                    if 'negative_prompt' in api_params:
+                        del api_params['negative_prompt']
+            else:
+                # Remove negative_prompt if it's empty or None
+                if 'negative_prompt' in api_params:
+                    del api_params['negative_prompt']
+            
+            # Validate aspect_ratio (optional, enum, default: "1:1")
+            valid_aspect_ratios = ["1:1", "16:9", "9:16", "3:4", "4:3"]
+            if 'aspect_ratio' in api_params and api_params.get('aspect_ratio'):
+                aspect_ratio = str(api_params['aspect_ratio']).strip()
+                if aspect_ratio not in valid_aspect_ratios:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        f"Параметр <b>aspect_ratio</b> должен быть одним из: {', '.join(valid_aspect_ratios)}.\n\n"
+                        f"Получено: {aspect_ratio}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid aspect_ratio for google/imagen4-fast: {aspect_ratio}")
+                    return ConversationHandler.END
+                api_params['aspect_ratio'] = aspect_ratio
+            else:
+                # Default aspect_ratio if not provided
+                api_params['aspect_ratio'] = "1:1"
+            
+            # Validate num_images (optional, enum as string: "1", "2", "3", "4", default: "1")
+            # CRITICAL: KIE API expects string format, not integer
+            valid_num_images = ["1", "2", "3", "4"]
+            if 'num_images' in api_params and api_params.get('num_images'):
+                num_images = str(api_params['num_images']).strip()
+                if num_images not in valid_num_images:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        f"Параметр <b>num_images</b> должен быть одним из: {', '.join(valid_num_images)}.\n\n"
+                        f"Получено: {api_params['num_images']}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid num_images for google/imagen4-fast: {api_params['num_images']}")
+                    return ConversationHandler.END
+                api_params['num_images'] = num_images
+            else:
+                # Default num_images if not provided
+                api_params['num_images'] = "1"
+            
+            # Validate seed (optional, integer)
+            # CRITICAL: KIE API expects integer format (unlike imagen4 where seed is string)
+            if 'seed' in api_params and api_params.get('seed') is not None:
+                seed = api_params['seed']
+                try:
+                    # Convert to integer
+                    if isinstance(seed, str):
+                        seed_str = seed.strip()
+                        # Remove any decimal part if present
+                        if '.' in seed_str:
+                            seed_str = seed_str.split('.')[0]
+                        seed = int(seed_str)
+                    elif isinstance(seed, (int, float)):
+                        seed = int(seed)
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>seed</b> должен быть числом (целым).\n\n"
+                            f"Получено: {type(seed).__name__}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid seed type for google/imagen4-fast: {type(seed)}")
+                        return ConversationHandler.END
+                    
+                    # Check if seed is non-negative
+                    if seed < 0:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>seed</b> должен быть неотрицательным числом.\n\n"
+                            f"Получено: {seed}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid seed value for google/imagen4-fast: {seed}")
+                        return ConversationHandler.END
+                    
+                    api_params['seed'] = seed
+                except (ValueError, TypeError):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>seed</b> должен быть числом (целым).\n\n"
+                        f"Получено: {api_params.get('seed')}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid seed for google/imagen4-fast: {api_params.get('seed')}")
+                    return ConversationHandler.END
+            else:
+                # Remove seed if it's empty or None
+                if 'seed' in api_params:
+                    del api_params['seed']
+        
+        # For google/imagen4-ultra, validate and normalize parameters
+        # CRITICAL: KIE API expects parameters according to validation file
+        # NOTE: Price is 8 credits per image (see calculate_price_rub())
+        # NOTE: seed is string (like imagen4, unlike imagen4-fast), and NO num_images parameter
+        if model_id == "google/imagen4-ultra":
+            # Validate prompt (required, string, max 5000 characters)
+            if 'prompt' not in api_params or not api_params.get('prompt'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> обязателен для модели google/imagen4-ultra.\n\n"
+                    "Укажите текстовое описание для генерации изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter prompt for google/imagen4-ultra")
+                return ConversationHandler.END
+            
+            prompt = str(api_params['prompt']).strip()
+            if not prompt:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>prompt</b> не может быть пустым.\n\n"
+                    "Укажите текстовое описание для генерации изображения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty prompt for google/imagen4-ultra")
+                return ConversationHandler.END
+            
+            if len(prompt) > 5000:
+                error_msg = (
+                    f"❌ <b>Ошибка валидации</b>\n\n"
+                    f"Параметр prompt слишком длинный (макс. 5000 символов).\n"
+                    f"Текущая длина: {len(prompt)} символов."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"prompt too long for google/imagen4-ultra: {len(prompt)} characters")
+                return ConversationHandler.END
+            api_params['prompt'] = prompt
+            
+            # Validate negative_prompt (optional, string, max 5000 characters)
+            if 'negative_prompt' in api_params and api_params.get('negative_prompt'):
+                negative_prompt = str(api_params['negative_prompt']).strip()
+                if negative_prompt:
+                    if len(negative_prompt) > 5000:
+                        error_msg = (
+                            f"❌ <b>Ошибка валидации</b>\n\n"
+                            f"Параметр negative_prompt слишком длинный (макс. 5000 символов).\n"
+                            f"Текущая длина: {len(negative_prompt)} символов."
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"negative_prompt too long for google/imagen4-ultra: {len(negative_prompt)} characters")
+                        return ConversationHandler.END
+                    api_params['negative_prompt'] = negative_prompt
+                else:
+                    # Remove negative_prompt if it's empty
+                    if 'negative_prompt' in api_params:
+                        del api_params['negative_prompt']
+            else:
+                # Remove negative_prompt if it's empty or None
+                if 'negative_prompt' in api_params:
+                    del api_params['negative_prompt']
+            
+            # Validate aspect_ratio (optional, enum, default: "1:1")
+            valid_aspect_ratios = ["1:1", "16:9", "9:16", "3:4", "4:3"]
+            if 'aspect_ratio' in api_params and api_params.get('aspect_ratio'):
+                aspect_ratio = str(api_params['aspect_ratio']).strip()
+                if aspect_ratio not in valid_aspect_ratios:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        f"Параметр <b>aspect_ratio</b> должен быть одним из: {', '.join(valid_aspect_ratios)}.\n\n"
+                        f"Получено: {aspect_ratio}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid aspect_ratio for google/imagen4-ultra: {aspect_ratio}")
+                    return ConversationHandler.END
+                api_params['aspect_ratio'] = aspect_ratio
+            else:
+                # Default aspect_ratio if not provided
+                api_params['aspect_ratio'] = "1:1"
+            
+            # CRITICAL: google/imagen4-ultra does NOT support num_images parameter
+            # Remove it if present (it's only for imagen4-fast)
+            if 'num_images' in api_params:
+                logger.warning(f"⚠️ google/imagen4-ultra does not support num_images parameter, removing it")
+                del api_params['num_images']
+            
+            # Validate seed (optional, string, max 500 characters)
+            # CRITICAL: KIE API expects string format (like imagen4, unlike imagen4-fast)
+            if 'seed' in api_params and api_params.get('seed'):
+                seed = str(api_params['seed']).strip()
+                if seed:
+                    if len(seed) > 500:
+                        error_msg = (
+                            f"❌ <b>Ошибка валидации</b>\n\n"
+                            f"Параметр seed слишком длинный (макс. 500 символов).\n"
+                            f"Текущая длина: {len(seed)} символов."
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"seed too long for google/imagen4-ultra: {len(seed)} characters")
+                        return ConversationHandler.END
+                    api_params['seed'] = seed
+                else:
+                    # Remove seed if it's empty
+                    if 'seed' in api_params:
+                        del api_params['seed']
+            else:
+                # Remove seed if it's empty or None
+                if 'seed' in api_params:
+                    del api_params['seed']
+        
+        # For topaz/video-upscale, validate and normalize parameters
+        # CRITICAL: KIE API expects parameters according to validation file
+        # NOTE: Price depends on video duration (12 credits per second, see calculate_price_rub())
+        if model_id == "topaz/video-upscale":
+            # Validate video_url (required, URL)
+            # Note: video_input is converted to video_url earlier in the code
+            if 'video_url' not in api_params or not api_params.get('video_url'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>video_url</b> обязателен для модели topaz/video-upscale.\n\n"
+                    "Укажите URL видео для увеличения разрешения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter video_url for topaz/video-upscale")
+                return ConversationHandler.END
+            
+            video_url = str(api_params['video_url']).strip()
+            if not video_url:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>video_url</b> не может быть пустым.\n\n"
+                    "Укажите URL видео для увеличения разрешения."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty video_url for topaz/video-upscale")
+                return ConversationHandler.END
+            
+            # Validate URL format
+            if not (video_url.startswith('http://') or video_url.startswith('https://')):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>video_url</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
+                    f"Получено: {video_url[:50]}..."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Invalid video_url format for topaz/video-upscale: {video_url[:50]}")
+                return ConversationHandler.END
+            api_params['video_url'] = video_url
+            
+            # Validate and normalize upscale_factor (optional, enum: "1", "2", or "4", default: "2")
+            # Normalize by removing "x" suffix if present
+            valid_upscale_factors = ["1", "2", "4"]
+            if 'upscale_factor' in api_params and api_params.get('upscale_factor'):
+                upscale_factor = str(api_params['upscale_factor']).strip().lower()
+                # Remove "x" suffix if present
+                if upscale_factor.endswith('x'):
+                    upscale_factor = upscale_factor[:-1].strip()
+                
+                if upscale_factor not in valid_upscale_factors:
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        f"Параметр <b>upscale_factor</b> должен быть одним из: {', '.join(valid_upscale_factors)} (или с суффиксом 'x': 1x, 2x, 4x).\n\n"
+                        f"Получено: {api_params['upscale_factor']}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid upscale_factor for topaz/video-upscale: {api_params['upscale_factor']}")
+                    return ConversationHandler.END
+                api_params['upscale_factor'] = upscale_factor
+            else:
+                # Default upscale_factor if not provided
+                api_params['upscale_factor'] = "2"
+        
+        # For elevenlabs/speech-to-text, validate and normalize parameters
+        # CRITICAL: KIE API expects parameters according to validation file
+        # NOTE: Price depends on audio duration (3.5 credits per minute, see calculate_price_rub())
+        if model_id == "elevenlabs/speech-to-text":
+            # Validate audio_url (required, URL)
+            # Note: audio_input is converted to audio_url earlier in the code
+            if 'audio_url' not in api_params or not api_params.get('audio_url'):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>audio_url</b> обязателен для модели elevenlabs/speech-to-text.\n\n"
+                    "Укажите URL аудиофайла для транскрибации."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Missing required parameter audio_url for elevenlabs/speech-to-text")
+                return ConversationHandler.END
+            
+            audio_url = str(api_params['audio_url']).strip()
+            if not audio_url:
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>audio_url</b> не может быть пустым.\n\n"
+                    "Укажите URL аудиофайла для транскрибации."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Empty audio_url for elevenlabs/speech-to-text")
+                return ConversationHandler.END
+            
+            # Validate URL format
+            if not (audio_url.startswith('http://') or audio_url.startswith('https://')):
+                error_msg = (
+                    "❌ <b>Ошибка валидации</b>\n\n"
+                    "Параметр <b>audio_url</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
+                    f"Получено: {audio_url[:50]}..."
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                logger.error(f"Invalid audio_url format for elevenlabs/speech-to-text: {audio_url[:50]}")
+                return ConversationHandler.END
+            api_params['audio_url'] = audio_url
+            
+            # Validate language_code (optional, string, max 500 characters, default: "ru")
+            if 'language_code' in api_params and api_params.get('language_code'):
+                language_code = str(api_params['language_code']).strip()
+                if language_code:
+                    if len(language_code) > 500:
+                        error_msg = (
+                            f"❌ <b>Ошибка валидации</b>\n\n"
+                            f"Параметр language_code слишком длинный (макс. 500 символов).\n"
+                            f"Текущая длина: {len(language_code)} символов."
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"language_code too long for elevenlabs/speech-to-text: {len(language_code)} characters")
+                        return ConversationHandler.END
+                    api_params['language_code'] = language_code
+                else:
+                    # Default language_code if empty
+                    api_params['language_code'] = "ru"
+            else:
+                # Default language_code if not provided
+                api_params['language_code'] = "ru"
+            
+            # Validate tag_audio_events (optional, boolean, default: False)
+            if 'tag_audio_events' in api_params and api_params.get('tag_audio_events') is not None:
+                tag_audio_events = api_params['tag_audio_events']
+                # Convert string "true"/"false" to boolean if needed
+                if isinstance(tag_audio_events, str):
+                    tag_audio_events = tag_audio_events.strip().lower()
+                    if tag_audio_events in ['true', '1', 'yes']:
+                        tag_audio_events = True
+                    elif tag_audio_events in ['false', '0', 'no']:
+                        tag_audio_events = False
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>tag_audio_events</b> должен быть boolean (true/false).\n\n"
+                            f"Получено: {api_params['tag_audio_events']}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid tag_audio_events for elevenlabs/speech-to-text: {api_params['tag_audio_events']}")
+                        return ConversationHandler.END
+                elif not isinstance(tag_audio_events, bool):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>tag_audio_events</b> должен быть boolean (true/false).\n\n"
+                        f"Получено: {type(tag_audio_events).__name__}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid tag_audio_events type for elevenlabs/speech-to-text: {type(tag_audio_events)}")
+                    return ConversationHandler.END
+                api_params['tag_audio_events'] = tag_audio_events
+            else:
+                # Default tag_audio_events if not provided
+                api_params['tag_audio_events'] = False
+            
+            # Validate diarize (optional, boolean, default: False)
+            if 'diarize' in api_params and api_params.get('diarize') is not None:
+                diarize = api_params['diarize']
+                # Convert string "true"/"false" to boolean if needed
+                if isinstance(diarize, str):
+                    diarize = diarize.strip().lower()
+                    if diarize in ['true', '1', 'yes']:
+                        diarize = True
+                    elif diarize in ['false', '0', 'no']:
+                        diarize = False
+                    else:
+                        error_msg = (
+                            "❌ <b>Ошибка валидации</b>\n\n"
+                            "Параметр <b>diarize</b> должен быть boolean (true/false).\n\n"
+                            f"Получено: {api_params['diarize']}"
+                        )
+                        await send_or_edit_message(error_msg)
+                        logger.error(f"Invalid diarize for elevenlabs/speech-to-text: {api_params['diarize']}")
+                        return ConversationHandler.END
+                elif not isinstance(diarize, bool):
+                    error_msg = (
+                        "❌ <b>Ошибка валидации</b>\n\n"
+                        "Параметр <b>diarize</b> должен быть boolean (true/false).\n\n"
+                        f"Получено: {type(diarize).__name__}"
+                    )
+                    await send_or_edit_message(error_msg)
+                    logger.error(f"Invalid diarize type for elevenlabs/speech-to-text: {type(diarize)}")
+                    return ConversationHandler.END
+                api_params['diarize'] = diarize
+            else:
+                # Default diarize if not provided
+                api_params['diarize'] = False
+        
         # For qwen/text-to-image, validate and normalize parameters
         # NOTE: Price depends on image_size (4 credits per megapixel, see calculate_price_rub())
         if model_id == "qwen/text-to-image":
@@ -18580,18 +20953,19 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         logger.error(f"Invalid guidance_scale type for qwen/text-to-image: {type(guidance_scale)}")
                         return ConversationHandler.END
                     
-                    # Check if guidance_scale is positive
-                    if guidance_scale <= 0:
+                    # Check if guidance_scale is in valid range [0, 20]
+                    if guidance_scale < 0 or guidance_scale > 20:
                         error_msg = (
                             "❌ <b>Ошибка валидации</b>\n\n"
-                            "Параметр <b>guidance_scale</b> должен быть положительным числом.\n\n"
+                            "Параметр <b>guidance_scale</b> должен быть числом от <b>0</b> до <b>20</b>.\n\n"
                             f"Получено: {guidance_scale}"
                         )
                         await send_or_edit_message(error_msg)
                         logger.error(f"Invalid guidance_scale value for qwen/text-to-image: {guidance_scale}")
                         return ConversationHandler.END
                     
-                    api_params['guidance_scale'] = guidance_scale
+                    # CRITICAL: Round to 1 decimal place (step 0.1) according to validation file
+                    api_params['guidance_scale'] = round(guidance_scale, 1)
                 except (ValueError, TypeError):
                     error_msg = (
                         "❌ <b>Ошибка валидации</b>\n\n"
@@ -18641,14 +21015,18 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 if 'enable_safety_checker' in api_params:
                     del api_params['enable_safety_checker']
             
-            # Validate and normalize output_format (optional, enum: "PNG" or "JPEG")
+            # Validate and normalize output_format (optional, enum: "png" or "jpeg")
+            # CRITICAL: KIE API expects lowercase format according to validation file
             if 'output_format' in api_params and api_params.get('output_format'):
-                output_format = str(api_params['output_format']).strip().upper()
+                output_format = str(api_params['output_format']).strip().lower()
+                # Map jpg -> jpeg
+                if output_format == "jpg":
+                    output_format = "jpeg"
                 
-                if output_format not in ["PNG", "JPEG"]:
+                if output_format not in ["png", "jpeg"]:
                     error_msg = (
                         "❌ <b>Ошибка валидации</b>\n\n"
-                        "Параметр <b>output_format</b> должен быть одним из: <b>PNG</b> или <b>JPEG</b>.\n\n"
+                        "Параметр <b>output_format</b> должен быть одним из: <b>png</b> или <b>jpeg</b>.\n\n"
                         f"Получено: {api_params['output_format']}"
                     )
                     await send_or_edit_message(error_msg)
@@ -18830,7 +21208,8 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         logger.error(f"Invalid strength value for qwen/image-to-image: {strength}")
                         return ConversationHandler.END
                     
-                    api_params['strength'] = strength
+                    # CRITICAL: Round to 2 decimal places (step 0.01) according to validation file
+                    api_params['strength'] = round(strength, 2)
                 except (ValueError, TypeError):
                     error_msg = (
                         "❌ <b>Ошибка валидации</b>\n\n"
@@ -18845,14 +21224,18 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 if 'strength' in api_params:
                     del api_params['strength']
             
-            # Validate and normalize output_format (optional, enum: "PNG" or "JPEG")
+            # Validate and normalize output_format (optional, enum: "png" or "jpeg")
+            # CRITICAL: KIE API expects lowercase format according to validation file
             if 'output_format' in api_params and api_params.get('output_format'):
-                output_format = str(api_params['output_format']).strip().upper()
+                output_format = str(api_params['output_format']).strip().lower()
+                # Map jpg -> jpeg
+                if output_format == "jpg":
+                    output_format = "jpeg"
                 
-                if output_format not in ["PNG", "JPEG"]:
+                if output_format not in ["png", "jpeg"]:
                     error_msg = (
                         "❌ <b>Ошибка валидации</b>\n\n"
-                        "Параметр <b>output_format</b> должен быть одним из: <b>PNG</b> или <b>JPEG</b>.\n\n"
+                        "Параметр <b>output_format</b> должен быть одним из: <b>png</b> или <b>jpeg</b>.\n\n"
                         f"Получено: {api_params['output_format']}"
                     )
                     await send_or_edit_message(error_msg)
@@ -19015,18 +21398,19 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         logger.error(f"Invalid guidance_scale type for qwen/image-to-image: {type(guidance_scale)}")
                         return ConversationHandler.END
                     
-                    # Check if guidance_scale is positive
-                    if guidance_scale <= 0:
+                    # Check if guidance_scale is in valid range [0, 20]
+                    if guidance_scale < 0 or guidance_scale > 20:
                         error_msg = (
                             "❌ <b>Ошибка валидации</b>\n\n"
-                            "Параметр <b>guidance_scale</b> должен быть положительным числом.\n\n"
+                            "Параметр <b>guidance_scale</b> должен быть числом от <b>0</b> до <b>20</b>.\n\n"
                             f"Получено: {guidance_scale}"
                         )
                         await send_or_edit_message(error_msg)
                         logger.error(f"Invalid guidance_scale value for qwen/image-to-image: {guidance_scale}")
                         return ConversationHandler.END
                     
-                    api_params['guidance_scale'] = guidance_scale
+                    # CRITICAL: Round to 1 decimal place (step 0.1) according to validation file
+                    api_params['guidance_scale'] = round(guidance_scale, 1)
                 except (ValueError, TypeError):
                     error_msg = (
                         "❌ <b>Ошибка валидации</b>\n\n"
@@ -19330,18 +21714,19 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         logger.error(f"Invalid guidance_scale type for qwen/image-edit: {type(guidance_scale)}")
                         return ConversationHandler.END
                     
-                    # Check if guidance_scale is positive
-                    if guidance_scale <= 0:
+                    # Check if guidance_scale is in valid range [0, 20]
+                    if guidance_scale < 0 or guidance_scale > 20:
                         error_msg = (
                             "❌ <b>Ошибка валидации</b>\n\n"
-                            "Параметр <b>guidance_scale</b> должен быть положительным числом.\n\n"
+                            "Параметр <b>guidance_scale</b> должен быть числом от <b>0</b> до <b>20</b>.\n\n"
                             f"Получено: {guidance_scale}"
                         )
                         await send_or_edit_message(error_msg)
                         logger.error(f"Invalid guidance_scale value for qwen/image-edit: {guidance_scale}")
                         return ConversationHandler.END
                     
-                    api_params['guidance_scale'] = guidance_scale
+                    # CRITICAL: Round to 1 decimal place (step 0.1) according to validation file
+                    api_params['guidance_scale'] = round(guidance_scale, 1)
                 except (ValueError, TypeError):
                     error_msg = (
                         "❌ <b>Ошибка валидации</b>\n\n"
@@ -19465,14 +21850,15 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 # Default enable_safety_checker if not provided
                 api_params['enable_safety_checker'] = True
             
-            # Validate and normalize output_format (optional, enum: "PNG" or "JPEG", default: "png")
+            # Validate and normalize output_format (optional, enum: "png" or "jpeg", default: "png")
+            # CRITICAL: KIE API expects lowercase format according to validation file
             if 'output_format' in api_params and api_params.get('output_format'):
-                output_format = str(api_params['output_format']).strip().upper()
+                output_format = str(api_params['output_format']).strip().lower()
                 
-                if output_format not in ["PNG", "JPEG"]:
+                if output_format not in ["png", "jpeg"]:
                     error_msg = (
                         "❌ <b>Ошибка валидации</b>\n\n"
-                        "Параметр <b>output_format</b> должен быть одним из: <b>PNG</b> или <b>JPEG</b>.\n\n"
+                        "Параметр <b>output_format</b> должен быть одним из: <b>png</b> или <b>jpeg</b>.\n\n"
                         f"Получено: {api_params['output_format']}"
                     )
                     await send_or_edit_message(error_msg)
@@ -20945,7 +23331,13 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             return ConversationHandler.END
         
         # Create task (for async models like z-image) with retry logic
-        logger.info(f"🚀🚀🚀 Creating task for model {model_id}, user {user_id}, params keys: {list(api_params.keys())}")
+        # ⚠️ КРИТИЧНО: Логирование всех параметров перед отправкой в KIE API
+        # ВСЕ параметры должны строго соответствовать инструкциям KIE AI
+        # НИЧЕГО от себя не придумывать - только по документации!
+        # См. KIE_AI_STRICT_RULES.md для полных правил
+        import json
+        logger.info(f"🚀🚀🚀 Creating task for model {model_id}, user {user_id}")
+        logger.info(f"📋 API Parameters (KIE API format): model={model_id}, input={json.dumps(api_params, ensure_ascii=False, indent=2)}")
         result = None
         max_retries = 3
         retry_delay = 2
@@ -20962,9 +23354,24 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             if result.get('ok'):
                 break
             
-            # Check if error is retryable
+            # CRITICAL: Check for 422 errors (validation errors) - don't retry these
+            status = result.get('status')
             error = result.get('error', '').lower()
-            is_retryable = any(keyword in error for keyword in ['server exception', 'please again', 'try again', 'timeout', 'temporarily'])
+            if status == 422:
+                logger.error(f"❌ 422 Validation Error for {model_id}: {error}")
+                logger.error(f"❌ API Parameters that caused error: {json.dumps(api_params, ensure_ascii=False, indent=2)}")
+                # Don't retry 422 errors - they indicate invalid parameters
+                error_msg = (
+                    f"❌ <b>Ошибка валидации параметров</b>\n\n"
+                    f"Сервер отклонил запрос из-за неверных параметров.\n"
+                    f"Проверьте, что все параметры указаны правильно.\n\n"
+                    f"Ошибка: {error[:200]}"
+                )
+                await query.edit_message_text(error_msg, parse_mode='HTML')
+                return ConversationHandler.END
+            
+            # Check if error is retryable
+            is_retryable = any(keyword in error for keyword in ['server exception', 'please again', 'try again', 'timeout', 'temporarily', 'connection'])
             
             if is_retryable and attempt < max_retries - 1:
                 if is_admin_user:
@@ -21005,6 +23412,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             session['model_id'] = model_id
             session['model_info'] = model_info
             session['params'] = api_params.copy()
+            session['created_at'] = time.time()  # Store creation time to detect duplicates
             
             # Move to active_generations atomically
             async with active_generations_lock:
@@ -21028,29 +23436,60 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             if user_id in user_sessions:
                 del user_sessions[user_id]
             
-            # Show Task ID only for admin
+            # Show task created message with "Back to menu" button
+            # User can continue working while generation runs in background
+            user_lang = get_user_language(user_id)
+            model_name = model_info.get('name', 'Unknown')
+            
             if is_admin_user:
                 message_text = (
                     f"✅ <b>Задача создана!</b>\n\n"
+                    f"Модель: <b>{model_name}</b>\n"
                     f"Task ID: <code>{task_id}</code>\n\n"
-                    f"⏳ Ожидаю завершения генерации...\n\n"
-                    f"📊 Активных генераций: {final_count}/{MAX_CONCURRENT_GENERATIONS_PER_USER}"
+                    f"⏳ Генерация выполняется в фоновом режиме.\n"
+                    f"📊 Активных генераций: {final_count}/{MAX_CONCURRENT_GENERATIONS_PER_USER}\n\n"
+                    f"💡 Вы можете перейти в меню и попробовать другие модели.\n"
+                    f"Результат придет автоматически, когда генерация завершится."
                 )
             else:
-                message_text = (
-                    f"✅ <b>Задача создана!</b>\n\n"
-                    f"⏳ Ожидаю завершения генерации..."
-                )
+                if user_lang == 'en':
+                    message_text = (
+                        f"✅ <b>Task created!</b>\n\n"
+                        f"Model: <b>{model_name}</b>\n\n"
+                        f"⏳ Generation is running in the background.\n\n"
+                        f"💡 You can go to the menu and try other models.\n"
+                        f"The result will come automatically when generation completes."
+                    )
+                else:
+                    message_text = (
+                        f"✅ <b>Задача создана!</b>\n\n"
+                        f"Модель: <b>{model_name}</b>\n\n"
+                        f"⏳ Генерация выполняется в фоновом режиме.\n\n"
+                        f"💡 Вы можете перейти в меню и попробовать другие модели.\n"
+                        f"Результат придет автоматически, когда генерация завершится."
+                    )
+            
+            # Add "Back to menu" button
+            keyboard = [
+                [InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")]
+            ]
             
             await query.edit_message_text(
                 message_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='HTML'
             )
             
             # Start polling for task completion (async, non-blocking)
+            # Results will be sent automatically when ready
             logger.info(f"🚀🚀🚀 Starting polling for task {task_id}, user {user_id}, model {model_id}")
             asyncio.create_task(poll_task_status(update, context, task_id, user_id))
             logger.info(f"✅✅✅ Polling task created for task {task_id}")
+            
+            # CRITICAL: Return END to allow user to work with other models
+            # Generation continues in background, result will be sent when ready
+            logger.info(f"✅✅✅ Task created, returning END to allow user to work with other models")
+            return ConversationHandler.END
         else:
             error = result.get('error', 'Unknown error')
             error_details = ""
@@ -21127,6 +23566,15 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
     start_time = asyncio.get_event_loop().time()
     last_status_message = None
     
+    # CRITICAL: Get chat_id from update or use user_id (for private chats, chat_id == user_id)
+    chat_id = user_id
+    if update and hasattr(update, 'effective_chat') and update.effective_chat:
+        chat_id = update.effective_chat.id
+    elif update and hasattr(update, 'message') and update.message:
+        chat_id = update.message.chat_id
+    elif update and hasattr(update, 'callback_query') and update.callback_query and update.callback_query.message:
+        chat_id = update.callback_query.message.chat_id
+    
     while attempt < max_attempts:
         await asyncio.sleep(5)  # Wait 5 seconds between polls
         attempt += 1
@@ -21137,7 +23585,7 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
             if not status_result.get('ok'):
                 error = status_result.get('error', 'Unknown error')
                 await context.bot.send_message(
-                    chat_id=update.effective_chat.id,
+                    chat_id=chat_id,
                     text=f"❌ <b>Ошибка проверки статуса:</b>\n\n{error}",
                     parse_mode='HTML'
                 )
@@ -21154,7 +23602,7 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                 # Send notification immediately when generation completes
                 try:
                     await context.bot.send_message(
-                        chat_id=update.effective_chat.id,
+                        chat_id=chat_id,
                         text="✅ <b>Генерация завершена!</b>\n\n⏳ Загружаю результат...",
                         parse_mode='HTML'
                     )
@@ -21287,7 +23735,7 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                                                 
                                                 if is_last:
                                                     last_message = await context.bot.send_video(
-                                                        chat_id=update.effective_chat.id,
+                                                        chat_id=chat_id,
                                                         video=video_file,
                                                         caption=caption,
                                                         reply_markup=reply_markup,
@@ -21295,7 +23743,7 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                                                     )
                                                 else:
                                                     await context.bot.send_video(
-                                                        chat_id=update.effective_chat.id,
+                                                        chat_id=chat_id,
                                                         video=video_file,
                                                         caption=caption,
                                                         parse_mode='HTML'
@@ -21307,7 +23755,7 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                                                 
                                                 if is_last:
                                                     last_message = await context.bot.send_photo(
-                                                        chat_id=update.effective_chat.id,
+                                                        chat_id=chat_id,
                                                         photo=photo_file,
                                                         caption=caption,
                                                         reply_markup=reply_markup,
@@ -21315,7 +23763,7 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                                                     )
                                                 else:
                                                     await context.bot.send_photo(
-                                                        chat_id=update.effective_chat.id,
+                                                        chat_id=chat_id,
                                                         photo=photo_file,
                                                         caption=caption,
                                                         parse_mode='HTML'
@@ -21325,7 +23773,7 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                                             if is_video_model:
                                                 if i == len(result_urls[:5]) - 1:
                                                     last_message = await context.bot.send_video(
-                                                        chat_id=update.effective_chat.id,
+                                                        chat_id=chat_id,
                                                         video=url,
                                                         caption="✅ <b>Генерация завершена!</b>" if i == 0 else None,
                                                         reply_markup=reply_markup,
@@ -21333,7 +23781,7 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                                                     )
                                                 else:
                                                     await context.bot.send_video(
-                                                        chat_id=update.effective_chat.id,
+                                                        chat_id=chat_id,
                                                         video=url,
                                                         caption="✅ <b>Генерация завершена!</b>" if i == 0 else None,
                                                         parse_mode='HTML'
@@ -21341,7 +23789,7 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                                             else:
                                                 if i == len(result_urls[:5]) - 1:
                                                     last_message = await context.bot.send_photo(
-                                                        chat_id=update.effective_chat.id,
+                                                        chat_id=chat_id,
                                                         photo=url,
                                                         caption="✅ <b>Генерация завершена!</b>" if i == 0 else None,
                                                         reply_markup=reply_markup,
@@ -21349,7 +23797,7 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                                                     )
                                                 else:
                                                     await context.bot.send_photo(
-                                                        chat_id=update.effective_chat.id,
+                                                        chat_id=chat_id,
                                                         photo=url,
                                                         caption="✅ <b>Генерация завершена!</b>" if i == 0 else None,
                                                         parse_mode='HTML'
@@ -21363,7 +23811,7 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                                     if is_video_model:
                                         if is_last:
                                             last_message = await context.bot.send_video(
-                                                chat_id=update.effective_chat.id,
+                                                chat_id=chat_id,
                                                 video=url,
                                                 caption="✅ <b>Генерация завершена!</b>" if i == 0 else None,
                                                 reply_markup=reply_markup,
@@ -21371,7 +23819,7 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                                             )
                                         else:
                                             await context.bot.send_video(
-                                                chat_id=update.effective_chat.id,
+                                                chat_id=chat_id,
                                                 video=url,
                                                 caption="✅ <b>Генерация завершена!</b>" if i == 0 else None,
                                                 parse_mode='HTML'
@@ -21379,7 +23827,7 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                                     else:
                                         if is_last:
                                             last_message = await context.bot.send_photo(
-                                                chat_id=update.effective_chat.id,
+                                                chat_id=chat_id,
                                                 photo=url,
                                                 caption="✅ <b>Генерация завершена!</b>" if i == 0 else None,
                                                 reply_markup=reply_markup,
@@ -21387,7 +23835,7 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                                             )
                                         else:
                                             await context.bot.send_photo(
-                                                chat_id=update.effective_chat.id,
+                                                chat_id=chat_id,
                                                 photo=url,
                                                 caption="✅ <b>Генерация завершена!</b>" if i == 0 else None,
                                                 parse_mode='HTML'
@@ -21399,27 +23847,27 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                                     media_name = "Видео" if is_video_model else "Изображение"
                                     if is_last:
                                         last_message = await context.bot.send_message(
-                                            chat_id=update.effective_chat.id,
+                                            chat_id=chat_id,
                                             text=f"✅ <b>Генерация завершена!</b>\n\n{media_name}: {url}",
                                             reply_markup=reply_markup,
                                             parse_mode='HTML'
                                         )
                                     else:
                                         await context.bot.send_message(
-                                            chat_id=update.effective_chat.id,
+                                            chat_id=chat_id,
                                             text=f"✅ <b>Генерация завершена!</b>\n\n{media_name}: {url}",
                                             parse_mode='HTML'
                                         )
                     else:
                         last_message = await context.bot.send_message(
-                            chat_id=update.effective_chat.id,
+                            chat_id=chat_id,
                             text="✅ <b>Генерация завершена!</b>\n\nРезультат готов.",
                             reply_markup=reply_markup,
                             parse_mode='HTML'
                         )
                 except json.JSONDecodeError:
                     last_message = await context.bot.send_message(
-                        chat_id=update.effective_chat.id,
+                        chat_id=chat_id,
                         text=f"✅ <b>Генерация завершена!</b>\n\nРезультат: {result_json[:500]}",
                         reply_markup=reply_markup,
                         parse_mode='HTML'
@@ -21437,13 +23885,33 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                 fail_msg = status_result.get('failMsg', 'Unknown error')
                 fail_code = status_result.get('failCode', '')
                 
+                # CRITICAL: Log full error details for debugging
+                logger.error(f"❌ Task {task_id} failed: code={fail_code}, msg={fail_msg}")
+                logger.error(f"❌ Full status_result: {json.dumps(status_result, ensure_ascii=False, indent=2)}")
+                
+                # Format user-friendly error message
                 error_text = f"❌ <b>Генерация завершена с ошибкой</b>\n\n"
                 if fail_code:
-                    error_text += f"Код ошибки: {fail_code}\n"
-                error_text += f"Сообщение: {fail_msg}"
+                    error_text += f"Код ошибки: <code>{fail_code}</code>\n"
+                
+                # Parse error message for better user experience
+                if '422' in str(fail_code) or '422' in str(fail_msg):
+                    error_text += (
+                        f"⚠️ <b>Ошибка валидации параметров</b>\n\n"
+                        f"Возможно, отправлены неверные параметры для модели.\n"
+                        f"Попробуйте начать генерацию заново с правильными параметрами.\n\n"
+                    )
+                elif 'Connection' in str(fail_msg) or 'RemoteDisconnected' in str(fail_msg) or 'Connection aborted' in str(fail_msg):
+                    error_text += (
+                        f"⚠️ <b>Ошибка соединения с сервером</b>\n\n"
+                        f"Сервер закрыл соединение. Это может быть временная проблема.\n"
+                        f"Попробуйте начать генерацию заново через несколько секунд.\n\n"
+                    )
+                
+                error_text += f"Техническая информация: {fail_msg[:200]}"
                 
                 await context.bot.send_message(
-                    chat_id=update.effective_chat.id,
+                    chat_id=chat_id,
                     text=error_text,
                     parse_mode='HTML'
                 )
@@ -21457,47 +23925,13 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
             
             elif state in ['waiting', 'queuing', 'generating']:
                 # Still processing, continue polling
-                # Update status every 30 seconds (6 attempts * 5 seconds)
-                if attempt % 6 == 0:
-                    elapsed_time = int(asyncio.get_event_loop().time() - start_time)
-                    minutes = elapsed_time // 60
-                    seconds = elapsed_time % 60
-                    
-                    status_text = f"⏳ Статус: <b>{state}</b>\nОжидаю завершения..."
-                    if minutes > 0:
-                        status_text += f"\n⏱ Прошло: {minutes} мин {seconds} сек"
-                    else:
-                        status_text += f"\n⏱ Прошло: {seconds} сек"
-                    
-                    # Edit previous status message if exists, otherwise send new one
-                    if last_status_message:
-                        try:
-                            await context.bot.edit_message_text(
-                                chat_id=update.effective_chat.id,
-                                message_id=last_status_message,
-                                text=status_text,
-                                parse_mode='HTML'
-                            )
-                        except Exception:
-                            # If edit fails, send new message
-                            msg = await context.bot.send_message(
-                                chat_id=update.effective_chat.id,
-                                text=status_text,
-                                parse_mode='HTML'
-                            )
-                            last_status_message = msg.message_id
-                    else:
-                        msg = await context.bot.send_message(
-                            chat_id=update.effective_chat.id,
-                            text=status_text,
-                            parse_mode='HTML'
-                        )
-                        last_status_message = msg.message_id
+                # Don't send status updates - user can work with other models
+                # Result will be sent automatically when ready
                 continue
             else:
                 # Unknown state
                 await context.bot.send_message(
-                    chat_id=update.effective_chat.id,
+                    chat_id=chat_id,
                     text=f"⚠️ Неизвестный статус: {state}\nПродолжаю ожидание...",
                     parse_mode='HTML'
                 )
@@ -21507,7 +23941,7 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
             logger.error(f"Error polling task status: {e}", exc_info=True)
             if attempt >= max_attempts:
                 await context.bot.send_message(
-                    chat_id=update.effective_chat.id,
+                    chat_id=chat_id,
                     text=f"❌ Превышено время ожидания. Попробуйте начать генерацию заново.",
                     parse_mode='HTML'
                 )
@@ -21522,7 +23956,7 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
     
     if attempt >= max_attempts:
         await context.bot.send_message(
-            chat_id=update.effective_chat.id,
+            chat_id=chat_id,
             text=f"⏰ Время ожидания истекло. Попробуйте начать генерацию заново.",
             parse_mode='HTML'
         )
