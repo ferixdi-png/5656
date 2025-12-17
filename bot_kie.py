@@ -10533,10 +10533,10 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             reply_markup=InlineKeyboardMarkup(keyboard),
                             parse_mode='HTML'
                         )
-            elapsed = time.time() - start_time
-            logger.info(f"🔥🔥🔥 BUTTON SHOWN SUCCESS: model_id={model_id}, price={price_str} ₽, user_id={user_id}, elapsed={elapsed:.3f}s")
-            logger.info(f"🔥🔥🔥 STATE TRANSITION: INPUTTING_PARAMS -> CONFIRMING_GENERATION for user {user_id}, model {model_id}")
-            return CONFIRMING_GENERATION
+                    elapsed = time.time() - start_time
+                    logger.info(f"🔥🔥🔥 BUTTON SHOWN SUCCESS: model_id={model_id}, price={price_str} ₽, user_id={user_id}, elapsed={elapsed:.3f}s")
+                    logger.info(f"🔥🔥🔥 STATE TRANSITION: INPUTTING_PARAMS -> CONFIRMING_GENERATION for user {user_id}, model {model_id}")
+                    return CONFIRMING_GENERATION
                 except Exception as e:
                     logger.error(f"❌ Error showing generate button: {e}", exc_info=True)
                     error_msg = "❌ <b>Ошибка</b>\n\nНе удалось показать кнопку генерации."
