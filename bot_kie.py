@@ -4490,6 +4490,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             requires_image_first = model_id in models_require_image_first
             has_required_image = 'image_input' in input_params and input_params['image_input'].get('required', False)
             
+            logger.info(f"🔍🔍🔍 select_model check: model_id={model_id}, requires_image_first={requires_image_first}, has_required_image={has_required_image}, input_params_keys={list(input_params.keys())}")
+            
             if requires_image_first or has_required_image:
                 # Determine parameter name
                 if 'image_input' in input_params:
@@ -4551,6 +4553,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     user_sessions[user_id][image_param_name] = []  # Initialize as array
                 await query.answer()
                 logger.info(f"✅✅✅ Started image input first for model {model_id}, user {user_id}, waiting_for={image_param_name}, session_keys={list(user_sessions[user_id].keys())[:10]}")
+                logger.info(f"🔍🔍🔍 RETURNING INPUTTING_PARAMS for user {user_id}, model {model_id}, waiting_for={image_param_name}")
                 return INPUTTING_PARAMS
             
             # Special case: sora-2-pro-image-to-video starts with image_urls first
@@ -9091,7 +9094,9 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     has_photo = bool(update.message and update.message.photo)
     has_text = bool(update.message and update.message.text)
     has_audio = bool(update.message and (update.message.audio or update.message.voice))
-    logger.info(f"🔍 input_parameters CALLED: user_id={user_id}, has_photo={has_photo}, has_text={has_text}, has_audio={has_audio}")
+    logger.info(f"🔍🔍🔍 input_parameters CALLED: user_id={user_id}, has_photo={has_photo}, has_text={has_text}, has_audio={has_audio}, update_type={type(update).__name__}")
+    if update.message:
+        logger.info(f"🔍🔍🔍 Message details: message_id={update.message.message_id}, chat_id={update.message.chat_id}, date={update.message.date}")
     
     if user_id not in user_sessions:
         logger.error(f"❌❌❌ CRITICAL: User {user_id} not in user_sessions in input_parameters!")
@@ -10101,9 +10106,22 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
         max_items = param_info.get('max_items', 8)  # Default to 8 if not specified
         
         model_id = session.get('model_id', 'Unknown')
+        
+        # CRITICAL: For models that only require image (no prompt), force max_items=1
+        # This ensures they always show the button immediately after image upload
+        models_only_image = [
+            "recraft/remove-background",
+            "recraft/crisp-upscale",
+            "topaz/image-upscale",
+            "ideogram/v3-reframe"
+        ]
+        if model_id in models_only_image:
+            max_items = 1  # Force to 1 for these models
+            logger.info(f"🔍 Model {model_id} is image-only, forcing max_items=1")
+        
         logger.info(f"🔍 Image processing: model={model_id}, image_param_name={image_param_name}, max_items={max_items}, image_count={image_count}, session_keys={list(session.keys())}")
         
-        # If max_items is 1, immediately move to next parameter
+        # If max_items is 1, immediately move to next parameter (or show button for image-only models)
         if max_items == 1:
             user_lang = get_user_language(user_id)
             if user_lang == 'en':
@@ -10324,6 +10342,54 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     else:
                         all_required_collected = False
             
+            # CRITICAL: For image-only models, FORCE all_required_collected=True if image is uploaded
+            # This is the ABSOLUTE FINAL check before showing button
+            if model_id in models_only_image:
+                params_final = session.get('params', {})
+                if image_param_name in params_final and params_final.get(image_param_name):
+                    image_data_final = params_final.get(image_param_name)
+                    if (isinstance(image_data_final, list) and len(image_data_final) > 0) or \
+                       (isinstance(image_data_final, str) and image_data_final):
+                        logger.info(f"🚨🚨🚨 ABSOLUTE FINAL CHECK: {model_id} has image, FORCING all_required_collected=True")
+                        all_required_collected = True
+                    else:
+                        logger.error(f"❌ Image data is empty for {model_id}: {image_data_final}")
+                elif image_param_name in session and session.get(image_param_name):
+                    # Last resort - image is in session but not in params
+                    logger.warning(f"⚠️ Image in session but not in params for {model_id}, fixing...")
+                    if 'params' not in session:
+                        session['params'] = {}
+                    if isinstance(session[image_param_name], list):
+                        session['params'][image_param_name] = session[image_param_name].copy()
+                    else:
+                        session['params'][image_param_name] = [session[image_param_name]]
+                    all_required_collected = True
+                    logger.info(f"✅✅✅ Last resort fix: all_required_collected=True for {model_id}")
+                else:
+                    logger.error(f"❌❌❌ CRITICAL: {model_id} has no image in params or session!")
+            
+            logger.info(f"🎯🎯🎯 BEFORE BUTTON CHECK: all_required_collected={all_required_collected}, model={model_id}, params_keys={list(session.get('params', {}).keys())}")
+            
+            # ABSOLUTE FINAL CHECK: For image-only models, if image exists, FORCE all_required_collected=True
+            # This is the last chance to show the button
+            if not all_required_collected and model_id in models_only_image:
+                final_params_check = session.get('params', {})
+                final_session_check = session.get(image_param_name, [])
+                if (image_param_name in final_params_check and final_params_check.get(image_param_name)) or \
+                   (final_session_check and (isinstance(final_session_check, list) and len(final_session_check) > 0 or isinstance(final_session_check, str) and final_session_check)):
+                    logger.warning(f"🚨🚨🚨 ABSOLUTE FINAL: {model_id} has image, FORCING all_required_collected=True RIGHT BEFORE BUTTON CHECK")
+                    all_required_collected = True
+                    # Ensure image is in params
+                    if image_param_name not in final_params_check or not final_params_check.get(image_param_name):
+                        if 'params' not in session:
+                            session['params'] = {}
+                        if isinstance(final_session_check, list):
+                            session['params'][image_param_name] = final_session_check.copy()
+                        else:
+                            session['params'][image_param_name] = [final_session_check] if final_session_check else []
+            
+            logger.info(f"🎯🎯🎯 AFTER FINAL CHECK: all_required_collected={all_required_collected}, model={model_id}")
+            
             # If all required parameters collected, show "Generate" button with price
             if all_required_collected:
                 model_name = session.get('model_info', {}).get('name', 'Unknown')
@@ -10439,85 +10505,105 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         pass
                     return INPUTTING_PARAMS
             
-            # Move to next parameter if not all collected
-            try:
-                next_param_result = await start_next_parameter(update, context, user_id)
-                logger.info(f"start_next_parameter returned: {next_param_result} for model {model_id}")
-                if next_param_result:
-                    return next_param_result
-                else:
-                    # All parameters collected, show confirmation
-                    model_name = session.get('model_info', {}).get('name', 'Unknown')
-                    params = session.get('params', {})
-                    logger.info(f"All parameters collected for {model_id}, params: {list(params.keys())}")
-                    params_text = "\n".join([f"  • {k}: {str(v)[:50]}..." for k, v in params.items()])
-                    
-                    keyboard = [
-                        [InlineKeyboardButton(t('btn_confirm_generate', lang=user_lang), callback_data="confirm_generate")],
-                        [
-                            InlineKeyboardButton(t('btn_back', lang=user_lang), callback_data="back_to_previous_step"),
-                            InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")
-                        ],
-                        [InlineKeyboardButton(t('btn_cancel', lang=user_lang), callback_data="cancel")]
-                    ]
-                    
-                    if user_lang == 'en':
-                        confirm_text = (
-                            f"📋 <b>Confirmation:</b>\n\n"
-                            f"Model: <b>{model_name}</b>\n"
-                            f"Parameters:\n{params_text}\n\n"
-                            f"Continue generation?"
-                        )
+            # CRITICAL: If all_required_collected is still False but this is an image-only model with image uploaded,
+            # FORCE show the button anyway - this is a safety net
+            if not all_required_collected and model_id in models_only_image:
+                params_safety = session.get('params', {})
+                if image_param_name in params_safety and params_safety.get(image_param_name):
+                    logger.warning(f"⚠️⚠️⚠️ SAFETY NET: all_required_collected=False but {model_id} has image, FORCING button show")
+                    all_required_collected = True
+                    # Jump directly to showing button (code below will handle it)
+                elif image_param_name in session and session.get(image_param_name):
+                    logger.warning(f"⚠️⚠️⚠️ SAFETY NET: Moving image from session to params for {model_id}")
+                    if 'params' not in session:
+                        session['params'] = {}
+                    if isinstance(session[image_param_name], list):
+                        session['params'][image_param_name] = session[image_param_name].copy()
                     else:
-                        confirm_text = (
-                            f"📋 <b>Подтверждение:</b>\n\n"
-                            f"Модель: <b>{model_name}</b>\n"
-                            f"Параметры:\n{params_text}\n\n"
-                            f"Продолжить генерацию?"
-                        )
-                    
-                    # Check if we have update.message or need to use context.bot
-                    try:
-                        if update.message:
-                            await update.message.reply_text(
-                                confirm_text,
-                                reply_markup=InlineKeyboardMarkup(keyboard),
-                                parse_mode='HTML'
+                        session['params'][image_param_name] = [session[image_param_name]]
+                    all_required_collected = True
+            
+            # Move to next parameter if not all collected (only if button wasn't shown above)
+            if not all_required_collected:
+                try:
+                    next_param_result = await start_next_parameter(update, context, user_id)
+                    logger.info(f"start_next_parameter returned: {next_param_result} for model {model_id}")
+                    if next_param_result:
+                        return next_param_result
+                    else:
+                        # All parameters collected, show confirmation
+                        model_name = session.get('model_info', {}).get('name', 'Unknown')
+                        params = session.get('params', {})
+                        logger.info(f"All parameters collected for {model_id}, params: {list(params.keys())}")
+                        params_text = "\n".join([f"  • {k}: {str(v)[:50]}..." for k, v in params.items()])
+                        
+                        user_lang = get_user_language(user_id)
+                        keyboard = [
+                            [InlineKeyboardButton(t('btn_confirm_generate', lang=user_lang), callback_data="confirm_generate")],
+                            [
+                                InlineKeyboardButton(t('btn_back', lang=user_lang), callback_data="back_to_previous_step"),
+                                InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")
+                            ],
+                            [InlineKeyboardButton(t('btn_cancel', lang=user_lang), callback_data="cancel")]
+                        ]
+                        
+                        if user_lang == 'en':
+                            confirm_text = (
+                                f"📋 <b>Confirmation:</b>\n\n"
+                                f"Model: <b>{model_name}</b>\n"
+                                f"Parameters:\n{params_text}\n\n"
+                                f"Continue generation?"
                             )
-                        elif update.callback_query:
-                            try:
-                                await update.callback_query.edit_message_text(
-                                    confirm_text,
-                                    reply_markup=InlineKeyboardMarkup(keyboard),
-                                    parse_mode='HTML'
-                                )
-                            except Exception as edit_error:
-                                logger.warning(f"Could not edit message, sending new: {edit_error}")
-                                await update.callback_query.message.reply_text(
-                                    confirm_text,
-                                    reply_markup=InlineKeyboardMarkup(keyboard),
-                                    parse_mode='HTML'
-                                )
                         else:
-                            await context.bot.send_message(
-                                chat_id=user_id,
-                                text=confirm_text,
-                                reply_markup=InlineKeyboardMarkup(keyboard),
-                                parse_mode='HTML'
+                            confirm_text = (
+                                f"📋 <b>Подтверждение:</b>\n\n"
+                                f"Модель: <b>{model_name}</b>\n"
+                                f"Параметры:\n{params_text}\n\n"
+                                f"Продолжить генерацию?"
                             )
-                        logger.info(f"✅✅✅ Confirmation button shown for {model_id}, returning CONFIRMING_GENERATION")
-                        return CONFIRMING_GENERATION
-                    except Exception as send_error:
-                        logger.error(f"❌ Error showing confirmation button: {send_error}", exc_info=True)
-                        return INPUTTING_PARAMS
-            except Exception as e:
-                logger.error(f"Error after image input: {e}", exc_info=True)
-                await update.message.reply_text(
-                    f"❌ <b>Ошибка</b>\n\n"
-                    f"Не удалось перейти к следующему шагу.\n"
-                    f"Попробуйте еще раз или используйте /cancel.",
-                    parse_mode='HTML'
-                )
+                        
+                        # Check if we have update.message or need to use context.bot
+                        try:
+                            if update.message:
+                                await update.message.reply_text(
+                                    confirm_text,
+                                    reply_markup=InlineKeyboardMarkup(keyboard),
+                                    parse_mode='HTML'
+                                )
+                            elif update.callback_query:
+                                try:
+                                    await update.callback_query.edit_message_text(
+                                        confirm_text,
+                                        reply_markup=InlineKeyboardMarkup(keyboard),
+                                        parse_mode='HTML'
+                                    )
+                                except Exception as edit_error:
+                                    logger.warning(f"Could not edit message, sending new: {edit_error}")
+                                    await update.callback_query.message.reply_text(
+                                        confirm_text,
+                                        reply_markup=InlineKeyboardMarkup(keyboard),
+                                        parse_mode='HTML'
+                                    )
+                            else:
+                                await context.bot.send_message(
+                                    chat_id=user_id,
+                                    text=confirm_text,
+                                    reply_markup=InlineKeyboardMarkup(keyboard),
+                                    parse_mode='HTML'
+                                )
+                            logger.info(f"✅✅✅ Confirmation button shown for {model_id}, returning CONFIRMING_GENERATION")
+                            return CONFIRMING_GENERATION
+                        except Exception as send_error:
+                            logger.error(f"❌ Error showing confirmation button: {send_error}", exc_info=True)
+                            return INPUTTING_PARAMS
+                except Exception as e:
+                    logger.error(f"Error after image input: {e}", exc_info=True)
+                    await update.message.reply_text(
+                        f"❌ <b>Ошибка</b>\n\n"
+                        f"Не удалось перейти к следующему шагу.\n"
+                        f"Попробуйте еще раз или используйте /cancel.",
+                        parse_mode='HTML'
+                    )
         elif image_count < min(max_items, 8):
             keyboard = [
                 [InlineKeyboardButton("📷 Добавить еще", callback_data="add_image")],
