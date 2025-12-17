@@ -9122,6 +9122,9 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     start_time = time.time()
     user_id = update.effective_user.id
     
+    # CRITICAL: Log function entry IMMEDIATELY
+    logger.info(f"🚨🚨🚨 INPUT_PARAMETERS FUNCTION CALLED: user_id={user_id}, update_type={type(update).__name__}")
+    
     # 🔥 MAXIMUM LOGGING: Log ALL input_parameters calls
     has_photo = bool(update.message and update.message.photo)
     has_text = bool(update.message and update.message.text)
