@@ -3421,10 +3421,21 @@ async def show_payment_screenshot(query, payment: dict, current_index: int, tota
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle button callbacks. CRITICAL: Always calls query.answer() to prevent button hanging."""
+    import time
+    start_time = time.time()
     query = None
     user_id = None
     data = None
     user_lang = 'ru'
+    
+    # 🔥 MAXIMUM LOGGING: Log entry point
+    try:
+        query = update.callback_query
+        user_id = query.from_user.id if query and query.from_user else None
+        data = query.data if query else None
+        logger.info(f"🔥🔥🔥 BUTTON_CALLBACK ENTRY: user_id={user_id}, data={data}, query_id={query.id if query else 'None'}, message_id={query.message.message_id if query and query.message else 'None'}")
+    except Exception as e:
+        logger.error(f"❌❌❌ ERROR in button_callback entry logging: {e}", exc_info=True)
     
     # CRITICAL: Always answer callback query to prevent button hanging
     # This must be done FIRST, before any other operations
@@ -4471,9 +4482,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_sessions[user_id]['properties'] = input_params
             user_sessions[user_id]['required'] = [p for p, info in input_params.items() if info.get('required', False)]
             user_sessions[user_id]['current_param'] = None
+            # NOTE: model_id and model_info are already stored above at lines 8449-8450
             
             # Start with prompt parameter first (or image_input/image_urls first for image-to-video models)
-            model_id = session.get('model_id', '')
             # Special case: Models that require image_input first (nano-banana-pro, recraft models, etc.)
             # These models need image before prompt
             # Models that require image_input first (before prompt or other parameters)
@@ -4490,9 +4501,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             requires_image_first = model_id in models_require_image_first
             has_required_image = 'image_input' in input_params and input_params['image_input'].get('required', False)
             
-            logger.info(f"🔍🔍🔍 select_model check: model_id={model_id}, requires_image_first={requires_image_first}, has_required_image={has_required_image}, input_params_keys={list(input_params.keys())}")
+            logger.info(f"🔥🔥🔥 SELECT_MODEL CHECK: model_id={model_id}, requires_image_first={requires_image_first}, has_required_image={has_required_image}, input_params_keys={list(input_params.keys())}, user_id={user_id}")
             
             if requires_image_first or has_required_image:
+                logger.info(f"🔥🔥🔥 SELECT_MODEL: Model requires image first! Setting up image input, user_id={user_id}")
                 # Determine parameter name
                 if 'image_input' in input_params:
                     image_param_name = 'image_input'
@@ -4552,8 +4564,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if image_param_name not in user_sessions[user_id]:
                     user_sessions[user_id][image_param_name] = []  # Initialize as array
                 await query.answer()
-                logger.info(f"✅✅✅ Started image input first for model {model_id}, user {user_id}, waiting_for={image_param_name}, session_keys={list(user_sessions[user_id].keys())[:10]}")
-                logger.info(f"🔍🔍🔍 RETURNING INPUTTING_PARAMS for user {user_id}, model {model_id}, waiting_for={image_param_name}")
+                logger.info(f"🔥🔥🔥 SELECT_MODEL: Image input setup complete! model_id={model_id}, user_id={user_id}, waiting_for={image_param_name}, session_keys={list(user_sessions[user_id].keys())[:10]}")
+                logger.info(f"🔥🔥🔥 SELECT_MODEL: RETURNING INPUTTING_PARAMS for user {user_id}, model {model_id}, waiting_for={image_param_name}")
+                elapsed = time.time() - start_time
+                logger.info(f"🔥🔥🔥 SELECT_MODEL: Total time={elapsed:.3f}s, user_id={user_id}")
                 return INPUTTING_PARAMS
             
             # Special case: sora-2-pro-image-to-video starts with image_urls first
@@ -8213,14 +8227,19 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ConversationHandler.END
         
         if data.startswith("select_model:"):
+            # 🔥 MAXIMUM LOGGING: select_model entry
+            logger.info(f"🔥🔥🔥 SELECT_MODEL START: user_id={user_id}, data={data}")
+            
             # Answer callback immediately to show button was pressed
             try:
                 await query.answer()
-            except:
-                pass
+                logger.info(f"✅ Query answered for select_model: user_id={user_id}")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to answer query: {e}")
             
             parts = data.split(":", 1)
             if len(parts) < 2:
+                logger.error(f"❌ Invalid select_model format: data={data}, user_id={user_id}")
                 try:
                     await query.answer("Ошибка: неверный формат запроса", show_alert=True)
                 except:
@@ -8234,11 +8253,14 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         pass
                 return ConversationHandler.END
             model_id = parts[1]
+            logger.info(f"🔥🔥🔥 SELECT_MODEL: Parsed model_id={model_id}, user_id={user_id}")
             
             # Get model from static list
             model_info = get_model_by_id(model_id)
+            logger.info(f"🔥🔥🔥 SELECT_MODEL: Model lookup result: found={bool(model_info)}, model_name={model_info.get('name', 'N/A') if model_info else 'N/A'}, user_id={user_id}")
             
             if not model_info:
+                logger.error(f"❌❌❌ MODEL NOT FOUND: model_id={model_id}, user_id={user_id}")
                 try:
                     await query.edit_message_text(f"❌ Модель {model_id} не найдена.")
                 except:
@@ -8444,11 +8466,14 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Store selected model
             if user_id not in user_sessions:
                 user_sessions[user_id] = {}
+                logger.info(f"🔥🔥🔥 SELECT_MODEL: Created new session for user_id={user_id}")
             user_sessions[user_id]['model_id'] = model_id
             user_sessions[user_id]['model_info'] = model_info
+            logger.info(f"🔥🔥🔥 SELECT_MODEL: Stored model in session: model_id={model_id}, user_id={user_id}, session_keys={list(user_sessions[user_id].keys())}")
             
             # Get input parameters from static definition
             input_params = model_info.get('input_params', {})
+            logger.info(f"🔥🔥🔥 SELECT_MODEL: Input params: count={len(input_params)}, keys={list(input_params.keys())}, user_id={user_id}")
             
             if not input_params:
                 # If no params defined, ask for simple text input
@@ -9088,19 +9113,27 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle parameter input."""
+    import time
+    start_time = time.time()
     user_id = update.effective_user.id
     
-    # CRITICAL: Log ALL input_parameters calls to debug photo processing
+    # 🔥 MAXIMUM LOGGING: Log ALL input_parameters calls
     has_photo = bool(update.message and update.message.photo)
     has_text = bool(update.message and update.message.text)
     has_audio = bool(update.message and (update.message.audio or update.message.voice))
-    logger.info(f"🔍🔍🔍 input_parameters CALLED: user_id={user_id}, has_photo={has_photo}, has_text={has_text}, has_audio={has_audio}, update_type={type(update).__name__}")
+    has_document = bool(update.message and update.message.document)
+    logger.info(f"🔥🔥🔥 INPUT_PARAMETERS ENTRY: user_id={user_id}, has_photo={has_photo}, has_text={has_text}, has_audio={has_audio}, has_document={has_document}, update_type={type(update).__name__}")
     if update.message:
-        logger.info(f"🔍🔍🔍 Message details: message_id={update.message.message_id}, chat_id={update.message.chat_id}, date={update.message.date}")
+        logger.info(f"🔥🔥🔥 INPUT_PARAMETERS MESSAGE: message_id={update.message.message_id}, chat_id={update.message.chat_id}, date={update.message.date}, from_user_id={update.message.from_user.id if update.message.from_user else 'None'}")
+        if has_photo:
+            photo_count = len(update.message.photo) if update.message.photo else 0
+            logger.info(f"🔥🔥🔥 INPUT_PARAMETERS PHOTO: photo_count={photo_count}, file_id={update.message.photo[-1].file_id if update.message.photo else 'None'}, file_size={update.message.photo[-1].file_size if update.message.photo and update.message.photo[-1].file_size else 'Unknown'}")
     
     if user_id not in user_sessions:
-        logger.error(f"❌❌❌ CRITICAL: User {user_id} not in user_sessions in input_parameters!")
+        logger.error(f"❌❌❌ CRITICAL ERROR: User {user_id} not in user_sessions in input_parameters!")
         logger.error(f"   This means session was lost. User needs to select model again.")
+        logger.error(f"   Available sessions: {list(user_sessions.keys())[:10]}")
+        logger.error(f"   Total sessions: {len(user_sessions)}")
         if update.message:
             if has_photo:
                 # Photo sent but no session - try to help user
@@ -9120,13 +9153,16 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     model_id = session.get('model_id', 'Unknown')
     waiting_for = session.get('waiting_for', 'None')
     properties = session.get('properties', {})
+    params = session.get('params', {})
     has_image_input = 'image_input' in properties
     has_image_urls = 'image_urls' in properties
-    logger.info(f"🔍 Session exists: model_id={model_id}, waiting_for={waiting_for}, has_image_input={has_image_input}, has_image_urls={has_image_urls}, session_keys={list(session.keys())[:10]}")
+    logger.info(f"🔥🔥🔥 INPUT_PARAMETERS SESSION: user_id={user_id}, model_id={model_id}, waiting_for={waiting_for}, has_image_input={has_image_input}, has_image_urls={has_image_urls}")
+    logger.info(f"🔥🔥🔥 INPUT_PARAMETERS SESSION KEYS: {list(session.keys())[:15]}")
+    logger.info(f"🔥🔥🔥 INPUT_PARAMETERS PARAMS: keys={list(params.keys())}, values={[(k, type(v).__name__, len(v) if isinstance(v, (list, dict)) else 'N/A') for k, v in params.items()][:5]}")
     
     # CRITICAL: If photo is sent but session doesn't have waiting_for set, log warning
     if has_photo and not waiting_for:
-        logger.warning(f"⚠️⚠️⚠️ Photo sent but waiting_for is None! model_id={model_id}, properties={list(properties.keys())}")
+        logger.warning(f"⚠️⚠️⚠️ PHOTO SENT BUT waiting_for is None! user_id={user_id}, model_id={model_id}, properties={list(properties.keys())}, session_keys={list(session.keys())[:10]}")
     
     # Handle admin OCR test
     if user_id == ADMIN_ID and user_id in user_sessions and user_sessions[user_id].get('waiting_for') == 'admin_test_ocr':
@@ -9983,7 +10019,7 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try:
                 image_data = await file.download_as_bytearray()
             except Exception as e:
-                logger.error(f"Error downloading file from Telegram: {e}", exc_info=True)
+                logger.error(f"❌❌❌ ERROR DOWNLOADING IMAGE: user_id={user_id}, error={str(e)}, error_type={type(e).__name__}, file_id={photo.file_id if 'photo' in locals() else 'Unknown'}", exc_info=True)
                 if loading_msg:
                     try:
                         await loading_msg.delete()
@@ -10026,9 +10062,10 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 return INPUTTING_PARAMS
             
-            logger.info(f"Downloaded image: {len(image_data)} bytes")
+            logger.info(f"🔥🔥🔥 IMAGE DOWNLOADED: size={len(image_data)} bytes, user_id={user_id}, file_id={photo.file_id[:8]}")
             
             # Upload to public hosting
+            logger.info(f"🔥🔥🔥 UPLOADING TO HOSTING: user_id={user_id}, filename=image_{user_id}_{photo.file_id[:8]}.jpg")
             public_url = await upload_image_to_hosting(image_data, filename=f"image_{user_id}_{photo.file_id[:8]}.jpg")
             
             # Delete loading message
@@ -10039,6 +10076,7 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     pass
             
             if not public_url:
+                logger.error(f"❌❌❌ IMAGE UPLOAD FAILED: user_id={user_id}, model_id={session.get('model_id', 'Unknown')}, file_size={len(image_data)} bytes, upload_image_to_hosting returned None")
                 await update.message.reply_text(
                     "❌ <b>Ошибка загрузки</b>\n\n"
                     "Не удалось обработать изображение.\n"
@@ -10047,11 +10085,12 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 return INPUTTING_PARAMS
             
-            logger.info(f"Successfully uploaded image to: {public_url}")
+            logger.info(f"🔥🔥🔥 IMAGE UPLOADED TO HOSTING: public_url={public_url}, user_id={user_id}, file_size={len(image_data)} bytes, model_id={session.get('model_id', 'Unknown')}")
             
             # Add to image_input array
             # Determine which parameter name to use
             waiting_for = session.get('waiting_for', 'image_input')
+            logger.info(f"🔥🔥🔥 IMAGE PROCESSING: waiting_for={waiting_for}, user_id={user_id}, model_id={session.get('model_id', 'Unknown')}")
             # Normalize: if waiting_for is 'image', use the actual parameter name from properties
             if waiting_for == 'image':
                 properties = session.get('properties', {})
@@ -10066,10 +10105,15 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if image_param_name not in session:
                 session[image_param_name] = []
             session[image_param_name].append(public_url)
-            logger.info(f"✅ Added image to {image_param_name}, count={len(session[image_param_name])}, model={session.get('model_id', 'Unknown')}")
+            logger.info(f"🔥🔥🔥 IMAGE ADDED TO SESSION: param={image_param_name}, count={len(session[image_param_name])}, model={session.get('model_id', 'Unknown')}, user_id={user_id}, urls={session[image_param_name][:2]}")
             
         except Exception as e:
-            logger.error(f"Error processing image: {e}", exc_info=True)
+            logger.error(f"❌❌❌ ERROR PROCESSING IMAGE: user_id={user_id}, error={str(e)}, error_type={type(e).__name__}", exc_info=True)
+            if user_id in user_sessions:
+                session_error = user_sessions[user_id]
+                logger.error(f"❌❌❌ ERROR CONTEXT: model_id={session_error.get('model_id', 'Unknown')}, waiting_for={session_error.get('waiting_for', 'None')}, session_keys={list(session_error.keys())[:10]}")
+            else:
+                logger.error(f"❌❌❌ ERROR CONTEXT: No session found for user_id={user_id}")
             # Try to delete loading message if exists
             if loading_msg:
                 try:
@@ -10180,10 +10224,11 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 return INPUTTING_PARAMS
             
-            logger.info(f"✅ VERIFIED: {image_param_name} is in params with {len(session['params'][image_param_name])} item(s)")
+            logger.info(f"🔥🔥🔥 IMAGE VERIFIED IN PARAMS: param={image_param_name}, count={len(session['params'][image_param_name])}, user_id={user_id}, model_id={model_id}, urls={session['params'][image_param_name][:1]}")
             
             session['waiting_for'] = None
             session['current_param'] = None
+            logger.info(f"🔥🔥🔥 SESSION UPDATED: waiting_for=None, current_param=None, user_id={user_id}, model_id={model_id}")
             
             # CRITICAL: For models without prompt (like recraft/remove-background),
             # check if all required parameters are collected
@@ -10488,9 +10533,10 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             reply_markup=InlineKeyboardMarkup(keyboard),
                             parse_mode='HTML'
                         )
-                    logger.info(f"✅✅✅ Generate button with price shown for {model_id}, price: {price_str} ₽, returning CONFIRMING_GENERATION")
-                    logger.info(f"🔍 State transition: INPUTTING_PARAMS -> CONFIRMING_GENERATION for user {user_id}, model {model_id}")
-                    return CONFIRMING_GENERATION
+            elapsed = time.time() - start_time
+            logger.info(f"🔥🔥🔥 BUTTON SHOWN SUCCESS: model_id={model_id}, price={price_str} ₽, user_id={user_id}, elapsed={elapsed:.3f}s")
+            logger.info(f"🔥🔥🔥 STATE TRANSITION: INPUTTING_PARAMS -> CONFIRMING_GENERATION for user {user_id}, model {model_id}")
+            return CONFIRMING_GENERATION
                 except Exception as e:
                     logger.error(f"❌ Error showing generate button: {e}", exc_info=True)
                     error_msg = "❌ <b>Ошибка</b>\n\nНе удалось показать кнопку генерации."
@@ -11153,9 +11199,11 @@ async def start_generation_directly(
 
 async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle generation confirmation."""
+    import time
+    start_time = time.time()
     query = update.callback_query
     user_id = update.effective_user.id
-    logger.info(f"🚀🚀🚀 confirm_generation CALLED for user {user_id}")
+    logger.info(f"🔥🔥🔥 CONFIRM_GENERATION ENTRY: user_id={user_id}, query_id={query.id if query else 'None'}, data={query.data if query else 'None'}")
     
     # Answer callback immediately if present
     if query:
