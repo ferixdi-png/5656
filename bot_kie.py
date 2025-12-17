@@ -10444,6 +10444,76 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 
                 logger.info(f"✅ All parameters collected for {model_id}, showing generate button with price. Params: {list(params.keys())}")
                 
+                # CRITICAL: For image-only models, automatically start generation instead of showing button
+                if model_id in models_only_image:
+                    logger.info(f"🚀🚀🚀 AUTO-STARTING generation for {model_id} (image-only model)")
+                    
+                    # Show "Generation started" message
+                    if user_lang == 'en':
+                        start_msg = f"🚀 <b>Generation started!</b>\n\nProcessing your image with <b>{model_name}</b>...\n\nPlease wait, this may take a moment."
+                    else:
+                        start_msg = f"🚀 <b>Генерация началась!</b>\n\nОбрабатываю ваше изображение с помощью <b>{model_name}</b>...\n\nПожалуйста, подождите, это может занять некоторое время."
+                    
+                    try:
+                        if update.message:
+                            status_msg = await update.message.reply_text(start_msg, parse_mode='HTML')
+                        elif update.callback_query:
+                            try:
+                                await update.callback_query.edit_message_text(start_msg, parse_mode='HTML')
+                                status_msg = update.callback_query.message
+                            except Exception as edit_error:
+                                logger.warning(f"Could not edit message: {edit_error}, sending new")
+                                status_msg = await update.callback_query.message.reply_text(start_msg, parse_mode='HTML')
+                        else:
+                            status_msg = await context.bot.send_message(chat_id=user_id, text=start_msg, parse_mode='HTML')
+                        
+                        # Create mock callback query to call confirm_generation
+                        class MockUser:
+                            def __init__(self, user_id):
+                                self.id = user_id
+                        
+                        class MockMessage:
+                            def __init__(self, status_msg):
+                                self.chat_id = status_msg.chat.id if hasattr(status_msg, 'chat') and hasattr(status_msg.chat, 'id') else user_id
+                                self.message_id = status_msg.message_id if hasattr(status_msg, 'message_id') else None
+                        
+                        class MockCallbackQuery:
+                            def __init__(self, user_id, status_msg):
+                                self.from_user = MockUser(user_id)
+                                self.message = MockMessage(status_msg)
+                                self.data = "confirm_generate"
+                                self.id = f"auto_{user_id}_{int(time.time())}"
+                            
+                            async def answer(self, text=None, show_alert=False):
+                                pass
+                        
+                        mock_query = MockCallbackQuery(user_id, status_msg)
+                        mock_update = type('obj', (object,), {
+                            'callback_query': mock_query,
+                            'effective_user': update.effective_user,
+                            'message': None
+                        })()
+                        
+                        # Auto-start generation
+                        logger.info(f"🚀🚀🚀 Calling confirm_generation for {model_id}")
+                        result = await confirm_generation(mock_update, context)
+                        logger.info(f"🚀🚀🚀 confirm_generation returned: {result} for {model_id}")
+                        return result
+                    except Exception as auto_start_error:
+                        logger.error(f"❌ Error auto-starting generation for {model_id}: {auto_start_error}", exc_info=True)
+                        # Fall through to show button as fallback
+                        error_fallback_msg = "❌ <b>Ошибка автоматического запуска</b>\n\nПопробуйте нажать кнопку генерации вручную."
+                        try:
+                            if update.message:
+                                await update.message.reply_text(error_fallback_msg, parse_mode='HTML')
+                            elif update.callback_query:
+                                await update.callback_query.message.reply_text(error_fallback_msg, parse_mode='HTML')
+                            else:
+                                await context.bot.send_message(chat_id=user_id, text=error_fallback_msg, parse_mode='HTML')
+                        except:
+                            pass
+                        # Continue to show button as fallback
+                
                 # Calculate price
                 is_free = is_free_generation_available(user_id, model_id)
                 price = calculate_price_rub(model_id, params, is_admin_user)
