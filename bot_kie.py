@@ -10495,6 +10495,17 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         
                         logger.info(f"✅✅✅ Session verified before confirm_generation: user_id={user_id}, model_id={session_check.get('model_id')}, params_keys={list(session_check.get('params', {}).keys())}")
                         
+                        # CRITICAL: Save session copy to restore if lost
+                        session_backup = session_check.copy()
+                        logger.info(f"💾💾💾 Session backup created: user_id={user_id}, backup_keys={list(session_backup.keys())}")
+                        
+                        # CRITICAL: Store backup in context.user_data for confirm_generation to access
+                        if not hasattr(context, 'user_data'):
+                            context.user_data = {}
+                        context.user_data['session_backup'] = session_backup.copy()
+                        context.user_data['session_backup_user_id'] = user_id
+                        logger.info(f"💾💾💾 Session backup stored in context.user_data for user_id={user_id}")
+                        
                         # Create mock callback query to call confirm_generation
                         class MockUser:
                             def __init__(self, user_id):
@@ -10532,9 +10543,24 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         # Auto-start generation
                         logger.info(f"🚀🚀🚀 Calling confirm_generation for {model_id}, user_id={user_id}")
                         logger.info(f"🚀🚀🚀 Mock update: effective_user.id={mock_update.effective_user.id}, callback_query.data={mock_update.callback_query.data}")
-                        result = await confirm_generation(mock_update, context)
-                        logger.info(f"🚀🚀🚀 confirm_generation returned: {result} for {model_id}")
-                        return result
+                        
+                        # CRITICAL: Double-check session exists right before calling
+                        if user_id not in user_sessions:
+                            logger.error(f"❌❌❌ Session lost RIGHT BEFORE confirm_generation! Restoring from backup...")
+                            user_sessions[user_id] = session_backup.copy()
+                            logger.info(f"✅✅✅ Session restored from backup: user_id={user_id}")
+                        
+                        try:
+                            result = await confirm_generation(mock_update, context)
+                            logger.info(f"🚀🚀🚀 confirm_generation returned: {result} for {model_id}")
+                            return result
+                        except Exception as confirm_error:
+                            logger.error(f"❌❌❌ Error in confirm_generation: {confirm_error}", exc_info=True)
+                            # Restore session if it was lost
+                            if user_id not in user_sessions:
+                                logger.warning(f"⚠️⚠️⚠️ Session lost during confirm_generation, restoring from backup...")
+                                user_sessions[user_id] = session_backup.copy()
+                            raise
                     except Exception as auto_start_error:
                         logger.error(f"❌ Error auto-starting generation for {model_id}: {auto_start_error}", exc_info=True)
                         # Fall through to show button as fallback
@@ -11356,8 +11382,20 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     if user_id not in user_sessions:
         logger.error(f"❌❌❌ CRITICAL: Session not found in confirm_generation! user_id={user_id}, available_sessions={list(user_sessions.keys())[:10]}")
-        await send_or_edit_message("❌ Сессия не найдена. Пожалуйста, начните заново с /start")
-        return ConversationHandler.END
+        
+        # CRITICAL: Try to restore from backup in context.user_data
+        if hasattr(context, 'user_data') and context.user_data.get('session_backup_user_id') == user_id:
+            session_backup = context.user_data.get('session_backup')
+            if session_backup:
+                logger.warning(f"⚠️⚠️⚠️ Restoring session from context.user_data backup for user_id={user_id}")
+                user_sessions[user_id] = session_backup.copy()
+                logger.info(f"✅✅✅ Session restored from context.user_data: user_id={user_id}, model_id={session_backup.get('model_id')}")
+            else:
+                await send_or_edit_message("❌ Сессия не найдена. Пожалуйста, начните заново с /start")
+                return ConversationHandler.END
+        else:
+            await send_or_edit_message("❌ Сессия не найдена. Пожалуйста, начните заново с /start")
+            return ConversationHandler.END
     
     session = user_sessions[user_id]
     logger.info(f"✅✅✅ Session found in confirm_generation: user_id={user_id}, model_id={session.get('model_id')}, params_keys={list(session.get('params', {}).keys())}")
