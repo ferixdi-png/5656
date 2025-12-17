@@ -10482,6 +10482,19 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         else:
                             status_msg = await context.bot.send_message(chat_id=user_id, text=start_msg, parse_mode='HTML')
                         
+                        # CRITICAL: Ensure session exists before calling confirm_generation
+                        if user_id not in user_sessions:
+                            logger.error(f"❌❌❌ CRITICAL: Session lost before confirm_generation! user_id={user_id}, model_id={model_id}")
+                            raise Exception(f"Session lost for user {user_id}")
+                        
+                        # Verify session has required data
+                        session_check = user_sessions[user_id]
+                        if 'model_id' not in session_check or 'params' not in session_check:
+                            logger.error(f"❌❌❌ CRITICAL: Session incomplete! user_id={user_id}, session_keys={list(session_check.keys())}")
+                            raise Exception(f"Session incomplete for user {user_id}")
+                        
+                        logger.info(f"✅✅✅ Session verified before confirm_generation: user_id={user_id}, model_id={session_check.get('model_id')}, params_keys={list(session_check.get('params', {}).keys())}")
+                        
                         # Create mock callback query to call confirm_generation
                         class MockUser:
                             def __init__(self, user_id):
@@ -10502,15 +10515,23 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             async def answer(self, text=None, show_alert=False):
                                 pass
                         
+                        # CRITICAL: Create effective_user that matches the real user
+                        class MockEffectiveUser:
+                            def __init__(self, user_id):
+                                self.id = user_id
+                        
                         mock_query = MockCallbackQuery(user_id, status_msg)
+                        mock_effective_user = MockEffectiveUser(user_id)
+                        
                         mock_update = type('obj', (object,), {
                             'callback_query': mock_query,
-                            'effective_user': update.effective_user,
+                            'effective_user': mock_effective_user,
                             'message': None
                         })()
                         
                         # Auto-start generation
-                        logger.info(f"🚀🚀🚀 Calling confirm_generation for {model_id}")
+                        logger.info(f"🚀🚀🚀 Calling confirm_generation for {model_id}, user_id={user_id}")
+                        logger.info(f"🚀🚀🚀 Mock update: effective_user.id={mock_update.effective_user.id}, callback_query.data={mock_update.callback_query.data}")
                         result = await confirm_generation(mock_update, context)
                         logger.info(f"🚀🚀🚀 confirm_generation returned: {result} for {model_id}")
                         return result
@@ -11334,10 +11355,12 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return ConversationHandler.END
     
     if user_id not in user_sessions:
-        await send_or_edit_message("❌ Сессия не найдена.")
+        logger.error(f"❌❌❌ CRITICAL: Session not found in confirm_generation! user_id={user_id}, available_sessions={list(user_sessions.keys())[:10]}")
+        await send_or_edit_message("❌ Сессия не найдена. Пожалуйста, начните заново с /start")
         return ConversationHandler.END
     
     session = user_sessions[user_id]
+    logger.info(f"✅✅✅ Session found in confirm_generation: user_id={user_id}, model_id={session.get('model_id')}, params_keys={list(session.get('params', {}).keys())}")
     model_id = session.get('model_id')
     params = session.get('params', {})
     model_info = session.get('model_info', {})
