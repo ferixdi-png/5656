@@ -9172,6 +9172,14 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     has_image_input = 'image_input' in properties
     has_image_urls = 'image_urls' in properties
     logger.info(f"🔥🔥🔥 INPUT_PARAMETERS SESSION: user_id={user_id}, model_id={model_id}, waiting_for={waiting_for}, has_image_input={has_image_input}, has_image_urls={has_image_urls}")
+    
+    # CRITICAL: Define models_only_image at function level so it's available everywhere
+    models_only_image = [
+        "recraft/remove-background",
+        "recraft/crisp-upscale",
+        "topaz/image-upscale",
+        "ideogram/v3-reframe"
+    ]
     logger.info(f"🔥🔥🔥 INPUT_PARAMETERS SESSION KEYS: {list(session.keys())[:15]}")
     logger.info(f"🔥🔥🔥 INPUT_PARAMETERS PARAMS: keys={list(params.keys())}, values={[(k, type(v).__name__, len(v) if isinstance(v, (list, dict)) else 'N/A') for k, v in params.items()][:5]}")
     
@@ -10458,6 +10466,9 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 is_admin_user = get_is_admin(user_id)
                 
                 logger.info(f"✅ All parameters collected for {model_id}, showing generate button with price. Params: {list(params.keys())}")
+                
+                # CRITICAL: Log models_only_image check
+                logger.info(f"🔍🔍🔍 Checking auto-start: model_id={model_id}, models_only_image={models_only_image}, is_in_list={model_id in models_only_image}")
                 
                 # CRITICAL: For image-only models, automatically start generation instead of showing button
                 if model_id in models_only_image:
