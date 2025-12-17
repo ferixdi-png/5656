@@ -8698,6 +8698,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 user_sessions[user_id]['current_param'] = param_name
                 user_sessions[user_id]['waiting_for'] = param_name  # Use actual parameter name
+                # CRITICAL: Initialize image_input/image_urls array for image-only models
+                if param_name not in user_sessions[user_id]:
+                    user_sessions[user_id][param_name] = []
+                logger.info(f"🔥🔥🔥 SET waiting_for={param_name} for model {model_id}, user {user_id}, initialized {param_name} array")
             else:
                 # If no prompt, start with first required parameter
                 await start_next_parameter(update, context, user_id)
@@ -9123,6 +9127,12 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     has_audio = bool(update.message and (update.message.audio or update.message.voice))
     has_document = bool(update.message and update.message.document)
     logger.info(f"🔥🔥🔥 INPUT_PARAMETERS ENTRY: user_id={user_id}, has_photo={has_photo}, has_text={has_text}, has_audio={has_audio}, has_document={has_document}, update_type={type(update).__name__}")
+    
+    # CRITICAL: Log photo details if photo is present
+    if has_photo and update.message.photo:
+        photo_count = len(update.message.photo) if update.message.photo else 0
+        photo_file_id = update.message.photo[-1].file_id if update.message.photo else 'None'
+        logger.info(f"🔥🔥🔥 PHOTO DETECTED: user_id={user_id}, photo_count={photo_count}, file_id={photo_file_id}")
     if update.message:
         logger.info(f"🔥🔥🔥 INPUT_PARAMETERS MESSAGE: message_id={update.message.message_id}, chat_id={update.message.chat_id}, date={update.message.date}, from_user_id={update.message.from_user.id if update.message.from_user else 'None'}")
         if has_photo:
