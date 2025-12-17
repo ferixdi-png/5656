@@ -1,0 +1,30 @@
+{
+  "total_models": 1,
+  "tested_models": 1,
+  "successful": 0,
+  "failed": 1,
+  "skipped": 0,
+  "errors": [],
+  "results": [
+    {
+      "model_id": "z-image",
+      "model_name": "Z-Image",
+      "status": "failed",
+      "error": "You do not have access permissions",
+      "task_id": null,
+      "test_params": {
+        "prompt": "Test generation - автоматическое тестирование",
+        "aspect_ratio": "1:1"
+      },
+      "api_params": {
+        "prompt": "Test generation - автоматическое тестирование",
+        "aspect_ratio": "1:1"
+      },
+      "api_response": {
+        "ok": false,
+        "error": "You do not have access permissions"
+      },
+      "timestamp": "2025-12-17T17:03:31.186553"
+    }
+  ]
+}

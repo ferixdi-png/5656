@@ -192,6 +192,13 @@ class KIEClient:
         if callback_url:
             payload["callBackUrl"] = callback_url
         
+        # CRITICAL: Log exact payload being sent to KIE API (for compliance verification)
+        import json
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"📤 KIE API Request: POST {url}")
+        logger.info(f"📤 KIE API Payload: {json.dumps(payload, ensure_ascii=False, indent=2)}")
+        
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=self.timeout)) as s:
                 async with s.post(url, headers=self._headers(), json=payload) as resp:
@@ -206,20 +213,42 @@ class KIEClient:
                                 else:
                                     return {'ok': False, 'error': 'No taskId in response'}
                             else:
-                                return {'ok': False, 'error': data.get('msg', 'Unknown error')}
+                                error_msg = data.get('msg', 'Unknown error')
+                                logger.error(f"❌ KIE API Error (code {data.get('code')}): {error_msg}")
+                                logger.error(f"❌ KIE API Full Response: {json.dumps(data, ensure_ascii=False, indent=2)}")
+                                return {'ok': False, 'error': error_msg}
                         except Exception as e:
+                            logger.error(f"❌ Failed to parse KIE API response: {e}, text: {text[:500]}")
                             return {'ok': False, 'error': f'Failed to parse response: {e}'}
                     else:
+                        # CRITICAL: Log full error response for debugging 422 and other errors
                         try:
                             error_data = await resp.json()
                             error_msg = error_data.get('msg', text)
+                            error_code = error_data.get('code', resp.status)
+                            logger.error(f"❌ KIE API HTTP {resp.status} Error (code {error_code}): {error_msg}")
+                            logger.error(f"❌ KIE API Full Error Response: {json.dumps(error_data, ensure_ascii=False, indent=2)}")
                         except:
                             error_msg = text
+                            logger.error(f"❌ KIE API HTTP {resp.status} Error (raw): {text[:500]}")
                         return {'ok': False, 'status': resp.status, 'error': error_msg}
         except asyncio.TimeoutError:
+            logger.error(f"❌ KIE API Request timeout after {self.timeout}s")
             return {'ok': False, 'error': 'Request to KIE timed out'}
+        except aiohttp.ClientError as e:
+            # CRITICAL: Log connection errors (RemoteDisconnected, etc.)
+            error_str = str(e)
+            logger.error(f"❌ KIE API Connection Error: {error_str}")
+            logger.error(f"❌ KIE API Connection Error Type: {type(e).__name__}")
+            # For 422-like errors, include more context
+            if '422' in error_str or 'RemoteDisconnected' in error_str or 'Connection aborted' in error_str:
+                logger.error(f"❌ KIE API Payload that caused error: {json.dumps(payload, ensure_ascii=False, indent=2)}")
+            return {'ok': False, 'error': error_str}
         except Exception as e:
-            return {'ok': False, 'error': str(e)}
+            error_str = str(e)
+            logger.error(f"❌ KIE API Unexpected Error: {error_str}")
+            logger.error(f"❌ KIE API Error Type: {type(e).__name__}")
+            return {'ok': False, 'error': error_str}
     
     async def get_task_status(self, task_id: str) -> Dict[str, Any]:
         """Get task status and results by task ID."""

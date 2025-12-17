@@ -1,0 +1,217 @@
+## Render Shared Database Rules
+
+### 🔴 КРИТИЧЕСКИЕ ПРАВИЛА ПОДКЛЮЧЕНИЯ К БД
+
+1. **ВСЕГДА используй `process.env.DATABASE_URL` (Python: `os.getenv('DATABASE_URL')`)**
+   - Render автоматически injectит DATABASE_URL из "Connections" в Environment Variables
+   - НЕ создавай локальные БД или отдельные инстансы
+   - Только shared PostgreSQL на Render для всех сервисов
+
+2. **Connection Pooling ОБЯЗАТЕЛЕН**
+   - Python: используй `asyncpg.create_pool()` для async операций
+   - Node.js: используй `pg.Pool()` с connectionString
+   - НЕ создавай новые соединения для каждого запроса
+
+3. **Environment Variables**
+   - При деплое: Render auto-injectит DATABASE_URL из "Connections" твоей БД
+   - Локально: создай `.env` с `DATABASE_URL=postgres://...` из Render Dashboard
+   - Формат: `postgresql://user:password@host:port/database`
+
+4. **Безопасность**
+   - ВСЕГДА используй parameterized queries против SQL injection
+   - НЕ используй f-strings или конкатенацию для SQL запросов
+   - Используй `%s` (psycopg2) или `$1, $2...` (asyncpg) для параметров
+
+---
+
+## 📋 ПРИМЕРЫ КОДА
+
+### Python (asyncpg) - РЕКОМЕНДУЕТСЯ для async ботов
+
+```python
+import os
+import asyncpg
+from typing import Optional
+
+# Глобальный пул соединений
+_pool: Optional[asyncpg.Pool] = None
+
+async def get_pool() -> asyncpg.Pool:
+    """Получает или создает пул соединений с БД."""
+    global _pool
+    if _pool is None:
+        DATABASE_URL = os.getenv('DATABASE_URL')
+        if not DATABASE_URL:
+            raise ValueError("DATABASE_URL не установлен в переменных окружения")
+        
+        _pool = await asyncpg.create_pool(
+            DATABASE_URL,
+            min_size=1,
+            max_size=10,
+            command_timeout=60
+        )
+    return _pool
+
+async def init_db():
+    """Инициализирует БД при старте приложения."""
+    pool = await get_pool()
+    # Выполняем миграции/схему
+    async with pool.acquire() as conn:
+        # Создание таблиц и т.д.
+        pass
+
+# Пример использования
+async def get_user(user_id: int):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT * FROM users WHERE id = $1",
+            user_id
+        )
+        return dict(row) if row else None
+```
+
+### Python (psycopg2) - для синхронных операций
+
+```python
+import os
+import psycopg2
+from psycopg2.pool import SimpleConnectionPool
+from contextlib import contextmanager
+
+_pool: Optional[SimpleConnectionPool] = None
+
+def get_connection_pool():
+    """Создает и возвращает пул соединений с БД."""
+    global _pool
+    if _pool is None:
+        DATABASE_URL = os.getenv('DATABASE_URL')
+        if not DATABASE_URL:
+            raise ValueError("DATABASE_URL не установлен")
+        
+        _pool = SimpleConnectionPool(
+            minconn=1,
+            maxconn=10,
+            dsn=DATABASE_URL
+        )
+    return _pool
+
+@contextmanager
+def get_db_connection():
+    """Контекстный менеджер для получения соединения."""
+    pool = get_connection_pool()
+    conn = pool.getconn()
+    try:
+        yield conn
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise
+    finally:
+        pool.putconn(conn)
+
+# Пример использования
+def get_user(user_id: int):
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT * FROM users WHERE id = %s",
+                (user_id,)  # Parameterized query
+            )
+            return cur.fetchone()
+```
+
+### Node.js (pg)
+
+```javascript
+const { Pool } = require('pg');
+
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false  // Для Render PostgreSQL
+    },
+    max: 10,  // Максимум соединений в пуле
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+});
+
+// Пример использования
+async function getUser(userId) {
+    const result = await pool.query(
+        'SELECT * FROM users WHERE id = $1',
+        [userId]  // Parameterized query
+    );
+    return result.rows[0];
+}
+```
+
+---
+
+## 🚀 ИНСТРУКЦИИ ПО ДЕПЛОЮ
+
+### 1. Render Dashboard → Service → Environment
+   - Нажми "Connect to Database"
+   - Выбери общую PostgreSQL БД
+   - Render автоматически добавит `DATABASE_URL` в Environment Variables
+
+### 2. Локальная разработка
+   - Создай `.env` файл в корне проекта
+   - Добавь: `DATABASE_URL=postgresql://user:password@host:port/database`
+   - Получи DATABASE_URL из Render Dashboard → Database → Connections
+
+### 3. Проверка подключения
+   ```python
+   # Python
+   import os
+   DATABASE_URL = os.getenv('DATABASE_URL')
+   print(f"Database: {DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else 'Not set'}")
+   ```
+
+---
+
+## 📊 ИНФОРМАЦИЯ О ПОДКЛЮЧЕНИИ
+
+**Render PostgreSQL Database:**
+- Hostname: `dpg-d50f1hvgi27c73ajfos0-a`
+- Port: `5432`
+- Database: `telegrambot_j6cd`
+- Username: `telegrambot_j6cd_user`
+- Connection String: Получи из Render Dashboard → Database → Connections
+
+**ВАЖНО:** Не используй эти значения напрямую - всегда используй `DATABASE_URL` из environment variables!
+
+---
+
+## ⚠️ ЧАСТЫЕ ОШИБКИ
+
+1. ❌ **НЕ создавай локальные БД для dev/prod**
+   - ✅ Используй только shared Render PostgreSQL
+
+2. ❌ **НЕ используй прямые значения host/port/user/password**
+   - ✅ Всегда используй `DATABASE_URL` из environment
+
+3. ❌ **НЕ создавай новое соединение для каждого запроса**
+   - ✅ Используй connection pool
+
+4. ❌ **НЕ используй f-strings в SQL запросах**
+   - ✅ Всегда используй parameterized queries
+
+5. ❌ **НЕ забывай закрывать соединения**
+   - ✅ Используй context managers или async with
+
+---
+
+## 🔧 РЕКОМЕНДАЦИИ
+
+- Для Telegram ботов (async): используй `asyncpg`
+- Для веб-серверов (sync): используй `psycopg2`
+- Для Node.js: используй `pg` с Pool
+- Всегда используй connection pooling
+- Настройте таймауты для запросов
+- Логируй ошибки подключения к БД
+
+---
+
+**ПРАВИЛО #1:** Всегда используй `DATABASE_URL` из environment variables, никогда не хардкодь значения подключения!
+

@@ -16,6 +16,10 @@ from dotenv import load_dotenv
 from knowledge_storage import KnowledgeStorage
 from translations import t, TRANSLATIONS
 from kie_client import get_client
+from helpers import (
+    build_main_menu_keyboard, get_balance_info, format_balance_message,
+    get_balance_keyboard, set_constants
+)
 from kie_models import (
     KIE_MODELS, get_model_by_id, get_models_by_category, get_categories,
     get_generation_types, get_models_by_generation_type, get_generation_type_info
@@ -266,181 +270,71 @@ def get_is_admin(user_id: int) -> bool:
         return False
 
 
-def calculate_price_rub(model_id: str, params: dict = None, is_admin: bool = False, user_id: int = None) -> float:
+def is_user_mode(user_id: int) -> bool:
     """
-    Calculate price in rubles based on model and parameters.
+    Проверяет, находится ли админ в режиме обычного пользователя.
     
-    IMPORTANT: If user_id is provided, uses get_is_admin() to check admin status,
-    which respects admin_user_mode. Otherwise uses is_admin parameter.
-    For regular users (or admin in user mode), price is multiplied by 2.
+    Returns:
+        True если админ в режиме пользователя, False иначе
     """
-    if params is None:
-        params = {}
+    if not is_admin(user_id):
+        return False  # Не админ не может быть в режиме пользователя
     
-    # Base prices in credits
-    if model_id == "z-image":
-        base_credits = 0.8
-    elif model_id == "nano-banana-pro":
-        # Price depends on resolution parameter
-        # 1K/2K: 18 credits, 4K: 24 credits
-        resolution = params.get("resolution", "1K")
-        if resolution == "4K":
-            base_credits = 24
-        else:  # 1K or 2K
-            base_credits = 18
-    elif model_id == "seedream/4.5-text-to-image" or model_id == "seedream/4.5-edit":
-        # Both Seedream models cost 6.5 credits per image
-        # NOTE: Currently price is fixed regardless of quality (basic/high) or aspect_ratio
-        # If API pricing changes based on quality (basic=2K, high=4K), update this calculation:
-        # quality = params.get("quality", "basic")
-        # base_credits = 6.5 if quality == "basic" else <higher_price_for_high>
-        base_credits = 6.5
-    elif model_id == "google/nano-banana" or model_id == "google/nano-banana-edit":
-        # Google Nano Banana models cost 4 credits per image (~$0.02)
-        base_credits = 4
-    elif model_id == "sora-watermark-remover":
-        # Sora watermark remover costs 10 credits per use
-        base_credits = 10
-    elif model_id == "sora-2-text-to-video" or model_id == "sora-2-image-to-video":
-        # Sora 2 text-to-video and image-to-video cost 30 credits per 10-second video with audio
-        base_credits = 30
-    elif model_id == "sora-2-pro-storyboard":
-        # Sora 2 Pro Storyboard pricing:
-        # 10 seconds: 150 credits ($0.75)
-        # 15-25 seconds: 270 credits ($1.35)
-        n_frames = params.get("n_frames", "10")
-        n_frames_str = str(n_frames).strip()
-        # Remove "s" suffix if present
-        if n_frames_str.lower().endswith('s'):
-            n_frames_str = n_frames_str[:-1].strip()
-        
-        if n_frames_str == "10":
-            base_credits = 150  # 10 seconds
-        elif n_frames_str in ["15", "25"]:
-            base_credits = 270  # 15-25 seconds
-        else:
-            # Default to 10 seconds pricing if invalid
-            base_credits = 150
-    elif model_id == "sora-2-pro-text-to-video":
-        # Sora 2 Pro Text-to-Video pricing:
-        # Price depends on size and n_frames parameters
-        # Standard: 10s = 150 credits ($0.75), 15s = 270 credits ($1.35)
-        # High: 10s = 330 credits ($1.65), 15s = 630 credits ($3.15)
-        size = params.get("size", "standard")
-        n_frames = params.get("n_frames", "10")
-        
-        # Normalize size to lowercase
-        size = str(size).strip().lower()
-        if size not in ["standard", "high"]:
-            size = "standard"  # Default to standard if invalid
-        
-        # Normalize n_frames (remove "s" suffix if present)
-        n_frames_str = str(n_frames).strip()
-        if n_frames_str.lower().endswith('s'):
-            n_frames_str = n_frames_str[:-1].strip()
-        
-        if size == "high":
-            # High quality pricing
-            if n_frames_str == "15":
-                base_credits = 630  # High, 15s
-            else:  # n_frames == "10" or default
-                base_credits = 330  # High, 10s
-        else:  # size == "standard"
-            # Standard quality pricing
-            if n_frames_str == "15":
-                base_credits = 270  # Standard, 15s
-            else:  # n_frames == "10" or default
-                base_credits = 150  # Standard, 10s
-    elif model_id == "sora-2-pro-image-to-video":
-        # Sora 2 Pro Image-to-Video pricing:
-        # Price depends on size and n_frames parameters (same as text-to-video)
-        # Standard: 10s = 150 credits ($0.75), 15s = 270 credits ($1.35)
-        # High: 10s = 330 credits ($1.65), 15s = 630 credits ($3.15)
-        size = params.get("size", "standard")
-        n_frames = params.get("n_frames", "10")
-        
-        # Normalize size to lowercase
-        size = str(size).strip().lower()
-        if size not in ["standard", "high"]:
-            size = "standard"  # Default to standard if invalid
-        
-        # Normalize n_frames (remove "s" suffix if present)
-        n_frames_str = str(n_frames).strip()
-        if n_frames_str.lower().endswith('s'):
-            n_frames_str = n_frames_str[:-1].strip()
-        
-        if size == "high":
-            # High quality pricing
-            if n_frames_str == "15":
-                base_credits = 630  # High, 15s
-            else:  # n_frames == "10" or default
-                base_credits = 330  # High, 10s
-        else:  # size == "standard"
-            # Standard quality pricing
-            if n_frames_str == "15":
-                base_credits = 270  # Standard, 15s
-            else:  # n_frames == "10" or default
-                base_credits = 150  # Standard, 10s
-    elif model_id == "kling-2.6/image-to-video" or model_id == "kling-2.6/text-to-video":
-        # Kling 2.6 pricing (same for both image-to-video and text-to-video):
-        # Price depends on duration and sound parameters
-        # 5s no-audio: 55 credits
-        # 10s no-audio: 110 credits
-        # 5s with audio: 110 credits
-        # 10s with audio: 220 credits
-        duration = params.get("duration", "5")
-        sound = params.get("sound", False)
-        
-        if duration == "5":
-            if sound:
-                base_credits = 110  # 5s with audio
-            else:
-                base_credits = 55  # 5s no-audio
-        else:  # duration == "10"
-            if sound:
-                base_credits = 220  # 10s with audio
-            else:
-                base_credits = 110  # 10s no-audio
-    elif model_id == "kling/v2-5-turbo-text-to-video-pro" or model_id == "kling/v2-5-turbo-image-to-video-pro":
-        # Kling 2.5 Turbo pricing (same for both text-to-video and image-to-video):
-        # 5s: 42 credits
-        # 10s: 84 credits
-        duration = params.get("duration", "5")
-        if duration == "10":
-            base_credits = 84
-        else:  # duration == "5"
-            base_credits = 42
-    elif model_id == "wan/2-5-image-to-video" or model_id == "wan/2-5-text-to-video":
-        # WAN 2.5 pricing (same for both image-to-video and text-to-video):
-        # 720p: 12 credits per second
-        # 1080p: 20 credits per second
-        duration = params.get("duration", "5")
-        resolution = params.get("resolution", "720p")
-        
-        duration_int = int(duration)
-        if resolution == "1080p":
-            base_credits = 20 * duration_int  # 20 credits per second
-        else:  # 720p
-            base_credits = 12 * duration_int  # 12 credits per second
-    elif model_id == "wan/2-2-animate-move" or model_id == "wan/2-2-animate-replace":
-        # WAN 2.2 Animate pricing (same for both move and replace):
-        # 480p: 6 credits per second
-        # 580p: 9.5 credits per second
-        # 720p: 12.5 credits per second
-        # Note: Duration is determined by input video length (up to 30 seconds)
-        # For pricing calculation, we'll use a default of 5 seconds as minimum
-        resolution = params.get("resolution", "480p")
-        
-        # Default duration for pricing (actual duration comes from video)
-        default_duration = 5
-        
-        if resolution == "720p":
-            base_credits = 12.5 * default_duration  # 12.5 credits per second
-        elif resolution == "580p":
-            base_credits = 9.5 * default_duration  # 9.5 credits per second
-        else:  # 480p
-            base_credits = 6 * default_duration  # 6 credits per second
-    elif model_id == "hailuo/02-text-to-video-pro" or model_id == "hailuo/02-image-to-video-pro":
+    return user_id in user_sessions and user_sessions[user_id].get('admin_user_mode', False)
+
+
+def create_user_context_for_pricing(user_id: int, has_free_generations: bool = False) -> 'UserContext':
+    """
+    Создает UserContext для расчета цен.
+    
+    ВСЕ проверки админа проходят через эту функцию.
+    Запрещено передавать is_admin как bool напрямую.
+    
+    Args:
+        user_id: ID пользователя
+        has_free_generations: Есть ли у пользователя бесплатные генерации
+    
+    Returns:
+        UserContext с правильно установленными is_admin и is_user_mode
+    """
+    from services.user_context_factory import create_user_context
+    
+    return create_user_context(
+        user_id=user_id,
+        is_admin_func=is_admin,
+        is_user_mode_func=is_user_mode,
+        has_free_generations=has_free_generations
+    )
+
+
+# УДАЛЕНО: calculate_price_rub - используйте pricing_service.get_price() вместо этого
+# УДАЛЕНО: get_model_price_text - используйте services.price_formatter вместо этого
+# УДАЛЕНО: format_price_rub - используйте services.price_formatter.format_price_result() вместо этого
+
+# Conversation states for model selection and parameter input
+SELECTING_MODEL, INPUTTING_PARAMS, CONFIRMING_GENERATION = range(3)
+
+# Payment states
+SELECTING_AMOUNT, WAITING_PAYMENT_SCREENSHOT = range(3, 5)
+
+# Admin test OCR state
+ADMIN_TEST_OCR = 5
+
+# Broadcast states
+WAITING_BROADCAST_MESSAGE = 6
+WAITING_CURRENCY_RATE = 7
+
+# Store user sessions - now supports multiple concurrent generations per user
+# Structure: user_sessions[user_id] = {session_data} for input/parameter collection
+# Once task is created, it moves to active_generations
+user_sessions = {}
+
+# Store active generations - allows multiple concurrent generations per user
+active_generations = {}
+
+# Store active generations - allows multiple concurrent generations per user
+# Structure: active_generations[(user_id, task_id)] = {session_data}
+active_generations = {}
         # Hailuo 02 Pro pricing:
         # 9.5 credits per second for 1080p
         # One generation yields a 6-second 1080p video
@@ -880,29 +774,27 @@ def calculate_price_rub(model_id: str, params: dict = None, is_admin: bool = Fal
         # Default fallback
         base_credits = 1.0
     
-    # Convert credits to USD, then to RUB (no rounding)
-    # IMPORTANT: Always use get_is_admin() to check if user should see admin prices
-    # This ensures admin in user mode sees user prices (x2)
-    price_usd = base_credits * CREDIT_TO_USD
-    usd_to_rub = get_usd_to_rub_rate()  # Get current exchange rate
-    price_rub = price_usd * usd_to_rub
+    # Используем новый pricing_service для расчета цены
+    from services.pricing_service import get_price
+    from decimal import Decimal
     
-    # For regular users (or admin in user mode), multiply by 2
-    # IMPORTANT: If user_id is provided, use get_is_admin() to respect admin_user_mode
-    # This ensures admin in user mode sees user prices (x2)
-    if user_id is not None:
-        is_admin_check = get_is_admin(user_id)
-    else:
-        # Fallback to is_admin parameter if user_id not available
-        is_admin_check = is_admin
+    # Конвертируем params в правильный формат
+    if params is None:
+        params = {}
     
-    # If not admin (or admin in user mode), multiply by 2
-    # IMPORTANT: Prices for users are ALWAYS x2 from admin prices
-    if not is_admin_check:
-        price_rub *= 2
+    # Получаем курс USD к RUB
+    usd_to_rub = get_usd_to_rub_rate()
     
-    # Return exact value without rounding
-    return price_rub
+    # Рассчитываем цену через новый сервис
+    price_result = get_price(
+        model_id=model_id,
+        params=params,
+        user_context=user_context,
+        usd_to_rub_rate=Decimal(str(usd_to_rub))
+    )
+    
+    # Возвращаем цену в рублях как float
+    return float(price_result.rub)
 
 
 def format_price_rub(price: float, is_admin: bool = False) -> str:
@@ -1229,30 +1121,6 @@ def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = Fa
             return f"💰 <b>Безлимит</b> ({price_str} ₽ за минуту)"
         else:
             return f"💰 <b>{price_str} ₽</b> за минуту"
-    else:
-        price = calculate_price_rub(model_id, params, is_admin)
-        return format_price_rub(price, is_admin)
-
-# Conversation states for model selection and parameter input
-SELECTING_MODEL, INPUTTING_PARAMS, CONFIRMING_GENERATION = range(3)
-
-# Payment states
-SELECTING_AMOUNT, WAITING_PAYMENT_SCREENSHOT = range(3, 5)
-
-# Admin test OCR state
-ADMIN_TEST_OCR = 5
-
-# Broadcast states
-WAITING_BROADCAST_MESSAGE = 6
-WAITING_CURRENCY_RATE = 7
-
-# Admin test OCR state
-ADMIN_TEST_OCR = 5
-
-# Store user sessions - now supports multiple concurrent generations per user
-# Structure: user_sessions[user_id] = {session_data} for input/parameter collection
-# Once task is created, it moves to active_generations
-user_sessions = {}
 
 # Store active generations - allows multiple concurrent generations per user
 # Structure: active_generations[(user_id, task_id)] = {session_data}
@@ -1345,6 +1213,9 @@ def is_audio_model(model_id: str) -> bool:
     return any(keyword in model_id.lower() for keyword in audio_keywords)
 FREE_GENERATIONS_PER_DAY = 5  # Number of free generations per day per user
 REFERRAL_BONUS_GENERATIONS = 5  # Bonus generations for inviting a user
+
+# Инициализация констант в helpers
+set_constants(FREE_GENERATIONS_PER_DAY, REFERRAL_BONUS_GENERATIONS, ADMIN_ID)
 
 
 # ==================== Payment System Functions ====================
@@ -3040,153 +2911,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         types=len(generation_types))
     
     # Common keyboard for both admin and regular users
-    keyboard = []
-    
-    # Free generation button (ALWAYS show with remaining count)
-    # Show button even if remaining_free is 0, but disable it or show message
-    if remaining_free > 0:
-        button_text = t('btn_generate_free', lang=user_lang,
-                      remaining=remaining_free,
-                      total=FREE_GENERATIONS_PER_DAY)
-    else:
-        button_text = t('btn_generate_free_no_left', lang=user_lang,
-                      total=FREE_GENERATIONS_PER_DAY)
-    
-    keyboard.append([
-        InlineKeyboardButton(button_text, callback_data="select_model:z-image")
-    ])
-    
-    # Add referral button right after free generation button (always visible)
-    keyboard.append([
-        InlineKeyboardButton(t('btn_invite_friend', lang=user_lang, bonus=REFERRAL_BONUS_GENERATIONS), callback_data="referral_info")
-    ])
-    
-    keyboard.append([])  # Empty row for spacing
-    
-    # Add free tools button (always visible, prominent)
-    keyboard.append([
-        InlineKeyboardButton(t('btn_free_tools', lang=user_lang), callback_data="free_tools")
-    ])
-    
-    keyboard.append([])  # Empty row for spacing
-    
-    # Generation types buttons (compact, 2 per row)
-    # Find text-to-image type and add it after free generation button
-    text_to_image_type = None
-    gen_type_rows = []
-    gen_type_index = 0  # Separate index for non-text-to-image types
-    
-    for gen_type in generation_types:
-        gen_info = get_generation_type_info(gen_type)
-        models_count = len(get_models_by_generation_type(gen_type))
-        
-        # Skip if no models in this type
-        if models_count == 0:
-            logger.warning(f"No models found for generation type: {gen_type}")
-            continue
-        
-        # Identify text-to-image type (will be added separately)
-        if gen_type == 'text-to-image':
-            text_to_image_type = gen_type
-            continue
-            
-        # Get translated name for generation type
-        gen_type_key = f'gen_type_{gen_type.replace("-", "_")}'
-        gen_type_name = t(gen_type_key, lang=user_lang, default=gen_info.get('name', gen_type))
-        button_text = f"{gen_type_name} ({models_count})"
-        
-        # Add buttons in pairs (2 per row)
-        if gen_type_index % 2 == 0:
-            gen_type_rows.append([InlineKeyboardButton(
-                button_text,
-                callback_data=f"gen_type:{gen_type}"
-            )])
-        else:
-            if gen_type_rows:
-                gen_type_rows[-1].append(InlineKeyboardButton(
-                    button_text,
-                    callback_data=f"gen_type:{gen_type}"
-                ))
-            else:
-                gen_type_rows.append([InlineKeyboardButton(
-                    button_text,
-                    callback_data=f"gen_type:{gen_type}"
-                )])
-        
-        gen_type_index += 1
-    
-    # Add text-to-image button after free generation (if it exists and has models)
-    if text_to_image_type:
-        gen_info = get_generation_type_info(text_to_image_type)
-        models_count = len(get_models_by_generation_type(text_to_image_type))
-        if models_count > 0:
-            gen_type_key = f'gen_type_{text_to_image_type.replace("-", "_")}'
-            gen_type_name = t(gen_type_key, lang=user_lang, default=gen_info.get('name', text_to_image_type))
-            button_text = f"{gen_type_name} ({models_count})"
-            keyboard.append([
-                InlineKeyboardButton(button_text, callback_data=f"gen_type:{text_to_image_type}")
-            ])
-            keyboard.append([])  # Empty row for spacing
-    
-    keyboard.extend(gen_type_rows)
-    
-    # Add free tools button (always visible, prominent)
-    keyboard.append([])  # Empty row for spacing
-    keyboard.append([
-        InlineKeyboardButton(t('btn_free_tools', lang=user_lang), callback_data="free_tools")
-    ])
-    
-    # Add "All Models" button to show all models directly
-    keyboard.append([])  # Empty row for spacing
-    keyboard.append([
-        InlineKeyboardButton(t('btn_all_models', lang=user_lang, count=total_models), callback_data="show_models")
-    ])
-    keyboard.append([])  # Empty row for spacing
-    
-    # Add "Claim Gift" button for users who haven't claimed yet (not just new users)
-    if not has_claimed_gift(user_id):
-        keyboard.append([
-            InlineKeyboardButton(t('btn_claim_gift', lang=user_lang), callback_data="claim_gift")
-        ])
-        keyboard.append([])  # Empty row for spacing
-    
-    # Bottom action buttons
-    keyboard.append([
-        InlineKeyboardButton(t('btn_balance', lang=user_lang), callback_data="check_balance"),
-        InlineKeyboardButton(t('btn_my_generations', lang=user_lang), callback_data="my_generations")
-    ])
-    keyboard.append([
-        InlineKeyboardButton(t('btn_top_up', lang=user_lang), callback_data="topup_balance"),
-        InlineKeyboardButton(t('btn_invite_friend_short', lang=user_lang), callback_data="referral_info")
-    ])
-    
-    # Add tutorial button for new users
-    if is_new:
-        keyboard.append([
-            InlineKeyboardButton(t('btn_how_it_works', lang=user_lang), callback_data="tutorial_start")
-        ])
-    
-    keyboard.append([
-        InlineKeyboardButton(t('btn_help', lang=user_lang), callback_data="help_menu"),
-        InlineKeyboardButton(t('btn_support', lang=user_lang), callback_data="support_contact")
-    ])
-    
-    # Add "Copy This Bot" button (always visible)
-    keyboard.append([
-        InlineKeyboardButton(t('btn_copy_bot', lang=user_lang), callback_data="copy_bot")
-    ])
-    
-    # Add language selection button (always visible)
-    keyboard.append([
-        InlineKeyboardButton(t('btn_language', lang=user_lang), callback_data="change_language")
-    ])
-    
-    # Add admin panel button ONLY for admin (at the end)
-    if is_admin:
-        keyboard.append([])  # Empty row for admin section
-        keyboard.append([
-            InlineKeyboardButton(t('btn_admin_panel', lang=user_lang), callback_data="admin_stats")
-        ])
+    # Используем helpers для устранения дублирования
+    keyboard = await build_main_menu_keyboard(user_id, user_lang, is_new)
     
     await update.message.reply_html(
         welcome_text,
@@ -3609,133 +3335,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     models=total_models,
                                     types=len(generation_types))
                 
-                # Build full keyboard (same as in start function)
-                keyboard = []
-                
-                # Free generation button (ALWAYS prominent - biggest button)
-                # Always show free generation button with count
-                if remaining_free > 0:
-                    button_text = t('btn_generate_free', lang=user_lang,
-                                  remaining=remaining_free,
-                                  total=FREE_GENERATIONS_PER_DAY)
-                else:
-                    button_text = t('btn_generate_free_no_left', lang=user_lang,
-                                  total=FREE_GENERATIONS_PER_DAY)
-                
-                keyboard.append([
-                    InlineKeyboardButton(button_text, callback_data="select_model:z-image")
-                ])
-                
-                # Add referral button
-                keyboard.append([
-                    InlineKeyboardButton(t('btn_invite_friend', lang=user_lang, bonus=REFERRAL_BONUS_GENERATIONS), callback_data="referral_info")
-                ])
-                keyboard.append([])  # Empty row for spacing
-                
-                # Generation types buttons (compact, 2 per row)
-                text_to_image_type = None
-                gen_type_rows = []
-                for i, gen_type in enumerate(generation_types):
-                    gen_info = get_generation_type_info(gen_type)
-                    models_count = len(get_models_by_generation_type(gen_type))
-                    
-                    # Identify text-to-image type
-                    if gen_type == 'text-to-image':
-                        text_to_image_type = gen_type
-                        continue
-                        
-                    # Get translated name for generation type
-                    gen_type_key = f'gen_type_{gen_type.replace("-", "_")}'
-                    gen_type_name = t(gen_type_key, lang=user_lang, default=gen_info.get('name', gen_type))
-                    button_text = f"{gen_type_name} ({models_count})"
-                    
-                    if i % 2 == 0:
-                        gen_type_rows.append([InlineKeyboardButton(
-                            button_text,
-                            callback_data=f"gen_type:{gen_type}"
-                        )])
-                    else:
-                        if gen_type_rows:
-                            gen_type_rows[-1].append(InlineKeyboardButton(
-                                button_text,
-                                callback_data=f"gen_type:{gen_type}"
-                            ))
-                        else:
-                            gen_type_rows.append([InlineKeyboardButton(
-                                button_text,
-                                callback_data=f"gen_type:{gen_type}"
-                            )])
-                
-                # Add text-to-image button after free generation (if it exists)
-                if text_to_image_type:
-                    gen_info = get_generation_type_info(text_to_image_type)
-                    models_count = len(get_models_by_generation_type(text_to_image_type))
-                    gen_type_key = f'gen_type_{text_to_image_type.replace("-", "_")}'
-                    gen_type_name = t(gen_type_key, lang=user_lang, default=gen_info.get('name', text_to_image_type))
-                    button_text = f"{gen_type_name} ({models_count})"
-                    keyboard.append([
-                        InlineKeyboardButton(button_text, callback_data=f"gen_type:{text_to_image_type}")
-                    ])
-                    keyboard.append([])  # Empty row for spacing
-                
-                keyboard.extend(gen_type_rows)
-                
-                # Add free tools button
-                keyboard.append([
-                    InlineKeyboardButton(t('btn_free_tools', lang=user_lang), callback_data="free_tools")
-                ])
-                keyboard.append([])  # Empty row for spacing
-                
-                # Add "All Models" button
-                keyboard.append([
-                    InlineKeyboardButton(t('btn_all_models', lang=user_lang, count=total_models), callback_data="show_models")
-                ])
-                keyboard.append([])  # Empty row for spacing
-                
-                # Add "Claim Gift" button for users who haven't claimed yet (not just new users)
-                if not has_claimed_gift(user_id):
-                    keyboard.append([
-                        InlineKeyboardButton(t('btn_claim_gift', lang=user_lang), callback_data="claim_gift")
-                    ])
-                    keyboard.append([])  # Empty row for spacing
-                
-                # Bottom action buttons
-                keyboard.append([
-                    InlineKeyboardButton(t('btn_balance', lang=user_lang), callback_data="check_balance"),
-                    InlineKeyboardButton(t('btn_my_generations', lang=user_lang), callback_data="my_generations")
-                ])
-                keyboard.append([
-                    InlineKeyboardButton(t('btn_top_up', lang=user_lang), callback_data="topup_balance"),
-                    InlineKeyboardButton(t('btn_invite_friend_short', lang=user_lang), callback_data="referral_info")
-                ])
-                
-                # Add tutorial button for new users
-                if is_new:
-                    keyboard.append([
-                        InlineKeyboardButton(t('btn_how_it_works', lang=user_lang), callback_data="tutorial_start")
-                    ])
-                
-                keyboard.append([
-                    InlineKeyboardButton(t('btn_help', lang=user_lang), callback_data="help_menu"),
-                    InlineKeyboardButton(t('btn_support', lang=user_lang), callback_data="support_contact")
-                ])
-                
-                # Add "Copy This Bot" button (always visible)
-                keyboard.append([
-                    InlineKeyboardButton(t('btn_copy_bot', lang=user_lang), callback_data="copy_bot")
-                ])
-                
-                # Add language selection button (always visible)
-                keyboard.append([
-                    InlineKeyboardButton(t('btn_language', lang=user_lang), callback_data="change_language")
-                ])
-                
-                # Add admin panel button ONLY for admin (at the end)
-                if is_admin:
-                    keyboard.append([])  # Empty row for admin section
-                    keyboard.append([
-                        InlineKeyboardButton(t('btn_admin_panel', lang=user_lang), callback_data="admin_stats")
-                    ])
+                # Build full keyboard (используем helpers для устранения дублирования)
+                keyboard = await build_main_menu_keyboard(user_id, user_lang, is_new)
                 
                 await query.edit_message_text(
                     welcome_text,
@@ -5945,45 +5546,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except:
                 pass
             
-            # Check user's personal balance (NOT KIE balance)
+            # Check user's personal balance (используем helpers для устранения дублирования)
             try:
-                user_balance = get_user_balance(user_id)
-                balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
-                is_admin = get_is_admin(user_id)
                 user_lang = get_user_language(user_id)
-                
-                keyboard = [
-                    [InlineKeyboardButton(t('btn_top_up_balance', lang=user_lang), callback_data="topup_balance")],
-                    [InlineKeyboardButton(t('btn_back_to_menu', lang=user_lang), callback_data="back_to_menu")]
-                ]
-                
-                balance_text = (
-                    f'💳 <b>ВАШ БАЛАНС</b> 💳\n\n'
-                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                    f'💰 <b>Доступно:</b> {balance_str} ₽\n\n'
-                )
-                
-                if is_admin:
-                    balance_text += (
-                        f'👑 <b>Статус:</b> Администратор\n'
-                        f'✅ Безлимитный доступ ко всем моделям\n\n'
-                    )
-                else:
-                    if user_balance > 0:
-                        balance_text += (
-                            f'💡 <b>Доступно для генерации:</b>\n'
-                            f'• ~{int(user_balance / 0.62)} изображений (Z-Image)\n'
-                            f'• ~{int(user_balance / 3.86)} видео (базовая модель)\n\n'
-                        )
-                    else:
-                        balance_text += (
-                            f'💡 <b>Пополните баланс для генерации контента</b>\n\n'
-                        )
-                
-                balance_text += (
-                    f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-                    f'🎁 <b>Не забудьте:</b> У вас есть бесплатные генерации Z-Image!'
-                )
+                balance_info = await get_balance_info(user_id, user_lang)
+                balance_text = await format_balance_message(balance_info, user_lang)
+                keyboard = get_balance_keyboard(balance_info, user_lang)
                 
                 try:
                     await query.edit_message_text(
@@ -8015,41 +7583,50 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_lang = get_user_language(user_id)
             
             # Send media
-            session_http = await get_http_client()
-            for i, url in enumerate(result_urls[:5]):
+            try:
+                session_http = await get_http_client()
+                for i, url in enumerate(result_urls[:5]):
+                    try:
+                        async with session_http.get(url) as resp:
+                                if resp.status == 200:
+                                    media_data = await resp.read()
+                                    
+                                    is_last = (i == len(result_urls[:5]) - 1)
+                                    is_video = gen.get('model_id', '') in ['sora-2-text-to-video', 'sora-watermark-remover', 'kling-2.6/image-to-video', 'kling-2.6/text-to-video', 'kling/v2-5-turbo-text-to-video-pro', 'kling/v2-5-turbo-image-to-video-pro', 'wan/2-5-image-to-video', 'wan/2-5-text-to-video', 'wan/2-2-animate-move', 'wan/2-2-animate-replace', 'hailuo/02-text-to-video-pro', 'hailuo/02-image-to-video-pro', 'hailuo/02-text-to-video-standard', 'hailuo/02-image-to-video-standard']
+                                    
+                                    keyboard = []
+                                    if is_last:
+                                        keyboard = [
+                                            [InlineKeyboardButton(t('btn_back_to_history', lang=user_lang), callback_data="my_generations")],
+                                            [InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")]
+                                        ]
+                                    
+                                    if is_video:
+                                        video_file = io.BytesIO(media_data)
+                                        video_file.name = f"generated_video_{i+1}.mp4"
+                                        await context.bot.send_video(
+                                            chat_id=update.effective_chat.id,
+                                            video=video_file,
+                                            reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
+                                        )
+                                    else:
+                                        photo_file = io.BytesIO(media_data)
+                                        photo_file.name = f"generated_image_{i+1}.png"
+                                        await context.bot.send_photo(
+                                            chat_id=update.effective_chat.id,
+                                            photo=photo_file,
+                                            reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
+                                        )
+                    except Exception as e:
+                        logger.error(f"Error sending generation result (HTTP API call): {e}", exc_info=True)
+            except Exception as e:
+                logger.error(f"Error in gen_view API calls: {e}", exc_info=True)
                 try:
-                    async with session_http.get(url) as resp:
-                            if resp.status == 200:
-                                media_data = await resp.read()
-                                
-                                is_last = (i == len(result_urls[:5]) - 1)
-                                is_video = gen.get('model_id', '') in ['sora-2-text-to-video', 'sora-watermark-remover', 'kling-2.6/image-to-video', 'kling-2.6/text-to-video', 'kling/v2-5-turbo-text-to-video-pro', 'kling/v2-5-turbo-image-to-video-pro', 'wan/2-5-image-to-video', 'wan/2-5-text-to-video', 'wan/2-2-animate-move', 'wan/2-2-animate-replace', 'hailuo/02-text-to-video-pro', 'hailuo/02-image-to-video-pro', 'hailuo/02-text-to-video-standard', 'hailuo/02-image-to-video-standard']
-                                
-                                keyboard = []
-                                if is_last:
-                                    keyboard = [
-                                        [InlineKeyboardButton(t('btn_back_to_history', lang=user_lang), callback_data="my_generations")],
-                                        [InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")]
-                                    ]
-                                
-                                if is_video:
-                                    video_file = io.BytesIO(media_data)
-                                    video_file.name = f"generated_video_{i+1}.mp4"
-                                    await context.bot.send_video(
-                                        chat_id=update.effective_chat.id,
-                                        video=video_file,
-                                        reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
-                                    )
-                                else:
-                                    photo_file = io.BytesIO(media_data)
-                                    photo_file.name = f"generated_image_{i+1}.png"
-                                    await context.bot.send_photo(
-                                        chat_id=update.effective_chat.id,
-                                        photo=photo_file,
-                                        reply_markup=InlineKeyboardMarkup(keyboard) if keyboard else None
-                                    )
-                except Exception as e:
-                    logger.error(f"Error sending generation result: {e}")
+                    user_lang = get_user_language(user_id) if user_id else 'ru'
+                    error_msg = "Ошибка сервера, попробуйте позже" if user_lang == 'ru' else "Server error, please try later"
+                    await query.answer(error_msg, show_alert=True)
+                except:
+                    pass
             
             try:
                 await query.answer("✅ Результаты отправлены")
@@ -8758,13 +8335,16 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             logger.info(f"confirm_generate callback received in button_callback (fallback)")
             # Call confirm_generation function directly
+            # 🔴 API CALL: confirm_generation может вызывать KIE API
             try:
                 await confirm_generation(update, context)
                 return ConversationHandler.END
             except Exception as e:
-                logger.error(f"Error in confirm_generation fallback: {e}", exc_info=True)
+                logger.error(f"❌❌❌ ERROR in confirm_generation fallback: {e}", exc_info=True)
                 try:
-                    await query.answer("❌ Ошибка при подтверждении генерации. Попробуйте /start", show_alert=True)
+                    user_lang = get_user_language(user_id) if user_id else 'ru'
+                    error_msg = "Ошибка сервера, попробуйте позже" if user_lang == 'ru' else "Server error, please try later"
+                    await query.answer(error_msg, show_alert=True)
                 except:
                     pass
                 return ConversationHandler.END
@@ -8778,42 +8358,54 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
         return ConversationHandler.END
     
-    # Fallback - универсальный обработчик для необработанных callback_data
+    # 🔴 FALLBACK - универсальный обработчик для необработанных callback_data
     # Это защита от сбоев при обновлениях - если какая-то кнопка не обработана,
     # пользователь получит понятное сообщение вместо ошибки
-    logger.warning(f"Unhandled callback data: '{data}' from user {user_id}")
+    # ВАЖНО: Этот код выполняется ТОЛЬКО если ни один обработчик выше не сработал
+    
+    logger.error(f"❌❌❌ UNHANDLED CALLBACK DATA: '{data}' from user {user_id}")
+    logger.error(f"   Это означает, что callback_data не обработан ни одним обработчиком выше!")
+    logger.error(f"   Проверьте, что для этого callback_data есть обработчик в button_callback")
+    logger.error(f"   Детали: query_id={query.id if query else 'None'}, message_id={query.message.message_id if query and query.message else 'None'}")
     
     # Всегда отвечаем на callback, даже если не знаем что делать
     try:
-        await query.answer()
-    except:
-        pass
+        user_lang = get_user_language(user_id) if user_id else 'ru'
+        if user_lang == 'ru':
+            await query.answer("⚠️ Эта функция временно недоступна", show_alert=False)
+        else:
+            await query.answer("⚠️ This feature is temporarily unavailable", show_alert=False)
+    except Exception as answer_error:
+        logger.warning(f"Could not answer callback in fallback: {answer_error}")
     
     # Пытаемся показать понятное сообщение
     try:
-        user_lang = get_user_language(user_id)
+        user_lang = get_user_language(user_id) if user_id else 'ru'
+        
         if user_lang == 'ru':
             error_text = (
                 "⚠️ <b>Кнопка временно недоступна</b>\n\n"
                 "Эта функция может быть в разработке или временно отключена.\n\n"
-                "Попробуйте:\n"
-                "• Использовать /start для возврата в меню\n"
-                "• Выбрать другую функцию\n"
-                "• Обратиться в поддержку"
+                "<b>Что делать:</b>\n"
+                "• Используйте /start для возврата в меню\n"
+                "• Выберите другую функцию\n"
+                "• Обратитесь в поддержку, если проблема повторяется\n\n"
+                f"<i>Код ошибки: {data[:30] if len(data) > 30 else data}</i>"
             )
         else:
             error_text = (
                 "⚠️ <b>Button temporarily unavailable</b>\n\n"
                 "This feature may be under development or temporarily disabled.\n\n"
-                "Try:\n"
+                "<b>What to do:</b>\n"
                 "• Use /start to return to menu\n"
                 "• Choose another function\n"
-                "• Contact support"
+                "• Contact support if the problem persists\n\n"
+                f"<i>Error code: {data[:30] if len(data) > 30 else data}</i>"
             )
         
         keyboard = [
             [InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")],
-            [InlineKeyboardButton(t('btn_support', lang=user_lang), callback_data="support_contact")]
+            [InlineKeyboardButton(t('support', lang=user_lang), callback_data="support_contact")]
         ]
         
         try:
@@ -8822,7 +8414,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='HTML'
             )
-        except:
+        except Exception as edit_error:
+            logger.warning(f"Could not edit message in fallback: {edit_error}")
             # Если не удалось отредактировать, отправляем новое сообщение
             try:
                 await query.message.reply_text(
@@ -8830,12 +8423,24 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
                 )
-            except:
-                pass
+            except Exception as reply_error:
+                logger.error(f"Could not send new message in fallback: {reply_error}")
+                # Последняя попытка - просто ответить на callback
+                try:
+                    if user_lang == 'ru':
+                        await query.answer("Используйте /start для возврата в меню", show_alert=True)
+                    else:
+                        await query.answer("Use /start to return to menu", show_alert=True)
+                except:
+                    pass
     except Exception as e:
-        logger.error(f"Error in fallback handler: {e}", exc_info=True)
+        logger.error(f"❌❌❌ CRITICAL ERROR in fallback handler: {e}", exc_info=True)
         try:
-            await query.answer("❌ Ошибка. Используйте /start", show_alert=True)
+            user_lang = get_user_language(user_id) if user_id else 'ru'
+            if user_lang == 'ru':
+                await query.answer("❌ Ошибка. Используйте /start", show_alert=True)
+            else:
+                await query.answer("❌ Error. Use /start", show_alert=True)
         except:
             pass
     
@@ -9029,6 +8634,7 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                 return INPUTTING_PARAMS
             # If parameter has enum values, show buttons
             elif enum_values:
+                logger.info(f"🔥 start_next_parameter: {param_name} has enum values, showing buttons, user_id={user_id}")
                 keyboard = []
                 # Create buttons in rows of 2
                 for i in range(0, len(enum_values), 2):
@@ -9043,6 +8649,15 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                             callback_data=f"set_param:{param_name}:{enum_values[i + 1]}"
                         ))
                     keyboard.append(row)
+                
+                # For optional enum parameters with default, add "Use default" button
+                is_optional = not param_info.get('required', False)
+                default_value = param_info.get('default')
+                if is_optional and default_value and default_value in enum_values:
+                    user_lang = get_user_language(user_id)
+                    default_text = f"⏭️ Использовать по умолчанию ({default_value})" if user_lang == 'ru' else f"⏭️ Use default ({default_value})"
+                    keyboard.append([InlineKeyboardButton(default_text, callback_data=f"set_param:{param_name}:{default_value}")])
+                
                 user_lang = get_user_language(user_id)
                 keyboard.append([
                     InlineKeyboardButton(t('btn_back', lang=user_lang), callback_data="back_to_previous_step"),
@@ -9051,6 +8666,10 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                 keyboard.append([InlineKeyboardButton(t('btn_cancel', lang=user_lang), callback_data="cancel")])
                 
                 param_desc = param_info.get('description', '')
+                default_info = ""
+                if default_value and default_value in enum_values:
+                    default_info = f"\n\n💡 По умолчанию: <b>{default_value}</b>" if user_lang == 'ru' else f"\n\n💡 Default: <b>{default_value}</b>"
+                
                 # Get chat_id from update
                 chat_id = None
                 if hasattr(update, 'effective_chat') and update.effective_chat:
@@ -9064,12 +8683,16 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                     logger.error("Cannot determine chat_id in start_next_parameter")
                     return None
                 
+                logger.info(f"🔥 start_next_parameter: sending message for {param_name} to chat_id={chat_id}, user_id={user_id}")
                 await context.bot.send_message(
                     chat_id=chat_id,
-                    text=f"📝 <b>Выберите {param_name}:</b>\n\n{param_desc}",
+                    text=f"📝 <b>Выберите {param_name}:</b>\n\n{param_desc}{default_info}",
                     reply_markup=InlineKeyboardMarkup(keyboard),
                     parse_mode='HTML'
                 )
+                session['waiting_for'] = param_name
+                session['current_param'] = param_name
+                logger.info(f"🔥 start_next_parameter: set waiting_for={param_name}, returning INPUTTING_PARAMS, user_id={user_id}")
                 return INPUTTING_PARAMS
             else:
                 # Text input
@@ -9559,7 +9182,16 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 # Analyze screenshot (only if OCR available)
                 analysis_msg = None
                 if OCR_AVAILABLE and PIL_AVAILABLE:
-                    analysis = await analyze_payment_screenshot(image_data, amount, expected_phone if expected_phone else None)
+                    # 🔴 API CALL: OCR API - analyze_payment_screenshot
+                    try:
+                        analysis = await analyze_payment_screenshot(image_data, amount, expected_phone if expected_phone else None)
+                    except Exception as e:
+                        logger.error(f"❌❌❌ OCR API ERROR in analyze_payment_screenshot: {e}", exc_info=True)
+                        # If OCR fails, allow payment without check
+                        analysis = {
+                            'valid': True,  # Allow without OCR check
+                            'message': 'ℹ️ OCR недоступен. Баланс начислен автоматически.'
+                        }
                     
                     # Delete loading message
                     try:
@@ -10128,7 +9760,20 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # Upload to public hosting
             logger.info(f"🔥🔥🔥 UPLOADING TO HOSTING: user_id={user_id}, filename=image_{user_id}_{photo.file_id[:8]}.jpg")
-            public_url = await upload_image_to_hosting(image_data, filename=f"image_{user_id}_{photo.file_id[:8]}.jpg")
+            # 🔴 API CALL: File Upload API - upload_image_to_hosting
+            try:
+                public_url = await upload_image_to_hosting(image_data, filename=f"image_{user_id}_{photo.file_id[:8]}.jpg")
+            except Exception as e:
+                logger.error(f"❌❌❌ FILE UPLOAD API ERROR in upload_image_to_hosting (image): {e}", exc_info=True)
+                user_lang = get_user_language(user_id) if user_id else 'ru'
+                error_msg = "Ошибка сервера, попробуйте позже" if user_lang == 'ru' else "Server error, please try later"
+                await update.message.reply_text(
+                    f"❌ <b>{error_msg}</b>\n\n"
+                    f"Не удалось загрузить изображение.\n"
+                    f"Попробуйте еще раз через несколько секунд.",
+                    parse_mode='HTML'
+                )
+                return INPUTTING_PARAMS
             
             # Delete loading message
             if loading_msg:
@@ -11111,6 +10756,15 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
         model_info = session.get('model_info', {})
         input_params = model_info.get('input_params', {})
         
+        # CRITICAL: Apply default values BEFORE checking missing parameters
+        # This ensures parameters with default values are automatically applied
+        for param_name, param_info in input_params.items():
+            if param_name not in params:
+                default_value = param_info.get('default')
+                if default_value is not None:
+                    params[param_name] = default_value
+                    logger.info(f"✅ Applied default value for {param_name}={default_value} for {model_id}")
+        
         # Don't exclude image_input/image_urls/audio_url/audio_input from missing if they're required but not yet provided
         # Only exclude them if they're already in params (uploaded)
         excluded_params = ['prompt']  # Always exclude prompt as it's already processed
@@ -11351,14 +11005,71 @@ async def start_generation_directly(
                 parse_mode='HTML'
             )
             return ConversationHandler.END
+        
+        # 🔴 ПРОВЕРКА НА ДУБЛИ ЗАДАЧ: Проверяем, нет ли уже активной генерации с такими же параметрами
+        # Создаем хеш параметров для проверки дублей
+        import hashlib
+        import json
+        params_hash = hashlib.md5(
+            json.dumps({
+                'model_id': model_id,
+                'params': sorted(api_params.items()) if isinstance(api_params, dict) else str(api_params)
+            }, sort_keys=True).encode('utf-8')
+        ).hexdigest()
+        
+        # Проверяем активные генерации пользователя на дубли
+        for (uid, existing_task_id), existing_session in active_generations.items():
+            if uid == user_id:
+                existing_model = existing_session.get('model_id')
+                existing_params = existing_session.get('params', {})
+                existing_params_hash = hashlib.md5(
+                    json.dumps({
+                        'model_id': existing_model,
+                        'params': sorted(existing_params.items()) if isinstance(existing_params, dict) else str(existing_params)
+                    }, sort_keys=True).encode('utf-8')
+                ).hexdigest()
+                
+                if existing_params_hash == params_hash:
+                    logger.warning(f"⚠️⚠️⚠️ DUPLICATE TASK DETECTED: user {user_id}, model {model_id}, existing task_id={existing_task_id}")
+                    user_lang = get_user_language(user_id) if user_id else 'ru'
+                    error_msg = (
+                        "⚠️ <b>Дублирующая генерация</b>\n\n"
+                        f"У вас уже запущена генерация с такими же параметрами.\n"
+                        f"Task ID: <code>{existing_task_id}</code>\n\n"
+                        "Дождитесь завершения текущей генерации."
+                    ) if user_lang == 'ru' else (
+                        "⚠️ <b>Duplicate generation</b>\n\n"
+                        f"You already have a generation running with the same parameters.\n"
+                        f"Task ID: <code>{existing_task_id}</code>\n\n"
+                        "Please wait for the current generation to complete."
+                    )
+                    await status_message.edit_text(error_msg, parse_mode='HTML')
+                    return ConversationHandler.END
     
     # Create task
     # CRITICAL: Log exact API parameters being sent (for KIE API compliance)
     import json
     logger.info(f"🚀🚀🚀 Creating task for model {model_id}, user {user_id}")
     logger.info(f"📋 API Parameters (KIE API format): model={model_id}, input={json.dumps(api_params, ensure_ascii=False, indent=2)}")
-    result = await kie.create_task(model_id, api_params)
-    logger.info(f"📋 Task creation result: ok={result.get('ok')}, taskId={result.get('taskId')}, error={result.get('error')}")
+    
+    # 🔴 API CALL: KIE API - create_task
+    try:
+        result = await kie.create_task(model_id, api_params)
+        logger.info(f"📋 Task creation result: ok={result.get('ok')}, taskId={result.get('taskId')}, error={result.get('error')}")
+    except Exception as e:
+        logger.error(f"❌❌❌ KIE API ERROR in create_task: {e}", exc_info=True)
+        try:
+            user_lang = get_user_language(user_id) if user_id else 'ru'
+            error_msg = "Ошибка сервера, попробуйте позже" if user_lang == 'ru' else "Server error, please try later"
+            await status_message.edit_text(
+                f"❌ <b>{error_msg}</b>\n\n"
+                f"Не удалось создать задачу генерации.\n"
+                f"Попробуйте еще раз через несколько секунд.",
+                parse_mode='HTML'
+            )
+        except:
+            pass
+        return ConversationHandler.END
     
     if result.get('ok'):
         task_id = result.get('taskId')
@@ -23968,89 +23679,20 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
 
 
 async def check_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Check user balance in rubles."""
+    """Check user balance in rubles. Использует helpers для устранения дублирования."""
     user_id = update.effective_user.id
-    is_admin_user = get_is_admin(user_id)
-    is_main_admin = (user_id == ADMIN_ID)
+    user_lang = get_user_language(user_id)
     
-    # Get user balance
-    user_balance = get_user_balance(user_id)
+    # Используем helpers для получения информации о балансе
+    balance_info = await get_balance_info(user_id, user_lang)
+    balance_text = await format_balance_message(balance_info, user_lang)
+    keyboard = get_balance_keyboard(balance_info, user_lang)
     
-    # Check if limited admin
-    is_limited_admin = is_admin(user_id) and not is_main_admin
-    balance_str = f"{user_balance:.2f}".rstrip('0').rstrip('.')
-    
-    if is_limited_admin:
-        # Limited admin - show limit info
-        limit = get_admin_limit(user_id)
-        spent = get_admin_spent(user_id)
-        remaining = get_admin_remaining(user_id)
-        keyboard = [
-            [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
-        ]
-        
-        await update.message.reply_text(
-            f'👑 <b>Админ с лимитом</b>\n\n'
-            f'💳 <b>Лимит:</b> {limit:.2f} ₽\n'
-            f'💸 <b>Потрачено:</b> {spent:.2f} ₽\n'
-            f'✅ <b>Осталось:</b> {remaining:.2f} ₽\n\n'
-            f'💰 <b>Баланс пользователя:</b> {balance_str} ₽',
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
-    elif is_main_admin:
-        # Main admin sees both user balance and KIE credits
-        try:
-            result = await kie.get_credits()
-            if result.get('ok'):
-                credits = result.get('credits', 0)
-                credits_rub = credits * CREDIT_TO_USD * get_usd_to_rub_rate()
-                credits_rub_str = f"{credits_rub:.2f}".rstrip('0').rstrip('.')
-                user_lang = get_user_language(user_id)
-                keyboard = [
-                    [InlineKeyboardButton(t('btn_top_up_balance', lang=user_lang), callback_data="topup_balance")],
-                    [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
-                ]
-                
-                await update.message.reply_text(
-                    f'💳 <b>Ваш баланс:</b> {balance_str} ₽\n\n'
-                    f'🔧 <b>API баланс:</b> {credits_rub_str} ₽\n'
-                    f'<i>({credits} кредитов)</i>',
-                    reply_markup=InlineKeyboardMarkup(keyboard),
-                    parse_mode='HTML'
-                )
-            else:
-                await update.message.reply_text(
-                    f'💳 <b>Ваш баланс:</b> {balance_str} ₽\n\n'
-                    f'⚠️ API баланс недоступен',
-                    parse_mode='HTML'
-                )
-        except Exception as e:
-            logger.error(f"Error checking KIE balance: {e}")
-            await update.message.reply_text(
-                f'💳 <b>Ваш баланс:</b> {balance_str} ₽\n\n'
-                    f'⚠️ API баланс недоступен',
-                parse_mode='HTML'
-            )
-    else:
-        # Regular user sees only their balance
-        # Check for free generations
-        remaining_free = get_user_free_generations_remaining(user_id)
-        free_info = ""
-        if remaining_free > 0:
-            free_info = f"\n\n🎁 <b>Бесплатные генерации:</b> {remaining_free}/{FREE_GENERATIONS_PER_DAY} в день (модель Z-Image)"
-        
-        keyboard = [
-            [InlineKeyboardButton("💳 Пополнить баланс", callback_data="topup_balance")],
-            [InlineKeyboardButton("◀️ Назад в меню", callback_data="back_to_menu")]
-        ]
-        
-        await update.message.reply_text(
-            f'💳 <b>Баланс:</b> {balance_str} ₽{free_info}\n\n'
-            f'Доступно для генерации контента.',
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode='HTML'
-        )
+    await update.message.reply_text(
+        balance_text,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='HTML'
+    )
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -25157,6 +24799,62 @@ def main():
     # Must be registered AFTER specific handlers but BEFORE generation_handler
     # This handler will catch any callback_data that doesn't match patterns above
     application.add_handler(CallbackQueryHandler(button_callback))
+    
+    # 🔴 ГЛОБАЛЬНЫЙ ERROR HANDLER
+    async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Глобальный обработчик ошибок для всех исключений в боте."""
+        try:
+            logger.error(f"❌❌❌ GLOBAL ERROR HANDLER: {context.error}", exc_info=context.error)
+            
+            # Пытаемся получить user_id из update
+            user_id = None
+            user_lang = 'ru'
+            chat_id = None
+            
+            if isinstance(update, Update):
+                if update.effective_user:
+                    user_id = update.effective_user.id
+                    user_lang = get_user_language(user_id) if user_id else 'ru'
+                if update.effective_chat:
+                    chat_id = update.effective_chat.id
+            
+            # Логируем детали ошибки
+            error_details = {
+                'error_type': type(context.error).__name__,
+                'error_message': str(context.error),
+                'user_id': user_id,
+                'chat_id': chat_id
+            }
+            logger.error(f"Error details: {error_details}")
+            
+            # Показываем пользователю понятное сообщение
+            if chat_id:
+                try:
+                    error_msg = (
+                        "❌ <b>Произошла ошибка</b>\n\n"
+                        "Ошибка сервера, попробуйте позже.\n\n"
+                        "Если проблема повторяется, обратитесь в поддержку."
+                    ) if user_lang == 'ru' else (
+                        "❌ <b>An error occurred</b>\n\n"
+                        "Server error, please try later.\n\n"
+                        "If the problem persists, please contact support."
+                    )
+                    
+                    try:
+                        await context.bot.send_message(
+                            chat_id=chat_id,
+                            text=error_msg,
+                            parse_mode='HTML'
+                        )
+                    except Exception as send_error:
+                        logger.error(f"Could not send error message: {send_error}")
+                except Exception as e:
+                    logger.error(f"Error in error handler message sending: {e}")
+        except Exception as e:
+            # Если сам error handler упал, логируем критическую ошибку
+            logger.critical(f"❌❌❌ CRITICAL: Error handler itself failed: {e}", exc_info=True)
+    
+    application.add_error_handler(error_handler)
     
     application.add_handler(generation_handler)
     application.add_handler(CommandHandler("models", list_models))

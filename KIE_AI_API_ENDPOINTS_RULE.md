@@ -234,3 +234,5 @@ Authorization: Bearer YOUR_API_KEY
 - https://docs.kie.ai/file-upload-api (File Upload API - ОБЯЗАТЕЛЬНО для загрузки файлов!)
 - https://docs.kie.ai/ (Comprehensive API Documentation)
 - https://kie.ai/ru (Русская версия)
+
+
