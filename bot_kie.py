@@ -9094,13 +9094,34 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"🔍 input_parameters CALLED: user_id={user_id}, has_photo={has_photo}, has_text={has_text}, has_audio={has_audio}")
     
     if user_id not in user_sessions:
-        logger.warning(f"⚠️ User {user_id} not in user_sessions in input_parameters!")
+        logger.error(f"❌❌❌ CRITICAL: User {user_id} not in user_sessions in input_parameters!")
+        logger.error(f"   This means session was lost. User needs to select model again.")
         if update.message:
-            await update.message.reply_text("❌ Сессия не найдена. Начните заново с /start")
+            if has_photo:
+                # Photo sent but no session - try to help user
+                await update.message.reply_text(
+                    "❌ <b>Сессия не найдена</b>\n\n"
+                    "Похоже, сессия была потеряна. Пожалуйста:\n"
+                    "1. Выберите модель заново через /start\n"
+                    "2. Затем загрузите изображение\n\n"
+                    "Или используйте /cancel для отмены.",
+                    parse_mode='HTML'
+                )
+            else:
+                await update.message.reply_text("❌ Сессия не найдена. Начните заново с /start")
         return ConversationHandler.END
     
     session = user_sessions[user_id]
-    logger.info(f"🔍 Session exists: model_id={session.get('model_id', 'None')}, waiting_for={session.get('waiting_for', 'None')}, session_keys={list(session.keys())[:10]}")
+    model_id = session.get('model_id', 'Unknown')
+    waiting_for = session.get('waiting_for', 'None')
+    properties = session.get('properties', {})
+    has_image_input = 'image_input' in properties
+    has_image_urls = 'image_urls' in properties
+    logger.info(f"🔍 Session exists: model_id={model_id}, waiting_for={waiting_for}, has_image_input={has_image_input}, has_image_urls={has_image_urls}, session_keys={list(session.keys())[:10]}")
+    
+    # CRITICAL: If photo is sent but session doesn't have waiting_for set, log warning
+    if has_photo and not waiting_for:
+        logger.warning(f"⚠️⚠️⚠️ Photo sent but waiting_for is None! model_id={model_id}, properties={list(properties.keys())}")
     
     # Handle admin OCR test
     if user_id == ADMIN_ID and user_id in user_sessions and user_sessions[user_id].get('waiting_for') == 'admin_test_ocr':
@@ -9828,9 +9849,46 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # CRITICAL: Log for debugging
     model_id = session.get('model_id', 'Unknown')
-    logger.info(f"🔍🔍🔍 Image input check: user_id={user_id}, waiting_for={waiting_for}, waiting_for_image={waiting_for_image}, has_photo={bool(update.message.photo)}, model_id={model_id}, session_keys={list(session.keys())[:10]}")
+    properties = session.get('properties', {})
+    logger.info(f"🔍🔍🔍 Image input check: user_id={user_id}, waiting_for={waiting_for}, waiting_for_image={waiting_for_image}, has_photo={bool(update.message.photo)}, model_id={model_id}, has_image_input={bool('image_input' in properties)}, has_image_urls={bool('image_urls' in properties)}, session_keys={list(session.keys())[:10]}")
     
-    # If photo sent but not waiting for image, show helpful message
+    # CRITICAL: If photo is sent and model requires image, but waiting_for is not set, auto-fix immediately
+    if update.message.photo and not waiting_for_image:
+        # Check if model requires image_input or image_urls
+        if 'image_input' in properties or 'image_urls' in properties:
+            # Determine which parameter name to use
+            if 'image_input' in properties:
+                image_param_name = 'image_input'
+            elif 'image_urls' in properties:
+                image_param_name = 'image_urls'
+            else:
+                image_param_name = 'image_input'  # Default fallback
+            
+            # Check if this parameter is required
+            param_info = properties.get(image_param_name, {})
+            is_required = param_info.get('required', False)
+            
+            # Models that definitely require image first
+            models_require_image = [
+                "recraft/remove-background",
+                "recraft/crisp-upscale",
+                "ideogram/v3-reframe",
+                "topaz/image-upscale",
+                "nano-banana-pro"
+            ]
+            
+            # Auto-fix if model requires image or is in the list
+            if model_id in models_require_image or is_required:
+                logger.warning(f"🔧 AUTO-FIX: Photo sent for {model_id} but waiting_for={waiting_for}, fixing session immediately...")
+                session['waiting_for'] = image_param_name
+                session['current_param'] = image_param_name
+                if image_param_name not in session:
+                    session[image_param_name] = []
+                waiting_for_image = True
+                waiting_for = image_param_name
+                logger.info(f"✅✅✅ AUTO-FIX COMPLETE: waiting_for={image_param_name}, model={model_id}, continuing image processing...")
+    
+    # If photo sent but not waiting for image, try to auto-fix session
     if update.message.photo and not waiting_for_image:
         model_id = session.get('model_id', 'Unknown')
         user_lang = get_user_language(user_id)
@@ -9856,7 +9914,8 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "recraft/remove-background",
                 "recraft/crisp-upscale",
                 "ideogram/v3-reframe",
-                "topaz/image-upscale"
+                "topaz/image-upscale",
+                "recraft/remove-background"  # Explicitly include this
             ]
             if model_id in models_require_image_first or \
                (properties.get(image_param_name, {}).get('required', False)):
@@ -9865,10 +9924,27 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 session['current_param'] = image_param_name
                 if image_param_name not in session:
                     session[image_param_name] = []
-                # Retry processing
+                # Update local variables to continue processing
                 waiting_for_image = True
-                waiting_for = image_param_name  # Update local variable
-                logger.info(f"✅✅✅ Session fixed: waiting_for={image_param_name}, model={model_id}, retrying image processing...")
+                waiting_for = image_param_name
+                logger.info(f"✅✅✅ Session fixed: waiting_for={image_param_name}, model={model_id}, continuing image processing...")
+                # Continue to process the image below
+            else:
+                # Photo sent but not expected - show helpful message
+                if user_lang == 'en':
+                    error_msg = (
+                        "⚠️ <b>Image not expected now</b>\n\n"
+                        f"Current step: {waiting_for or 'none'}\n\n"
+                        "Please follow the instructions or use /cancel to start over."
+                    )
+                else:
+                    error_msg = (
+                        "⚠️ <b>Изображение не ожидается сейчас</b>\n\n"
+                        f"Текущий шаг: {waiting_for or 'нет'}\n\n"
+                        "Пожалуйста, следуйте инструкциям или используйте /cancel для начала заново."
+                    )
+                await update.message.reply_text(error_msg, parse_mode='HTML')
+                return INPUTTING_PARAMS
         else:
             # Photo sent but not expected - show helpful message
             if user_lang == 'en':
@@ -9886,6 +9962,7 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(error_msg, parse_mode='HTML')
             return INPUTTING_PARAMS
     
+    # Process image if photo is sent and we're waiting for image
     if update.message.photo and waiting_for_image:
         logger.info(f"✅✅✅ Processing image for user {user_id}, waiting_for={waiting_for}, model={session.get('model_id', 'Unknown')}, image_param_name will be determined from waiting_for")
         photo = update.message.photo[-1]  # Get largest photo
@@ -10102,36 +10179,55 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # For models like recraft/remove-background that only require image_input
             all_required_collected = True
             
-            # First, ensure image_input/image_urls that was just uploaded is in params
-            if image_param_name not in session.get('params', {}):
-                # This should not happen, but double-check
+            # CRITICAL: First, ensure image_input/image_urls that was just uploaded is in params
+            # This MUST be done before checking required parameters
+            if image_param_name not in session.get('params', {}) or not session.get('params', {}).get(image_param_name):
+                # This should not happen, but double-check and fix
                 logger.warning(f"Image parameter {image_param_name} not in params after upload! Adding it...")
-                if image_param_name in session:
+                if image_param_name in session and session[image_param_name]:
                     if 'params' not in session:
                         session['params'] = {}
                     if isinstance(session[image_param_name], list):
-                        session['params'][image_param_name] = session[image_param_name]
+                        session['params'][image_param_name] = session[image_param_name].copy()
                     else:
                         session['params'][image_param_name] = [session[image_param_name]]
+                    logger.info(f"✅ Fixed: {image_param_name} added to params")
+                else:
+                    logger.error(f"CRITICAL: {image_param_name} not in session either!")
             
-            # Check all required parameters
-            for req_param in required:
-                if req_param not in session.get('params', {}):
-                    # Special case: image parameters that were just uploaded
-                    if req_param == image_param_name:
-                        # Should already be in params, but check session
-                        if req_param in session and session[req_param]:
-                            # Add it to params if missing
-                            if 'params' not in session:
-                                session['params'] = {}
-                            if isinstance(session[req_param], list):
-                                session['params'][req_param] = session[req_param]
-                            else:
-                                session['params'][req_param] = [session[req_param]]
-                            continue
-                    all_required_collected = False
-                    logger.warning(f"Required parameter {req_param} not collected for {model_id}")
-                    break
+            # CRITICAL: For models that only require image (no prompt), skip the required check
+            # and rely on the models_only_image check below
+            models_only_image = [
+                "recraft/remove-background",
+                "recraft/crisp-upscale",
+                "topaz/image-upscale",
+                "ideogram/v3-reframe"
+            ]
+            
+            # Only check required parameters if this is NOT a model that only requires image
+            if model_id not in models_only_image:
+                # Check all required parameters
+                for req_param in required:
+                    if req_param not in session.get('params', {}) or not session.get('params', {}).get(req_param):
+                        # Special case: image parameters that were just uploaded
+                        if req_param == image_param_name:
+                            # Should already be in params, but check session
+                            if req_param in session and session[req_param]:
+                                # Add it to params if missing
+                                if 'params' not in session:
+                                    session['params'] = {}
+                                if isinstance(session[req_param], list):
+                                    session['params'][req_param] = session[req_param].copy()
+                                else:
+                                    session['params'][req_param] = [session[req_param]]
+                                logger.info(f"✅ Fixed: {req_param} added to params from session")
+                                continue
+                        all_required_collected = False
+                        logger.warning(f"Required parameter {req_param} not collected for {model_id}")
+                        break
+            else:
+                # For models_only_image, we'll check in the special section below
+                logger.info(f"Model {model_id} is in models_only_image, skipping standard required check")
             
             # Also explicitly check if image_input/image_urls are required and collected
             if 'image_input' in properties and properties['image_input'].get('required', False):
@@ -10164,44 +10260,69 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             logger.info(f"After image upload for {model_id}: all_required_collected={all_required_collected}, required={required}, params={list(session.get('params', {}).keys())}, session_image_input={bool(session.get('image_input'))}, session_image_urls={bool(session.get('image_urls'))}")
             
+            # CRITICAL: Final check - if image is in params, force all_required_collected=True for image-only models
+            # This is a safety net to ensure button is shown
+            if model_id in models_only_image:
+                params_final_check = session.get('params', {})
+                if image_param_name in params_final_check and params_final_check.get(image_param_name):
+                    image_list = params_final_check.get(image_param_name)
+                    if isinstance(image_list, list) and len(image_list) > 0:
+                        logger.info(f"✅✅✅ FINAL CHECK: {model_id} has {image_param_name} with {len(image_list)} item(s) in params. FORCING all_required_collected=True.")
+                        all_required_collected = True
+                    elif isinstance(image_list, str) and image_list:
+                        logger.info(f"✅✅✅ FINAL CHECK: {model_id} has {image_param_name} as string in params. FORCING all_required_collected=True.")
+                        all_required_collected = True
+            
+            logger.info(f"🔍🔍🔍 FINAL STATE: all_required_collected={all_required_collected}, model={model_id}, will_show_button={all_required_collected}")
+            
             # CRITICAL: Special handling for models that only require image_input (no prompt)
             # These models should immediately show confirmation after image upload
-            models_only_image = [
-                "recraft/remove-background",
-                "recraft/crisp-upscale",
-                "topaz/image-upscale",
-                "ideogram/v3-reframe"  # Also only requires image_input (no prompt)
-            ]
-            
+            # NOTE: models_only_image list is defined above, but we check it again here for clarity
             if model_id in models_only_image:
-                logger.info(f"🔍 CRITICAL: {model_id} is in models_only_image list! Checking image...")
+                logger.info(f"🔍🔍🔍 CRITICAL: {model_id} is in models_only_image list! Checking image...")
                 # For these models, if image_input is in params, we're done
                 params_check = session.get('params', {})
-                image_in_params = image_param_name in params_check and params_check.get(image_param_name)
+                image_in_params = image_param_name in params_check and params_check.get(image_param_name) and len(params_check.get(image_param_name, [])) > 0
                 
                 # Also check if it's in session (fallback)
-                image_in_session = image_param_name in session and session.get(image_param_name)
+                image_in_session = image_param_name in session and session.get(image_param_name) and len(session.get(image_param_name, [])) > 0
                 
                 logger.info(f"🔍 {model_id} check: image_in_params={image_in_params}, image_in_session={image_in_session}, params_keys={list(params_check.keys())}, session_has_{image_param_name}={image_param_name in session}, session_value={session.get(image_param_name)}")
                 
                 if image_in_params:
-                    logger.info(f"✅✅✅ Model {model_id} only requires {image_param_name}, which is collected in params. Setting all_required_collected=True.")
+                    logger.info(f"✅✅✅ Model {model_id} only requires {image_param_name}, which is collected in params. FORCING all_required_collected=True.")
                     all_required_collected = True
                 elif image_in_session:
                     # Image is in session but not in params - fix it
                     logger.warning(f"⚠️ {image_param_name} in session but not in params for {model_id}. Fixing...")
+                    if 'params' not in session:
+                        session['params'] = {}
                     if isinstance(session[image_param_name], list):
                         session['params'][image_param_name] = session[image_param_name].copy()
                     else:
                         session['params'][image_param_name] = [session[image_param_name]]
-                    logger.info(f"✅✅✅ Fixed: {image_param_name} now in params. Setting all_required_collected=True.")
+                    logger.info(f"✅✅✅ Fixed: {image_param_name} now in params. FORCING all_required_collected=True.")
                     all_required_collected = True
                 else:
                     logger.error(f"❌❌❌ CRITICAL ERROR: {model_id} requires {image_param_name} but it's not in params or session!")
                     logger.error(f"   params keys: {list(params_check.keys())}")
+                    logger.error(f"   params[{image_param_name}]: {params_check.get(image_param_name)}")
                     logger.error(f"   session keys: {list(session.keys())}")
                     logger.error(f"   session[{image_param_name}]: {session.get(image_param_name)}")
-                    all_required_collected = False
+                    # Even if not found, try to set all_required_collected based on what we have
+                    # This is a last resort - the image should have been uploaded
+                    if image_param_name in session and session[image_param_name]:
+                        logger.warning(f"⚠️ Last resort: Found {image_param_name} in session, forcing to params...")
+                        if 'params' not in session:
+                            session['params'] = {}
+                        if isinstance(session[image_param_name], list):
+                            session['params'][image_param_name] = session[image_param_name].copy()
+                        else:
+                            session['params'][image_param_name] = [session[image_param_name]]
+                        all_required_collected = True
+                        logger.info(f"✅✅✅ Last resort fix successful, all_required_collected=True")
+                    else:
+                        all_required_collected = False
             
             # If all required parameters collected, show "Generate" button with price
             if all_required_collected:
