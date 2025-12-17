@@ -162,3 +162,5 @@ WARNING: Unhandled callback data: 'some_callback' from user 123456
 **Бот готов к деплою на Render!** 🚀
 
 
+
+

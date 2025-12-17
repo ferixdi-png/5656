@@ -1,0 +1,135 @@
+═══════════════════════════════════════════════════════════════════════════════
+        ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ ОБРАБОТКИ ФОТО - ДИАГНОСТИКА
+═══════════════════════════════════════════════════════════════════════════════
+
+ПРОБЛЕМА:
+Пользователь загрузил фото для Recraft Remove Background, но ничего не происходит.
+В логах нет записей о том, что фото было получено или обработано.
+
+═══════════════════════════════════════════════════════════════════════════════
+                            КРИТИЧЕСКИЕ ИСПРАВЛЕНИЯ
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ 1. ДОБАВЛЕНО ЛОГИРОВАНИЕ В НАЧАЛЕ INPUT_PARAMETERS
+
+   - Логирование ВСЕХ вызовов input_parameters
+   - Логирование наличия фото, текста, аудио
+   - Логирование состояния сессии
+   - Логирование model_id и waiting_for
+   
+   КОД:
+   ```python
+   # CRITICAL: Log ALL input_parameters calls to debug photo processing
+   has_photo = bool(update.message and update.message.photo)
+   has_text = bool(update.message and update.message.text)
+   has_audio = bool(update.message and (update.message.audio or update.message.voice))
+   logger.info(f"🔍 input_parameters CALLED: user_id={user_id}, has_photo={has_photo}, has_text={has_text}, has_audio={has_audio}")
+   
+   session = user_sessions[user_id]
+   logger.info(f"🔍 Session exists: model_id={session.get('model_id', 'None')}, waiting_for={session.get('waiting_for', 'None')}, session_keys={list(session.keys())[:10]}")
+   ```
+
+✅ 2. УЛУЧШЕНА АВТОМАТИЧЕСКАЯ ИСПРАВЛЕНИЕ СЕССИИ
+
+   - Обновление локальной переменной waiting_for после исправления
+   - Продолжение обработки фото после исправления
+   - Детальное логирование исправления
+   
+   КОД:
+   ```python
+   if model_id in models_require_image_first or \
+      (properties.get(image_param_name, {}).get('required', False)):
+       logger.warning(f"⚠️ Photo sent for {model_id} but waiting_for={waiting_for}, fixing session...")
+       session['waiting_for'] = image_param_name
+       session['current_param'] = image_param_name
+       if image_param_name not in session:
+           session[image_param_name] = []
+       # Retry processing - update local variables
+       waiting_for_image = True
+       waiting_for = image_param_name  # Update local variable
+       logger.info(f"✅✅✅ Session fixed: waiting_for={image_param_name}, model={model_id}, retrying image processing...")
+       # Continue to image processing below (don't return here!)
+   ```
+
+✅ 3. ДОБАВЛЕНО ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ ОБРАБОТКИ ФОТО
+
+   - Логирование перед проверкой waiting_for_image
+   - Логирование при начале обработки фото
+   - Логирование каждого шага обработки
+   
+   КОД:
+   ```python
+   logger.info(f"🔍🔍🔍 Image input check: user_id={user_id}, waiting_for={waiting_for}, waiting_for_image={waiting_for_image}, has_photo={bool(update.message.photo)}, model_id={model_id}, session_keys={list(session.keys())[:10]}")
+   
+   if update.message.photo and waiting_for_image:
+       logger.info(f"✅✅✅ Processing image for user {user_id}, waiting_for={waiting_for}, model={session.get('model_id', 'Unknown')}, image_param_name will be determined from waiting_for")
+   ```
+
+✅ 4. УЛУЧШЕНА ОБРАБОТКА ОШИБОК
+
+   - Проверка наличия update.message перед отправкой сообщений
+   - Детальное логирование всех ошибок
+   - Понятные сообщения об ошибках
+
+═══════════════════════════════════════════════════════════════════════════════
+                            ДИАГНОСТИКА
+═══════════════════════════════════════════════════════════════════════════════
+
+Теперь в логах будет видно:
+
+1. ✅ ВЫЗОВ INPUT_PARAMETERS:
+   ```
+   🔍 input_parameters CALLED: user_id=6913446846, has_photo=True, has_text=False, has_audio=False
+   ```
+
+2. ✅ СОСТОЯНИЕ СЕССИИ:
+   ```
+   🔍 Session exists: model_id=recraft/remove-background, waiting_for=image_input, session_keys=[...]
+   ```
+
+3. ✅ ПРОВЕРКА ОБРАБОТКИ ФОТО:
+   ```
+   🔍🔍🔍 Image input check: user_id=6913446846, waiting_for=image_input, waiting_for_image=True, has_photo=True, model_id=recraft/remove-background
+   ```
+
+4. ✅ НАЧАЛО ОБРАБОТКИ:
+   ```
+   ✅✅✅ Processing image for user 6913446846, waiting_for=image_input, model=recraft/remove-background
+   ```
+
+5. ✅ ЗАГРУЗКА НА ХОСТИНГ:
+   ```
+   ✅ Successfully uploaded image to: https://...
+   ```
+
+6. ✅ СОХРАНЕНИЕ В PARAMS:
+   ```
+   ✅ VERIFIED: image_input is in params with 1 item(s)
+   ```
+
+7. ✅ ПРОВЕРКА MODELS_ONLY_IMAGE:
+   ```
+   🔍 CRITICAL: recraft/remove-background is in models_only_image list! Checking image...
+   ```
+
+8. ✅ ПОКАЗ ПОДТВЕРЖДЕНИЯ:
+   ```
+   ✅✅✅ All parameters collected for recraft/remove-background, showing confirmation
+   ```
+
+Если что-то не работает, в логах будет видно, на каком шаге проблема!
+
+═══════════════════════════════════════════════════════════════════════════════
+                            РЕЗУЛЬТАТ
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ ДОБАВЛЕНО
+✅ АВТОМАТИЧЕСКОЕ ИСПРАВЛЕНИЕ СЕССИИ УЛУЧШЕНО
+✅ ОБРАБОТКА ФОТО УЛУЧШЕНА
+✅ ЛЕГКО НАЙТИ ПРОБЛЕМУ В ЛОГАХ
+
+Теперь можно точно увидеть, что происходит после отправки фото!
+
+═══════════════════════════════════════════════════════════════════════════════
+
+

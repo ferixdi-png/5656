@@ -98,3 +98,5 @@ python check_all_buttons.py
 - Fallback-обработчик защищает от сбоев при обновлениях
 
 
+
+

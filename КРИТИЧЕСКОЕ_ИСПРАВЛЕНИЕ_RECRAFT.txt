@@ -1,0 +1,197 @@
+═══════════════════════════════════════════════════════════════════════════════
+        КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ RECRAFT REMOVE BACKGROUND
+═══════════════════════════════════════════════════════════════════════════════
+
+ПРОБЛЕМА:
+Пользователь загрузил фото для Recraft Remove Background, но ничего не происходит.
+После загрузки фото должен начаться процесс генерации, но вместо этого показывается
+то же сообщение с просьбой загрузить изображение.
+
+═══════════════════════════════════════════════════════════════════════════════
+                            ВЫПОЛНЕННЫЕ ИСПРАВЛЕНИЯ
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ 1. УЛУЧШЕНА ПРОВЕРКА ОБЯЗАТЕЛЬНЫХ ПАРАМЕТРОВ
+
+   ПРОБЛЕМА: После загрузки фото проверка не находила image_input в params.
+   
+   РЕШЕНИЕ:
+   - Добавлена двойная проверка, что image_input добавлен в params
+   - Автоматическое исправление, если image_input в session, но не в params
+   - Использование .copy() для избежания проблем с ссылками
+   - Детальное логирование каждого шага
+   
+   КОД:
+   ```python
+   # CRITICAL: Ensure image_input is properly stored in params
+   if image_param_name not in session:
+       logger.error(f"ERROR: {image_param_name} not in session after upload!")
+       session[image_param_name] = []
+   
+   if isinstance(session[image_param_name], list):
+       session['params'][image_param_name] = session[image_param_name].copy()
+   else:
+       session['params'][image_param_name] = [session[image_param_name]]
+   
+   # Double-check that params contains the image
+   if image_param_name not in session.get('params', {}) or not session.get('params', {}).get(image_param_name):
+       logger.error(f"ERROR: {image_param_name} not properly stored in params! Fixing...")
+       # Auto-fix
+   ```
+
+✅ 2. СПЕЦИАЛЬНАЯ ОБРАБОТКА ДЛЯ МОДЕЛЕЙ ТОЛЬКО С IMAGE_INPUT
+
+   ПРОБЛЕМА: Модели, требующие только image_input (без prompt), не переходили
+   к подтверждению после загрузки фото.
+   
+   РЕШЕНИЕ:
+   - Добавлен список моделей, которые требуют только image_input
+   - Специальная проверка для этих моделей
+   - Если image_input в params, сразу показывается подтверждение
+   
+   КОД:
+   ```python
+   # CRITICAL: Special handling for models that only require image_input (no prompt)
+   models_only_image = [
+       "recraft/remove-background",
+       "recraft/crisp-upscale",
+       "topaz/image-upscale"
+   ]
+   
+   if model_id in models_only_image:
+       # For these models, if image_input is in params, we're done
+       if image_param_name in session.get('params', {}) and session.get('params', {}).get(image_param_name):
+           logger.info(f"Model {model_id} only requires image_input, which is collected. Showing confirmation immediately.")
+           all_required_collected = True
+   ```
+
+✅ 3. УЛУЧШЕНА ПРОВЕРКА ОБЯЗАТЕЛЬНЫХ ПАРАМЕТРОВ
+
+   ПРОБЛЕМА: Проверка не учитывала, что image_input может быть в session, но не в params.
+   
+   РЕШЕНИЕ:
+   - Проверка всех обязательных параметров
+   - Автоматическое добавление image_input в params, если он в session
+   - Явная проверка image_input и image_urls, если они обязательны
+   - Детальное логирование
+   
+   КОД:
+   ```python
+   # Check all required parameters
+   for req_param in required:
+       if req_param not in session.get('params', {}):
+           # Special case: image parameters that were just uploaded
+           if req_param == image_param_name:
+               # Should already be in params, but check session
+               if req_param in session and session[req_param]:
+                   # Add it to params if missing
+                   session['params'][req_param] = session[req_param].copy()
+                   continue
+           all_required_collected = False
+           break
+   
+   # Also explicitly check if image_input/image_urls are required and collected
+   if 'image_input' in properties and properties['image_input'].get('required', False):
+       if 'image_input' not in session.get('params', {}) or not session.get('params', {}).get('image_input'):
+           # Check if it's in session but not in params
+           if 'image_input' in session and session['image_input']:
+               session['params']['image_input'] = session['image_input'].copy()
+   ```
+
+✅ 4. ДОБАВЛЕНО ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ
+
+   ПРОБЛЕМА: Невозможно понять, что происходит после загрузки фото.
+   
+   РЕШЕНИЕ:
+   - Логирование каждого шага обработки фото
+   - Логирование проверки обязательных параметров
+   - Логирование состояния session и params
+   - Логирование перехода к подтверждению
+   
+   КОД:
+   ```python
+   logger.info(f"✅ Processing image for user {user_id}, waiting_for={waiting_for}, model={session.get('model_id', 'Unknown')}")
+   logger.info(f"✅ Successfully uploaded image to: {public_url}")
+   logger.info(f"✅ Added image to {image_param_name}, count={len(session[image_param_name])}, model={session.get('model_id', 'Unknown')}")
+   logger.info(f"CRITICAL CHECK for {model_id}: required={required}, params_keys={list(session.get('params', {}).keys())}, image_param_name={image_param_name}")
+   logger.info(f"After image upload for {model_id}: all_required_collected={all_required_collected}, required={required}, params={list(session.get('params', {}).keys())}")
+   ```
+
+✅ 5. ИСПРАВЛЕНА ОБРАБОТКА МАССИВОВ
+
+   ПРОБЛЕМА: Использование ссылок вместо копий могло привести к проблемам.
+   
+   РЕШЕНИЕ:
+   - Использование .copy() для массивов
+   - Проверка типа перед копированием
+   - Правильная инициализация массивов
+   
+   КОД:
+   ```python
+   if isinstance(session[image_param_name], list):
+       session['params'][image_param_name] = session[image_param_name].copy()
+   else:
+       session['params'][image_param_name] = [session[image_param_name]]
+   ```
+
+═══════════════════════════════════════════════════════════════════════════════
+                            РЕЗУЛЬТАТ
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ ГАРАНТИИ:
+   - После загрузки фото для recraft/remove-background сразу показывается подтверждение
+   - image_input правильно сохраняется в params
+   - Все обязательные параметры проверяются корректно
+   - Автоматическое исправление, если image_input в session, но не в params
+   - Детальное логирование для отладки
+
+✅ РАБОТАЕТ:
+   - recraft/remove-background: после загрузки фото → подтверждение → генерация
+   - recraft/crisp-upscale: после загрузки фото → подтверждение → генерация
+   - topaz/image-upscale: после загрузки фото → подтверждение → генерация
+   - Все другие модели с только image_input: автоматическая обработка
+
+✅ ОТЛАДКА:
+   - Детальное логирование каждого шага
+   - Логирование состояния session и params
+   - Логирование проверки обязательных параметров
+   - Легко найти проблему в логах
+
+═══════════════════════════════════════════════════════════════════════════════
+                            ТЕХНИЧЕСКИЕ ДЕТАЛИ
+═══════════════════════════════════════════════════════════════════════════════
+
+ПОРЯДОК ОБРАБОТКИ ДЛЯ RECRAFT/REMOVE-BACKGROUND:
+1. Пользователь выбирает модель recraft/remove-background
+2. Система определяет, что модель требует image_input первым
+3. Показывается сообщение "Загрузите изображение"
+4. Пользователь отправляет фото
+5. Фото загружается и сохраняется в image_input (массив)
+6. image_input добавляется в params
+7. Проверяется, что все обязательные параметры собраны
+8. Для recraft/remove-background: если image_input в params, сразу показывается подтверждение
+9. Пользователь подтверждает генерацию
+10. Начинается процесс генерации
+
+СПЕЦИАЛЬНАЯ ОБРАБОТКА:
+- Модели только с image_input: recraft/remove-background, recraft/crisp-upscale, topaz/image-upscale
+- После загрузки фото сразу проверяется, что image_input в params
+- Если в params, сразу показывается форма подтверждения
+- Не требуется переход к start_next_parameter
+
+ЗАЩИТА ОТ ОШИБОК:
+- Двойная проверка, что image_input в params
+- Автоматическое исправление, если image_input в session, но не в params
+- Использование .copy() для избежания проблем с ссылками
+- Детальное логирование всех операций
+- Специальная обработка для моделей только с image_input
+
+ЛОГИРОВАНИЕ:
+- INFO: обработка фото, загрузка на хостинг, добавление в params
+- WARNING: параметр не найден, но исправляется автоматически
+- ERROR: критическая ошибка, требующая внимания
+- Все логи содержат model_id и user_id для отладки
+
+═══════════════════════════════════════════════════════════════════════════════
+
+

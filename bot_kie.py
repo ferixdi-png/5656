@@ -10271,20 +10271,51 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ]
                 
                 try:
-                    await update.message.reply_text(
-                        message_text,
-                        reply_markup=InlineKeyboardMarkup(keyboard),
-                        parse_mode='HTML'
-                    )
+                    # Check if we have update.message (for photo/text input) or query (for callback)
+                    if update.message:
+                        await update.message.reply_text(
+                            message_text,
+                            reply_markup=InlineKeyboardMarkup(keyboard),
+                            parse_mode='HTML'
+                        )
+                    elif update.callback_query:
+                        # If called from callback, edit the message
+                        try:
+                            await update.callback_query.edit_message_text(
+                                message_text,
+                                reply_markup=InlineKeyboardMarkup(keyboard),
+                                parse_mode='HTML'
+                            )
+                        except Exception as edit_error:
+                            logger.warning(f"Could not edit message, sending new: {edit_error}")
+                            await update.callback_query.message.reply_text(
+                                message_text,
+                                reply_markup=InlineKeyboardMarkup(keyboard),
+                                parse_mode='HTML'
+                            )
+                    else:
+                        # Fallback: send message to user
+                        await context.bot.send_message(
+                            chat_id=user_id,
+                            text=message_text,
+                            reply_markup=InlineKeyboardMarkup(keyboard),
+                            parse_mode='HTML'
+                        )
                     logger.info(f"✅✅✅ Generate button with price shown for {model_id}, price: {price_str} ₽, returning CONFIRMING_GENERATION")
                     logger.info(f"🔍 State transition: INPUTTING_PARAMS -> CONFIRMING_GENERATION for user {user_id}, model {model_id}")
                     return CONFIRMING_GENERATION
                 except Exception as e:
                     logger.error(f"❌ Error showing generate button: {e}", exc_info=True)
-                    await update.message.reply_text(
-                        "❌ <b>Ошибка</b>\n\nНе удалось показать кнопку генерации.",
-                        parse_mode='HTML'
-                    )
+                    error_msg = "❌ <b>Ошибка</b>\n\nНе удалось показать кнопку генерации."
+                    try:
+                        if update.message:
+                            await update.message.reply_text(error_msg, parse_mode='HTML')
+                        elif update.callback_query:
+                            await update.callback_query.message.reply_text(error_msg, parse_mode='HTML')
+                        else:
+                            await context.bot.send_message(chat_id=user_id, text=error_msg, parse_mode='HTML')
+                    except:
+                        pass
                     return INPUTTING_PARAMS
             
             # Move to next parameter if not all collected
@@ -10324,12 +10355,40 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             f"Продолжить генерацию?"
                         )
                     
-                    await update.message.reply_text(
-                        confirm_text,
-                        reply_markup=InlineKeyboardMarkup(keyboard),
-                        parse_mode='HTML'
-                    )
-                    return CONFIRMING_GENERATION
+                    # Check if we have update.message or need to use context.bot
+                    try:
+                        if update.message:
+                            await update.message.reply_text(
+                                confirm_text,
+                                reply_markup=InlineKeyboardMarkup(keyboard),
+                                parse_mode='HTML'
+                            )
+                        elif update.callback_query:
+                            try:
+                                await update.callback_query.edit_message_text(
+                                    confirm_text,
+                                    reply_markup=InlineKeyboardMarkup(keyboard),
+                                    parse_mode='HTML'
+                                )
+                            except Exception as edit_error:
+                                logger.warning(f"Could not edit message, sending new: {edit_error}")
+                                await update.callback_query.message.reply_text(
+                                    confirm_text,
+                                    reply_markup=InlineKeyboardMarkup(keyboard),
+                                    parse_mode='HTML'
+                                )
+                        else:
+                            await context.bot.send_message(
+                                chat_id=user_id,
+                                text=confirm_text,
+                                reply_markup=InlineKeyboardMarkup(keyboard),
+                                parse_mode='HTML'
+                            )
+                        logger.info(f"✅✅✅ Confirmation button shown for {model_id}, returning CONFIRMING_GENERATION")
+                        return CONFIRMING_GENERATION
+                    except Exception as send_error:
+                        logger.error(f"❌ Error showing confirmation button: {send_error}", exc_info=True)
+                        return INPUTTING_PARAMS
             except Exception as e:
                 logger.error(f"Error after image input: {e}", exc_info=True)
                 await update.message.reply_text(
@@ -10888,24 +10947,54 @@ async def start_generation_directly(
 async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle generation confirmation."""
     query = update.callback_query
-    if query:
-        await query.answer()
-    
     user_id = update.effective_user.id
     logger.info(f"🚀🚀🚀 confirm_generation CALLED for user {user_id}")
+    
+    # Answer callback immediately if present
+    if query:
+        try:
+            await query.answer()
+        except Exception as e:
+            logger.warning(f"Could not answer callback query: {e}")
+    
     is_admin_user = get_is_admin(user_id)
+    
+    # Helper function to send/edit messages safely
+    async def send_or_edit_message(text, parse_mode='HTML'):
+        try:
+            if query:
+                try:
+                    await query.edit_message_text(text, parse_mode=parse_mode)
+                except Exception as edit_error:
+                    logger.warning(f"Could not edit message: {edit_error}, sending new")
+                    try:
+                        await query.message.reply_text(text, parse_mode=parse_mode)
+                        try:
+                            await query.message.delete()
+                        except:
+                            pass
+                    except Exception as send_error:
+                        logger.error(f"Could not send new message: {send_error}")
+                        await context.bot.send_message(chat_id=user_id, text=text, parse_mode=parse_mode)
+            else:
+                await context.bot.send_message(chat_id=user_id, text=text, parse_mode=parse_mode)
+        except Exception as e:
+            logger.error(f"Error in send_or_edit_message: {e}", exc_info=True)
+            try:
+                await context.bot.send_message(chat_id=user_id, text=text, parse_mode=parse_mode)
+            except:
+                pass
     
     # Check if user is blocked
     if not is_admin_user and is_user_blocked(user_id):
-        await query.edit_message_text(
+        await send_or_edit_message(
             "❌ <b>Ваш аккаунт заблокирован</b>\n\n"
-            "Обратитесь к администратору для разблокировки.",
-            parse_mode='HTML'
+            "Обратитесь к администратору для разблокировки."
         )
         return ConversationHandler.END
     
     if user_id not in user_sessions:
-        await query.edit_message_text("❌ Сессия не найдена.")
+        await send_or_edit_message("❌ Сессия не найдена.")
         return ConversationHandler.END
     
     session = user_sessions[user_id]
@@ -10965,10 +11054,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 else:
                     error_text += "Пополните баланс для продолжения."
                 
-                await query.edit_message_text(
-                    error_text,
-                    parse_mode='HTML'
-                )
+                await send_or_edit_message(error_text)
                 return ConversationHandler.END
     elif user_id != ADMIN_ID:
         # Limited admin - check limit
@@ -10978,18 +11064,17 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             remaining_str = f"{remaining:.2f}".rstrip('0').rstrip('.')
             limit = get_admin_limit(user_id)
             spent = get_admin_spent(user_id)
-            await query.edit_message_text(
+            await send_or_edit_message(
                 f"❌ <b>Превышен лимит</b>\n\n"
                 f"💰 <b>Требуется:</b> {price_str} ₽\n"
                 f"💳 <b>Лимит:</b> {limit:.2f} ₽\n"
                 f"💸 <b>Потрачено:</b> {spent:.2f} ₽\n"
                 f"✅ <b>Осталось:</b> {remaining_str} ₽\n\n"
-                f"Обратитесь к главному администратору для увеличения лимита.",
-                parse_mode='HTML'
+                f"Обратитесь к главному администратору для увеличения лимита."
             )
             return ConversationHandler.END
     
-    await query.edit_message_text("🔄 Создаю задачу генерации... Пожалуйста, подождите.")
+    await send_or_edit_message("🔄 Создаю задачу генерации... Пожалуйста, подождите.")
     
     try:
         # Prepare params for API (convert image_input to appropriate parameter name if needed)
@@ -11305,7 +11390,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             # Validate prompt (required, max 3000 characters)
             if 'prompt' not in api_params or not api_params.get('prompt'):
                 error_msg = "❌ <b>Ошибка валидации</b>\n\nПараметр <b>prompt</b> обязателен для модели seedream/4.5-text-to-image."
-                await query.edit_message_text(error_msg, parse_mode='HTML')
+                await send_or_edit_message(error_msg)
                 logger.error(f"Missing required parameter prompt for seedream/4.5-text-to-image")
                 return ConversationHandler.END
             
@@ -11316,7 +11401,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     f"Параметр prompt слишком длинный (макс. 3000 символов).\n"
                     f"Текущая длина: {len(prompt)} символов."
                 )
-                await query.edit_message_text(error_msg, parse_mode='HTML')
+                await send_or_edit_message(error_msg)
                 logger.error(f"prompt too long for seedream/4.5-text-to-image: {len(prompt)} characters")
                 return ConversationHandler.END
             api_params['prompt'] = prompt
@@ -11336,7 +11421,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_aspect_ratios)}\n\n"
                         f"Полученное значение: {aspect_ratio}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for seedream/4.5-text-to-image: {aspect_ratio}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -11359,7 +11444,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: basic, high\n\n"
                         f"Полученное значение: {api_params.get('quality')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid quality for seedream/4.5-text-to-image: {api_params.get('quality')}")
                     return ConversationHandler.END
                 api_params['quality'] = quality
@@ -11371,7 +11456,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             # Validate prompt (required, max 3000 characters)
             if 'prompt' not in api_params or not api_params.get('prompt'):
                 error_msg = "❌ <b>Ошибка валидации</b>\n\nПараметр <b>prompt</b> обязателен для модели seedream/4.5-edit."
-                await query.edit_message_text(error_msg, parse_mode='HTML')
+                await send_or_edit_message(error_msg)
                 logger.error(f"Missing required parameter prompt for seedream/4.5-edit")
                 return ConversationHandler.END
             
@@ -11382,7 +11467,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     f"Параметр prompt слишком длинный (макс. 3000 символов).\n"
                     f"Текущая длина: {len(prompt)} символов."
                 )
-                await query.edit_message_text(error_msg, parse_mode='HTML')
+                await send_or_edit_message(error_msg)
                 logger.error(f"prompt too long for seedream/4.5-edit: {len(prompt)} characters")
                 return ConversationHandler.END
             api_params['prompt'] = prompt
@@ -11391,7 +11476,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             # Note: image_input is converted to image_urls earlier in the code
             if 'image_urls' not in api_params or not api_params.get('image_urls'):
                 error_msg = "❌ <b>Ошибка валидации</b>\n\nПараметр <b>image_urls</b> обязателен для модели seedream/4.5-edit."
-                await query.edit_message_text(error_msg, parse_mode='HTML')
+                await send_or_edit_message(error_msg)
                 logger.error(f"Missing required parameter image_urls for seedream/4.5-edit")
                 return ConversationHandler.END
             
@@ -11407,14 +11492,14 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр image_urls должен быть массивом URL изображений.\n"
                         f"Полученный тип: {type(image_urls).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_urls type for seedream/4.5-edit: {type(image_urls)}")
                     return ConversationHandler.END
             
             # Validate that list is not empty
             if len(image_urls) == 0:
                 error_msg = "❌ <b>Ошибка валидации</b>\n\nПараметр <b>image_urls</b> не может быть пустым массивом."
-                await query.edit_message_text(error_msg, parse_mode='HTML')
+                await send_or_edit_message(error_msg)
                 logger.error(f"Empty image_urls array for seedream/4.5-edit")
                 return ConversationHandler.END
             
@@ -11426,7 +11511,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Все элементы в image_urls должны быть непустыми строками (URL).\n"
                         f"Ошибка в элементе {i+1}."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_urls[{i}] for seedream/4.5-edit: {url}")
                     return ConversationHandler.END
             
@@ -11447,7 +11532,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_aspect_ratios)}\n\n"
                         f"Полученное значение: {aspect_ratio}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for seedream/4.5-edit: {aspect_ratio}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -11470,7 +11555,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: basic, high\n\n"
                         f"Полученное значение: {api_params.get('quality')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid quality for seedream/4.5-edit: {api_params.get('quality')}")
                     return ConversationHandler.END
                 api_params['quality'] = quality
@@ -11483,7 +11568,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             # Validate prompt (required, max 1000 characters)
             if 'prompt' not in api_params or not api_params.get('prompt'):
                 error_msg = "❌ <b>Ошибка валидации</b>\n\nПараметр <b>prompt</b> обязателен для модели kling-2.6/image-to-video."
-                await query.edit_message_text(error_msg, parse_mode='HTML')
+                await send_or_edit_message(error_msg)
                 logger.error(f"Missing required parameter prompt for kling-2.6/image-to-video")
                 return ConversationHandler.END
             
@@ -11494,7 +11579,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     f"Параметр prompt слишком длинный (макс. 1000 символов).\n"
                     f"Текущая длина: {len(prompt)} символов."
                 )
-                await query.edit_message_text(error_msg, parse_mode='HTML')
+                await send_or_edit_message(error_msg)
                 logger.error(f"prompt too long for kling-2.6/image-to-video: {len(prompt)} characters")
                 return ConversationHandler.END
             api_params['prompt'] = prompt
@@ -11503,7 +11588,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             # Note: image_input is converted to image_urls earlier in the code
             if 'image_urls' not in api_params or not api_params.get('image_urls'):
                 error_msg = "❌ <b>Ошибка валидации</b>\n\nПараметр <b>image_urls</b> обязателен для модели kling-2.6/image-to-video."
-                await query.edit_message_text(error_msg, parse_mode='HTML')
+                await send_or_edit_message(error_msg)
                 logger.error(f"Missing required parameter image_urls for kling-2.6/image-to-video")
                 return ConversationHandler.END
             
@@ -11519,14 +11604,14 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр image_urls должен быть массивом URL изображений.\n"
                         f"Полученный тип: {type(image_urls).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_urls type for kling-2.6/image-to-video: {type(image_urls)}")
                     return ConversationHandler.END
             
             # Validate that list is not empty
             if len(image_urls) == 0:
                 error_msg = "❌ <b>Ошибка валидации</b>\n\nПараметр <b>image_urls</b> не может быть пустым массивом."
-                await query.edit_message_text(error_msg, parse_mode='HTML')
+                await send_or_edit_message(error_msg)
                 logger.error(f"Empty image_urls array for kling-2.6/image-to-video")
                 return ConversationHandler.END
             
@@ -11538,7 +11623,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Все элементы в image_urls должны быть непустыми строками (URL).\n"
                         f"Ошибка в элементе {i+1}."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_urls[{i}] for kling-2.6/image-to-video: {url}")
                     return ConversationHandler.END
             
@@ -11565,7 +11650,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Допустимые значения: true, false\n\n"
                             f"Полученное значение: {sound}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid sound value for kling-2.6/image-to-video: {sound}")
                         return ConversationHandler.END
                 elif not isinstance(sound, bool):
@@ -11578,7 +11663,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Параметр sound должен быть boolean (true/false).\n"
                             f"Полученный тип: {type(sound).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid sound type for kling-2.6/image-to-video: {type(sound)}")
                         return ConversationHandler.END
                 api_params['sound'] = sound
@@ -11598,7 +11683,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_durations)}\n\n"
                         f"Полученное значение: {duration}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid duration for kling-2.6/image-to-video: {duration}")
                     return ConversationHandler.END
                 api_params['duration'] = duration
@@ -11649,7 +11734,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Допустимые значения: true, false\n\n"
                             f"Полученное значение: {sound}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid sound value for kling-2.6/text-to-video: {sound}")
                         return ConversationHandler.END
                 elif not isinstance(sound, bool):
@@ -11662,7 +11747,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Параметр sound должен быть boolean (true/false).\n"
                             f"Полученный тип: {type(sound).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid sound type for kling-2.6/text-to-video: {type(sound)}")
                         return ConversationHandler.END
                 api_params['sound'] = sound
@@ -11682,7 +11767,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_aspect_ratios)}\n\n"
                         f"Полученное значение: {aspect_ratio}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for kling-2.6/text-to-video: {aspect_ratio}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -11702,7 +11787,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_durations)}\n\n"
                         f"Полученное значение: {duration}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid duration for kling-2.6/text-to-video: {duration}")
                     return ConversationHandler.END
                 api_params['duration'] = duration
@@ -11744,7 +11829,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_aspect_ratios)}\n\n"
                         f"Полученное значение: {aspect_ratio}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for z-image: {aspect_ratio}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -11801,7 +11886,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр input_urls должен быть массивом URL изображений.\n"
                         f"Полученный тип: {type(input_urls).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid input_urls type for flux-2/pro-image-to-image: {type(input_urls)}")
                     return ConversationHandler.END
             
@@ -11830,7 +11915,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Все элементы в input_urls должны быть непустыми строками (URL).\n"
                         f"Ошибка в элементе {i+1}."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid input_urls[{i}] for flux-2/pro-image-to-image: {url}")
                     return ConversationHandler.END
             
@@ -11851,7 +11936,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_aspect_ratios)}\n\n"
                         f"Полученное значение: {aspect_ratio}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for flux-2/pro-image-to-image: {aspect_ratio}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -11871,7 +11956,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_resolutions)}\n\n"
                         f"Полученное значение: {resolution}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid resolution for flux-2/pro-image-to-image: {resolution}")
                     return ConversationHandler.END
                 api_params['resolution'] = resolution
@@ -11924,7 +12009,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_aspect_ratios)}\n\n"
                         f"Полученное значение: {aspect_ratio}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for flux-2/pro-text-to-image: {aspect_ratio}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -11944,7 +12029,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_resolutions)}\n\n"
                         f"Полученное значение: {resolution}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid resolution for flux-2/pro-text-to-image: {resolution}")
                     return ConversationHandler.END
                 api_params['resolution'] = resolution
@@ -12001,7 +12086,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр input_urls должен быть массивом URL изображений.\n"
                         f"Полученный тип: {type(input_urls).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid input_urls type for flux-2/flex-image-to-image: {type(input_urls)}")
                     return ConversationHandler.END
             
@@ -12030,7 +12115,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Все элементы в input_urls должны быть непустыми строками (URL).\n"
                         f"Ошибка в элементе {i+1}."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid input_urls[{i}] for flux-2/flex-image-to-image: {url}")
                     return ConversationHandler.END
             
@@ -12051,7 +12136,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_aspect_ratios)}\n\n"
                         f"Полученное значение: {aspect_ratio}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for flux-2/flex-image-to-image: {aspect_ratio}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -12071,7 +12156,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_resolutions)}\n\n"
                         f"Полученное значение: {resolution}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid resolution for flux-2/flex-image-to-image: {resolution}")
                     return ConversationHandler.END
                 api_params['resolution'] = resolution
@@ -12124,7 +12209,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_aspect_ratios)}\n\n"
                         f"Полученное значение: {aspect_ratio}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for flux-2/flex-text-to-image: {aspect_ratio}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -12144,7 +12229,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_resolutions)}\n\n"
                         f"Полученное значение: {resolution}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid resolution for flux-2/flex-text-to-image: {resolution}")
                     return ConversationHandler.END
                 api_params['resolution'] = resolution
@@ -12188,7 +12273,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Параметр image_input должен быть массивом URL изображений.\n"
                             f"Полученный тип: {type(image_input).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid image_input type for nano-banana-pro: {type(image_input)}")
                         return ConversationHandler.END
                 
@@ -12199,7 +12284,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр image_input содержит слишком много изображений (макс. 8).\n"
                         f"Текущее количество: {len(image_input)}."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Too many image_input for nano-banana-pro: {len(image_input)}")
                     return ConversationHandler.END
                 
@@ -12211,7 +12296,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Все элементы в image_input должны быть непустыми строками (URL).\n"
                             f"Ошибка в элементе {i+1}."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid image_input[{i}] for nano-banana-pro: {url}")
                         return ConversationHandler.END
                 
@@ -12229,7 +12314,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_aspect_ratios)}\n\n"
                         f"Полученное значение: {aspect_ratio}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for nano-banana-pro: {aspect_ratio}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -12249,7 +12334,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_resolutions)}\n\n"
                         f"Полученное значение: {resolution}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid resolution for nano-banana-pro: {resolution}")
                     return ConversationHandler.END
                 api_params['resolution'] = resolution
@@ -12270,7 +12355,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_output_formats)}\n\n"
                         f"Полученное значение: {api_params.get('output_format')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid output_format for nano-banana-pro: {api_params.get('output_format')}")
                     return ConversationHandler.END
                 api_params['output_format'] = output_format
@@ -12345,7 +12430,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>resolution</b> должен быть одним из: <b>480p</b>, <b>720p</b> или <b>1080p</b>.\n\n"
                         f"Полученное значение: {api_params.get('resolution')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid resolution for bytedance/v1-pro-fast-image-to-video: {api_params.get('resolution')}")
                     return ConversationHandler.END
                 api_params['resolution'] = resolution
@@ -12369,7 +12454,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>duration</b> должен быть одним из: <b>5s</b> или <b>10s</b>.\n\n"
                         f"Полученное значение: {api_params.get('duration')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid duration for bytedance/v1-pro-fast-image-to-video: {api_params.get('duration')}")
                     return ConversationHandler.END
                 api_params['duration'] = duration
@@ -12404,7 +12489,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>aspect_ratio</b> должен быть: <b>16:9</b>.\n\n"
                         f"Полученное значение: {aspect_ratio}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for bytedance/v1-lite-text-to-video: {aspect_ratio}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -12427,7 +12512,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>resolution</b> должен быть одним из: <b>480p</b>, <b>720p</b> или <b>1080p</b>.\n\n"
                         f"Полученное значение: {api_params.get('resolution')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid resolution for bytedance/v1-lite-text-to-video: {api_params.get('resolution')}")
                     return ConversationHandler.END
                 api_params['resolution'] = resolution
@@ -12450,7 +12535,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>duration</b> должен быть одним из: <b>5s</b> или <b>10s</b>.\n\n"
                         f"Полученное значение: {api_params.get('duration')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid duration for bytedance/v1-lite-text-to-video: {api_params.get('duration')}")
                     return ConversationHandler.END
                 api_params['duration'] = duration
@@ -12474,7 +12559,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>camera_fixed</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['camera_fixed']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid camera_fixed for bytedance/v1-lite-text-to-video: {api_params['camera_fixed']}")
                         return ConversationHandler.END
                 elif not isinstance(camera_fixed, bool):
@@ -12483,7 +12568,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>camera_fixed</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(camera_fixed).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid camera_fixed type for bytedance/v1-lite-text-to-video: {type(camera_fixed)}")
                     return ConversationHandler.END
                 api_params['camera_fixed'] = camera_fixed
@@ -12511,7 +12596,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом (целым). Используйте -1 для случайного seed.\n\n"
                             f"Получено: {type(seed).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed type for bytedance/v1-lite-text-to-video: {type(seed)}")
                         return ConversationHandler.END
                     
@@ -12522,7 +12607,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть положительным числом или -1 (для случайного seed).\n\n"
                             f"Получено: {seed}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed value for bytedance/v1-lite-text-to-video: {seed}")
                         return ConversationHandler.END
                     
@@ -12533,7 +12618,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>seed</b> должен быть числом (целым). Используйте -1 для случайного seed.\n\n"
                         f"Получено: {api_params.get('seed')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid seed for bytedance/v1-lite-text-to-video: {api_params.get('seed')}")
                     return ConversationHandler.END
             else:
@@ -12557,7 +12642,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>enable_safety_checker</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['enable_safety_checker']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid enable_safety_checker for bytedance/v1-lite-text-to-video: {api_params['enable_safety_checker']}")
                         return ConversationHandler.END
                 elif not isinstance(enable_safety_checker, bool):
@@ -12566,7 +12651,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>enable_safety_checker</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(enable_safety_checker).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid enable_safety_checker type for bytedance/v1-lite-text-to-video: {type(enable_safety_checker)}")
                     return ConversationHandler.END
                 api_params['enable_safety_checker'] = enable_safety_checker
@@ -12603,7 +12688,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>aspect_ratio</b> должен быть: <b>16:9</b>.\n\n"
                         f"Полученное значение: {aspect_ratio}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for bytedance/v1-pro-text-to-video: {aspect_ratio}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -12626,7 +12711,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>resolution</b> должен быть одним из: <b>480p</b>, <b>720p</b> или <b>1080p</b>.\n\n"
                         f"Полученное значение: {api_params.get('resolution')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid resolution for bytedance/v1-pro-text-to-video: {api_params.get('resolution')}")
                     return ConversationHandler.END
                 api_params['resolution'] = resolution
@@ -12649,7 +12734,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>duration</b> должен быть одним из: <b>5s</b> или <b>10s</b>.\n\n"
                         f"Полученное значение: {api_params.get('duration')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid duration for bytedance/v1-pro-text-to-video: {api_params.get('duration')}")
                     return ConversationHandler.END
                 api_params['duration'] = duration
@@ -12673,7 +12758,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>camera_fixed</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['camera_fixed']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid camera_fixed for bytedance/v1-pro-text-to-video: {api_params['camera_fixed']}")
                         return ConversationHandler.END
                 elif not isinstance(camera_fixed, bool):
@@ -12682,7 +12767,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>camera_fixed</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(camera_fixed).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid camera_fixed type for bytedance/v1-pro-text-to-video: {type(camera_fixed)}")
                     return ConversationHandler.END
                 api_params['camera_fixed'] = camera_fixed
@@ -12710,7 +12795,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом (целым). Используйте -1 для случайного seed.\n\n"
                             f"Получено: {type(seed).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed type for bytedance/v1-pro-text-to-video: {type(seed)}")
                         return ConversationHandler.END
                     
@@ -12721,7 +12806,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть положительным числом или -1 (для случайного seed).\n\n"
                             f"Получено: {seed}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed value for bytedance/v1-pro-text-to-video: {seed}")
                         return ConversationHandler.END
                     
@@ -12732,7 +12817,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>seed</b> должен быть числом (целым). Используйте -1 для случайного seed.\n\n"
                         f"Получено: {api_params.get('seed')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid seed for bytedance/v1-pro-text-to-video: {api_params.get('seed')}")
                     return ConversationHandler.END
             else:
@@ -12756,7 +12841,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>enable_safety_checker</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['enable_safety_checker']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid enable_safety_checker for bytedance/v1-pro-text-to-video: {api_params['enable_safety_checker']}")
                         return ConversationHandler.END
                 elif not isinstance(enable_safety_checker, bool):
@@ -12765,7 +12850,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>enable_safety_checker</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(enable_safety_checker).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid enable_safety_checker type for bytedance/v1-pro-text-to-video: {type(enable_safety_checker)}")
                     return ConversationHandler.END
                 api_params['enable_safety_checker'] = enable_safety_checker
@@ -12835,7 +12920,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>resolution</b> должен быть одним из: <b>480p</b>, <b>720p</b> или <b>1080p</b>.\n\n"
                         f"Полученное значение: {api_params.get('resolution')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid resolution for bytedance/v1-lite-image-to-video: {api_params.get('resolution')}")
                     return ConversationHandler.END
                 api_params['resolution'] = resolution
@@ -12858,7 +12943,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>duration</b> должен быть одним из: <b>5s</b> или <b>10s</b>.\n\n"
                         f"Полученное значение: {api_params.get('duration')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid duration for bytedance/v1-lite-image-to-video: {api_params.get('duration')}")
                     return ConversationHandler.END
                 api_params['duration'] = duration
@@ -12882,7 +12967,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>camera_fixed</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['camera_fixed']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid camera_fixed for bytedance/v1-lite-image-to-video: {api_params['camera_fixed']}")
                         return ConversationHandler.END
                 elif not isinstance(camera_fixed, bool):
@@ -12891,7 +12976,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>camera_fixed</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(camera_fixed).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid camera_fixed type for bytedance/v1-lite-image-to-video: {type(camera_fixed)}")
                     return ConversationHandler.END
                 api_params['camera_fixed'] = camera_fixed
@@ -12919,7 +13004,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом (целым). Используйте -1 для случайного seed.\n\n"
                             f"Получено: {type(seed).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed type for bytedance/v1-lite-image-to-video: {type(seed)}")
                         return ConversationHandler.END
                     
@@ -12930,7 +13015,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть положительным числом или -1 (для случайного seed).\n\n"
                             f"Получено: {seed}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed value for bytedance/v1-lite-image-to-video: {seed}")
                         return ConversationHandler.END
                     
@@ -12941,7 +13026,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>seed</b> должен быть числом (целым). Используйте -1 для случайного seed.\n\n"
                         f"Получено: {api_params.get('seed')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid seed for bytedance/v1-lite-image-to-video: {api_params.get('seed')}")
                     return ConversationHandler.END
             else:
@@ -12965,7 +13050,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>enable_safety_checker</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['enable_safety_checker']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid enable_safety_checker for bytedance/v1-lite-image-to-video: {api_params['enable_safety_checker']}")
                         return ConversationHandler.END
                 elif not isinstance(enable_safety_checker, bool):
@@ -12974,7 +13059,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>enable_safety_checker</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(enable_safety_checker).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid enable_safety_checker type for bytedance/v1-lite-image-to-video: {type(enable_safety_checker)}")
                     return ConversationHandler.END
                 api_params['enable_safety_checker'] = enable_safety_checker
@@ -12995,7 +13080,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>end_image_url</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
                             f"Получено: {end_image_url[:50]}..."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid end_image_url format for bytedance/v1-lite-image-to-video: {end_image_url[:50]}")
                         return ConversationHandler.END
                     api_params['end_image_url'] = end_image_url
@@ -13067,7 +13152,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>resolution</b> должен быть одним из: <b>480p</b>, <b>720p</b> или <b>1080p</b>.\n\n"
                         f"Полученное значение: {api_params.get('resolution')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid resolution for bytedance/v1-pro-image-to-video: {api_params.get('resolution')}")
                     return ConversationHandler.END
                 api_params['resolution'] = resolution
@@ -13090,7 +13175,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>duration</b> должен быть одним из: <b>5s</b> или <b>10s</b>.\n\n"
                         f"Полученное значение: {api_params.get('duration')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid duration for bytedance/v1-pro-image-to-video: {api_params.get('duration')}")
                     return ConversationHandler.END
                 api_params['duration'] = duration
@@ -13114,7 +13199,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>camera_fixed</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['camera_fixed']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid camera_fixed for bytedance/v1-pro-image-to-video: {api_params['camera_fixed']}")
                         return ConversationHandler.END
                 elif not isinstance(camera_fixed, bool):
@@ -13123,7 +13208,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>camera_fixed</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(camera_fixed).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid camera_fixed type for bytedance/v1-pro-image-to-video: {type(camera_fixed)}")
                     return ConversationHandler.END
                 api_params['camera_fixed'] = camera_fixed
@@ -13151,7 +13236,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом (целым). Используйте -1 для случайного seed.\n\n"
                             f"Получено: {type(seed).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed type for bytedance/v1-pro-image-to-video: {type(seed)}")
                         return ConversationHandler.END
                     
@@ -13162,7 +13247,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть положительным числом или -1 (для случайного seed).\n\n"
                             f"Получено: {seed}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed value for bytedance/v1-pro-image-to-video: {seed}")
                         return ConversationHandler.END
                     
@@ -13173,7 +13258,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>seed</b> должен быть числом (целым). Используйте -1 для случайного seed.\n\n"
                         f"Получено: {api_params.get('seed')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid seed for bytedance/v1-pro-image-to-video: {api_params.get('seed')}")
                     return ConversationHandler.END
             else:
@@ -13197,7 +13282,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>enable_safety_checker</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['enable_safety_checker']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid enable_safety_checker for bytedance/v1-pro-image-to-video: {api_params['enable_safety_checker']}")
                         return ConversationHandler.END
                 elif not isinstance(enable_safety_checker, bool):
@@ -13206,7 +13291,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>enable_safety_checker</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(enable_safety_checker).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid enable_safety_checker type for bytedance/v1-pro-image-to-video: {type(enable_safety_checker)}")
                     return ConversationHandler.END
                 api_params['enable_safety_checker'] = enable_safety_checker
@@ -13294,7 +13379,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>duration</b> должен быть одним из: <b>5 seconds</b> или <b>10 seconds</b>.\n\n"
                         f"Полученное значение: {api_params.get('duration')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid duration for kling/v2-1-master-image-to-video: {api_params.get('duration')}")
                     return ConversationHandler.END
                 api_params['duration'] = duration
@@ -13333,7 +13418,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>cfg_scale</b> должен быть числом.\n\n"
                             f"Получено: {type(cfg_scale).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid cfg_scale type for kling/v2-1-master-image-to-video: {type(cfg_scale)}")
                         return ConversationHandler.END
                     
@@ -13344,7 +13429,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>cfg_scale</b> должен быть положительным числом.\n\n"
                             f"Получено: {cfg_scale}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid cfg_scale value for kling/v2-1-master-image-to-video: {cfg_scale}")
                         return ConversationHandler.END
                     
@@ -13355,7 +13440,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>cfg_scale</b> должен быть числом.\n\n"
                         f"Получено: {api_params.get('cfg_scale')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid cfg_scale for kling/v2-1-master-image-to-video: {api_params.get('cfg_scale')}")
                     return ConversationHandler.END
             else:
@@ -13414,7 +13499,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Параметр image_urls должен быть массивом URL изображений.\n"
                             f"Полученный тип: {type(image_urls).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid image_urls type for grok-imagine/image-to-video: {type(image_urls)}")
                         return ConversationHandler.END
                 
@@ -13425,7 +13510,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр image_urls может содержать только 1 изображение.\n"
                         f"Текущее количество: {len(image_urls)}."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Too many image_urls for grok-imagine/image-to-video: {len(image_urls)}")
                     return ConversationHandler.END
                 
@@ -13437,7 +13522,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"❌ <b>Ошибка валидации</b>\n\n"
                             f"Элемент в image_urls должен быть непустой строкой (URL)."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid image_urls[0] for grok-imagine/image-to-video: {url}")
                         return ConversationHandler.END
                     api_params['image_urls'] = [url.strip()]
@@ -13451,7 +13536,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 task_id = str(api_params['task_id']).strip()
                 if not task_id:
                     error_msg = "❌ <b>Ошибка валидации</b>\n\nПараметр <b>task_id</b> не может быть пустым."
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Empty task_id for grok-imagine/image-to-video")
                     return ConversationHandler.END
                 api_params['task_id'] = task_id
@@ -13466,7 +13551,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                                 f"Параметр index должен быть в диапазоне от 0 до 5 (0-based).\n"
                                 f"Полученное значение: {index}"
                             )
-                            await query.edit_message_text(error_msg, parse_mode='HTML')
+                            await send_or_edit_message(error_msg)
                             logger.error(f"Invalid index for grok-imagine/image-to-video: {index}")
                             return ConversationHandler.END
                         api_params['index'] = index
@@ -13476,7 +13561,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Параметр index должен быть числом от 0 до 5.\n"
                             f"Полученное значение: {api_params.get('index')}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid index type for grok-imagine/image-to-video: {api_params.get('index')}")
                         return ConversationHandler.END
                 else:
@@ -13500,7 +13585,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_modes)}\n\n"
                         f"Полученное значение: {api_params.get('mode')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid mode for grok-imagine/image-to-video: {api_params.get('mode')}")
                     return ConversationHandler.END
                 
@@ -13545,7 +13630,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_aspect_ratios)}\n\n"
                         f"Полученное значение: {aspect_ratio}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for grok-imagine/text-to-video: {aspect_ratio}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -13562,7 +13647,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_modes)}\n\n"
                         f"Полученное значение: {api_params.get('mode')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid mode for grok-imagine/text-to-video: {api_params.get('mode')}")
                     return ConversationHandler.END
                 api_params['mode'] = mode
@@ -13600,7 +13685,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Допустимые значения: {', '.join(valid_aspect_ratios)}\n\n"
                         f"Полученное значение: {aspect_ratio}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for grok-imagine/text-to-image: {aspect_ratio}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -13684,7 +13769,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>image_url</b> обязателен для модели hailuo/2-3-image-to-video-pro.\n\n"
                             "Укажите URL входного изображения для анимации."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Missing required parameter image_url for hailuo/2-3-image-to-video-pro")
                         return ConversationHandler.END
                 else:
@@ -13693,7 +13778,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_url</b> обязателен для модели hailuo/2-3-image-to-video-pro.\n\n"
                         "Укажите URL входного изображения для анимации."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Missing required parameter image_url for hailuo/2-3-image-to-video-pro")
                     return ConversationHandler.END
             
@@ -13736,7 +13821,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>duration</b> должен быть одним из: <b>6</b> или <b>10</b> секунд.\n\n"
                         f"Получено: {api_params['duration']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid duration for hailuo/2-3-image-to-video-pro: {api_params['duration']}")
                     return ConversationHandler.END
                 api_params['duration'] = duration
@@ -13757,7 +13842,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>resolution</b> должен быть одним из: <b>768P</b> или <b>1080P</b>.\n\n"
                         f"Получено: {api_params['resolution']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid resolution for hailuo/2-3-image-to-video-pro: {api_params['resolution']}")
                     return ConversationHandler.END
                 api_params['resolution'] = resolution
@@ -13828,7 +13913,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>image_url</b> обязателен для модели hailuo/2-3-image-to-video-standard.\n\n"
                             "Укажите URL входного изображения для анимации."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Missing required parameter image_url for hailuo/2-3-image-to-video-standard")
                         return ConversationHandler.END
                 else:
@@ -13837,7 +13922,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_url</b> обязателен для модели hailuo/2-3-image-to-video-standard.\n\n"
                         "Укажите URL входного изображения для анимации."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Missing required parameter image_url for hailuo/2-3-image-to-video-standard")
                     return ConversationHandler.END
             
@@ -13880,7 +13965,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>duration</b> должен быть одним из: <b>6</b> или <b>10</b> секунд.\n\n"
                         f"Получено: {api_params['duration']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid duration for hailuo/2-3-image-to-video-standard: {api_params['duration']}")
                     return ConversationHandler.END
                 api_params['duration'] = duration
@@ -13901,7 +13986,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>resolution</b> должен быть одним из: <b>768P</b> или <b>1080P</b>.\n\n"
                         f"Получено: {api_params['resolution']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid resolution for hailuo/2-3-image-to-video-standard: {api_params['resolution']}")
                     return ConversationHandler.END
                 api_params['resolution'] = resolution
@@ -13972,7 +14057,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Сцена #{i} должна быть объектом (словарем).\n\n"
                         f"Получено: {type(shot).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid shot #{i} type for sora-2-pro-storyboard: {type(shot)}")
                     return ConversationHandler.END
                 
@@ -13983,7 +14068,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Сцена #{i}: параметр <b>Scene</b> обязателен.\n\n"
                         f"Укажите текстовое описание сцены."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Missing Scene in shot #{i} for sora-2-pro-storyboard")
                     return ConversationHandler.END
                 
@@ -13994,7 +14079,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Сцена #{i}: параметр <b>Scene</b> не может быть пустым.\n\n"
                         f"Укажите текстовое описание сцены."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Empty Scene in shot #{i} for sora-2-pro-storyboard")
                     return ConversationHandler.END
                 
@@ -14005,7 +14090,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Сцена #{i}: параметр <b>duration</b> обязателен.\n\n"
                         f"Укажите длительность сцены в секундах (число)."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Missing duration in shot #{i} for sora-2-pro-storyboard")
                     return ConversationHandler.END
                 
@@ -14017,7 +14102,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Сцена #{i}: параметр <b>duration</b> должен быть положительным числом.\n\n"
                             f"Получено: {duration}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid duration in shot #{i} for sora-2-pro-storyboard: {duration}")
                         return ConversationHandler.END
                 except (ValueError, TypeError):
@@ -14026,7 +14111,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Сцена #{i}: параметр <b>duration</b> должен быть числом.\n\n"
                         f"Получено: {shot['duration']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid duration type in shot #{i} for sora-2-pro-storyboard: {type(shot['duration'])}")
                     return ConversationHandler.END
                 
@@ -14091,7 +14176,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_urls</b> должен быть массивом URL или одним URL строкой.\n\n"
                         f"Получено: {type(image_urls).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_urls type for sora-2-pro-storyboard: {type(image_urls)}")
                     return ConversationHandler.END
                 
@@ -14101,7 +14186,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_urls</b> поддерживает максимум <b>1</b> изображение.\n\n"
                         f"Получено: {len(image_urls)} изображений"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Too many image_urls for sora-2-pro-storyboard: {len(image_urls)}")
                     return ConversationHandler.END
                 
@@ -14114,7 +14199,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Изображение #{i} в <b>image_urls</b> должно быть строкой (URL).\n\n"
                             f"Получено: {type(url).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid image_url #{i} type for sora-2-pro-storyboard: {type(url)}")
                         return ConversationHandler.END
                     
@@ -14125,7 +14210,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Изображение #{i} в <b>image_urls</b> не может быть пустым.\n\n"
                             f"Укажите валидный URL изображения."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Empty image_url #{i} for sora-2-pro-storyboard")
                         return ConversationHandler.END
                     
@@ -14135,7 +14220,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Изображение #{i} в <b>image_urls</b> должно быть валидным URL (начинаться с http:// или https://).\n\n"
                             f"Получено: {url[:50]}..."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid image_url #{i} format for sora-2-pro-storyboard: {url}")
                         return ConversationHandler.END
                     
@@ -14157,7 +14242,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>aspect_ratio</b> должен быть одним из: <b>portrait</b> или <b>landscape</b>.\n\n"
                         f"Получено: {api_params['aspect_ratio']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for sora-2-pro-storyboard: {api_params['aspect_ratio']}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -14247,7 +14332,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Параметр <b>tag_audio_events</b> должен быть булевым значением (true/false).\n\n"
                             f"Полученное значение: {tag_audio_events}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid tag_audio_events for elevenlabs/speech-to-text: {tag_audio_events}")
                         return ConversationHandler.END
                 elif isinstance(tag_audio_events, bool):
@@ -14258,7 +14343,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>tag_audio_events</b> должен быть булевым значением.\n\n"
                         f"Полученный тип: {type(tag_audio_events).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid tag_audio_events type for elevenlabs/speech-to-text: {type(tag_audio_events)}")
                     return ConversationHandler.END
                 
@@ -14282,7 +14367,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Параметр <b>diarize</b> должен быть булевым значением (true/false).\n\n"
                             f"Полученное значение: {diarize}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid diarize for elevenlabs/speech-to-text: {diarize}")
                         return ConversationHandler.END
                 elif isinstance(diarize, bool):
@@ -14293,7 +14378,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>diarize</b> должен быть булевым значением.\n\n"
                         f"Полученный тип: {type(diarize).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid diarize type for elevenlabs/speech-to-text: {type(diarize)}")
                     return ConversationHandler.END
                 
@@ -14427,7 +14512,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>aspect_ratio</b> должен быть одним из: <b>portrait</b> или <b>landscape</b>.\n\n"
                         f"Получено: {api_params['aspect_ratio']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for sora-2-pro-text-to-video: {api_params['aspect_ratio']}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -14450,7 +14535,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>n_frames</b> должен быть одним из: <b>10</b> или <b>15</b> секунд.\n\n"
                         f"Получено: {api_params['n_frames']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid n_frames for sora-2-pro-text-to-video: {api_params['n_frames']}")
                     return ConversationHandler.END
                 api_params['n_frames'] = n_frames
@@ -14469,7 +14554,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>size</b> должен быть одним из: <b>standard</b> или <b>high</b>.\n\n"
                         f"Получено: {api_params['size']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid size for sora-2-pro-text-to-video: {api_params['size']}")
                     return ConversationHandler.END
                 api_params['size'] = size
@@ -14493,7 +14578,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>remove_watermark</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['remove_watermark']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid remove_watermark for sora-2-pro-text-to-video: {api_params['remove_watermark']}")
                         return ConversationHandler.END
                 elif not isinstance(remove_watermark, bool):
@@ -14502,7 +14587,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>remove_watermark</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(remove_watermark).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid remove_watermark type for sora-2-pro-text-to-video: {type(remove_watermark)}")
                     return ConversationHandler.END
                 api_params['remove_watermark'] = remove_watermark
@@ -14568,7 +14653,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>image_urls</b> обязателен для модели sora-2-pro-image-to-video.\n\n"
                             "Укажите URL изображения для использования в качестве первого кадра."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Missing required parameter image_urls for sora-2-pro-image-to-video")
                         return ConversationHandler.END
                 else:
@@ -14577,7 +14662,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_urls</b> обязателен для модели sora-2-pro-image-to-video.\n\n"
                         "Укажите URL изображения для использования в качестве первого кадра."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Missing required parameter image_urls for sora-2-pro-image-to-video")
                     return ConversationHandler.END
             
@@ -14625,7 +14710,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Изображение #{i} в <b>image_urls</b> должно быть строкой (URL).\n\n"
                         f"Получено: {type(url).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_url #{i} type for sora-2-pro-image-to-video: {type(url)}")
                     return ConversationHandler.END
                 
@@ -14636,7 +14721,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Изображение #{i} в <b>image_urls</b> не может быть пустым.\n\n"
                         f"Укажите валидный URL изображения."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Empty image_url #{i} for sora-2-pro-image-to-video")
                     return ConversationHandler.END
                 
@@ -14646,7 +14731,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Изображение #{i} в <b>image_urls</b> должно быть валидным URL (начинаться с http:// или https://).\n\n"
                         f"Получено: {url[:50]}..."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_url #{i} format for sora-2-pro-image-to-video: {url}")
                     return ConversationHandler.END
                 
@@ -14664,7 +14749,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>aspect_ratio</b> должен быть одним из: <b>portrait</b> или <b>landscape</b>.\n\n"
                         f"Получено: {api_params['aspect_ratio']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for sora-2-pro-image-to-video: {api_params['aspect_ratio']}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -14687,7 +14772,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>n_frames</b> должен быть одним из: <b>10</b> или <b>15</b> секунд.\n\n"
                         f"Получено: {api_params['n_frames']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid n_frames for sora-2-pro-image-to-video: {api_params['n_frames']}")
                     return ConversationHandler.END
                 api_params['n_frames'] = n_frames
@@ -14706,7 +14791,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>size</b> должен быть одним из: <b>standard</b> или <b>high</b>.\n\n"
                         f"Получено: {api_params['size']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid size for sora-2-pro-image-to-video: {api_params['size']}")
                     return ConversationHandler.END
                 api_params['size'] = size
@@ -14730,7 +14815,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>remove_watermark</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['remove_watermark']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid remove_watermark for sora-2-pro-image-to-video: {api_params['remove_watermark']}")
                         return ConversationHandler.END
                 elif not isinstance(remove_watermark, bool):
@@ -14739,7 +14824,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>remove_watermark</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(remove_watermark).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid remove_watermark type for sora-2-pro-image-to-video: {type(remove_watermark)}")
                     return ConversationHandler.END
                 api_params['remove_watermark'] = remove_watermark
@@ -14785,7 +14870,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>aspect_ratio</b> должен быть одним из: <b>portrait</b> или <b>landscape</b>.\n\n"
                         f"Получено: {api_params['aspect_ratio']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for sora-2-text-to-video: {api_params['aspect_ratio']}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -14808,7 +14893,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>n_frames</b> должен быть одним из: <b>10</b> или <b>15</b> секунд.\n\n"
                         f"Получено: {api_params['n_frames']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid n_frames for sora-2-text-to-video: {api_params['n_frames']}")
                     return ConversationHandler.END
                 api_params['n_frames'] = n_frames
@@ -14832,7 +14917,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>remove_watermark</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['remove_watermark']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid remove_watermark for sora-2-text-to-video: {api_params['remove_watermark']}")
                         return ConversationHandler.END
                 elif not isinstance(remove_watermark, bool):
@@ -14841,7 +14926,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>remove_watermark</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(remove_watermark).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid remove_watermark type for sora-2-text-to-video: {type(remove_watermark)}")
                     return ConversationHandler.END
                 api_params['remove_watermark'] = remove_watermark
@@ -14895,7 +14980,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>image_urls</b> обязателен для модели sora-2-image-to-video.\n\n"
                             "Укажите URL изображения для использования в качестве первого кадра."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Missing required parameter image_urls for sora-2-image-to-video")
                         return ConversationHandler.END
                 else:
@@ -14904,7 +14989,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_urls</b> обязателен для модели sora-2-image-to-video.\n\n"
                         "Укажите URL изображения для использования в качестве первого кадра."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Missing required parameter image_urls for sora-2-image-to-video")
                     return ConversationHandler.END
             
@@ -14952,7 +15037,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Изображение #{i} в <b>image_urls</b> должно быть строкой (URL).\n\n"
                         f"Получено: {type(url).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_url #{i} type for sora-2-image-to-video: {type(url)}")
                     return ConversationHandler.END
                 
@@ -14963,7 +15048,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Изображение #{i} в <b>image_urls</b> не может быть пустым.\n\n"
                         f"Укажите валидный URL изображения."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Empty image_url #{i} for sora-2-image-to-video")
                     return ConversationHandler.END
                 
@@ -14973,7 +15058,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Изображение #{i} в <b>image_urls</b> должно быть валидным URL (начинаться с http:// или https://).\n\n"
                         f"Получено: {url[:50]}..."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_url #{i} format for sora-2-image-to-video: {url}")
                     return ConversationHandler.END
                 
@@ -14991,7 +15076,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>aspect_ratio</b> должен быть одним из: <b>portrait</b> или <b>landscape</b>.\n\n"
                         f"Получено: {api_params['aspect_ratio']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for sora-2-image-to-video: {api_params['aspect_ratio']}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -15014,7 +15099,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>n_frames</b> должен быть одним из: <b>10</b> или <b>15</b> секунд.\n\n"
                         f"Получено: {api_params['n_frames']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid n_frames for sora-2-image-to-video: {api_params['n_frames']}")
                     return ConversationHandler.END
                 api_params['n_frames'] = n_frames
@@ -15038,7 +15123,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>remove_watermark</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['remove_watermark']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid remove_watermark for sora-2-image-to-video: {api_params['remove_watermark']}")
                         return ConversationHandler.END
                 elif not isinstance(remove_watermark, bool):
@@ -15047,7 +15132,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>remove_watermark</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(remove_watermark).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid remove_watermark type for sora-2-image-to-video: {type(remove_watermark)}")
                     return ConversationHandler.END
                 api_params['remove_watermark'] = remove_watermark
@@ -15080,7 +15165,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>image_url</b> обязателен для модели topaz/image-upscale.\n\n"
                             "Укажите URL изображения для апскейла."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Missing required parameter image_url for topaz/image-upscale")
                         return ConversationHandler.END
                 else:
@@ -15089,7 +15174,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_url</b> обязателен для модели topaz/image-upscale.\n\n"
                         "Укажите URL изображения для апскейла."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Missing required parameter image_url for topaz/image-upscale")
                     return ConversationHandler.END
             
@@ -15187,7 +15272,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>duration</b> должен быть одним из: <b>5</b> или <b>10</b> секунд.\n\n"
                         f"Получено: {api_params['duration']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid duration for kling/v2-5-turbo-text-to-video-pro: {api_params['duration']}")
                     return ConversationHandler.END
                 api_params['duration'] = duration
@@ -15205,7 +15290,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>aspect_ratio</b> должен быть одним из: <b>16:9</b>, <b>9:16</b> или <b>1:1</b>.\n\n"
                         f"Получено: {api_params['aspect_ratio']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for kling/v2-5-turbo-text-to-video-pro: {api_params['aspect_ratio']}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -15245,7 +15330,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>cfg_scale</b> должен быть числом.\n\n"
                             f"Получено: {type(cfg_scale).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid cfg_scale type for kling/v2-5-turbo-text-to-video-pro: {type(cfg_scale)}")
                         return ConversationHandler.END
                     
@@ -15256,7 +15341,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>cfg_scale</b> должен быть положительным числом.\n\n"
                             f"Получено: {cfg_scale}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid cfg_scale value for kling/v2-5-turbo-text-to-video-pro: {cfg_scale}")
                         return ConversationHandler.END
                     
@@ -15267,7 +15352,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>cfg_scale</b> должен быть числом.\n\n"
                         f"Получено: {api_params.get('cfg_scale')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid cfg_scale for kling/v2-5-turbo-text-to-video-pro: {api_params.get('cfg_scale')}")
                     return ConversationHandler.END
             else:
@@ -15322,7 +15407,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>image_url</b> обязателен для модели kling/v2-5-turbo-image-to-video-pro.\n\n"
                             "Укажите URL изображения для использования в качестве первого кадра."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Missing required parameter image_url for kling/v2-5-turbo-image-to-video-pro")
                         return ConversationHandler.END
                 else:
@@ -15331,7 +15416,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_url</b> обязателен для модели kling/v2-5-turbo-image-to-video-pro.\n\n"
                         "Укажите URL изображения для использования в качестве первого кадра."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Missing required parameter image_url for kling/v2-5-turbo-image-to-video-pro")
                     return ConversationHandler.END
             
@@ -15369,7 +15454,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>tail_image_url</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
                             f"Получено: {tail_image_url[:50]}..."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid tail_image_url format for kling/v2-5-turbo-image-to-video-pro: {tail_image_url}")
                         return ConversationHandler.END
                     api_params['tail_image_url'] = tail_image_url
@@ -15397,7 +15482,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>duration</b> должен быть одним из: <b>5</b> или <b>10</b> секунд.\n\n"
                         f"Получено: {api_params['duration']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid duration for kling/v2-5-turbo-image-to-video-pro: {api_params['duration']}")
                     return ConversationHandler.END
                 api_params['duration'] = duration
@@ -15436,7 +15521,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>cfg_scale</b> должен быть числом.\n\n"
                             f"Получено: {type(cfg_scale).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid cfg_scale type for kling/v2-5-turbo-image-to-video-pro: {type(cfg_scale)}")
                         return ConversationHandler.END
                     
@@ -15447,7 +15532,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>cfg_scale</b> должен быть положительным числом.\n\n"
                             f"Получено: {cfg_scale}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid cfg_scale value for kling/v2-5-turbo-image-to-video-pro: {cfg_scale}")
                         return ConversationHandler.END
                     
@@ -15458,7 +15543,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>cfg_scale</b> должен быть числом.\n\n"
                         f"Получено: {api_params.get('cfg_scale')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid cfg_scale for kling/v2-5-turbo-image-to-video-pro: {api_params.get('cfg_scale')}")
                     return ConversationHandler.END
             else:
@@ -15513,7 +15598,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>image_url</b> обязателен для модели wan/2-5-image-to-video.\n\n"
                             "Укажите URL изображения для использования в качестве первого кадра."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Missing required parameter image_url for wan/2-5-image-to-video")
                         return ConversationHandler.END
                 else:
@@ -15522,7 +15607,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_url</b> обязателен для модели wan/2-5-image-to-video.\n\n"
                         "Укажите URL изображения для использования в качестве первого кадра."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Missing required parameter image_url for wan/2-5-image-to-video")
                     return ConversationHandler.END
             
@@ -15565,7 +15650,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>duration</b> должен быть одним из: <b>5</b> или <b>10</b> секунд.\n\n"
                         f"Получено: {api_params['duration']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid duration for wan/2-5-image-to-video: {api_params['duration']}")
                     return ConversationHandler.END
                 api_params['duration'] = duration
@@ -15587,7 +15672,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>resolution</b> должен быть одним из: <b>720p</b> или <b>1080p</b>.\n\n"
                         f"Получено: {api_params['resolution']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid resolution for wan/2-5-image-to-video: {api_params['resolution']}")
                     return ConversationHandler.END
                 api_params['resolution'] = resolution
@@ -15624,7 +15709,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>enable_prompt_expansion</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['enable_prompt_expansion']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid enable_prompt_expansion for wan/2-5-image-to-video: {api_params['enable_prompt_expansion']}")
                         return ConversationHandler.END
                 elif not isinstance(enable_prompt_expansion, bool):
@@ -15633,7 +15718,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>enable_prompt_expansion</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(enable_prompt_expansion).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid enable_prompt_expansion type for wan/2-5-image-to-video: {type(enable_prompt_expansion)}")
                     return ConversationHandler.END
                 api_params['enable_prompt_expansion'] = enable_prompt_expansion
@@ -15662,7 +15747,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                             f"Получено: {type(seed).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed type for wan/2-5-image-to-video: {type(seed)}")
                         return ConversationHandler.END
                     
@@ -15673,7 +15758,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                         f"Получено: {api_params.get('seed')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid seed for wan/2-5-image-to-video: {api_params.get('seed')}")
                     return ConversationHandler.END
             else:
@@ -15734,7 +15819,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>duration</b> должен быть одним из: <b>5</b> или <b>10</b> секунд.\n\n"
                         f"Получено: {api_params['duration']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid duration for wan/2-5-text-to-video: {api_params['duration']}")
                     return ConversationHandler.END
                 api_params['duration'] = duration
@@ -15752,7 +15837,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>aspect_ratio</b> должен быть одним из: <b>16:9</b>, <b>9:16</b> или <b>1:1</b>.\n\n"
                         f"Получено: {api_params['aspect_ratio']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid aspect_ratio for wan/2-5-text-to-video: {api_params['aspect_ratio']}")
                     return ConversationHandler.END
                 api_params['aspect_ratio'] = aspect_ratio
@@ -15775,7 +15860,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>resolution</b> должен быть одним из: <b>720p</b> или <b>1080p</b>.\n\n"
                         f"Получено: {api_params['resolution']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid resolution for wan/2-5-text-to-video: {api_params['resolution']}")
                     return ConversationHandler.END
                 api_params['resolution'] = resolution
@@ -15793,7 +15878,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Параметр <b>negative_prompt</b> слишком длинный (макс. 500 символов).\n"
                             f"Текущая длина: {len(negative_prompt)} символов."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"negative_prompt too long for wan/2-5-text-to-video: {len(negative_prompt)} characters")
                         return ConversationHandler.END
                     api_params['negative_prompt'] = negative_prompt
@@ -15821,7 +15906,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>enable_prompt_expansion</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['enable_prompt_expansion']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid enable_prompt_expansion for wan/2-5-text-to-video: {api_params['enable_prompt_expansion']}")
                         return ConversationHandler.END
                 elif not isinstance(enable_prompt_expansion, bool):
@@ -15830,7 +15915,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>enable_prompt_expansion</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(enable_prompt_expansion).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid enable_prompt_expansion type for wan/2-5-text-to-video: {type(enable_prompt_expansion)}")
                     return ConversationHandler.END
                 api_params['enable_prompt_expansion'] = enable_prompt_expansion
@@ -15859,7 +15944,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                             f"Получено: {type(seed).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed type for wan/2-5-text-to-video: {type(seed)}")
                         return ConversationHandler.END
                     
@@ -15870,7 +15955,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                         f"Получено: {api_params.get('seed')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid seed for wan/2-5-text-to-video: {api_params.get('seed')}")
                     return ConversationHandler.END
             else:
@@ -15967,7 +16052,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>resolution</b> должен быть одним из: <b>480p</b>, <b>580p</b> или <b>720p</b>.\n\n"
                         f"Получено: {api_params['resolution']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid resolution for wan/2-2-animate-move: {api_params['resolution']}")
                     return ConversationHandler.END
                 api_params['resolution'] = resolution
@@ -16017,7 +16102,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>prompt_optimizer</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['prompt_optimizer']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid prompt_optimizer for hailuo/02-text-to-video-pro: {api_params['prompt_optimizer']}")
                         return ConversationHandler.END
                 elif not isinstance(prompt_optimizer, bool):
@@ -16026,7 +16111,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>prompt_optimizer</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(prompt_optimizer).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid prompt_optimizer type for hailuo/02-text-to-video-pro: {type(prompt_optimizer)}")
                     return ConversationHandler.END
                 api_params['prompt_optimizer'] = prompt_optimizer
@@ -16107,7 +16192,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>end_image_url</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
                             f"Получено: {end_image_url[:50]}..."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid end_image_url format for hailuo/02-image-to-video-pro: {end_image_url[:50]}")
                         return ConversationHandler.END
                     api_params['end_image_url'] = end_image_url
@@ -16135,7 +16220,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>prompt_optimizer</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['prompt_optimizer']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid prompt_optimizer for hailuo/02-image-to-video-pro: {api_params['prompt_optimizer']}")
                         return ConversationHandler.END
                 elif not isinstance(prompt_optimizer, bool):
@@ -16144,7 +16229,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>prompt_optimizer</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(prompt_optimizer).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid prompt_optimizer type for hailuo/02-image-to-video-pro: {type(prompt_optimizer)}")
                     return ConversationHandler.END
                 api_params['prompt_optimizer'] = prompt_optimizer
@@ -16226,7 +16311,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>end_image_url</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
                             f"Получено: {end_image_url[:50]}..."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid end_image_url format for hailuo/02-image-to-video-standard: {end_image_url[:50]}")
                         return ConversationHandler.END
                     api_params['end_image_url'] = end_image_url
@@ -16254,7 +16339,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>duration</b> должен быть одним из: <b>6</b> или <b>10</b> секунд.\n\n"
                         f"Получено: {api_params['duration']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid duration for hailuo/02-image-to-video-standard: {api_params['duration']}")
                     return ConversationHandler.END
                 api_params['duration'] = duration
@@ -16276,7 +16361,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>resolution</b> должен быть одним из: <b>512P</b> или <b>768P</b>.\n\n"
                         f"Получено: {api_params['resolution']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid resolution for hailuo/02-image-to-video-standard: {api_params['resolution']}")
                     return ConversationHandler.END
                 api_params['resolution'] = resolution
@@ -16300,7 +16385,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>prompt_optimizer</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['prompt_optimizer']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid prompt_optimizer for hailuo/02-image-to-video-standard: {api_params['prompt_optimizer']}")
                         return ConversationHandler.END
                 elif not isinstance(prompt_optimizer, bool):
@@ -16309,7 +16394,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>prompt_optimizer</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(prompt_optimizer).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid prompt_optimizer type for hailuo/02-image-to-video-standard: {type(prompt_optimizer)}")
                     return ConversationHandler.END
                 api_params['prompt_optimizer'] = prompt_optimizer
@@ -16361,7 +16446,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>duration</b> должен быть одним из: <b>6</b> или <b>10</b> секунд.\n\n"
                         f"Получено: {api_params['duration']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid duration for hailuo/02-text-to-video-standard: {api_params['duration']}")
                     return ConversationHandler.END
                 api_params['duration'] = duration
@@ -16385,7 +16470,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>prompt_optimizer</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['prompt_optimizer']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid prompt_optimizer for hailuo/02-text-to-video-standard: {api_params['prompt_optimizer']}")
                         return ConversationHandler.END
                 elif not isinstance(prompt_optimizer, bool):
@@ -16394,7 +16479,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>prompt_optimizer</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(prompt_optimizer).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid prompt_optimizer type for hailuo/02-text-to-video-standard: {type(prompt_optimizer)}")
                     return ConversationHandler.END
                 api_params['prompt_optimizer'] = prompt_optimizer
@@ -16456,7 +16541,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>upscale_factor</b> должен быть одним из: <b>1</b>, <b>2</b> или <b>4</b>.\n\n"
                         f"Получено: {api_params['upscale_factor']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid upscale_factor for topaz/video-upscale: {api_params['upscale_factor']}")
                     return ConversationHandler.END
                 api_params['upscale_factor'] = upscale_factor
@@ -16693,7 +16778,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_size</b> должен быть: <b>Square HD</b>.\n\n"
                         f"Получено: {api_params['image_size']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_size for bytedance/seedream-v4-text-to-image: {api_params['image_size']}")
                     return ConversationHandler.END
                 api_params['image_size'] = image_size
@@ -16720,7 +16805,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_resolution</b> должен быть одним из: <b>1K</b>, <b>2K</b> или <b>4K</b>.\n\n"
                         f"Получено: {api_params['image_resolution']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_resolution for bytedance/seedream-v4-text-to-image: {api_params['image_resolution']}")
                     return ConversationHandler.END
                 api_params['image_resolution'] = image_resolution
@@ -16745,7 +16830,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>max_images</b> должен быть числом от 1 до 6.\n\n"
                             f"Получено: {type(max_images).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid max_images type for bytedance/seedream-v4-text-to-image: {type(max_images)}")
                         return ConversationHandler.END
                     
@@ -16755,7 +16840,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>max_images</b> должен быть числом от <b>1</b> до <b>6</b>.\n\n"
                             f"Получено: {max_images}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid max_images value for bytedance/seedream-v4-text-to-image: {max_images}")
                         return ConversationHandler.END
                     
@@ -16766,7 +16851,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>max_images</b> должен быть числом от 1 до 6.\n\n"
                         f"Получено: {api_params.get('max_images')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid max_images for bytedance/seedream-v4-text-to-image: {api_params.get('max_images')}")
                     return ConversationHandler.END
             else:
@@ -16793,7 +16878,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                             f"Получено: {type(seed).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed type for bytedance/seedream-v4-text-to-image: {type(seed)}")
                         return ConversationHandler.END
                     
@@ -16804,7 +16889,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                         f"Получено: {api_params.get('seed')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid seed for bytedance/seedream-v4-text-to-image: {api_params.get('seed')}")
                     return ConversationHandler.END
             else:
@@ -16893,7 +16978,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"❌ <b>Ошибка валидации</b>\n\n"
                         f"URL изображения #{idx + 1} в массиве <b>image_urls</b> не может быть пустым."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Empty URL at index {idx} in image_urls for bytedance/seedream-v4-edit")
                     return ConversationHandler.END
                 
@@ -16903,7 +16988,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"URL изображения #{idx + 1} в массиве <b>image_urls</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
                         f"Получено: {url_str[:50]}..."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid URL format at index {idx} in image_urls for bytedance/seedream-v4-edit: {url_str[:50]}")
                     return ConversationHandler.END
                 
@@ -16921,7 +17006,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_size</b> должен быть: <b>Square HD</b>.\n\n"
                         f"Получено: {api_params['image_size']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_size for bytedance/seedream-v4-edit: {api_params['image_size']}")
                     return ConversationHandler.END
                 api_params['image_size'] = image_size
@@ -16948,7 +17033,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_resolution</b> должен быть одним из: <b>1K</b>, <b>2K</b> или <b>4K</b>.\n\n"
                         f"Получено: {api_params['image_resolution']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_resolution for bytedance/seedream-v4-edit: {api_params['image_resolution']}")
                     return ConversationHandler.END
                 api_params['image_resolution'] = image_resolution
@@ -16973,7 +17058,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>max_images</b> должен быть числом от 1 до 6.\n\n"
                             f"Получено: {type(max_images).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid max_images type for bytedance/seedream-v4-edit: {type(max_images)}")
                         return ConversationHandler.END
                     
@@ -16983,7 +17068,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>max_images</b> должен быть числом от <b>1</b> до <b>6</b>.\n\n"
                             f"Получено: {max_images}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid max_images value for bytedance/seedream-v4-edit: {max_images}")
                         return ConversationHandler.END
                     
@@ -16994,7 +17079,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>max_images</b> должен быть числом от 1 до 6.\n\n"
                         f"Получено: {api_params.get('max_images')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid max_images for bytedance/seedream-v4-edit: {api_params.get('max_images')}")
                     return ConversationHandler.END
             else:
@@ -17021,7 +17106,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                             f"Получено: {type(seed).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed type for bytedance/seedream-v4-edit: {type(seed)}")
                         return ConversationHandler.END
                     
@@ -17032,7 +17117,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                         f"Получено: {api_params.get('seed')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid seed for bytedance/seedream-v4-edit: {api_params.get('seed')}")
                     return ConversationHandler.END
             else:
@@ -17151,7 +17236,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>resolution</b> должен быть одним из: <b>480p</b> или <b>720p</b>.\n\n"
                         f"Получено: {api_params['resolution']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid resolution for infinitalk/from-audio: {api_params['resolution']}")
                     return ConversationHandler.END
                 api_params['resolution'] = resolution
@@ -17178,7 +17263,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом от 10000 до 1000000.\n\n"
                             f"Получено: {type(seed).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed type for infinitalk/from-audio: {type(seed)}")
                         return ConversationHandler.END
                     
@@ -17188,7 +17273,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом от <b>10000</b> до <b>1000000</b>.\n\n"
                             f"Получено: {seed}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed value for infinitalk/from-audio: {seed}")
                         return ConversationHandler.END
                     
@@ -17199,7 +17284,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>seed</b> должен быть числом от 10000 до 1000000.\n\n"
                         f"Получено: {api_params.get('seed')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid seed for infinitalk/from-audio: {api_params.get('seed')}")
                     return ConversationHandler.END
             else:
@@ -17379,7 +17464,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>rendering_speed</b> должен быть одним из: <b>Turbo</b>, <b>Balanced</b> или <b>Quality</b>.\n\n"
                             f"Получено: {api_params['rendering_speed']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid rendering_speed for ideogram/v3-reframe: {api_params['rendering_speed']}")
                         return ConversationHandler.END
                     rendering_speed = rendering_speed_upper
@@ -17399,7 +17484,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>style</b> должен быть одним из: <b>Auto</b>, <b>General</b>, <b>Realistic</b> или <b>Design</b>.\n\n"
                         f"Получено: {api_params['style']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid style for ideogram/v3-reframe: {api_params['style']}")
                     return ConversationHandler.END
                 api_params['style'] = style
@@ -17424,7 +17509,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>num_images</b> должен быть числом.\n\n"
                             f"Получено: {type(num_images).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid num_images type for ideogram/v3-reframe: {type(num_images)}")
                         return ConversationHandler.END
                     
@@ -17434,7 +17519,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>num_images</b> должен быть положительным числом (минимум 1).\n\n"
                             f"Получено: {num_images}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid num_images value for ideogram/v3-reframe: {num_images}")
                         return ConversationHandler.END
                     
@@ -17445,7 +17530,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>num_images</b> должен быть числом.\n\n"
                         f"Получено: {api_params.get('num_images')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid num_images for ideogram/v3-reframe: {api_params.get('num_images')}")
                     return ConversationHandler.END
             else:
@@ -17471,7 +17556,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                             f"Получено: {type(seed).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed type for ideogram/v3-reframe: {type(seed)}")
                         return ConversationHandler.END
                     
@@ -17482,7 +17567,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                         f"Получено: {api_params.get('seed')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid seed for ideogram/v3-reframe: {api_params.get('seed')}")
                     return ConversationHandler.END
             else:
@@ -17661,7 +17746,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>rendering_speed</b> должен быть одним из: <b>TURBO</b>, <b>BALANCED</b> или <b>QUALITY</b>.\n\n"
                         f"Получено: {api_params['rendering_speed']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid rendering_speed for ideogram/v3-edit: {api_params['rendering_speed']}")
                     return ConversationHandler.END
                 api_params['rendering_speed'] = rendering_speed
@@ -17685,7 +17770,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>expand_prompt</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['expand_prompt']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid expand_prompt for ideogram/v3-edit: {api_params['expand_prompt']}")
                         return ConversationHandler.END
                 elif not isinstance(expand_prompt, bool):
@@ -17694,7 +17779,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>expand_prompt</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(expand_prompt).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid expand_prompt type for ideogram/v3-edit: {type(expand_prompt)}")
                     return ConversationHandler.END
                 api_params['expand_prompt'] = expand_prompt
@@ -17711,7 +17796,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>num_images</b> должен быть одним из: <b>1</b>, <b>2</b>, <b>3</b> или <b>4</b>.\n\n"
                         f"Получено: {api_params['num_images']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid num_images for ideogram/v3-edit: {api_params['num_images']}")
                     return ConversationHandler.END
                 api_params['num_images'] = num_images
@@ -17738,7 +17823,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                             f"Получено: {type(seed).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed type for ideogram/v3-edit: {type(seed)}")
                         return ConversationHandler.END
                     
@@ -17749,7 +17834,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                         f"Получено: {api_params.get('seed')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid seed for ideogram/v3-edit: {api_params.get('seed')}")
                     return ConversationHandler.END
             else:
@@ -17793,7 +17878,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_size</b> должен быть: <b>Square HD</b>.\n\n"
                         f"Получено: {image_size}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_size for bytedance/seedream: {image_size}")
                     return ConversationHandler.END
                 api_params['image_size'] = image_size
@@ -17822,7 +17907,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>guidance_scale</b> должен быть числом.\n\n"
                             f"Получено: {type(guidance_scale).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid guidance_scale type for bytedance/seedream: {type(guidance_scale)}")
                         return ConversationHandler.END
                     
@@ -17833,7 +17918,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>guidance_scale</b> должен быть положительным числом.\n\n"
                             f"Получено: {guidance_scale}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid guidance_scale value for bytedance/seedream: {guidance_scale}")
                         return ConversationHandler.END
                     
@@ -17844,7 +17929,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>guidance_scale</b> должен быть числом.\n\n"
                         f"Получено: {api_params.get('guidance_scale')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid guidance_scale for bytedance/seedream: {api_params.get('guidance_scale')}")
                     return ConversationHandler.END
             else:
@@ -17871,7 +17956,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                             f"Получено: {type(seed).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed type for bytedance/seedream: {type(seed)}")
                         return ConversationHandler.END
                     
@@ -17882,7 +17967,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                         f"Получено: {api_params.get('seed')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid seed for bytedance/seedream: {api_params.get('seed')}")
                     return ConversationHandler.END
             else:
@@ -17906,7 +17991,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>enable_safety_checker</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['enable_safety_checker']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid enable_safety_checker for bytedance/seedream: {api_params['enable_safety_checker']}")
                         return ConversationHandler.END
                 elif not isinstance(enable_safety_checker, bool):
@@ -17915,7 +18000,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>enable_safety_checker</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(enable_safety_checker).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid enable_safety_checker type for bytedance/seedream: {type(enable_safety_checker)}")
                     return ConversationHandler.END
                 api_params['enable_safety_checker'] = enable_safety_checker
@@ -17964,7 +18049,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_size</b> должен быть: <b>Square HD</b> (1024×1024).\n\n"
                         f"Получено: {api_params['image_size']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_size for qwen/text-to-image: {api_params['image_size']}")
                     return ConversationHandler.END
                 api_params['image_size'] = image_size
@@ -17987,7 +18072,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>num_inference_steps</b> должен быть числом (целым).\n\n"
                             f"Получено: {type(num_inference_steps).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid num_inference_steps type for qwen/text-to-image: {type(num_inference_steps)}")
                         return ConversationHandler.END
                     
@@ -17997,7 +18082,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>num_inference_steps</b> должен быть положительным числом (минимум 1).\n\n"
                             f"Получено: {num_inference_steps}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid num_inference_steps value for qwen/text-to-image: {num_inference_steps}")
                         return ConversationHandler.END
                     
@@ -18008,7 +18093,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>num_inference_steps</b> должен быть числом (целым).\n\n"
                         f"Получено: {api_params.get('num_inference_steps')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid num_inference_steps for qwen/text-to-image: {api_params.get('num_inference_steps')}")
                     return ConversationHandler.END
             else:
@@ -18034,7 +18119,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                             f"Получено: {type(seed).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed type for qwen/text-to-image: {type(seed)}")
                         return ConversationHandler.END
                     
@@ -18045,7 +18130,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                         f"Получено: {api_params.get('seed')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid seed for qwen/text-to-image: {api_params.get('seed')}")
                     return ConversationHandler.END
             else:
@@ -18073,7 +18158,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>guidance_scale</b> должен быть числом.\n\n"
                             f"Получено: {type(guidance_scale).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid guidance_scale type for qwen/text-to-image: {type(guidance_scale)}")
                         return ConversationHandler.END
                     
@@ -18084,7 +18169,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>guidance_scale</b> должен быть положительным числом.\n\n"
                             f"Получено: {guidance_scale}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid guidance_scale value for qwen/text-to-image: {guidance_scale}")
                         return ConversationHandler.END
                     
@@ -18095,7 +18180,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>guidance_scale</b> должен быть числом.\n\n"
                         f"Получено: {api_params.get('guidance_scale')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid guidance_scale for qwen/text-to-image: {api_params.get('guidance_scale')}")
                     return ConversationHandler.END
             else:
@@ -18119,7 +18204,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>enable_safety_checker</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['enable_safety_checker']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid enable_safety_checker for qwen/text-to-image: {api_params['enable_safety_checker']}")
                         return ConversationHandler.END
                 elif not isinstance(enable_safety_checker, bool):
@@ -18128,7 +18213,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>enable_safety_checker</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(enable_safety_checker).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid enable_safety_checker type for qwen/text-to-image: {type(enable_safety_checker)}")
                     return ConversationHandler.END
                 api_params['enable_safety_checker'] = enable_safety_checker
@@ -18148,7 +18233,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>output_format</b> должен быть одним из: <b>PNG</b> или <b>JPEG</b>.\n\n"
                         f"Получено: {api_params['output_format']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid output_format for qwen/text-to-image: {api_params['output_format']}")
                     return ConversationHandler.END
                 api_params['output_format'] = output_format
@@ -18192,7 +18277,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>acceleration</b> должен быть одним из: <b>None</b>, <b>Regular</b> или <b>High</b>.\n\n"
                             f"Получено: {api_params['acceleration']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid acceleration for qwen/text-to-image: {api_params['acceleration']}")
                         return ConversationHandler.END
                     acceleration = acceleration_lower
@@ -18311,7 +18396,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>strength</b> должен быть числом от 0.0 до 1.0.\n\n"
                             f"Получено: {type(strength).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid strength type for qwen/image-to-image: {type(strength)}")
                         return ConversationHandler.END
                     
@@ -18323,7 +18408,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "1.0 = полностью переделать; 0.0 = сохранить оригинал.\n\n"
                             f"Получено: {strength}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid strength value for qwen/image-to-image: {strength}")
                         return ConversationHandler.END
                     
@@ -18334,7 +18419,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>strength</b> должен быть числом от 0.0 до 1.0.\n\n"
                         f"Получено: {api_params.get('strength')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid strength for qwen/image-to-image: {api_params.get('strength')}")
                     return ConversationHandler.END
             else:
@@ -18352,7 +18437,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>output_format</b> должен быть одним из: <b>PNG</b> или <b>JPEG</b>.\n\n"
                         f"Получено: {api_params['output_format']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid output_format for qwen/image-to-image: {api_params['output_format']}")
                     return ConversationHandler.END
                 api_params['output_format'] = output_format
@@ -18383,7 +18468,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>acceleration</b> должен быть одним из: <b>None</b>, <b>Regular</b> или <b>High</b>.\n\n"
                             f"Получено: {api_params['acceleration']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid acceleration for qwen/image-to-image: {api_params['acceleration']}")
                         return ConversationHandler.END
                     acceleration = acceleration_lower
@@ -18426,7 +18511,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                             f"Получено: {type(seed).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed type for qwen/image-to-image: {type(seed)}")
                         return ConversationHandler.END
                     
@@ -18437,7 +18522,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                         f"Получено: {api_params.get('seed')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid seed for qwen/image-to-image: {api_params.get('seed')}")
                     return ConversationHandler.END
             else:
@@ -18460,7 +18545,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>num_inference_steps</b> должен быть числом (целым).\n\n"
                             f"Получено: {type(num_inference_steps).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid num_inference_steps type for qwen/image-to-image: {type(num_inference_steps)}")
                         return ConversationHandler.END
                     
@@ -18470,7 +18555,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>num_inference_steps</b> должен быть положительным числом (минимум 1).\n\n"
                             f"Получено: {num_inference_steps}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid num_inference_steps value for qwen/image-to-image: {num_inference_steps}")
                         return ConversationHandler.END
                     
@@ -18481,7 +18566,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>num_inference_steps</b> должен быть числом (целым).\n\n"
                         f"Получено: {api_params.get('num_inference_steps')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid num_inference_steps for qwen/image-to-image: {api_params.get('num_inference_steps')}")
                     return ConversationHandler.END
             else:
@@ -18508,7 +18593,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>guidance_scale</b> должен быть числом.\n\n"
                             f"Получено: {type(guidance_scale).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid guidance_scale type for qwen/image-to-image: {type(guidance_scale)}")
                         return ConversationHandler.END
                     
@@ -18519,7 +18604,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>guidance_scale</b> должен быть положительным числом.\n\n"
                             f"Получено: {guidance_scale}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid guidance_scale value for qwen/image-to-image: {guidance_scale}")
                         return ConversationHandler.END
                     
@@ -18530,7 +18615,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>guidance_scale</b> должен быть числом.\n\n"
                         f"Получено: {api_params.get('guidance_scale')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid guidance_scale for qwen/image-to-image: {api_params.get('guidance_scale')}")
                     return ConversationHandler.END
             else:
@@ -18554,7 +18639,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>enable_safety_checker</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['enable_safety_checker']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid enable_safety_checker for qwen/image-to-image: {api_params['enable_safety_checker']}")
                         return ConversationHandler.END
                 elif not isinstance(enable_safety_checker, bool):
@@ -18563,7 +18648,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>enable_safety_checker</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(enable_safety_checker).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid enable_safety_checker type for qwen/image-to-image: {type(enable_safety_checker)}")
                     return ConversationHandler.END
                 api_params['enable_safety_checker'] = enable_safety_checker
@@ -18683,7 +18768,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>acceleration</b> должен быть одним из: <b>None</b>, <b>Regular</b> или <b>High</b>.\n\n"
                             f"Получено: {api_params['acceleration']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid acceleration for qwen/image-edit: {api_params['acceleration']}")
                         return ConversationHandler.END
                     acceleration = acceleration_lower
@@ -18715,7 +18800,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_size</b> должен быть одним из допустимых значений (например, <b>Landscape 4:3</b>).\n\n"
                         f"Получено: {api_params['image_size']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_size for qwen/image-edit: {api_params['image_size']}")
                     return ConversationHandler.END
             else:
@@ -18737,7 +18822,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>num_inference_steps</b> должен быть числом (целым).\n\n"
                             f"Получено: {type(num_inference_steps).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid num_inference_steps type for qwen/image-edit: {type(num_inference_steps)}")
                         return ConversationHandler.END
                     
@@ -18747,7 +18832,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>num_inference_steps</b> должен быть положительным числом (минимум 1).\n\n"
                             f"Получено: {num_inference_steps}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid num_inference_steps value for qwen/image-edit: {num_inference_steps}")
                         return ConversationHandler.END
                     
@@ -18758,7 +18843,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>num_inference_steps</b> должен быть числом (целым).\n\n"
                         f"Получено: {api_params.get('num_inference_steps')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid num_inference_steps for qwen/image-edit: {api_params.get('num_inference_steps')}")
                     return ConversationHandler.END
             else:
@@ -18784,7 +18869,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                             f"Получено: {type(seed).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed type for qwen/image-edit: {type(seed)}")
                         return ConversationHandler.END
                     
@@ -18795,7 +18880,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                         f"Получено: {api_params.get('seed')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid seed for qwen/image-edit: {api_params.get('seed')}")
                     return ConversationHandler.END
             else:
@@ -18823,7 +18908,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>guidance_scale</b> должен быть числом.\n\n"
                             f"Получено: {type(guidance_scale).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid guidance_scale type for qwen/image-edit: {type(guidance_scale)}")
                         return ConversationHandler.END
                     
@@ -18834,7 +18919,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>guidance_scale</b> должен быть положительным числом.\n\n"
                             f"Получено: {guidance_scale}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid guidance_scale value for qwen/image-edit: {guidance_scale}")
                         return ConversationHandler.END
                     
@@ -18845,7 +18930,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>guidance_scale</b> должен быть числом.\n\n"
                         f"Получено: {api_params.get('guidance_scale')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid guidance_scale for qwen/image-edit: {api_params.get('guidance_scale')}")
                     return ConversationHandler.END
             else:
@@ -18868,7 +18953,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>sync_mode</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['sync_mode']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid sync_mode for qwen/image-edit: {api_params['sync_mode']}")
                         return ConversationHandler.END
                 elif not isinstance(sync_mode, bool):
@@ -18877,7 +18962,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>sync_mode</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(sync_mode).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid sync_mode type for qwen/image-edit: {type(sync_mode)}")
                     return ConversationHandler.END
                 api_params['sync_mode'] = sync_mode
@@ -18901,7 +18986,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>num_images</b> должен быть числом (целым) от 1 до 4.\n\n"
                             f"Получено: {type(num_images).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid num_images type for qwen/image-edit: {type(num_images)}")
                         return ConversationHandler.END
                     
@@ -18911,7 +18996,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>num_images</b> должен быть числом от <b>1</b> до <b>4</b>.\n\n"
                             f"Получено: {num_images}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid num_images value for qwen/image-edit: {num_images}")
                         return ConversationHandler.END
                     
@@ -18922,7 +19007,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>num_images</b> должен быть числом (целым) от 1 до 4.\n\n"
                         f"Получено: {api_params.get('num_images')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid num_images for qwen/image-edit: {api_params.get('num_images')}")
                     return ConversationHandler.END
             else:
@@ -18945,7 +19030,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>enable_safety_checker</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['enable_safety_checker']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid enable_safety_checker for qwen/image-edit: {api_params['enable_safety_checker']}")
                         return ConversationHandler.END
                 elif not isinstance(enable_safety_checker, bool):
@@ -18954,7 +19039,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>enable_safety_checker</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(enable_safety_checker).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid enable_safety_checker type for qwen/image-edit: {type(enable_safety_checker)}")
                     return ConversationHandler.END
                 api_params['enable_safety_checker'] = enable_safety_checker
@@ -18972,7 +19057,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>output_format</b> должен быть одним из: <b>PNG</b> или <b>JPEG</b>.\n\n"
                         f"Получено: {api_params['output_format']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid output_format for qwen/image-edit: {api_params['output_format']}")
                     return ConversationHandler.END
                 api_params['output_format'] = output_format
@@ -19041,7 +19126,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>output_format</b> должен быть одним из: <b>png</b> или <b>jpeg</b>.\n\n"
                         f"Получено: {api_params['output_format']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid output_format for google/nano-banana: {api_params['output_format']}")
                     return ConversationHandler.END
                 
@@ -19062,7 +19147,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_size</b> должен быть одним из: <b>1:1</b>, <b>9:16</b>, <b>16:9</b>, <b>3:4</b>, <b>4:3</b>, <b>3:2</b>, <b>2:3</b>, <b>5:4</b>, <b>4:5</b>, <b>21:9</b> или <b>auto</b>.\n\n"
                         f"Получено: {api_params['image_size']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_size for google/nano-banana: {api_params['image_size']}")
                     return ConversationHandler.END
                 api_params['image_size'] = image_size
@@ -19163,7 +19248,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"❌ <b>Ошибка валидации</b>\n\n"
                         f"URL изображения #{idx + 1} в массиве <b>image_urls</b> не может быть пустым."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Empty URL at index {idx} in image_urls for google/nano-banana-edit")
                     return ConversationHandler.END
                 
@@ -19173,7 +19258,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"URL изображения #{idx + 1} в массиве <b>image_urls</b> должен быть валидным URL (начинаться с http:// или https://).\n\n"
                         f"Получено: {url_str[:50]}..."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid URL format at index {idx} in image_urls for google/nano-banana-edit: {url_str[:50]}")
                     return ConversationHandler.END
                 
@@ -19193,7 +19278,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>output_format</b> должен быть одним из: <b>png</b> или <b>jpeg</b>.\n\n"
                         f"Получено: {api_params['output_format']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid output_format for google/nano-banana-edit: {api_params['output_format']}")
                     return ConversationHandler.END
                 
@@ -19214,7 +19299,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_size</b> должен быть одним из: <b>1:1</b>, <b>9:16</b>, <b>16:9</b>, <b>3:4</b>, <b>4:3</b>, <b>3:2</b>, <b>2:3</b>, <b>5:4</b>, <b>4:5</b>, <b>21:9</b> или <b>auto</b>.\n\n"
                         f"Получено: {api_params['image_size']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_size for google/nano-banana-edit: {api_params['image_size']}")
                     return ConversationHandler.END
                 api_params['image_size'] = image_size
@@ -19399,7 +19484,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>reference_image_input</b> должен быть массивом URL изображений.\n"
                         f"Полученный тип: {type(reference_image_input).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid reference_image_input type for ideogram/character-edit: {type(reference_image_input)}")
                     return ConversationHandler.END
             
@@ -19428,7 +19513,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Все элементы в <b>reference_image_input</b> должны быть непустыми строками (URL).\n"
                         f"Ошибка в элементе {i+1}."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid reference_image_input[{i}] for ideogram/character-edit: {url}")
                     return ConversationHandler.END
                 
@@ -19439,7 +19524,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Все элементы в <b>reference_image_input</b> должны быть валидными URL (начинаться с http:// или https://).\n"
                         f"Ошибка в элементе {i+1}: {url[:50]}..."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid reference_image_input[{i}] format for ideogram/character-edit: {url[:50]}")
                     return ConversationHandler.END
                 
@@ -19469,7 +19554,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>rendering_speed</b> должен быть одним из: <b>TURBO</b>, <b>BALANCED</b> или <b>QUALITY</b>.\n\n"
                             f"Получено: {api_params['rendering_speed']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid rendering_speed for ideogram/character-edit: {api_params['rendering_speed']}")
                         return ConversationHandler.END
                     rendering_speed = rendering_speed_upper
@@ -19489,7 +19574,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>style</b> должен быть одним из: <b>AUTO</b>, <b>REALISTIC</b> или <b>FICTION</b>.\n\n"
                         f"Получено: {api_params['style']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid style for ideogram/character-edit: {api_params['style']}")
                     return ConversationHandler.END
                 api_params['style'] = style
@@ -19513,7 +19598,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>expand_prompt</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['expand_prompt']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid expand_prompt for ideogram/character-edit: {api_params['expand_prompt']}")
                         return ConversationHandler.END
                 elif not isinstance(expand_prompt, bool):
@@ -19522,7 +19607,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>expand_prompt</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(expand_prompt).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid expand_prompt type for ideogram/character-edit: {type(expand_prompt)}")
                     return ConversationHandler.END
                 api_params['expand_prompt'] = expand_prompt
@@ -19546,7 +19631,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>num_images</b> должен быть числом.\n\n"
                             f"Получено: {type(num_images).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid num_images type for ideogram/character-edit: {type(num_images)}")
                         return ConversationHandler.END
                     
@@ -19556,7 +19641,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>num_images</b> должен быть положительным числом (минимум 1).\n\n"
                             f"Получено: {num_images}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid num_images value for ideogram/character-edit: {num_images}")
                         return ConversationHandler.END
                     
@@ -19567,7 +19652,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>num_images</b> должен быть числом.\n\n"
                         f"Получено: {api_params.get('num_images')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid num_images for ideogram/character-edit: {api_params.get('num_images')}")
                     return ConversationHandler.END
             else:
@@ -19593,7 +19678,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                             f"Получено: {type(seed).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed type for ideogram/character-edit: {type(seed)}")
                         return ConversationHandler.END
                     
@@ -19604,7 +19689,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                         f"Получено: {api_params.get('seed')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid seed for ideogram/character-edit: {api_params.get('seed')}")
                     return ConversationHandler.END
             else:
@@ -19699,7 +19784,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>reference_image_urls</b> должен быть массивом URL изображений.\n"
                         f"Полученный тип: {type(reference_image_urls).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid reference_image_urls type for ideogram/character-remix: {type(reference_image_urls)}")
                     return ConversationHandler.END
             
@@ -19727,7 +19812,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Все элементы в <b>reference_image_urls</b> должны быть непустыми строками (URL).\n"
                         f"Ошибка в элементе {i+1}."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid reference_image_urls[{i}] for ideogram/character-remix: {url}")
                     return ConversationHandler.END
                 
@@ -19738,7 +19823,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Все элементы в <b>reference_image_urls</b> должны быть валидными URL (начинаться с http:// или https://).\n"
                         f"Ошибка в элементе {i+1}: {url[:50]}..."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid reference_image_urls[{i}] format for ideogram/character-remix: {url[:50]}")
                     return ConversationHandler.END
                 
@@ -19768,7 +19853,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>rendering_speed</b> должен быть одним из: <b>TURBO</b>, <b>BALANCED</b> или <b>QUALITY</b>.\n\n"
                             f"Получено: {api_params['rendering_speed']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid rendering_speed for ideogram/character-remix: {api_params['rendering_speed']}")
                         return ConversationHandler.END
                     rendering_speed = rendering_speed_upper
@@ -19788,7 +19873,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>style</b> должен быть одним из: <b>AUTO</b>, <b>REALISTIC</b> или <b>FICTION</b>.\n\n"
                         f"Получено: {api_params['style']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid style for ideogram/character-remix: {api_params['style']}")
                     return ConversationHandler.END
                 api_params['style'] = style
@@ -19812,7 +19897,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>expand_prompt</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['expand_prompt']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid expand_prompt for ideogram/character-remix: {api_params['expand_prompt']}")
                         return ConversationHandler.END
                 elif not isinstance(expand_prompt, bool):
@@ -19821,7 +19906,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>expand_prompt</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(expand_prompt).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid expand_prompt type for ideogram/character-remix: {type(expand_prompt)}")
                     return ConversationHandler.END
                 api_params['expand_prompt'] = expand_prompt
@@ -19839,7 +19924,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_size</b> должен быть: <b>Square HD</b>.\n\n"
                         f"Получено: {image_size}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_size for ideogram/character-remix: {image_size}")
                     return ConversationHandler.END
                 api_params['image_size'] = image_size
@@ -19863,7 +19948,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>num_images</b> должен быть числом.\n\n"
                             f"Получено: {type(num_images).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid num_images type for ideogram/character-remix: {type(num_images)}")
                         return ConversationHandler.END
                     
@@ -19873,7 +19958,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>num_images</b> должен быть положительным числом (минимум 1).\n\n"
                             f"Получено: {num_images}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid num_images value for ideogram/character-remix: {num_images}")
                         return ConversationHandler.END
                     
@@ -19884,7 +19969,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>num_images</b> должен быть числом.\n\n"
                         f"Получено: {api_params.get('num_images')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid num_images for ideogram/character-remix: {api_params.get('num_images')}")
                     return ConversationHandler.END
             else:
@@ -19910,7 +19995,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                             f"Получено: {type(seed).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed type for ideogram/character-remix: {type(seed)}")
                         return ConversationHandler.END
                     
@@ -19921,7 +20006,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                         f"Получено: {api_params.get('seed')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid seed for ideogram/character-remix: {api_params.get('seed')}")
                     return ConversationHandler.END
             else:
@@ -19949,7 +20034,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>strength</b> должен быть числом от 0.0 до 1.0.\n\n"
                             f"Получено: {type(strength).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid strength type for ideogram/character-remix: {type(strength)}")
                         return ConversationHandler.END
                     
@@ -19960,7 +20045,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>strength</b> должен быть числом от <b>0.0</b> до <b>1.0</b>.\n\n"
                             f"Получено: {strength}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid strength value for ideogram/character-remix: {strength}")
                         return ConversationHandler.END
                     
@@ -19971,7 +20056,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>strength</b> должен быть числом от 0.0 до 1.0.\n\n"
                         f"Получено: {api_params.get('strength')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid strength for ideogram/character-remix: {api_params.get('strength')}")
                     return ConversationHandler.END
             else:
@@ -20006,7 +20091,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Параметр <b>image_urls</b> должен быть массивом URL изображений.\n"
                             f"Полученный тип: {type(image_urls).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid image_urls type for ideogram/character-remix: {type(image_urls)}")
                         return ConversationHandler.END
                 
@@ -20017,7 +20102,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>image_urls</b> содержит слишком много изображений (макс. 5).\n"
                         f"Текущее количество: {len(image_urls)}."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Too many image_urls for ideogram/character-remix: {len(image_urls)}")
                     return ConversationHandler.END
                 
@@ -20030,7 +20115,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Все элементы в <b>image_urls</b> должны быть непустыми строками (URL).\n"
                             f"Ошибка в элементе {i+1}."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid image_urls[{i}] for ideogram/character-remix: {url}")
                         return ConversationHandler.END
                     
@@ -20041,7 +20126,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Все элементы в <b>image_urls</b> должны быть валидными URL (начинаться с http:// или https://).\n"
                             f"Ошибка в элементе {i+1}: {url[:50]}..."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid image_urls[{i}] format for ideogram/character-remix: {url[:50]}")
                         return ConversationHandler.END
                     
@@ -20068,7 +20153,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Параметр <b>reference_mask_urls</b> должен быть массивом URL масок.\n"
                             f"Полученный тип: {type(reference_mask_urls).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid reference_mask_urls type for ideogram/character-remix: {type(reference_mask_urls)}")
                         return ConversationHandler.END
                 
@@ -20085,7 +20170,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Все элементы в <b>reference_mask_urls</b> должны быть непустыми строками (URL).\n"
                             f"Ошибка в элементе {i+1}."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid reference_mask_urls[{i}] for ideogram/character-remix: {url}")
                         return ConversationHandler.END
                     
@@ -20096,7 +20181,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             f"Все элементы в <b>reference_mask_urls</b> должны быть валидными URL (начинаться с http:// или https://).\n"
                             f"Ошибка в элементе {i+1}: {url[:50]}..."
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid reference_mask_urls[{i}] format for ideogram/character-remix: {url[:50]}")
                         return ConversationHandler.END
                     
@@ -20160,7 +20245,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Параметр <b>reference_image_urls</b> должен быть массивом URL изображений.\n"
                         f"Полученный тип: {type(reference_image_urls).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid reference_image_urls type for ideogram/character: {type(reference_image_urls)}")
                     return ConversationHandler.END
             
@@ -20188,7 +20273,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Все элементы в <b>reference_image_urls</b> должны быть непустыми строками (URL).\n"
                         f"Ошибка в элементе {i+1}."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid reference_image_urls[{i}] for ideogram/character: {url}")
                     return ConversationHandler.END
                 
@@ -20199,7 +20284,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         f"Все элементы в <b>reference_image_urls</b> должны быть валидными URL (начинаться с http:// или https://).\n"
                         f"Ошибка в элементе {i+1}: {url[:50]}..."
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid reference_image_urls[{i}] format for ideogram/character: {url[:50]}")
                     return ConversationHandler.END
                 
@@ -20229,7 +20314,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>rendering_speed</b> должен быть одним из: <b>TURBO</b>, <b>BALANCED</b> или <b>QUALITY</b>.\n\n"
                             f"Получено: {api_params['rendering_speed']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid rendering_speed for ideogram/character: {api_params['rendering_speed']}")
                         return ConversationHandler.END
                     rendering_speed = rendering_speed_upper
@@ -20249,7 +20334,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>style</b> должен быть одним из: <b>AUTO</b>, <b>REALISTIC</b> или <b>FICTION</b>.\n\n"
                         f"Получено: {api_params['style']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid style for ideogram/character: {api_params['style']}")
                     return ConversationHandler.END
                 api_params['style'] = style
@@ -20273,7 +20358,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>expand_prompt</b> должен быть boolean (true/false).\n\n"
                             f"Получено: {api_params['expand_prompt']}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid expand_prompt for ideogram/character: {api_params['expand_prompt']}")
                         return ConversationHandler.END
                 elif not isinstance(expand_prompt, bool):
@@ -20282,7 +20367,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>expand_prompt</b> должен быть boolean (true/false).\n\n"
                         f"Получено: {type(expand_prompt).__name__}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid expand_prompt type for ideogram/character: {type(expand_prompt)}")
                     return ConversationHandler.END
                 api_params['expand_prompt'] = expand_prompt
@@ -20306,7 +20391,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>num_images</b> должен быть числом.\n\n"
                             f"Получено: {type(num_images).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid num_images type for ideogram/character: {type(num_images)}")
                         return ConversationHandler.END
                     
@@ -20316,7 +20401,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>num_images</b> должен быть положительным числом (минимум 1).\n\n"
                             f"Получено: {num_images}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid num_images value for ideogram/character: {num_images}")
                         return ConversationHandler.END
                     
@@ -20327,7 +20412,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>num_images</b> должен быть числом.\n\n"
                         f"Получено: {api_params.get('num_images')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid num_images for ideogram/character: {api_params.get('num_images')}")
                     return ConversationHandler.END
             else:
@@ -20344,7 +20429,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>image_size</b> должен быть: <b>square_hd</b>.\n\n"
                         f"Получено: {api_params['image_size']}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid image_size for ideogram/character: {api_params['image_size']}")
                     return ConversationHandler.END
                 api_params['image_size'] = image_size
@@ -20371,7 +20456,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                             "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                             f"Получено: {type(seed).__name__}"
                         )
-                        await query.edit_message_text(error_msg, parse_mode='HTML')
+                        await send_or_edit_message(error_msg)
                         logger.error(f"Invalid seed type for ideogram/character: {type(seed)}")
                         return ConversationHandler.END
                     
@@ -20382,7 +20467,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         "Параметр <b>seed</b> должен быть числом (целым).\n\n"
                         f"Получено: {api_params.get('seed')}"
                     )
-                    await query.edit_message_text(error_msg, parse_mode='HTML')
+                    await send_or_edit_message(error_msg)
                     logger.error(f"Invalid seed for ideogram/character: {api_params.get('seed')}")
                     return ConversationHandler.END
             else:
