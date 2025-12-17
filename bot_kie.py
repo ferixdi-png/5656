@@ -22572,6 +22572,33 @@ def main():
     application.add_handler(PreCheckoutQueryHandler(pre_checkout_query_handler))
     application.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_handler))
     
+    # CRITICAL FIX: Add universal photo handler as fallback to catch photos that ConversationHandler misses
+    # This ensures photos are ALWAYS processed, even if ConversationHandler doesn't handle them
+    async def universal_photo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Universal photo handler that processes photos if ConversationHandler doesn't."""
+        user_id = update.effective_user.id
+        logger.info(f"🔵🔵🔵 UNIVERSAL_PHOTO_HANDLER CALLED: user_id={user_id}, has_photo={bool(update.message and update.message.photo)}")
+        
+        # Check if user is in conversation
+        if user_id in user_sessions:
+            session = user_sessions[user_id]
+            model_id = session.get('model_id', 'Unknown')
+            waiting_for = session.get('waiting_for', 'None')
+            logger.info(f"🔵 User {user_id} has session: model_id={model_id}, waiting_for={waiting_for}")
+            
+            # If user is waiting for image, process it
+            if waiting_for in ['image_input', 'image_urls', 'image', 'mask_input', 'reference_image_input']:
+                logger.info(f"🔵 User {user_id} is waiting for {waiting_for}, calling input_parameters...")
+                # Call input_parameters directly
+                return await input_parameters(update, context)
+            else:
+                logger.warning(f"🔵 User {user_id} sent photo but waiting_for={waiting_for}, not processing")
+        else:
+            logger.warning(f"🔵 User {user_id} sent photo but no session found")
+    
+    # Add universal photo handler AFTER generation_handler to catch missed photos
+    application.add_handler(MessageHandler(filters.PHOTO, universal_photo_handler))
+    
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("balance", check_balance))
