@@ -8706,6 +8706,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 # If no prompt, start with first required parameter
                 await start_next_parameter(update, context, user_id)
             
+            logger.info(f"🔥🔥🔥 SELECT_MODEL: RETURNING INPUTTING_PARAMS for user {user_id}, model {model_id}, waiting_for={user_sessions[user_id].get('waiting_for', 'None')}")
             return INPUTTING_PARAMS
         
         # Handle confirm_generate as fallback (in case state didn't switch properly)
@@ -9129,10 +9130,11 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"🔥🔥🔥 INPUT_PARAMETERS ENTRY: user_id={user_id}, has_photo={has_photo}, has_text={has_text}, has_audio={has_audio}, has_document={has_document}, update_type={type(update).__name__}")
     
     # CRITICAL: Log photo details if photo is present
-    if has_photo and update.message.photo:
+    if has_photo and update.message and update.message.photo:
         photo_count = len(update.message.photo) if update.message.photo else 0
         photo_file_id = update.message.photo[-1].file_id if update.message.photo else 'None'
         logger.info(f"🔥🔥🔥 PHOTO DETECTED: user_id={user_id}, photo_count={photo_count}, file_id={photo_file_id}")
+    
     if update.message:
         logger.info(f"🔥🔥🔥 INPUT_PARAMETERS MESSAGE: message_id={update.message.message_id}, chat_id={update.message.chat_id}, date={update.message.date}, from_user_id={update.message.from_user.id if update.message.from_user else 'None'}")
         if has_photo:
