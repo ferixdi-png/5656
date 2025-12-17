@@ -28,6 +28,7 @@ from io import BytesIO
 import re
 import platform
 import random
+import traceback
 import time
 from asyncio import Lock
 from typing import Optional
@@ -10562,18 +10563,23 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             logger.info(f"✅✅✅ Session restored from backup: user_id={user_id}")
                         
                         try:
+                            logger.info(f"🚀🚀🚀 About to call confirm_generation: user_id={user_id}, model_id={model_id}, session_exists={user_id in user_sessions}")
                             result = await confirm_generation(mock_update, context)
                             logger.info(f"🚀🚀🚀 confirm_generation returned: {result} for {model_id}")
                             return result
                         except Exception as confirm_error:
                             logger.error(f"❌❌❌ Error in confirm_generation: {confirm_error}", exc_info=True)
+                            logger.error(f"❌❌❌ Error type: {type(confirm_error).__name__}, error message: {str(confirm_error)}")
                             # Restore session if it was lost
                             if user_id not in user_sessions:
                                 logger.warning(f"⚠️⚠️⚠️ Session lost during confirm_generation, restoring from backup...")
                                 user_sessions[user_id] = session_backup.copy()
-                            raise
+                            # Don't raise - fall through to show button
+                            logger.warning(f"⚠️⚠️⚠️ Falling through to show button due to confirm_generation error")
                     except Exception as auto_start_error:
-                        logger.error(f"❌ Error auto-starting generation for {model_id}: {auto_start_error}", exc_info=True)
+                        logger.error(f"❌❌❌ CRITICAL Error auto-starting generation for {model_id}: {auto_start_error}", exc_info=True)
+                        logger.error(f"❌❌❌ Error type: {type(auto_start_error).__name__}, error message: {str(auto_start_error)}")
+                        logger.error(f"❌❌❌ Error traceback: {traceback.format_exc()}")
                         # Fall through to show button as fallback
                         error_fallback_msg = "❌ <b>Ошибка автоматического запуска</b>\n\nПопробуйте нажать кнопку генерации вручную."
                         try:
@@ -10583,8 +10589,8 @@ async def input_parameters(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 await update.callback_query.message.reply_text(error_fallback_msg, parse_mode='HTML')
                             else:
                                 await context.bot.send_message(chat_id=user_id, text=error_fallback_msg, parse_mode='HTML')
-                        except:
-                            pass
+                        except Exception as msg_error:
+                            logger.error(f"❌❌❌ Could not send error message: {msg_error}")
                         # Continue to show button as fallback
                 
                 # Calculate price
