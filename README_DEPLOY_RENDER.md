@@ -87,6 +87,12 @@ python bot_kie.py
 
 **Environment:** `Python 3`
 
+**⚠️ ВАЖНО:** Это Python проект, НЕ Node.js!
+- ❌ НЕ используйте `npm install`
+- ❌ НЕ используйте `node index.js`
+- ❌ НЕ используйте `npm start`
+- ✅ Используйте только `pip install` и `python bot_kie.py`
+
 **Plan:** Выберите подходящий план (Free/Starter/Standard)
 
 ### 2.2. Создание PostgreSQL Database

@@ -23786,9 +23786,9 @@ def main():
     else:
         logger.warning("⚠️ Some critical files need attention, but bot will continue")
     
-    # NOTE: Health check server is started by Node.js (index.js) to avoid port conflicts
-    # Node.js starts it first, so Python doesn't need to start it again
-    # If running Python directly (not via Node.js), uncomment the code below:
+    # NOTE: Health check server для Render
+    # Если нужен health check endpoint, раскомментируйте код ниже
+    # ВАЖНО: Это Python проект, НЕ Node.js! Не используйте index.js!
     #
     # import threading
     # from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -23823,7 +23823,7 @@ def main():
     # logger.info("🚀 Health check server thread started")
     # time.sleep(2)
     
-    logger.info("✅ Health check server is managed by Node.js (index.js)")
+    logger.info("✅ Bot started successfully (Python only, no Node.js needed)")
     logger.info("✅ Port should be open now")
     
     # Initialize storage and KIE client here (not at import time to avoid blocking)

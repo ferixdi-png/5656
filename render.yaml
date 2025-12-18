@@ -5,8 +5,12 @@ services:
   - type: web
     name: kie-ai-bot
     env: python
+    # ВАЖНО: Это Python проект, НЕ Node.js!
+    # НЕ используйте npm install или node index.js
     buildCommand: pip install -r requirements.txt
     startCommand: python bot_kie.py
+    # Render автоматически определит Python окружение
+    # НЕ добавляйте package.json или index.js - они не нужны!
     envVars:
       # ОБЯЗАТЕЛЬНЫЕ ПЕРЕМЕННЫЕ (установить вручную в Render Dashboard)
       - key: TELEGRAM_BOT_TOKEN
