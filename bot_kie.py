@@ -16,6 +16,8 @@ from dotenv import load_dotenv
 from knowledge_storage import KnowledgeStorage
 from translations import t, TRANSLATIONS
 from kie_client import get_client
+from kie_gateway import get_kie_gateway
+from config_runtime import is_dry_run, allow_real_generation, is_test_mode, get_config_summary
 from helpers import (
     build_main_menu_keyboard, get_balance_info, format_balance_message,
     get_balance_keyboard, set_constants
@@ -106,6 +108,18 @@ except ImportError:
 # Bot token from environment variable
 BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
+
+def mask_secret(value: Optional[str], show_first: int = 4, show_last: int = 4) -> str:
+    """
+    Маскирует секретное значение, показывая только первые и последние символы.
+    Используется для безопасного логирования токенов и ключей.
+    """
+    if not value:
+        return "not set"
+    if len(value) <= show_first + show_last:
+        return "***"  # Слишком короткое значение - полностью скрываем
+    return f"{value[:show_first]}...{value[-show_last:]}"
+
 # Admin user ID (can be set via environment variable)
 try:
     admin_id_str = os.getenv('ADMIN_ID', '6913446846')
@@ -172,7 +186,10 @@ try:
         create_operation,
         get_user_operations,
         log_kie_operation,
-        get_or_create_user
+        get_or_create_user,
+        acquire_advisory_lock,
+        release_advisory_lock,
+        make_lock_key
     )
     DATABASE_AVAILABLE = True
     logger.info("✅ Модуль БД загружен успешно")
@@ -187,9 +204,17 @@ except ImportError as e:
         logger.info(f"ℹ️ psycopg2 не установлен, используется JSON хранилище (это нормально, если БД не используется)")
     else:
         logger.info(f"ℹ️ Модуль БД не доступен, используется JSON хранилище: {e}")
+    # Устанавливаем заглушки для advisory lock функций
+    acquire_advisory_lock = None
+    release_advisory_lock = None
+    make_lock_key = None
 except Exception as e:
     DATABASE_AVAILABLE = False
     logger.warning(f"⚠️ Ошибка при загрузке модуля БД, используется JSON хранилище: {e}")
+    # Устанавливаем заглушки для advisory lock функций
+    acquire_advisory_lock = None
+    release_advisory_lock = None
+    make_lock_key = None
 
 # Initialize knowledge storage and KIE client (will be initialized in main() to avoid blocking import)
 storage = None
@@ -197,6 +222,11 @@ kie = None
 
 # Store user sessions
 user_sessions = {}
+
+# Store active generations - allows multiple concurrent generations per user
+# Structure: active_generations[(user_id, task_id)] = {session_data}
+active_generations = {}
+active_generations_lock = asyncio.Lock()
 
 
 def get_admin_limits() -> dict:
@@ -307,9 +337,54 @@ def create_user_context_for_pricing(user_id: int, has_free_generations: bool = F
     )
 
 
-# УДАЛЕНО: calculate_price_rub - используйте pricing_service.get_price() вместо этого
-# УДАЛЕНО: get_model_price_text - используйте services.price_formatter вместо этого
-# УДАЛЕНО: format_price_rub - используйте services.price_formatter.format_price_result() вместо этого
+# COMPATIBILITY WRAPPER: calculate_price_rub для обратной совместимости
+# Использует services.pricing_service.get_price() под капотом
+def calculate_price_rub(model_id: str, params: dict = None, is_admin: bool = False, user_id: int = None) -> float:
+    """
+    Thin-wrapper для обратной совместимости.
+    Использует services.pricing_service.get_price() под капотом.
+    
+    Args:
+        model_id: ID модели
+        params: Параметры генерации
+        is_admin: Является ли пользователь админом
+        user_id: ID пользователя (опционально)
+    
+    Returns:
+        Цена в рублях
+    """
+    try:
+        # Пробуем использовать новый pricing_service
+        try:
+            from services.pricing_service import get_price
+            from decimal import Decimal
+            
+            # Создаем UserContext
+            user_context = create_user_context_for_pricing(
+                user_id=user_id or 0,
+                has_free_generations=False
+            )
+            
+            # Вызываем get_price
+            price_result = get_price(model_id, params or {}, user_context)
+            
+            # Конвертируем в float (рубли)
+            if isinstance(price_result, dict):
+                price_rub = price_result.get('price_rub', 0.0)
+                return float(price_rub) if isinstance(price_rub, (int, float, Decimal)) else 0.0
+            elif isinstance(price_result, (int, float, Decimal)):
+                return float(price_result)
+            else:
+                return 0.0
+        except ImportError:
+            # Fallback если services.pricing_service недоступен
+            logger.warning("services.pricing_service not available, using fallback pricing")
+            # Простой fallback: 1 рубль за любую генерацию
+            return 1.0
+    except Exception as e:
+        logger.error(f"Error in calculate_price_rub: {e}")
+        # Fallback: возвращаем минимальную цену
+        return 1.0
 
 # Conversation states for model selection and parameter input
 SELECTING_MODEL, INPUTTING_PARAMS, CONFIRMING_GENERATION = range(3)
@@ -327,80 +402,151 @@ WAITING_CURRENCY_RATE = 7
 # Store user sessions - now supports multiple concurrent generations per user
 # Structure: user_sessions[user_id] = {session_data} for input/parameter collection
 # Once task is created, it moves to active_generations
-user_sessions = {}
-
-# Store active generations - allows multiple concurrent generations per user
-active_generations = {}
+# NOTE: user_sessions already declared above (line 224), this is a duplicate - removed
 
 # Store active generations - allows multiple concurrent generations per user
 # Structure: active_generations[(user_id, task_id)] = {session_data}
-active_generations = {}
-        # Hailuo 02 Pro pricing:
-        # 9.5 credits per second for 1080p
-        # One generation yields a 6-second 1080p video
-        # So: 9.5 * 6 = 57 credits per generation
-        base_credits = 57  # Fixed price for 6-second 1080p video
-    elif model_id == "hailuo/02-image-to-video-standard":
-        # Hailuo 02 Standard image-to-video pricing:
-        # 512P: 2 credits per second
-        # 768P: 5 credits per second
-        resolution = params.get("resolution", "768P")
-        duration = params.get("duration", "6")
-        duration_int = int(duration)
-        
-        if resolution == "768P":
-            base_credits = 5 * duration_int  # 5 credits per second
-        else:  # 512P
-            base_credits = 2 * duration_int  # 2 credits per second
-    elif model_id == "hailuo/02-text-to-video-standard":
-        # Hailuo 02 Standard text-to-video pricing:
-        # 768P: 5 credits per second
-        duration = params.get("duration", "6")
-        duration_int = int(duration)
-        base_credits = 5 * duration_int  # 5 credits per second for 768P
-    elif model_id == "hailuo/2-3-image-to-video-pro":
-        # Hailuo 2-3 Image-to-Video Pro pricing:
-        # Price depends on resolution and duration parameters
-        # NOTE: 10-second videos are not supported for 1080P resolution
-        # 768P, 6s: Need to check exact pricing
-        # 768P, 10s: Need to check exact pricing
-        # 1080P, 6s: Need to check exact pricing
-        # For now, using estimated pricing based on similar Hailuo models:
-        # 768P: ~5 credits per second
-        # 1080P: ~9.5 credits per second
-        resolution = params.get("resolution", "768P")
-        duration = params.get("duration", "6")
-        duration_int = int(duration)
-        
-        if resolution == "1080P":
-            # 1080P pricing (only supports 6s, not 10s)
-            base_credits = 9.5 * duration_int  # ~9.5 credits per second for 1080P
-        else:  # 768P
-            base_credits = 5 * duration_int  # ~5 credits per second for 768P
-    elif model_id == "hailuo/2-3-image-to-video-standard":
-        # Hailuo 2-3 Image-to-Video Standard pricing:
-        # Price depends on resolution and duration parameters
-        # NOTE: 10-second videos are not supported for 1080P resolution
-        # Standard version is typically cheaper than Pro version
-        # 768P, 6s: Need to check exact pricing
-        # 768P, 10s: Need to check exact pricing
-        # 1080P, 6s: Need to check exact pricing
-        # For now, using estimated pricing based on similar Hailuo standard models:
-        # 768P: ~5 credits per second (same as Pro for 768P)
-        # 1080P: ~7 credits per second (cheaper than Pro ~9.5 credits/sec)
-        resolution = params.get("resolution", "768P")
-        duration = params.get("duration", "6")
-        duration_int = int(duration)
-        
-        if resolution == "1080P":
-            # 1080P pricing (only supports 6s, not 10s)
-            # Standard version is cheaper than Pro
-            base_credits = 7 * duration_int  # ~7 credits per second for 1080P (standard)
-        else:  # 768P
-            base_credits = 5 * duration_int  # ~5 credits per second for 768P
-    elif model_id == "topaz/video-upscale":
-        # Topaz Video Upscale pricing:
-        # 12 credits per second
+# NOTE: active_generations already declared above (line 358), this is a duplicate - removed
+
+# Conversation states for model selection and parameter input
+SELECTING_MODEL, INPUTTING_PARAMS, CONFIRMING_GENERATION = range(3)
+
+# Payment states
+SELECTING_AMOUNT, WAITING_PAYMENT_SCREENSHOT = range(3, 5)
+
+# Admin test OCR state
+ADMIN_TEST_OCR = 5
+
+# Broadcast states
+WAITING_BROADCAST_MESSAGE = 6
+WAITING_CURRENCY_RATE = 7
+
+
+def format_price_rub(price: float, is_admin: bool = False) -> str:
+    """Format price in rubles with appropriate text (rounded to 2 decimal places)."""
+    # Always round to 2 decimal places
+    price_rounded = round(price, 2)
+    price_str = f"{price_rounded:.2f}"
+    if is_admin:
+        return f"💰 <b>Безлимит</b> (цена: {price_str} ₽)"
+    else:
+        return f"💰 <b>{price_str} ₽</b>"
+
+
+def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = False, user_id: int = None) -> str:
+    """Get formatted price text for a model."""
+    price = calculate_price_rub(model_id, params, is_admin, user_id)
+    return format_price_rub(price, is_admin)
+
+
+# Conversation states for model selection and parameter input
+SELECTING_MODEL, INPUTTING_PARAMS, CONFIRMING_GENERATION = range(3)
+
+# Payment states
+SELECTING_AMOUNT, WAITING_PAYMENT_SCREENSHOT = range(3, 5)
+
+# Admin test OCR state
+ADMIN_TEST_OCR = 5
+
+# Broadcast states
+WAITING_BROADCAST_MESSAGE = 6
+WAITING_CURRENCY_RATE = 7
+
+# Helper functions for balance management
+
+# Data directory - use environment variable or default to ./data
+# This allows mounting a volume for persistent storage
+DATA_DIR = os.getenv('DATA_DIR', './data')
+if not os.path.exists(DATA_DIR):
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        logger.info(f"✅ Created data directory: {DATA_DIR}")
+    except Exception as e:
+        logger.error(f"❌ Failed to create data directory {DATA_DIR}: {e}")
+        # Fallback to current directory if data dir creation fails
+        DATA_DIR = '.'
+        logger.warning(f"⚠️ Using current directory for data storage")
+
+
+def get_data_file_path(filename: str) -> str:
+    """Get full path to data file, ensuring directory exists."""
+    data_dir = Path(__file__).parent / "data"
+    data_dir.mkdir(exist_ok=True)
+    return str(data_dir / filename)
+
+
+# NOTE: active_generations already declared above (line 358), this is a duplicate - removed
+
+# Async lock for active_generations operations
+active_generations_lock = asyncio.Lock()
+
+# Store saved generation data for "generate again" feature
+saved_generations = {}
+
+# Maximum concurrent generations per user (to prevent abuse)
+MAX_CONCURRENT_GENERATIONS_PER_USER = 5
+
+# Global HTTP client for connection pooling (optimized for 1000+ users)
+_http_client: Optional[aiohttp.ClientSession] = None
+
+# File operation locks to prevent race conditions (using threading.Lock for sync operations)
+_file_locks = {
+    'balances': threading.Lock(),
+    'generations_history': threading.Lock(),
+    'referrals': threading.Lock(),
+    'promocodes': threading.Lock(),
+    'free_generations': threading.Lock(),
+    'languages': threading.Lock(),
+    'gifts': threading.Lock(),
+    'payments': threading.Lock(),
+    'broadcasts': threading.Lock(),
+    'admin_limits': threading.Lock(),
+    'blocked_users': threading.Lock()
+}
+
+# In-memory cache for frequently accessed data (optimized for 1000+ users)
+_data_cache = {
+    'balances': {},
+    'free_generations': {},
+    'languages': {},
+    'gifts': {},
+    'cache_timestamps': {}
+}
+
+# Cache TTL in seconds (5 minutes)
+CACHE_TTL = 300
+
+# NOTE: active_generations already declared above (line 358), this is a duplicate - removed
+
+# Async lock for active_generations operations
+active_generations_lock = asyncio.Lock()
+
+# Store saved generation data for "generate again" feature
+saved_generations = {}
+
+# Maximum concurrent generations per user (to prevent abuse)
+MAX_CONCURRENT_GENERATIONS_PER_USER = 5
+
+# Global HTTP client for connection pooling (optimized for 1000+ users)
+_http_client: Optional[aiohttp.ClientSession] = None
+
+# NOTE: active_generations already declared above (line 358), this is a duplicate - removed
+
+# Async lock for active_generations operations
+active_generations_lock = asyncio.Lock()
+
+# Store saved generation data for "generate again" feature
+saved_generations = {}
+
+# NOTE: active_generations already declared above (line 358), this is a duplicate - removed
+
+# Async lock for active_generations operations
+active_generations_lock = asyncio.Lock()
+
+# Global HTTP client for connection pooling (optimized for 1000+ users)
+_http_client: Optional[aiohttp.ClientSession] = None
+
+# File operation locks to prevent race conditions (using threading.Lock for sync operations)
         # Note: Duration is determined by input video length
         # For pricing calculation, we'll use a default of 5 seconds as minimum
         default_duration = 5
@@ -795,26 +941,6 @@ active_generations = {}
     
     # Возвращаем цену в рублях как float
     return float(price_result.rub)
-
-
-def format_price_rub(price: float, is_admin: bool = False) -> str:
-    """Format price in rubles with appropriate text (rounded to 2 decimal places)."""
-    # Always round to 2 decimal places
-    price_rounded = round(price, 2)
-    price_str = f"{price_rounded:.2f}"
-    if is_admin:
-        return f"💰 <b>Безлимит</b> (цена: {price_str} ₽)"
-    else:
-        return f"💰 <b>{price_str} ₽</b>"
-
-
-def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = False, user_id: int = None) -> str:
-    """Get formatted price text for a model."""
-    # IMPORTANT: Use get_is_admin() if user_id is provided to respect admin_user_mode
-    if user_id is not None:
-        is_admin_check = get_is_admin(user_id)
-    else:
-        is_admin_check = is_admin
     
     if model_id == "z-image":
         price = calculate_price_rub(model_id, params, is_admin_check, user_id)
@@ -1122,9 +1248,7 @@ def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = Fa
         else:
             return f"💰 <b>{price_str} ₽</b> за минуту"
 
-# Store active generations - allows multiple concurrent generations per user
-# Structure: active_generations[(user_id, task_id)] = {session_data}
-active_generations = {}
+# NOTE: active_generations already declared above (line 358), this is a duplicate - removed
 
 # Async lock for active_generations operations
 active_generations_lock = asyncio.Lock()
@@ -7842,6 +7966,157 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return ConversationHandler.END
         
+        # Handle model card display (model:<model_id>)
+        if data.startswith("model:"):
+            try:
+                await query.answer()
+            except:
+                pass
+            
+            parts = data.split(":", 1)
+            if len(parts) < 2:
+                user_lang = get_user_language(user_id)
+                await query.answer(t('error_invalid_model', lang=user_lang, default="❌ Ошибка: неверный формат запроса"), show_alert=True)
+                return ConversationHandler.END
+            
+            model_id = parts[1]
+            model = get_model_by_id(model_id)
+            
+            if not model:
+                user_lang = get_user_language(user_id)
+                await query.answer(t('error_model_not_found', lang=user_lang, default="❌ Модель не найдена"), show_alert=True)
+                return ConversationHandler.END
+            
+            # Нормализуем модель для единообразного использования
+            try:
+                from kie_models import normalize_model_for_api
+                normalized = normalize_model_for_api(model)
+            except:
+                normalized = model
+            
+            user_lang = get_user_language(user_id)
+            
+            # Формируем карточку модели
+            title = normalized.get('title') or normalized.get('name') or model_id
+            emoji = normalized.get('emoji', '')
+            gen_type = normalized.get('generation_type', 'unknown')
+            help_text = normalized.get('help') or normalized.get('description', '')
+            input_schema = normalized.get('input_schema') or normalized.get('input_params', {})
+            
+            # Формируем текст карточки
+            model_info_text = f"{emoji} <b>{title}</b>\n\n" if emoji else f"<b>{title}</b>\n\n"
+            model_info_text += f"📋 <b>Тип генерации:</b> {gen_type.replace('_', '-')}\n\n"
+            model_info_text += f"ℹ️ <b>Инструкция:</b>\n{help_text}\n\n"
+            
+            # Добавляем параметры
+            if input_schema:
+                model_info_text += f"⚙️ <b>Параметры:</b>\n"
+                import json
+                # Форматируем схему для читаемости
+                schema_text = json.dumps(input_schema, indent=2, ensure_ascii=False)
+                if len(schema_text) > 500:
+                    schema_text = schema_text[:500] + "..."
+                model_info_text += f"<code>{schema_text}</code>\n\n"
+            
+            # Кнопки
+            keyboard = [
+                [InlineKeyboardButton("✅ Начать генерацию", callback_data=f"start:{model_id}")],
+                [InlineKeyboardButton("ℹ️ Пример запроса", callback_data=f"example:{model_id}")],
+                [InlineKeyboardButton("⬅️ Назад", callback_data="back_to_menu")]
+            ]
+            
+            await query.edit_message_text(
+                text=model_info_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
+        
+        # Handle start generation from model card (start:<model_id>)
+        if data.startswith("start:"):
+            try:
+                await query.answer()
+            except:
+                pass
+            
+            parts = data.split(":", 1)
+            if len(parts) < 2:
+                user_lang = get_user_language(user_id)
+                await query.answer(t('error_invalid_model', lang=user_lang, default="❌ Ошибка: неверный формат запроса"), show_alert=True)
+                return ConversationHandler.END
+            
+            model_id = parts[1]
+            # Перенаправляем на select_model для начала генерации
+            query.data = f"select_model:{model_id}"
+            # Продолжаем обработку как select_model
+            data = query.data
+        
+        # Handle example request (example:<model_id>)
+        if data.startswith("example:"):
+            try:
+                await query.answer()
+            except:
+                pass
+            
+            parts = data.split(":", 1)
+            if len(parts) < 2:
+                user_lang = get_user_language(user_id)
+                await query.answer(t('error_invalid_model', lang=user_lang, default="❌ Ошибка: неверный формат запроса"), show_alert=True)
+                return ConversationHandler.END
+            
+            model_id = parts[1]
+            model = get_model_by_id(model_id)
+            
+            if not model:
+                user_lang = get_user_language(user_id)
+                await query.answer(t('error_model_not_found', lang=user_lang, default="❌ Модель не найдена"), show_alert=True)
+                return ConversationHandler.END
+            
+            # Нормализуем модель
+            try:
+                from kie_models import normalize_model_for_api
+                normalized = normalize_model_for_api(model)
+            except:
+                normalized = model
+            
+            user_lang = get_user_language(user_id)
+            input_schema = normalized.get('input_schema') or normalized.get('input_params', {})
+            
+            # Формируем пример запроса
+            example_text = f"📝 <b>Пример запроса для {normalized.get('title', model_id)}</b>\n\n"
+            example_text += f"<b>Параметры:</b>\n"
+            
+            import json
+            # Генерируем пример значений на основе схемы
+            example_params = {}
+            for param_name, param_type in input_schema.items():
+                if param_type == 'string':
+                    if 'prompt' in param_name.lower():
+                        example_params[param_name] = "Красивый закат над океаном"
+                    elif 'url' in param_name.lower():
+                        example_params[param_name] = "https://example.com/image.jpg"
+                    else:
+                        example_params[param_name] = "пример значения"
+                elif param_type == 'array':
+                    example_params[param_name] = ["https://example.com/image1.jpg"]
+                else:
+                    example_params[param_name] = "пример"
+            
+            example_text += f"<code>{json.dumps(example_params, indent=2, ensure_ascii=False)}</code>\n\n"
+            example_text += f"💡 <b>Инструкция:</b>\n{normalized.get('help', 'Следуйте инструкциям модели')}"
+            
+            keyboard = [
+                [InlineKeyboardButton("✅ Начать генерацию", callback_data=f"start:{model_id}")],
+                [InlineKeyboardButton("⬅️ Назад к модели", callback_data=f"model:{model_id}")]
+            ]
+            
+            await query.edit_message_text(
+                text=example_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
+        
         if data.startswith("select_model:"):
             # 🔥 MAXIMUM LOGGING: select_model entry
             logger.info(f"🔥🔥🔥 SELECT_MODEL START: user_id={user_id}, data={data}")
@@ -8363,87 +8638,17 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # пользователь получит понятное сообщение вместо ошибки
     # ВАЖНО: Этот код выполняется ТОЛЬКО если ни один обработчик выше не сработал
     
-    logger.error(f"❌❌❌ UNHANDLED CALLBACK DATA: '{data}' from user {user_id}")
-    logger.error(f"   Это означает, что callback_data не обработан ни одним обработчиком выше!")
-    logger.error(f"   Проверьте, что для этого callback_data есть обработчик в button_callback")
-    logger.error(f"   Детали: query_id={query.id if query else 'None'}, message_id={query.message.message_id if query and query.message else 'None'}")
+    logger.warning(f"⚠️ Unhandled callback_data: '{data}' from user {user_id}")
     
     # Всегда отвечаем на callback, даже если не знаем что делать
     try:
         user_lang = get_user_language(user_id) if user_id else 'ru'
-        if user_lang == 'ru':
-            await query.answer("⚠️ Эта функция временно недоступна", show_alert=False)
-        else:
-            await query.answer("⚠️ This feature is temporarily unavailable", show_alert=False)
-    except Exception as answer_error:
-        logger.warning(f"Could not answer callback in fallback: {answer_error}")
-    
-    # Пытаемся показать понятное сообщение
-    try:
-        user_lang = get_user_language(user_id) if user_id else 'ru'
-        
-        if user_lang == 'ru':
-            error_text = (
-                "⚠️ <b>Кнопка временно недоступна</b>\n\n"
-                "Эта функция может быть в разработке или временно отключена.\n\n"
-                "<b>Что делать:</b>\n"
-                "• Используйте /start для возврата в меню\n"
-                "• Выберите другую функцию\n"
-                "• Обратитесь в поддержку, если проблема повторяется\n\n"
-                f"<i>Код ошибки: {data[:30] if len(data) > 30 else data}</i>"
-            )
-        else:
-            error_text = (
-                "⚠️ <b>Button temporarily unavailable</b>\n\n"
-                "This feature may be under development or temporarily disabled.\n\n"
-                "<b>What to do:</b>\n"
-                "• Use /start to return to menu\n"
-                "• Choose another function\n"
-                "• Contact support if the problem persists\n\n"
-                f"<i>Error code: {data[:30] if len(data) > 30 else data}</i>"
-            )
-        
-        keyboard = [
-            [InlineKeyboardButton(t('btn_home', lang=user_lang), callback_data="back_to_menu")],
-            [InlineKeyboardButton(t('support', lang=user_lang), callback_data="support_contact")]
-        ]
-        
-        try:
-            await query.edit_message_text(
-                error_text,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode='HTML'
-            )
-        except Exception as edit_error:
-            logger.warning(f"Could not edit message in fallback: {edit_error}")
-            # Если не удалось отредактировать, отправляем новое сообщение
-            try:
-                await query.message.reply_text(
-                    error_text,
-                    reply_markup=InlineKeyboardMarkup(keyboard),
-                    parse_mode='HTML'
-                )
-            except Exception as reply_error:
-                logger.error(f"Could not send new message in fallback: {reply_error}")
-                # Последняя попытка - просто ответить на callback
-                try:
-                    if user_lang == 'ru':
-                        await query.answer("Используйте /start для возврата в меню", show_alert=True)
-                    else:
-                        await query.answer("Use /start to return to menu", show_alert=True)
-                except:
-                    pass
-    except Exception as e:
-        logger.error(f"❌❌❌ CRITICAL ERROR in fallback handler: {e}", exc_info=True)
-        try:
-            user_lang = get_user_language(user_id) if user_id else 'ru'
-            if user_lang == 'ru':
-                await query.answer("❌ Ошибка. Используйте /start", show_alert=True)
-            else:
-                await query.answer("❌ Error. Use /start", show_alert=True)
-        except:
-            pass
-    
+        error_msg = t('error_button_outdated', lang=user_lang) if 'error_button_outdated' in TRANSLATIONS.get(user_lang, {}) else (
+            "Кнопка устарела, откройте /start" if user_lang == 'ru' else "Button outdated, open /start"
+        )
+        await query.answer(error_msg, show_alert=True)
+    except:
+        pass
     return ConversationHandler.END
 
 
@@ -11046,15 +11251,75 @@ async def start_generation_directly(
                     await status_message.edit_text(error_msg, parse_mode='HTML')
                     return ConversationHandler.END
     
+    # DRY-RUN GUARD: Проверяем, нужно ли реально генерировать
+    dry_run = is_dry_run() or not allow_real_generation()
+    
+    if dry_run:
+        logger.info(f"🔧 DRY-RUN: Simulating generation for model {model_id}, user {user_id}")
+        # Создаем моковый task_id
+        import hashlib
+        task_id = f"dry_run_{hashlib.md5(f'{model_id}:{user_id}:{time.time()}'.encode()).hexdigest()[:12]}"
+        
+        # Получаем gateway для генерации мокового результата
+        gateway = get_kie_gateway()
+        
+        # Создаем моковую задачу через gateway (он вернет моковый результат)
+        try:
+            result = await gateway.create_task(model_id, api_params)
+            logger.info(f"🔧 DRY-RUN: Mock task created: {result.get('taskId')}")
+        except Exception as e:
+            logger.error(f"❌ DRY-RUN: Error creating mock task: {e}")
+            result = {'ok': True, 'taskId': task_id}
+        
+        # Генерируем моковый URL результата
+        is_video = any(kw in model_id.lower() for kw in ['video', 'sora', 'kling', 'wan', 'hailuo'])
+        ext = '.mp4' if is_video else '.png'
+        mock_url = f"https://example.com/mock/{model_id.replace('/', '_')}/{task_id}{ext}"
+        
+        # Обновляем сообщение с пометкой DRY-RUN
+        user_lang = get_user_language(user_id) if user_id else 'ru'
+        dry_run_text = "🔧 DRY-RUN: Генерация симулирована" if user_lang == 'ru' else "🔧 DRY-RUN: Generation simulated"
+        
+        if is_admin_user:
+            message_text = (
+                f"✅ <b>{dry_run_text}</b>\n\n"
+                f"Task ID: <code>{task_id}</code>\n"
+                f"Model: <code>{model_id}</code>\n\n"
+                f"🔗 Mock URL: {mock_url}\n\n"
+                f"⚠️ Баланс НЕ списан (DRY-RUN режим)"
+            )
+        else:
+            message_text = (
+                f"✅ <b>{dry_run_text}</b>\n\n"
+                f"🔗 Результат: {mock_url}"
+            )
+        
+        await status_message.edit_text(message_text, parse_mode='HTML')
+        
+        # НЕ списываем баланс в DRY-RUN
+        # НЕ создаем реальную операцию, только логируем
+        logger.info(f"🔧 DRY-RUN: Would deduct {price} from user {user_id} (NOT DEDUCTED)")
+        if DATABASE_AVAILABLE:
+            try:
+                # Создаем операцию с пометкой dry_run (если таблица поддерживает)
+                create_operation(user_id, "dry_run_generation", Decimal('0.00'), model_id, mock_url, None)
+            except:
+                pass
+        
+        return ConversationHandler.END
+    
+    # REAL GENERATION: Используем gateway
+    gateway = get_kie_gateway()
+    
     # Create task
     # CRITICAL: Log exact API parameters being sent (for KIE API compliance)
     import json
     logger.info(f"🚀🚀🚀 Creating task for model {model_id}, user {user_id}")
     logger.info(f"📋 API Parameters (KIE API format): model={model_id}, input={json.dumps(api_params, ensure_ascii=False, indent=2)}")
     
-    # 🔴 API CALL: KIE API - create_task
+    # 🔴 API CALL: KIE API - create_task через gateway
     try:
-        result = await kie.create_task(model_id, api_params)
+        result = await gateway.create_task(model_id, api_params)
         logger.info(f"📋 Task creation result: ok={result.get('ok')}, taskId={result.get('taskId')}, error={result.get('error')}")
     except Exception as e:
         logger.error(f"❌❌❌ KIE API ERROR in create_task: {e}", exc_info=True)
@@ -11136,13 +11401,17 @@ async def start_generation_directly(
         asyncio.create_task(poll_task_status(mock_update, context, task_id, user_id))
         logger.info(f"✅✅✅ Polling task created for task {task_id}")
         
-        # Deduct balance
-        if not is_free:
-            subtract_user_balance(user_id, price)
-            create_operation(user_id, "generation", -price, model_id, None, None)
+        # Deduct balance (только если не DRY_RUN)
+        dry_run = is_dry_run() or not allow_real_generation()
+        if not dry_run:
+            if not is_free:
+                subtract_user_balance(user_id, price)
+                create_operation(user_id, "generation", -price, model_id, None, None)
+            else:
+                use_free_generation(user_id, model_id)
+                create_operation(user_id, "free_generation", Decimal('0.00'), model_id, None, None)
         else:
-            use_free_generation(user_id, model_id)
-            create_operation(user_id, "free_generation", Decimal('0.00'), model_id, None, None)
+            logger.info(f"🔧 DRY-RUN: Would deduct {price} from user {user_id} (NOT DEDUCTED)")
         
         return ConversationHandler.END
     else:
@@ -23041,6 +23310,56 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             await query.edit_message_text("❌ Сессия не найдена. Начните заново.")
             return ConversationHandler.END
         
+        # DRY-RUN GUARD: Проверяем, нужно ли реально генерировать
+        dry_run = is_dry_run() or not allow_real_generation()
+        
+        if dry_run:
+            logger.info(f"🔧 DRY-RUN: Simulating generation for model {model_id}, user {user_id}")
+            # Получаем gateway для генерации мокового результата
+            gateway = get_kie_gateway()
+            
+            # Создаем моковую задачу
+            try:
+                result = await gateway.create_task(model_id, api_params)
+                task_id = result.get('taskId', f"dry_run_{hash(model_id) % 10000}")
+                logger.info(f"🔧 DRY-RUN: Mock task created: {task_id}")
+            except Exception as e:
+                logger.error(f"❌ DRY-RUN: Error creating mock task: {e}")
+                import hashlib
+                task_id = f"dry_run_{hashlib.md5(f'{model_id}:{user_id}'.encode()).hexdigest()[:12]}"
+                result = {'ok': True, 'taskId': task_id}
+            
+            # Генерируем моковый URL результата
+            is_video = any(kw in model_id.lower() for kw in ['video', 'sora', 'kling', 'wan', 'hailuo'])
+            ext = '.mp4' if is_video else '.png'
+            mock_url = f"https://example.com/mock/{model_id.replace('/', '_')}/{task_id}{ext}"
+            
+            # Обновляем сообщение с пометкой DRY-RUN
+            user_lang = get_user_language(user_id) if user_id else 'ru'
+            dry_run_text = "🔧 DRY-RUN: Генерация симулирована" if user_lang == 'ru' else "🔧 DRY-RUN: Generation simulated"
+            
+            await query.edit_message_text(
+                f"✅ <b>{dry_run_text}</b>\n\n"
+                f"Task ID: <code>{task_id}</code>\n"
+                f"Model: <code>{model_id}</code>\n\n"
+                f"🔗 Mock URL: {mock_url}\n\n"
+                f"⚠️ Баланс НЕ списан (DRY-RUN режим)",
+                parse_mode='HTML'
+            )
+            
+            # НЕ списываем баланс в DRY-RUN
+            logger.info(f"🔧 DRY-RUN: Would deduct {price} from user {user_id} (NOT DEDUCTED)")
+            if DATABASE_AVAILABLE:
+                try:
+                    create_operation(user_id, "dry_run_generation", Decimal('0.00'), model_id, mock_url, None)
+                except:
+                    pass
+            
+            return ConversationHandler.END
+        
+        # REAL GENERATION: Используем gateway
+        gateway = get_kie_gateway()
+        
         # Create task (for async models like z-image) with retry logic
         # ⚠️ КРИТИЧНО: Логирование всех параметров перед отправкой в KIE API
         # ВСЕ параметры должны строго соответствовать инструкциям KIE AI
@@ -23055,7 +23374,7 @@ async def confirm_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
         
         for attempt in range(max_retries):
             logger.info(f"🔄 Task creation attempt {attempt + 1}/{max_retries} for {model_id}")
-            result = await kie.create_task(model_id, api_params)
+            result = await gateway.create_task(model_id, api_params)
             logger.info(f"📋 Task creation result: ok={result.get('ok')}, taskId={result.get('taskId')}, error={result.get('error')}")
             
             # Log result for debugging (only for admin)
@@ -23291,7 +23610,8 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
         attempt += 1
         
         try:
-            status_result = await kie.get_task_status(task_id)
+            gateway = get_kie_gateway()
+            status_result = await gateway.get_task_status(task_id)
             
             if not status_result.get('ok'):
                 error = status_result.get('error', 'Unknown error')
@@ -23360,7 +23680,10 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                     else:
                         price = calculate_price_rub(model_id, params, is_admin_user)
                     
-                    if user_id != ADMIN_ID:
+                    # DRY-RUN GUARD: Не списываем баланс в тестовом режиме
+                    dry_run = is_dry_run() or not allow_real_generation()
+                    
+                    if user_id != ADMIN_ID and not dry_run:
                         if is_free:
                             # Free generation - no deduction needed
                             pass
@@ -23370,6 +23693,8 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                         else:
                             # Regular user - deduct from balance
                             subtract_user_balance(user_id, price)
+                    elif dry_run:
+                        logger.info(f"🔧 DRY-RUN: Would deduct {price} from user {user_id} after successful generation (NOT DEDUCTED)")
                 
                 # Task completed successfully
                 result_json = status_result.get('resultJson', '{}')
@@ -24049,11 +24374,12 @@ def main():
         logger.info(f"✅ Data directory {DATA_DIR} is writable")
     
     # Initialize database if available
-    if DATABASE_AVAILABLE:
+    database_url = os.getenv('DATABASE_URL')
+    if DATABASE_AVAILABLE and database_url:
         try:
             logger.info("🗄️ Initializing database...")
             init_database()
-            logger.info("✅ Database initialized successfully")
+            logger.info("✅ Database initialized successfully (schema ok)")
             logger.info("✅ Data will be saved to PostgreSQL")
         except Exception as e:
             logger.error(f"❌ Failed to initialize database: {e}")
@@ -24061,7 +24387,12 @@ def main():
             # Set DATABASE_AVAILABLE to False to use JSON fallback
             DATABASE_AVAILABLE = False
     else:
-        logger.info("ℹ️ Database not available, using JSON storage")
+        if not database_url:
+            logger.info("ℹ️ DATABASE_URL not set, using JSON storage")
+            database_url_masked = mask_secret(os.getenv('DATABASE_URL', ''))
+            logger.debug(f"DATABASE_URL: {database_url_masked}")
+        else:
+            logger.info("ℹ️ Database not available, using JSON storage")
         logger.info("ℹ️ To enable database, install psycopg2-binary and set DATABASE_URL")
     
     # Initialize all data files first (for JSON fallback)
@@ -24139,6 +24470,7 @@ def main():
     
     if not BOT_TOKEN:
         logger.error("No TELEGRAM_BOT_TOKEN found in environment variables!")
+        logger.error(f"BOT_TOKEN: {mask_secret(BOT_TOKEN)}")
         return
     
     # Verify models are loaded correctly
@@ -24695,28 +25027,61 @@ def main():
             await update.message.reply_text("❌ Неверный формат user_id. Используйте число.")
     
     # Add handlers
-    # Add error handler for better debugging
+    # 🔴 ГЛОБАЛЬНЫЙ ERROR HANDLER
     async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Log the error and send a telegram message to notify the developer."""
-        logger.error("Exception while handling an update:", exc_info=context.error)
-        
-        # Try to send error message to user if update is available
-        if update and isinstance(update, Update):
-            if update.callback_query:
+        """
+        Глобальный обработчик ошибок для всех исключений в боте.
+        Логирует коротко (без секретов), отвечает пользователю безопасно.
+        Ошибка не должна валить polling.
+        """
+        try:
+            error = context.error
+            error_type = type(error).__name__
+            error_msg = str(error)
+            
+            # Логируем коротко (без полного traceback в продакшене)
+            logger.error(f"❌ Error in handler: {error_type}: {error_msg}")
+            
+            # Пытаемся получить user_id из update
+            user_id = None
+            user_lang = 'ru'
+            chat_id = None
+            
+            if isinstance(update, Update):
+                if update.effective_user:
+                    user_id = update.effective_user.id
+                    user_lang = get_user_language(user_id) if user_id else 'ru'
+                if update.effective_chat:
+                    chat_id = update.effective_chat.id
+            
+            # Для callback ошибок отвечаем безопасно
+            if isinstance(update, Update) and update.callback_query:
                 try:
-                    await update.callback_query.answer(
-                        "❌ Произошла ошибка. Попробуйте еще раз или используйте /start",
-                        show_alert=True
-                    )
-                except:
-                    pass
-            elif update.message:
+                    error_text = "⚠️ Ошибка. Откройте /start" if user_lang == 'ru' else "⚠️ Error. Open /start"
+                    await update.callback_query.answer(error_text, show_alert=True)
+                except Exception as e:
+                    logger.warning(f"Could not answer callback in error handler: {e}")
+            
+            # Для сообщений отправляем безопасный ответ
+            elif isinstance(update, Update) and update.message and chat_id:
                 try:
-                    await update.message.reply_text(
-                        "❌ Произошла ошибка. Попробуйте еще раз или используйте /start"
+                    error_text = (
+                        "❌ <b>Произошла ошибка</b>\n\n"
+                        "Попробуйте еще раз или используйте /start для возврата в меню."
+                    ) if user_lang == 'ru' else (
+                        "❌ <b>An error occurred</b>\n\n"
+                        "Please try again or use /start to return to menu."
                     )
-                except:
-                    pass
+                    await context.bot.send_message(
+                        chat_id=chat_id,
+                        text=error_text,
+                        parse_mode='HTML'
+                    )
+                except Exception as e:
+                    logger.warning(f"Could not send error message: {e}")
+        except Exception as e:
+            # Если сам error handler упал, логируем критическую ошибку
+            logger.critical(f"❌❌❌ CRITICAL: Error handler itself failed: {e}", exc_info=True)
     
     application.add_error_handler(error_handler)
     
@@ -24753,12 +25118,84 @@ def main():
     # Add universal photo handler AFTER generation_handler to catch missed photos
     application.add_handler(MessageHandler(filters.PHOTO, universal_photo_handler))
     
+    # Self-test command (admin only)
+    async def selftest_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Self-test command для проверки конфигурации (admin only)."""
+        user_id = update.effective_user.id
+        if user_id != ADMIN_ID:
+            await update.message.reply_text("❌ Эта команда доступна только администратору.")
+            return
+        
+        # Получаем конфигурацию
+        config = get_config_summary()
+        
+        # Определяем gateway
+        gateway = get_kie_gateway()
+        from kie_gateway import MockKieGateway, RealKieGateway
+        if isinstance(gateway, MockKieGateway):
+            gateway_type = "MockKieGateway"
+        elif isinstance(gateway, RealKieGateway):
+            gateway_type = "RealKieGateway"
+        else:
+            gateway_type = f"{type(gateway).__name__}"
+        
+        # Проверяем БД
+        db_status = "❌ недоступна"
+        if DATABASE_AVAILABLE:
+            try:
+                from database import get_connection_pool
+                pool = get_connection_pool()
+                if pool:
+                    db_status = "✅ доступна"
+                else:
+                    db_status = "⚠️ пул не создан"
+            except Exception as e:
+                db_status = f"❌ ошибка: {str(e)[:50]}"
+        
+        # Собираем callback_data из клавиатур
+        try:
+            # Используем функцию из test_callbacks_smoke, но если недоступна - используем встроенную
+            try:
+                from tests.test_callbacks_smoke import get_all_known_callbacks
+                callback_count = len(get_all_known_callbacks())
+            except ImportError:
+                # Fallback: считаем известные паттерны
+                known_patterns = [
+                    'show_models', 'show_all_models_list', 'category:', 'all_models',
+                    'gen_type:', 'free_tools', 'check_balance', 'language_select:',
+                    'change_language', 'copy_bot', 'claim_gift', 'help_menu',
+                    'support_contact', 'select_model:', 'back_to_menu', 'topup_balance',
+                    'topup_amount:', 'topup_custom', 'referral_info', 'generate_again',
+                    'my_generations', 'gen_view:', 'gen_repeat:', 'gen_history:',
+                    'tutorial_start', 'tutorial_step', 'tutorial_complete', 'confirm_generate',
+                    'retry_generate:', 'cancel', 'back_to_previous_step', 'set_param:',
+                ]
+                callback_count = len(known_patterns) + len(KIE_MODELS)  # Примерная оценка
+        except Exception as e:
+            callback_count = f"N/A ({str(e)[:30]})"
+        
+        # Формируем отчет
+        report = (
+            "🔍 <b>Self-Test Report</b>\n\n"
+            f"📋 <b>Режимы:</b>\n"
+            f"  TEST_MODE: {'✅' if config['TEST_MODE'] else '❌'}\n"
+            f"  DRY_RUN: {'✅' if config['DRY_RUN'] else '❌'}\n"
+            f"  ALLOW_REAL_GENERATION: {'✅' if config['ALLOW_REAL_GENERATION'] else '❌'}\n\n"
+            f"🔧 <b>Gateway:</b> {gateway_type}\n\n"
+            f"🗄️ <b>База данных:</b> {db_status}\n\n"
+            f"🔘 <b>Callback data:</b> {callback_count} найдено\n\n"
+            f"⚠️ <b>Важно:</b> В TEST_MODE/DRY_RUN баланс НЕ списывается"
+        )
+        
+        await update.message.reply_text(report, parse_mode='HTML')
+    
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("balance", check_balance))
     application.add_handler(CommandHandler("search", search))
     application.add_handler(CommandHandler("ask", ask))
     application.add_handler(CommandHandler("add", add_knowledge))
+    application.add_handler(CommandHandler("selftest", selftest_command))
     application.add_handler(CommandHandler("payments", admin_payments))
     application.add_handler(CommandHandler("block_user", admin_block_user))
     application.add_handler(CommandHandler("unblock_user", admin_unblock_user))
@@ -24862,6 +25299,85 @@ def main():
     # HTTP server already started at the beginning of main()
     # Run the bot
     logger.info("Bot starting...")
+    
+    # Leader election через advisory lock для предотвращения конфликтов при нескольких инстансах
+    polling_lock_key = None
+    is_leader = False
+    
+    if DATABASE_AVAILABLE and BOT_TOKEN and make_lock_key and acquire_advisory_lock:
+        try:
+            database_url = os.getenv('DATABASE_URL')
+            if database_url:
+                # Создаем lock key из токена бота
+                polling_lock_key = make_lock_key("telegram_polling", BOT_TOKEN)
+                logger.info(f"🔒 Attempting to acquire leader lock (key={polling_lock_key})...")
+                
+                is_leader = acquire_advisory_lock(polling_lock_key)
+                
+                if not is_leader:
+                    logger.info("ℹ️ Another instance is leader; staying idle")
+                    logger.info("ℹ️ This instance will remain alive for health checks but won't poll updates")
+                    
+                    # Регистрируем обработчик для освобождения лока при выходе (на всякий случай)
+                    if release_advisory_lock:
+                        import atexit
+                        import signal
+                        
+                        def release_lock_on_exit():
+                            if polling_lock_key is not None:
+                                release_advisory_lock(polling_lock_key)
+                        
+                        atexit.register(release_lock_on_exit)
+                        
+                        def signal_handler(signum, frame):
+                            if polling_lock_key is not None:
+                                release_advisory_lock(polling_lock_key)
+                            exit(0)
+                        
+                        signal.signal(signal.SIGTERM, signal_handler)
+                        signal.signal(signal.SIGINT, signal_handler)
+                    
+                    # Вечный sleep loop для idle режима
+                    logger.info("💤 Entering idle mode (health check only)...")
+                    while True:
+                        time.sleep(60)
+                else:
+                    logger.info("✅ This instance is the leader; will start polling")
+                    # Регистрируем обработчик для освобождения лока при выходе
+                    if release_advisory_lock:
+                        import atexit
+                        import signal
+                        
+                        def release_lock_on_exit():
+                            if polling_lock_key is not None:
+                                release_advisory_lock(polling_lock_key)
+                                logger.info("🔓 Leader lock released on exit")
+                        
+                        atexit.register(release_lock_on_exit)
+                        
+                        def signal_handler(signum, frame):
+                            if polling_lock_key is not None:
+                                release_advisory_lock(polling_lock_key)
+                                logger.info("🔓 Leader lock released on signal")
+                            exit(0)
+                        
+                        signal.signal(signal.SIGTERM, signal_handler)
+                        signal.signal(signal.SIGINT, signal_handler)
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to acquire leader lock, will try polling anyway: {e}")
+            is_leader = True  # Пробуем запустить polling, если не удалось получить лок
+    else:
+        # Если БД недоступна или функции lock недоступны, запускаем polling как обычно
+        logger.info("ℹ️ Leader lock not available, starting polling directly")
+        is_leader = True
+    
+    # Если мы не лидер, не запускаем polling
+    if not is_leader:
+        logger.info("💤 Idle mode: not starting polling (another instance is leader)")
+        # Просто ждем бесконечно для health checks
+        while True:
+            time.sleep(60)
+        return
     
     # Wait a bit to let any previous instance finish
     # NOTE: time and asyncio already imported at top level

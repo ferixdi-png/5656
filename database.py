@@ -6,6 +6,8 @@
 import os
 import json
 import logging
+import time
+import zlib
 from typing import Optional, List, Dict, Any
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -29,7 +31,7 @@ _connection_pool: Optional[SimpleConnectionPool] = None
 
 
 def get_connection_pool():
-    """Создает и возвращает пул соединений с БД."""
+    """Создает и возвращает пул соединений с БД с retry логикой."""
     global _connection_pool
     
     if _connection_pool is None:
@@ -37,18 +39,34 @@ def get_connection_pool():
         if not database_url:
             raise ValueError("DATABASE_URL не установлен в переменных окружения")
         
-        try:
-            # Парсим DATABASE_URL для создания пула
-            # Формат: postgresql://user:password@host:port/database
-            _connection_pool = SimpleConnectionPool(
-                minconn=1,
-                maxconn=10,
-                dsn=database_url
-            )
-            logger.info("✅ Пул соединений с БД создан успешно")
-        except Exception as e:
-            logger.error(f"❌ Ошибка создания пула соединений: {e}")
-            raise
+        # Читаем DB_MAXCONN из env (дефолт 3 для нескольких сервисов)
+        maxconn = int(os.getenv('DB_MAXCONN', '3'))
+        logger.info(f"🔧 Настройка пула БД: maxconn={maxconn}")
+        
+        # Retry логика с экспоненциальной паузой
+        max_retries = 3
+        retry_delays = [0.5, 1.0, 2.0]
+        
+        for attempt in range(max_retries):
+            try:
+                # Парсим DATABASE_URL для создания пула
+                # Формат: postgresql://user:password@host:port/database
+                _connection_pool = SimpleConnectionPool(
+                    minconn=1,
+                    maxconn=maxconn,
+                    dsn=database_url
+                )
+                logger.info(f"✅ Пул соединений с БД создан успешно (maxconn={maxconn})")
+                return _connection_pool
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    delay = retry_delays[attempt]
+                    logger.warning(f"⚠️ Ошибка создания пула (попытка {attempt + 1}/{max_retries}): {e}")
+                    logger.info(f"⏳ Повтор через {delay}с...")
+                    time.sleep(delay)
+                else:
+                    logger.error(f"❌ Ошибка создания пула соединений после {max_retries} попыток: {e}")
+                    raise
     
     return _connection_pool
 
@@ -56,7 +74,19 @@ def get_connection_pool():
 @contextmanager
 def get_db_connection():
     """Контекстный менеджер для получения соединения с БД."""
-    pool = get_connection_pool()
+    global _connection_pool
+    
+    # Если пул не поднят, пробуем поднять заново (один раз)
+    if _connection_pool is None:
+        try:
+            get_connection_pool()
+        except Exception as e:
+            raise RuntimeError(f"Не удалось подключиться к БД: {e}")
+    
+    pool = _connection_pool
+    if pool is None:
+        raise RuntimeError("Пул соединений не инициализирован")
+    
     conn = pool.getconn()
     try:
         yield conn
@@ -80,7 +110,7 @@ def init_database():
                     with open(schema_path, 'r', encoding='utf-8') as f:
                         schema_sql = f.read()
                     cur.execute(schema_sql)
-                    logger.info("✅ Схема БД инициализирована")
+                    logger.info("✅ Схема БД инициализирована (schema ok)")
                 else:
                     logger.warning("⚠️ Файл schema.sql не найден, таблицы могут не существовать")
     except Exception as e:
@@ -341,4 +371,62 @@ def get_database_size() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Ошибка получения размера БД: {e}")
         return {'database_size': {}, 'tables': []}
+
+
+# ==================== ADVISORY LOCKS ====================
+
+def make_lock_key(namespace: str, token: str) -> int:
+    """
+    Детерминированно получает int64 ключ для advisory lock.
+    Использует CRC32 для стабильного хеша.
+    """
+    key_string = f"{namespace}:{token}"
+    # Используем CRC32 для получения стабильного хеша
+    crc32_value = zlib.crc32(key_string.encode('utf-8'))
+    # Приводим к signed bigint (PostgreSQL advisory locks используют bigint)
+    # CRC32 дает unsigned 32-bit, но нам нужен signed 64-bit
+    # Просто расширяем до int64, сохраняя знак
+    lock_key = crc32_value if crc32_value < 2**31 else crc32_value - 2**32
+    return lock_key
+
+
+def acquire_advisory_lock(lock_key: int) -> bool:
+    """
+    Пытается получить advisory lock.
+    Возвращает True если лок получен, False если уже занят.
+    """
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT pg_try_advisory_lock(%s)", (lock_key,))
+                result = cur.fetchone()
+                acquired = result[0] if result else False
+                if acquired:
+                    logger.info(f"✅ Advisory lock получен: key={lock_key}")
+                else:
+                    logger.info(f"ℹ️ Advisory lock занят: key={lock_key}")
+                return acquired
+    except Exception as e:
+        logger.error(f"❌ Ошибка при попытке получить advisory lock: {e}")
+        return False
+
+
+def release_advisory_lock(lock_key: int) -> None:
+    """
+    Освобождает advisory lock (best-effort).
+    Не бросает исключения, даже если лок не был получен.
+    """
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT pg_advisory_unlock(%s)", (lock_key,))
+                result = cur.fetchone()
+                released = result[0] if result else False
+                if released:
+                    logger.info(f"✅ Advisory lock освобожден: key={lock_key}")
+                else:
+                    logger.debug(f"ℹ️ Advisory lock не был получен или уже освобожден: key={lock_key}")
+    except Exception as e:
+        # Best-effort: не бросаем исключение, только логируем
+        logger.warning(f"⚠️ Ошибка при освобождении advisory lock (игнорируется): {e}")
 

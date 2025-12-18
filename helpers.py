@@ -395,3 +395,40 @@ async def check_duplicate_task(user_id: int, model_id: str, params: dict) -> Opt
     return None
 
 
+def build_model_keyboard(models: list = None, user_lang: str = 'ru') -> InlineKeyboardMarkup:
+    """
+    Автоматически строит клавиатуру с кнопками для каждой модели.
+    Каждая кнопка имеет callback_data в формате model:<model_id>.
+    """
+    _init_imports()
+    
+    if models is None:
+        models = _KIE_MODELS
+    
+    keyboard = []
+    
+    for model in models:
+        # Используем нормализованную модель
+        try:
+            from kie_models import normalize_model_for_api
+            normalized = normalize_model_for_api(model)
+        except:
+            normalized = model
+        
+        # Получаем название модели
+        title = normalized.get('title') or normalized.get('name') or normalized.get('id', 'Unknown')
+        emoji = normalized.get('emoji', '')
+        
+        # Формируем текст кнопки
+        button_text = f"{emoji} {title}" if emoji else title
+        
+        # Создаем кнопку с callback_data в формате model:<model_id>
+        button = InlineKeyboardButton(
+            text=button_text,
+            callback_data=f"model:{normalized['id']}"
+        )
+        keyboard.append([button])
+    
+    return InlineKeyboardMarkup(keyboard)
+
+

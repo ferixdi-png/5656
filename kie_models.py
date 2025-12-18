@@ -2833,3 +2833,85 @@ def get_generation_type_info(gen_type: str) -> dict:
     """Get information about a generation type"""
     return GENERATION_TYPES.get(gen_type, {})
 
+
+def normalize_model_for_api(model: dict) -> dict:
+    """
+    Нормализует модель для единообразного использования в API.
+    Добавляет недостающие поля: title, generation_type, input_schema, help.
+    """
+    normalized = model.copy()
+    
+    # Добавляем title (используем name если есть, иначе id)
+    if 'title' not in normalized:
+        normalized['title'] = normalized.get('name', normalized.get('id', 'Unknown'))
+    
+    # Определяем generation_type на основе id и category
+    if 'generation_type' not in normalized:
+        model_id = normalized.get('id', '').lower()
+        category = normalized.get('category', '').lower()
+        
+        # Определяем тип генерации
+        if 'text-to-video' in model_id or ('video' in category and 'text' in model_id):
+            gen_type = 'text_to_video'
+        elif 'image-to-video' in model_id or ('video' in category and 'image' in model_id):
+            gen_type = 'image_to_video'
+        elif 'text-to-image' in model_id or ('фото' in category and 'text' in model_id):
+            gen_type = 'text_to_image'
+        elif 'image-to-image' in model_id or 'edit' in model_id:
+            gen_type = 'image_to_image'
+        elif 'remove' in model_id or 'background' in model_id:
+            gen_type = 'remove_bg'
+        elif 'upscale' in model_id:
+            gen_type = 'upscale'
+        elif 'speech-to-text' in model_id:
+            gen_type = 'speech_to_text'
+        elif 'text-to-speech' in model_id:
+            gen_type = 'text_to_speech'
+        elif 'text-to-music' in model_id or 'suno' in model_id:
+            gen_type = 'text_to_music'
+        else:
+            # Fallback: определяем по GENERATION_TYPES
+            gen_type = 'text_to_image'  # Default
+            for gt, info in GENERATION_TYPES.items():
+                if normalized.get('id') in info.get('models', []):
+                    gen_type = gt.replace('-', '_')
+                    break
+        
+        normalized['generation_type'] = gen_type
+    
+    # Добавляем input_schema (используем input_params если есть)
+    if 'input_schema' not in normalized:
+        if 'input_params' in normalized:
+            # Конвертируем input_params в input_schema
+            schema = {}
+            for param_name, param_info in normalized['input_params'].items():
+                schema[param_name] = param_info.get('type', 'string')
+            normalized['input_schema'] = schema
+        else:
+            normalized['input_schema'] = {}
+    
+    # Добавляем help (используем description если есть)
+    if 'help' not in normalized:
+        help_text = normalized.get('description', '')
+        if not help_text:
+            # Генерируем базовую инструкцию
+            gen_type = normalized.get('generation_type', '')
+            if 'text_to_image' in gen_type:
+                help_text = "Отправь текстовый промпт, выбери соотношение сторон и получи изображение."
+            elif 'image_to_image' in gen_type:
+                help_text = "Отправь изображение и текстовый промпт для трансформации."
+            elif 'text_to_video' in gen_type:
+                help_text = "Отправь текстовый промпт и получи видео."
+            elif 'image_to_video' in gen_type:
+                help_text = "Отправь изображение и получи видео."
+            else:
+                help_text = f"Используй модель {normalized.get('title', 'Unknown')} для генерации."
+        normalized['help'] = help_text
+    
+    return normalized
+
+
+def get_normalized_models() -> list:
+    """Возвращает список моделей с нормализованной структурой."""
+    return [normalize_model_for_api(model) for model in KIE_MODELS]
+
