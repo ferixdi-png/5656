@@ -24728,15 +24728,52 @@ def main():
     except Exception as e:
         logger.warning(f"Could not clear updates: {e}")
     
-    max_retries = 5
-    retry_delay = 15
+    # CRITICAL: Check if another instance is already running before starting
+    async def check_existing_instance():
+        """Проверяет, не запущен ли уже другой экземпляр бота."""
+        try:
+            async with application:
+                # Попытка получить webhook info - если другой экземпляр работает, это вызовет конфликт
+                webhook_info = await application.bot.get_webhook_info()
+                # Если webhook установлен, удаляем его (мы используем polling)
+                if webhook_info.url:
+                    logger.info(f"⚠️ Webhook detected: {webhook_info.url}, removing it...")
+                    await application.bot.delete_webhook(drop_pending_updates=True)
+                    logger.info("✅ Webhook removed, ready for polling")
+        except Exception as e:
+            error_msg = str(e)
+            if "Conflict" in error_msg or "terminated by other getUpdates" in error_msg:
+                logger.error("❌ CRITICAL: Another bot instance is already running!")
+                logger.error("Please stop the other instance (on Render or locally) before starting this one.")
+                raise
+            else:
+                logger.warning(f"⚠️ Warning during instance check: {e}")
+    
+    # Проверка перед запуском
+    try:
+        asyncio.run(check_existing_instance())
+        logger.info("✅ No conflicts detected, starting bot...")
+    except Exception as e:
+        if "Conflict" in str(e) or "terminated by other getUpdates" in str(e):
+            logger.error("❌ Cannot start: Another bot instance is running!")
+            logger.error("SOLUTION:")
+            logger.error("1. If running locally, stop local bot: Ctrl+C or kill process")
+            logger.error("2. If on Render, check Render Dashboard for duplicate services")
+            logger.error("3. Restart Render service to ensure only one instance")
+            return
+        else:
+            logger.warning(f"⚠️ Instance check warning (continuing): {e}")
+    
+    max_retries = 3
+    retry_delay = 20
     
     for attempt in range(max_retries):
         try:
             logger.info(f"Attempt {attempt + 1}/{max_retries} to start bot...")
             # Drop pending updates to avoid conflicts with other bot instances
             application.run_polling(
-                drop_pending_updates=True
+                drop_pending_updates=True,
+                allowed_updates=["message", "callback_query", "inline_query"]
             )
             # If we get here, bot started successfully
             break
@@ -24746,17 +24783,23 @@ def main():
                 if attempt < max_retries - 1:
                     logger.warning(f"⚠️  Conflict detected! Another bot instance may be running.")
                     logger.info(f"Waiting {retry_delay} seconds before retry {attempt + 2}/{max_retries}...")
+                    logger.info("💡 TIP: Check if bot is running locally or on another Render service")
                     time.sleep(retry_delay)
                     # Try to clear updates again
                     try:
                         asyncio.run(clear_updates())
                     except:
                         pass
-                    retry_delay = min(retry_delay + 5, 30)  # Increase delay but cap at 30s
+                    retry_delay = min(retry_delay + 10, 60)  # Increase delay but cap at 60s
                     continue
                 else:
                     logger.error("❌ Conflict: Another bot instance is already running!")
-                    logger.error("Please stop the other instance before starting this one.")
+                    logger.error("SOLUTION:")
+                    logger.error("1. Stop local bot instance if running")
+                    logger.error("2. Check Render Dashboard - ensure only ONE service is running")
+                    logger.error("3. Restart Render service")
+                    logger.error("4. Wait 30 seconds and try again")
+                    return
                     logger.error("On Render: Check if there are multiple services running with the same bot token.")
                     logger.error("Or wait a few minutes and the old instance should stop automatically.")
                     # Don't raise - let it retry on next deploy
