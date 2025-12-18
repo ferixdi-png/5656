@@ -5,6 +5,7 @@ Enhanced version with KIE AI model selection and generation
 
 import logging
 import asyncio
+import sys
 from telegram.ext import (
     Application, CommandHandler, MessageHandler, filters,
     ConversationHandler, CallbackQueryHandler
@@ -39,6 +40,10 @@ import time
 from asyncio import Lock
 from typing import Optional
 import threading
+from pathlib import Path
+
+# Ensure Python can find modules in the same directory (for Render compatibility)
+sys.path.insert(0, str(Path(__file__).parent))
 
 # Load environment variables FIRST
 load_dotenv()

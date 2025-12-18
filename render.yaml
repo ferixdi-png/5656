@@ -25,6 +25,8 @@ services:
         sync: false  # Установить вручную в Dashboard
       
       # ОПЦИОНАЛЬНЫЕ ПЕРЕМЕННЫЕ (можно установить вручную или оставить значения по умолчанию)
+      - key: PYTHONPATH
+        value: "/app"  # Убеждаемся, что Python видит файлы в корне проекта
       - key: KIE_API_URL
         value: "https://api.kie.ai"
       - key: ALLOW_REAL_GENERATION

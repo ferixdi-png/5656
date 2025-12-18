@@ -36,7 +36,7 @@ RUN pip3 install --upgrade pip setuptools wheel --break-system-packages --root-u
     pip3 install --break-system-packages --root-user-action=ignore -r requirements.txt
 
 # Copy only necessary application files
-COPY bot_kie.py run_bot.py index.js config.py translations.py kie_models.py kie_client.py knowledge_storage.py ./
+COPY bot_kie.py run_bot.py index.js config.py translations.py kie_models.py kie_client.py kie_gateway.py knowledge_storage.py config_runtime.py helpers.py ./
 
 # Create directories with empty __init__.py files
 # Code has try/except for imports (line 117-123 in bot_kie.py), so it will work without these modules
