@@ -77,3 +77,38 @@ logs/
 *.temp
 .cache/
 
+# Старые отчёты и документация (можно удалить)
+*_ОТЧЕТ*.md
+*_REPORT*.md
+*_CHECK*.md
+*_SUMMARY*.md
+*_СТАТУС*.md
+*_ФИНАЛЬНЫЙ*.md
+*_ПОЛНЫЙ*.md
+*_ИСПРАВЛЕНИЕ*.md
+*_РЕШЕНИЕ*.md
+*_ИНСТРУКЦИЯ*.md
+*_НАСТРОЙКА*.md
+*_КРИТИЧЕСКОЕ*.md
+*_СРОЧНО*.md
+*_БЫСТРАЯ*.md
+*_ДИАГНОСТИКА*.md
+
+# Исключения - важные файлы документации
+!README.md
+!README_DEPLOY_RENDER.md
+!DEPLOY_CHECKLIST.md
+!RENDER_ENV_VARIABLES.md
+!RENDER_ENV_SETUP.md
+
+# Дубликаты и старые версии
+*_new.py
+*_old.py
+*_backup.py
+*_copy.py
+
+# Временные скрипты (если не нужны)
+# *.bat
+# *.sh
+# *.ps1
+
