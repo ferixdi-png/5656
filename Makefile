@@ -7,6 +7,9 @@ install-deps:
 	pip install -r requirements.txt
 
 # Запуск тестов (краткий вывод)
+verify-coverage:
+	python -m scripts.verify_kie_coverage
+
 test:
 	TEST_MODE=1 DRY_RUN=1 ALLOW_REAL_GENERATION=0 TELEGRAM_BOT_TOKEN=test_token_12345 KIE_API_KEY=test_api_key ADMIN_ID=12345 pytest -q tests/
 

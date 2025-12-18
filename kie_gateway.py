@@ -19,13 +19,40 @@ class KieGateway(ABC):
     """Абстрактный интерфейс для работы с KIE API."""
     
     @abstractmethod
-    async def create_task(self, model_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Создает задачу генерации."""
+    async def create_task(self, api_model: str, input: Dict[str, Any], callback_url: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Создает задачу генерации.
+        
+        Args:
+            api_model: API model ID (например, "wan/2-6-text-to-video")
+            input: Входные параметры для генерации
+            callback_url: Опциональный URL для callback (если поддерживается)
+        
+        Returns:
+            {
+                "ok": bool,
+                "taskId": str,
+                "status": str
+            }
+        """
         pass
     
     @abstractmethod
-    async def get_task_status(self, task_id: str) -> Dict[str, Any]:
-        """Получает статус задачи."""
+    async def get_task(self, task_id: str) -> Dict[str, Any]:
+        """
+        Получает статус задачи.
+        
+        Args:
+            task_id: ID задачи
+        
+        Returns:
+            {
+                "ok": bool,
+                "state": str,  # waiting, queuing, generating, success, failed
+                "resultJson": str,  # JSON строка с результатами
+                "error": str  # если ok=False
+            }
+        """
         pass
     
     @abstractmethod
@@ -45,13 +72,26 @@ class RealKieGateway(KieGateway):
     def __init__(self):
         self.client: KIEClient = get_client()
     
-    async def create_task(self, model_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Создает задачу через реальный KIE API."""
-        return await self.client.create_task(model_id, params)
+    async def create_task(self, api_model: str, input: Dict[str, Any], callback_url: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Создает задачу через реальный KIE API.
+        POST https://api.kie.ai/api/v1/jobs/createTask
+        """
+        # Используем существующий метод клиента
+        result = await self.client.create_task(api_model, input)
+        return result
     
-    async def get_task_status(self, task_id: str) -> Dict[str, Any]:
-        """Получает статус задачи через реальный KIE API."""
+    async def get_task(self, task_id: str) -> Dict[str, Any]:
+        """
+        Получает статус задачи через реальный KIE API.
+        GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId=...
+        """
         return await self.client.get_task_status(task_id)
+    
+    # Обратная совместимость
+    async def get_task_status(self, task_id: str) -> Dict[str, Any]:
+        """Алиас для get_task (обратная совместимость)."""
+        return await self.get_task(task_id)
     
     async def list_models(self) -> List[Dict[str, Any]]:
         """Получает список моделей через реальный KIE API."""
@@ -92,28 +132,30 @@ class MockKieGateway(KieGateway):
         
         return f"https://example.com/mock/{model_id.replace('/', '_')}/{hash_value}{ext}"
     
-    async def create_task(self, model_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    async def create_task(self, api_model: str, input: Dict[str, Any], callback_url: Optional[str] = None) -> Dict[str, Any]:
         """
         Создает моковую задачу.
+        НИКОГДА не делает реальных HTTP запросов.
         Симулирует задержку 50-150мс для тестирования асинхронности.
         """
         # Симулируем задержку сети
-        delay = 0.05 + (hash(model_id) % 100) / 1000  # 50-150ms
+        delay = 0.05 + (hash(api_model) % 100) / 1000  # 50-150ms
         await asyncio.sleep(delay)
         
         self._task_counter += 1
-        task_id = f"mock_task_{self._task_counter}_{hash(model_id) % 10000}"
+        task_id = f"mock_task_{self._task_counter}_{hash(api_model) % 10000}"
         
         # Сохраняем задачу
         self._tasks[task_id] = {
             'task_id': task_id,
-            'model_id': model_id,
-            'params': params,
+            'api_model': api_model,
+            'input': input,
+            'callback_url': callback_url,
             'status': 'waiting',
             'created_at': asyncio.get_event_loop().time()
         }
         
-        logger.info(f"🔧 MOCK: Created task {task_id} for model {model_id}")
+        logger.info(f"🔧 MOCK: Created task {task_id} for model {api_model}")
         
         return {
             'ok': True,
@@ -121,7 +163,7 @@ class MockKieGateway(KieGateway):
             'status': 'waiting'
         }
     
-    async def get_task_status(self, task_id: str) -> Dict[str, Any]:
+    async def get_task(self, task_id: str) -> Dict[str, Any]:
         """
         Получает статус моковой задачи.
         Автоматически переводит задачу в 'success' через небольшую задержку.
@@ -138,38 +180,43 @@ class MockKieGateway(KieGateway):
         
         # Симулируем прогресс: waiting -> queuing -> generating -> success
         if elapsed < 0.1:
-            status = 'waiting'
+            state = 'waiting'
         elif elapsed < 0.2:
-            status = 'queuing'
+            state = 'queuing'
         elif elapsed < 0.5:
-            status = 'generating'
+            state = 'generating'
         else:
-            status = 'success'
+            state = 'success'
             # Генерируем mock URLs
-            model_id = task['model_id']
+            api_model = task.get('api_model', 'unknown')
             result_urls = [
-                self._generate_mock_url(model_id, task_id, i)
+                self._generate_mock_url(api_model, task_id, i)
                 for i in range(1)  # По умолчанию 1 результат
             ]
             task['result_urls'] = result_urls
         
-        task['status'] = status
+        task['status'] = state
         
-        result = {
-            'ok': True,
-            'status': status,
-            'taskId': task_id
-        }
-        
-        if status == 'success':
-            result['result'] = {
-                'resultUrls': task.get('result_urls', [])
+        import json
+        if state == 'success':
+            return {
+                'ok': True,
+                'state': state,
+                'resultJson': json.dumps({
+                    'resultUrls': task.get('result_urls', [])
+                })
             }
-        elif status == 'fail':
-            result['failMsg'] = 'Mock failure (for testing)'
-            result['failCode'] = 'MOCK_ERROR'
+        elif state == 'fail':
+            return {
+                'ok': False,
+                'state': state,
+                'error': 'Mock failure (for testing)'
+            }
         
-        return result
+        return {
+            'ok': True,
+            'state': state
+        }
     
     async def list_models(self) -> List[Dict[str, Any]]:
         """

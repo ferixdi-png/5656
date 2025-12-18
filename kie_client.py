@@ -44,6 +44,16 @@ class KIEClient:
         if not self.api_key:
             return []
 
+        # Проверяем кеш
+        try:
+            from optimization_cache import get_cached_models, set_cached_models
+            cached = get_cached_models()
+            if cached is not None:
+                logger.debug("✅ Использован кеш для list_models")
+                return cached
+        except ImportError:
+            pass  # Кеш не доступен, продолжаем без него
+
         # Try different endpoint variations - prioritize /api/v1/ format
         endpoints = [
             (f"{self.base_url}/api/v1/models", "GET"),  # Primary format based on docs
@@ -53,6 +63,7 @@ class KIEClient:
             (f"{self.base_url}/api/models", "GET"),
         ]
         
+        start_time = time.time()
         last_error = None
         for url, method in endpoints:
             try:
@@ -68,27 +79,43 @@ class KIEClient:
                     
                     if status == 200:
                         # Success! Parse response
+                        elapsed = time.time() - start_time
+                        try:
+                            from optimization_helpers import log_api_response_time
+                            log_api_response_time(f"KIE API list_models ({url})", elapsed)
+                        except ImportError:
+                            logger.debug(f"⏱️ list_models заняло {elapsed:.2f}с")
+                        
                         try:
                             data = await resp.json()
                             # Check if response is a list or dict with models
+                            models = []
                             if isinstance(data, list):
-                                return data
+                                models = data
                             elif isinstance(data, dict):
                                 # Some APIs return models in a 'data' or 'models' field
                                 if 'data' in data:
-                                    return data['data']
+                                    models = data['data']
                                 elif 'models' in data:
-                                    return data['models']
+                                    models = data['models']
                                 elif 'items' in data:
-                                    return data['items']
+                                    models = data['items']
                                 elif 'result' in data:
                                     result = data['result']
                                     if isinstance(result, list):
-                                        return result
+                                        models = result
                                 else:
                                     # Return as single item in list
-                                    return [data]
-                            return []
+                                    models = [data]
+                            
+                            # Сохраняем в кеш
+                            try:
+                                from optimization_cache import set_cached_models
+                                set_cached_models(models)
+                            except ImportError:
+                                pass  # Кеш не доступен
+                            
+                            return models
                         except Exception as e:
                             raise RuntimeError(f'Failed to parse response: {e} - Response: {text[:200]}')
                     elif status == 404:
@@ -228,12 +255,37 @@ class KIEClient:
                             error_code = error_data.get('code', resp.status)
                             logger.error(f"❌ KIE API HTTP {resp.status} Error (code {error_code}): {error_msg}")
                             logger.error(f"❌ KIE API Full Error Response: {json.dumps(error_data, ensure_ascii=False, indent=2)}")
+                            
+                            # Используем обработчик ошибок для логирования
+                            try:
+                                from error_handler_providers import get_error_handler
+                                handler = get_error_handler()
+                                handler.handle_api_error(
+                                    status_code=resp.status,
+                                    response_data=error_data,
+                                    request_details={
+                                        "model": model_id,
+                                        "payload": payload
+                                    }
+                                )
+                            except ImportError:
+                                pass  # Обработчик недоступен
                         except:
                             error_msg = text
                             logger.error(f"❌ KIE API HTTP {resp.status} Error (raw): {text[:500]}")
                         return {'ok': False, 'status': resp.status, 'error': error_msg}
         except asyncio.TimeoutError:
             logger.error(f"❌ KIE API Request timeout after {self.timeout}s")
+            # Используем обработчик ошибок
+            try:
+                from error_handler_providers import get_error_handler
+                handler = get_error_handler()
+                handler.handle_network_error(
+                    error_message=f"Request timeout after {self.timeout}s",
+                    request_details={"model": model_id, "payload": payload}
+                )
+            except ImportError:
+                pass
             return {'ok': False, 'error': 'Request to KIE timed out'}
         except aiohttp.ClientError as e:
             # CRITICAL: Log connection errors (RemoteDisconnected, etc.)
@@ -243,11 +295,36 @@ class KIEClient:
             # For 422-like errors, include more context
             if '422' in error_str or 'RemoteDisconnected' in error_str or 'Connection aborted' in error_str:
                 logger.error(f"❌ KIE API Payload that caused error: {json.dumps(payload, ensure_ascii=False, indent=2)}")
+            
+            # Используем обработчик ошибок
+            try:
+                from error_handler_providers import get_error_handler
+                handler = get_error_handler()
+                handler.handle_network_error(
+                    error_message=error_str,
+                    request_details={"model": model_id, "payload": payload}
+                )
+            except ImportError:
+                pass
+            
             return {'ok': False, 'error': error_str}
         except Exception as e:
             error_str = str(e)
             logger.error(f"❌ KIE API Unexpected Error: {error_str}")
             logger.error(f"❌ KIE API Error Type: {type(e).__name__}")
+            
+            # Используем обработчик ошибок
+            try:
+                from error_handler_providers import get_error_handler
+                handler = get_error_handler()
+                handler.handle_task_creation_error(
+                    model_id=model_id,
+                    error=e,
+                    request_params=payload
+                )
+            except ImportError:
+                pass
+            
             return {'ok': False, 'error': error_str}
     
     async def get_task_status(self, task_id: str) -> Dict[str, Any]:

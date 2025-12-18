@@ -228,6 +228,12 @@ user_sessions = {}
 active_generations = {}
 active_generations_lock = asyncio.Lock()
 
+# Store saved generation data for "generate again" feature
+saved_generations = {}
+
+# Maximum concurrent generations per user (to prevent abuse)
+MAX_CONCURRENT_GENERATIONS_PER_USER = 5
+
 
 def get_admin_limits() -> dict:
     """Get admin limits data."""
@@ -374,6 +380,9 @@ def calculate_price_rub(model_id: str, params: dict = None, is_admin: bool = Fal
                 return float(price_rub) if isinstance(price_rub, (int, float, Decimal)) else 0.0
             elif isinstance(price_result, (int, float, Decimal)):
                 return float(price_result)
+            elif hasattr(price_result, 'rub'):
+                # Если price_result - объект с атрибутом rub
+                return float(price_result.rub)
             else:
                 return 0.0
         except ImportError:
@@ -408,19 +417,6 @@ WAITING_CURRENCY_RATE = 7
 # Structure: active_generations[(user_id, task_id)] = {session_data}
 # NOTE: active_generations already declared above (line 358), this is a duplicate - removed
 
-# Conversation states for model selection and parameter input
-SELECTING_MODEL, INPUTTING_PARAMS, CONFIRMING_GENERATION = range(3)
-
-# Payment states
-SELECTING_AMOUNT, WAITING_PAYMENT_SCREENSHOT = range(3, 5)
-
-# Admin test OCR state
-ADMIN_TEST_OCR = 5
-
-# Broadcast states
-WAITING_BROADCAST_MESSAGE = 6
-WAITING_CURRENCY_RATE = 7
-
 
 def format_price_rub(price: float, is_admin: bool = False) -> str:
     """Format price in rubles with appropriate text (rounded to 2 decimal places)."""
@@ -437,16 +433,6 @@ def get_model_price_text(model_id: str, params: dict = None, is_admin: bool = Fa
     """Get formatted price text for a model."""
     price = calculate_price_rub(model_id, params, is_admin, user_id)
     return format_price_rub(price, is_admin)
-
-
-# Conversation states for model selection and parameter input
-SELECTING_MODEL, INPUTTING_PARAMS, CONFIRMING_GENERATION = range(3)
-
-# Payment states
-SELECTING_AMOUNT, WAITING_PAYMENT_SCREENSHOT = range(3, 5)
-
-# Admin test OCR state
-ADMIN_TEST_OCR = 5
 
 # Broadcast states
 WAITING_BROADCAST_MESSAGE = 6
@@ -476,791 +462,6 @@ def get_data_file_path(filename: str) -> str:
 
 
 # NOTE: active_generations already declared above (line 358), this is a duplicate - removed
-
-# Async lock for active_generations operations
-active_generations_lock = asyncio.Lock()
-
-# Store saved generation data for "generate again" feature
-saved_generations = {}
-
-# Maximum concurrent generations per user (to prevent abuse)
-MAX_CONCURRENT_GENERATIONS_PER_USER = 5
-
-# Global HTTP client for connection pooling (optimized for 1000+ users)
-_http_client: Optional[aiohttp.ClientSession] = None
-
-# File operation locks to prevent race conditions (using threading.Lock for sync operations)
-_file_locks = {
-    'balances': threading.Lock(),
-    'generations_history': threading.Lock(),
-    'referrals': threading.Lock(),
-    'promocodes': threading.Lock(),
-    'free_generations': threading.Lock(),
-    'languages': threading.Lock(),
-    'gifts': threading.Lock(),
-    'payments': threading.Lock(),
-    'broadcasts': threading.Lock(),
-    'admin_limits': threading.Lock(),
-    'blocked_users': threading.Lock()
-}
-
-# In-memory cache for frequently accessed data (optimized for 1000+ users)
-_data_cache = {
-    'balances': {},
-    'free_generations': {},
-    'languages': {},
-    'gifts': {},
-    'cache_timestamps': {}
-}
-
-# Cache TTL in seconds (5 minutes)
-CACHE_TTL = 300
-
-# NOTE: active_generations already declared above (line 358), this is a duplicate - removed
-
-# Async lock for active_generations operations
-active_generations_lock = asyncio.Lock()
-
-# Store saved generation data for "generate again" feature
-saved_generations = {}
-
-# Maximum concurrent generations per user (to prevent abuse)
-MAX_CONCURRENT_GENERATIONS_PER_USER = 5
-
-# Global HTTP client for connection pooling (optimized for 1000+ users)
-_http_client: Optional[aiohttp.ClientSession] = None
-
-# NOTE: active_generations already declared above (line 358), this is a duplicate - removed
-
-# Async lock for active_generations operations
-active_generations_lock = asyncio.Lock()
-
-# Store saved generation data for "generate again" feature
-saved_generations = {}
-
-# NOTE: active_generations already declared above (line 358), this is a duplicate - removed
-
-# Async lock for active_generations operations
-active_generations_lock = asyncio.Lock()
-
-# Global HTTP client for connection pooling (optimized for 1000+ users)
-_http_client: Optional[aiohttp.ClientSession] = None
-
-# File operation locks to prevent race conditions (using threading.Lock for sync operations)
-        # Note: Duration is determined by input video length
-        # For pricing calculation, we'll use a default of 5 seconds as minimum
-        default_duration = 5
-        base_credits = 12 * default_duration  # 12 credits per second
-    elif model_id == "kling/v1-avatar-standard":
-        # Kling Avatar Standard pricing:
-        # 8 credits per second for 720P
-        # Up to 15 seconds per generation
-        # For pricing calculation, we'll use a default of 5 seconds as minimum
-        default_duration = 5
-        base_credits = 8 * default_duration  # 8 credits per second for 720P
-    elif model_id == "kling/ai-avatar-v1-pro":
-        # Kling Avatar Pro pricing:
-        # 16 credits per second for 1080P
-        # Up to 15 seconds per generation
-        # For pricing calculation, we'll use a default of 5 seconds as minimum
-        default_duration = 5
-        base_credits = 16 * default_duration  # 16 credits per second for 1080P
-    elif model_id == "bytedance/seedream-v4-text-to-image" or model_id == "bytedance/seedream-v4-edit":
-        # Seedream V4 pricing:
-        # 5 credits per image
-        # Price is independent of resolution, determined by number of images returned
-        max_images = params.get("max_images", 1) if params else 1
-        base_credits = 5 * max_images  # 5 credits per image
-    elif model_id == "infinitalk/from-audio":
-        # InfiniteTalk pricing:
-        # 480P: 3 credits per second
-        # 720P: 12 credits per second
-        # Up to 15 seconds per generation
-        # For pricing calculation, we'll use a default of 5 seconds as minimum
-        resolution = params.get("resolution", "480p")
-        default_duration = 5
-        
-        if resolution == "720p":
-            base_credits = 12 * default_duration  # 12 credits per second
-        else:  # 480p
-            base_credits = 3 * default_duration  # 3 credits per second
-    elif model_id == "recraft/remove-background":
-        # Recraft Remove Background pricing:
-        # Free and unlimited for users
-        base_credits = 0
-    elif model_id == "recraft/crisp-upscale":
-        # Recraft Crisp Upscale pricing:
-        # Free and unlimited for users
-        base_credits = 0
-    elif model_id == "ideogram/v3-reframe" or model_id == "ideogram/v3-text-to-image" or model_id == "ideogram/v3-edit" or model_id == "ideogram/v3-remix":
-        # Ideogram V3 pricing (same for all variants):
-        # TURBO: 3.5 credits per image
-        # BALANCED: 7 credits per image
-        # QUALITY: 10 credits per image
-        rendering_speed = params.get("rendering_speed", "BALANCED") if params else "BALANCED"
-        num_images = int(params.get("num_images", "1")) if params else 1
-        
-        if rendering_speed == "TURBO":
-            credits_per_image = 3.5
-        elif rendering_speed == "QUALITY":
-            credits_per_image = 10
-        else:  # BALANCED
-            credits_per_image = 7
-        
-        base_credits = credits_per_image * num_images
-    elif model_id == "wan/2-2-a14b-speech-to-video-turbo":
-        # WAN 2.2 Speech-to-Video pricing:
-        # 480P: 12 credits per second
-        # 580P: 18 credits per second
-        # 720P: 24 credits per second
-        # Note: Duration is determined by audio length
-        # For pricing calculation, we'll use a default of 5 seconds as minimum
-        resolution = params.get("resolution", "480p")
-        default_duration = 5
-        
-        if resolution == "720p":
-            base_credits = 24 * default_duration  # 24 credits per second
-        elif resolution == "580p":
-            base_credits = 18 * default_duration  # 18 credits per second
-        else:  # 480p
-            base_credits = 12 * default_duration  # 12 credits per second
-    elif model_id == "wan/2-2-a14b-text-to-video-turbo" or model_id == "wan/2-2-a14b-image-to-video-turbo":
-        # WAN 2.2 A14B Turbo pricing (according to API documentation):
-        # 480p: 8 credits per video second ($0.04)
-        # 580p: 12 credits per video second ($0.06)
-        # 720p: 16 credits per video second ($0.08)
-        # NOTE: Video duration is fixed by the model, so we use a default of 5 seconds for pricing calculation
-        resolution = params.get("resolution", "720p") if params else "720p"
-        default_duration = 5  # Default video duration in seconds
-        
-        if resolution == "720p":
-            base_credits = 16 * default_duration  # 16 credits per video second
-        elif resolution == "580p":
-            base_credits = 12 * default_duration  # 12 credits per video second
-        else:  # 480p
-            base_credits = 8 * default_duration  # 8 credits per video second
-    elif model_id == "bytedance/seedream":
-        # Seedream 3.0 pricing:
-        # 3.5 credits per image
-        base_credits = 3.5
-    elif model_id == "qwen/text-to-image":
-        # Qwen Image pricing:
-        # 4 credits per megapixel
-        # Need to calculate megapixels based on image_size
-        # Approximate resolutions:
-        # square: 512x512 = 0.26 MP
-        # square_hd: 1024x1024 = 1.05 MP
-        # portrait_4_3: 768x1024 = 0.79 MP
-        # portrait_16_9: 1024x1792 = 1.84 MP
-        # landscape_4_3: 1024x768 = 0.79 MP
-        # landscape_16_9: 1792x1024 = 1.84 MP
-        image_size = params.get("image_size", "square_hd") if params else "square_hd"
-        
-        # Calculate megapixels based on image size
-        mp_map = {
-            "square": 0.26,  # 512x512
-            "square_hd": 1.05,  # 1024x1024
-            "portrait_4_3": 0.79,  # 768x1024
-            "portrait_16_9": 1.84,  # 1024x1792
-            "landscape_4_3": 0.79,  # 1024x768
-            "landscape_16_9": 1.84  # 1792x1024
-        }
-        
-        megapixels = mp_map.get(image_size, 1.05)  # Default to square_hd
-        base_credits = 4 * megapixels  # 4 credits per megapixel
-    elif model_id == "qwen/image-to-image":
-        # Qwen Image-to-Image pricing:
-        # 4 credits per image
-        base_credits = 4
-    elif model_id == "qwen/image-edit":
-        # Qwen Image Edit pricing:
-        # ≈ $0.03 per megapixel, depending on image aspect ratio
-        # Need to calculate megapixels based on image_size
-        # Use same mapping as qwen/text-to-image
-        image_size = params.get("image_size", "landscape_4_3") if params else "landscape_4_3"
-        num_images = int(params.get("num_images", "1")) if params else 1
-        
-        # Calculate megapixels based on image size (same as qwen/text-to-image)
-        mp_map = {
-            "square": 0.26,  # 512x512
-            "square_hd": 1.05,  # 1024x1024
-            "portrait_4_3": 0.79,  # 768x1024
-            "portrait_16_9": 1.84,  # 1024x1792
-            "landscape_4_3": 0.79,  # 1024x768
-            "landscape_16_9": 1.84  # 1792x1024
-        }
-        
-        megapixels = mp_map.get(image_size, 0.79)  # Default to landscape_4_3
-        # $0.03 per MP ≈ 6 credits per MP (assuming $0.005 per credit)
-        base_credits = 6 * megapixels * num_images
-    elif model_id == "google/imagen4-ultra":
-        # Google Imagen 4 Ultra pricing:
-        # 12 credits per image
-        base_credits = 12
-    elif model_id == "google/imagen4-fast":
-        # Google Imagen 4 Fast pricing:
-        # 4 credits per image
-        num_images = int(params.get("num_images", "1")) if params else 1
-        base_credits = 4 * num_images
-    elif model_id == "google/imagen4":
-        # Google Imagen 4 pricing:
-        # 8 credits per image
-        num_images = int(params.get("num_images", "1")) if params else 1
-        base_credits = 8 * num_images
-    elif model_id == "ideogram/character-edit" or model_id == "ideogram/character-remix" or model_id == "ideogram/character":
-        # Ideogram Character pricing (same for edit, remix, and base):
-        # TURBO: 12 credits
-        # BALANCED: 18 credits
-        # QUALITY: 24 credits
-        rendering_speed = params.get("rendering_speed", "BALANCED") if params else "BALANCED"
-        num_images = int(params.get("num_images", "1")) if params else 1
-        
-        if rendering_speed == "TURBO":
-            credits_per_image = 12
-        elif rendering_speed == "QUALITY":
-            credits_per_image = 24
-        else:  # BALANCED
-            credits_per_image = 18
-        
-        base_credits = credits_per_image * num_images
-    elif model_id == "flux-2/pro-image-to-image" or model_id == "flux-2/pro-text-to-image":
-        # Flux 2 Pro pricing (same for both image-to-image and text-to-image):
-        # 1K: 5 credits
-        # 2K: 7 credits
-        resolution = params.get("resolution", "1K")
-        if resolution == "2K":
-            base_credits = 7
-        else:  # 1K
-            base_credits = 5
-    elif model_id == "flux-2/flex-image-to-image" or model_id == "flux-2/flex-text-to-image":
-        # Flux 2 Flex pricing (same for both image-to-image and text-to-image):
-        # 1K: 14 credits
-        # 2K: 24 credits
-        resolution = params.get("resolution", "1K")
-        if resolution == "2K":
-            base_credits = 24
-        else:  # 1K
-            base_credits = 14
-    elif model_id == "topaz/image-upscale":
-        # Topaz Image Upscale pricing:
-        # 1x (≤2K): 10 credits
-        # 2x/4x (4K): 20 credits
-        # 8x (8K): 40 credits
-        upscale_factor = params.get("upscale_factor", "2")
-        if upscale_factor == "8":
-            base_credits = 40  # 8K
-        elif upscale_factor in ["2", "4"]:
-            base_credits = 20  # 4K
-        else:  # upscale_factor == "1"
-            base_credits = 10  # ≤2K
-    elif model_id == "bytedance/v1-pro-fast-image-to-video":
-        # ByteDance V1 Pro Fast Image-to-Video pricing:
-        # Price depends on resolution and duration parameters
-        # 480p, 5s: 10 credits (estimated)
-        # 480p, 10s: 20 credits (estimated)
-        # 720p, 5s: 16 credits
-        # 720p, 10s: 36 credits
-        # 1080p, 5s: 36 credits
-        # 1080p, 10s: 72 credits
-        resolution = params.get("resolution", "720p")
-        duration = params.get("duration", "5")
-        
-        if resolution == "1080p":
-            if duration == "10":
-                base_credits = 72  # 1080p, 10s
-            else:  # duration == "5"
-                base_credits = 36  # 1080p, 5s
-        elif resolution == "720p":
-            if duration == "10":
-                base_credits = 36  # 720p, 10s
-            else:  # duration == "5"
-                base_credits = 16  # 720p, 5s
-        else:  # resolution == "480p"
-            if duration == "10":
-                base_credits = 20  # 480p, 10s (estimated)
-            else:  # duration == "5"
-                base_credits = 10  # 480p, 5s (estimated)
-    elif model_id == "bytedance/v1-lite-text-to-video":
-        # ByteDance V1 Lite Text-to-Video pricing:
-        # NOTE: Price calculation - Need to check pricing in calculate_price_rub()
-        # Price likely depends on resolution and duration parameters (similar to v1-pro-fast)
-        # For now, use default pricing until confirmed
-        resolution = params.get("resolution", "480p") if params else "480p"
-        duration = params.get("duration", "5") if params else "5"
-        
-        # Default pricing (to be updated when actual pricing is confirmed)
-        if resolution == "1080p":
-            if duration == "10":
-                base_credits = 50  # 1080p, 10s (estimated)
-            else:  # duration == "5"
-                base_credits = 25  # 1080p, 5s (estimated)
-        elif resolution == "720p":
-            if duration == "10":
-                base_credits = 25  # 720p, 10s (estimated)
-            else:  # duration == "5"
-                base_credits = 12  # 720p, 5s (estimated)
-        else:  # resolution == "480p"
-            if duration == "10":
-                base_credits = 15  # 480p, 10s (estimated)
-            else:  # duration == "5"
-                base_credits = 8  # 480p, 5s (estimated)
-    elif model_id == "bytedance/v1-pro-text-to-video":
-        # ByteDance V1 Pro Text-to-Video pricing:
-        # NOTE: Price calculation - Need to check pricing in calculate_price_rub()
-        # Price likely depends on resolution and duration parameters (similar to v1-pro-fast-image-to-video)
-        # For now, use default pricing until confirmed
-        resolution = params.get("resolution", "720p") if params else "720p"
-        duration = params.get("duration", "5") if params else "5"
-        
-        # Default pricing (to be updated when actual pricing is confirmed)
-        # Pro version should be more expensive than lite version
-        if resolution == "1080p":
-            if duration == "10":
-                base_credits = 72  # 1080p, 10s (estimated, same as v1-pro-fast-image-to-video)
-            else:  # duration == "5"
-                base_credits = 36  # 1080p, 5s (estimated, same as v1-pro-fast-image-to-video)
-        elif resolution == "720p":
-            if duration == "10":
-                base_credits = 36  # 720p, 10s (estimated, same as v1-pro-fast-image-to-video)
-            else:  # duration == "5"
-                base_credits = 16  # 720p, 5s (estimated, same as v1-pro-fast-image-to-video)
-        else:  # resolution == "480p"
-            if duration == "10":
-                base_credits = 20  # 480p, 10s (estimated)
-            else:  # duration == "5"
-                base_credits = 10  # 480p, 5s (estimated)
-    elif model_id == "bytedance/v1-lite-image-to-video":
-        # ByteDance V1 Lite Image-to-Video pricing:
-        # NOTE: Price calculation - Need to check pricing in calculate_price_rub()
-        # Price likely depends on resolution and duration parameters (similar to v1-lite-text-to-video)
-        # For now, use default pricing until confirmed
-        resolution = params.get("resolution", "480p") if params else "480p"
-        duration = params.get("duration", "5") if params else "5"
-        
-        # Default pricing (to be updated when actual pricing is confirmed)
-        # Same pricing as v1-lite-text-to-video
-        if resolution == "1080p":
-            if duration == "10":
-                base_credits = 50  # 1080p, 10s (estimated)
-            else:  # duration == "5"
-                base_credits = 25  # 1080p, 5s (estimated)
-        elif resolution == "720p":
-            if duration == "10":
-                base_credits = 25  # 720p, 10s (estimated)
-            else:  # duration == "5"
-                base_credits = 12  # 720p, 5s (estimated)
-        else:  # resolution == "480p"
-            if duration == "10":
-                base_credits = 15  # 480p, 10s (estimated)
-            else:  # duration == "5"
-                base_credits = 8  # 480p, 5s (estimated)
-    elif model_id == "bytedance/v1-pro-image-to-video":
-        # ByteDance V1 Pro Image-to-Video pricing:
-        # NOTE: Price calculation - Need to check pricing in calculate_price_rub()
-        # Price likely depends on resolution and duration parameters (similar to v1-pro-fast-image-to-video)
-        # For now, use default pricing until confirmed
-        resolution = params.get("resolution", "720p") if params else "720p"
-        duration = params.get("duration", "5") if params else "5"
-        
-        # Default pricing (to be updated when actual pricing is confirmed)
-        # Pro version should be more expensive than lite version
-        if resolution == "1080p":
-            if duration == "10":
-                base_credits = 72  # 1080p, 10s (estimated, same as v1-pro-fast-image-to-video)
-            else:  # duration == "5"
-                base_credits = 36  # 1080p, 5s (estimated, same as v1-pro-fast-image-to-video)
-        elif resolution == "720p":
-            if duration == "10":
-                base_credits = 36  # 720p, 10s (estimated, same as v1-pro-fast-image-to-video)
-            else:  # duration == "5"
-                base_credits = 16  # 720p, 5s (estimated, same as v1-pro-fast-image-to-video)
-        else:  # resolution == "480p"
-            if duration == "10":
-                base_credits = 20  # 480p, 10s (estimated)
-            else:  # duration == "5"
-                base_credits = 10  # 480p, 5s (estimated)
-    elif model_id == "kling/v2-1-pro":
-        # Kling V2.1 Pro pricing:
-        # 5 seconds = 50 credits ($0.25)
-        # 10 seconds = 100 credits ($0.5)
-        duration = params.get("duration", "5") if params else "5"
-        if duration == "10":
-            base_credits = 100  # 10s = 100 credits
-        else:  # duration == "5"
-            base_credits = 50  # 5s = 50 credits
-    elif model_id == "kling/v2-1-standard":
-        # Kling V2.1 Standard pricing:
-        # 5 seconds = 25 credits ($0.125)
-        # 10 seconds = 50 credits ($0.25)
-        duration = params.get("duration", "5") if params else "5"
-        if duration == "10":
-            base_credits = 50  # 10s = 50 credits
-        else:  # duration == "5"
-            base_credits = 25  # 5s = 25 credits
-    elif model_id == "kling/v2-1-master-image-to-video":
-        # Kling V2.1 Master pricing:
-        # NOTE: Price calculation - Need to check pricing in calculate_price_rub()
-        # Price likely depends on duration parameter
-        # For now, use default pricing until confirmed
-        duration = params.get("duration", "5") if params else "5"
-        
-        # Default pricing (to be updated when actual pricing is confirmed)
-        # Estimated based on similar kling models
-        if duration == "10":
-            base_credits = 80  # 10s (estimated)
-        else:  # duration == "5"
-            base_credits = 40  # 5s (estimated)
-    elif model_id == "elevenlabs/speech-to-text":
-        # ElevenLabs Speech-to-Text pricing:
-        # 3.5 credits per minute
-        # For pricing calculation, we'll use a default of 1 minute as minimum
-        # Note: Actual price depends on audio duration, but we show minimum price
-        base_credits = 3.5  # Per minute
-    else:
-        # Default fallback
-        base_credits = 1.0
-    
-    # Используем новый pricing_service для расчета цены
-    from services.pricing_service import get_price
-    from decimal import Decimal
-    
-    # Конвертируем params в правильный формат
-    if params is None:
-        params = {}
-    
-    # Получаем курс USD к RUB
-    usd_to_rub = get_usd_to_rub_rate()
-    
-    # Рассчитываем цену через новый сервис
-    price_result = get_price(
-        model_id=model_id,
-        params=params,
-        user_context=user_context,
-        usd_to_rub_rate=Decimal(str(usd_to_rub))
-    )
-    
-    # Возвращаем цену в рублях как float
-    return float(price_result.rub)
-    
-    if model_id == "z-image":
-        price = calculate_price_rub(model_id, params, is_admin_check, user_id)
-        if not is_admin_check and user_id is not None:
-            # Check if user has free generations available
-            remaining = get_user_free_generations_remaining(user_id)
-            if remaining > 0:
-                price_str = f"{round(price, 2):.2f}"
-                return f"🎁 <b>БЕСПЛАТНО</b> ({remaining}/{FREE_GENERATIONS_PER_DAY} в день) или {price_str} ₽"
-        return format_price_rub(price, is_admin) + " за изображение"
-    elif model_id == "nano-banana-pro":
-        price_1k = calculate_price_rub(model_id, {"resolution": "1K"}, is_admin_check, user_id)
-        price_4k = calculate_price_rub(model_id, {"resolution": "4K"}, is_admin_check, user_id)
-        # Format prices to 2 decimal places
-        price_1k_str = f"{round(price_1k, 2):.2f}"
-        price_4k_str = f"{round(price_4k, 2):.2f}"
-        if is_admin_check:
-            return f"💰 <b>Безлимит</b> (1K/2K: {price_1k_str} ₽, 4K: {price_4k_str} ₽)"
-        else:
-            return f"💰 <b>От {price_1k_str} ₽</b> (1K/2K: {price_1k_str} ₽, 4K: {price_4k_str} ₽)"
-    elif model_id == "sora-watermark-remover":
-        price = calculate_price_rub(model_id, params, is_admin_check, user_id)
-        return format_price_rub(price, is_admin_check) + " за использование"
-    elif model_id == "sora-2-text-to-video" or model_id == "sora-2-image-to-video":
-        price = calculate_price_rub(model_id, params, is_admin_check, user_id)
-        return format_price_rub(price, is_admin_check) + " за 10-секундное видео"
-    elif model_id == "kling-2.6/image-to-video" or model_id == "kling-2.6/text-to-video":
-        # Show price range based on duration and sound
-        duration = params.get("duration", "5") if params else "5"
-        sound = params.get("sound", False) if params else False
-        
-        if duration == "5":
-            if sound:
-                price = calculate_price_rub(model_id, {"duration": "5", "sound": True}, is_admin_check, user_id)
-                return format_price_rub(price, is_admin_check) + " за 5с видео (со звуком)"
-            else:
-                price = calculate_price_rub(model_id, {"duration": "5", "sound": False}, is_admin_check, user_id)
-                return format_price_rub(price, is_admin_check) + " за 5с видео (без звука)"
-        else:  # duration == "10"
-            if sound:
-                price = calculate_price_rub(model_id, {"duration": "10", "sound": True}, is_admin_check, user_id)
-                return format_price_rub(price, is_admin_check) + " за 10с видео (со звуком)"
-            else:
-                price = calculate_price_rub(model_id, {"duration": "10", "sound": False}, is_admin_check, user_id)
-                return format_price_rub(price, is_admin_check) + " за 10с видео (без звука)"
-    elif model_id == "kling/v2-5-turbo-text-to-video-pro" or model_id == "kling/v2-5-turbo-image-to-video-pro":
-        # Show price based on duration
-        duration = params.get("duration", "5") if params else "5"
-        price_5s = calculate_price_rub(model_id, {"duration": "5"}, is_admin_check, user_id)
-        price_10s = calculate_price_rub(model_id, {"duration": "10"}, is_admin_check, user_id)
-        price_5s_str = f"{round(price_5s, 2):.2f}"
-        price_10s_str = f"{round(price_10s, 2):.2f}"
-        if is_admin_check:
-            return f"💰 <b>Безлимит</b> (5с: {price_5s_str} ₽, 10с: {price_10s_str} ₽)"
-        else:
-            return f"💰 <b>От {price_5s_str} ₽</b> (5с: {price_5s_str} ₽, 10с: {price_10s_str} ₽)"
-    elif model_id == "wan/2-5-image-to-video" or model_id == "wan/2-5-text-to-video":
-        # Show price based on duration and resolution
-        duration = params.get("duration", "5") if params else "5"
-        resolution = params.get("resolution", "720p") if params else "720p"
-        price_720p_5s = calculate_price_rub(model_id, {"duration": "5", "resolution": "720p"}, is_admin_check, user_id)
-        price_1080p_5s = calculate_price_rub(model_id, {"duration": "5", "resolution": "1080p"}, is_admin_check, user_id)
-        price_720p_10s = calculate_price_rub(model_id, {"duration": "10", "resolution": "720p"}, is_admin_check, user_id)
-        price_1080p_10s = calculate_price_rub(model_id, {"duration": "10", "resolution": "1080p"}, is_admin_check, user_id)
-        price_720p_5s_str = f"{round(price_720p_5s, 2):.2f}"
-        price_1080p_5s_str = f"{round(price_1080p_5s, 2):.2f}"
-        price_720p_10s_str = f"{round(price_720p_10s, 2):.2f}"
-        price_1080p_10s_str = f"{round(price_1080p_10s, 2):.2f}"
-        if is_admin_check:
-            return f"💰 <b>Безлимит</b>\n\n📺 <b>Разрешение 720p:</b> {price_720p_5s_str}₽ (5с), {price_720p_10s_str}₽ (10с)\n📺 <b>Разрешение 1080p:</b> {price_1080p_5s_str}₽ (5с), {price_1080p_10s_str}₽ (10с)"
-        else:
-            return f"💰 <b>От {price_720p_5s_str} ₽</b>\n\n📺 <b>720p:</b> {price_720p_5s_str}₽ (5с), {price_720p_10s_str}₽ (10с)\n📺 <b>1080p:</b> {price_1080p_5s_str}₽ (5с), {price_1080p_10s_str}₽ (10с)"
-    elif model_id == "wan/2-2-animate-move" or model_id == "wan/2-2-animate-replace":
-        # Show price based on resolution
-        resolution = params.get("resolution", "480p") if params else "480p"
-        price_480p = calculate_price_rub(model_id, {"resolution": "480p"}, is_admin)
-        price_580p = calculate_price_rub(model_id, {"resolution": "580p"}, is_admin)
-        price_720p = calculate_price_rub(model_id, {"resolution": "720p"}, is_admin)
-        price_480p_str = f"{round(price_480p, 2):.2f}"
-        price_580p_str = f"{round(price_580p, 2):.2f}"
-        price_720p_str = f"{round(price_720p, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b>\n\n📺 <b>Разрешение 480p:</b> {price_480p_str}₽ (5с)\n📺 <b>Разрешение 580p:</b> {price_580p_str}₽ (5с)\n📺 <b>Разрешение 720p:</b> {price_720p_str}₽ (5с)"
-        else:
-            return f"💰 <b>От {price_480p_str} ₽</b>\n\n📺 <b>480p:</b> {price_480p_str}₽ (5с)\n📺 <b>580p:</b> {price_580p_str}₽ (5с)\n📺 <b>720p:</b> {price_720p_str}₽ (5с)"
-    elif model_id == "hailuo/02-text-to-video-pro" or model_id == "hailuo/02-image-to-video-pro":
-        # Show fixed price for 6-second 1080p video
-        price = calculate_price_rub(model_id, params, is_admin)
-        price_str = f"{round(price, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b> ({price_str} ₽ за 6с 1080p видео)"
-        else:
-            return f"💰 <b>{price_str} ₽</b> за 6с 1080p видео"
-    elif model_id == "hailuo/02-image-to-video-standard":
-        # Show price based on resolution and duration
-        resolution = params.get("resolution", "768P") if params else "768P"
-        duration = params.get("duration", "6") if params else "6"
-        price_512p_6s = calculate_price_rub(model_id, {"resolution": "512P", "duration": "6"}, is_admin)
-        price_768p_6s = calculate_price_rub(model_id, {"resolution": "768P", "duration": "6"}, is_admin)
-        price_512p_10s = calculate_price_rub(model_id, {"resolution": "512P", "duration": "10"}, is_admin)
-        price_768p_10s = calculate_price_rub(model_id, {"resolution": "768P", "duration": "10"}, is_admin)
-        price_512p_6s_str = f"{round(price_512p_6s, 2):.2f}"
-        price_768p_6s_str = f"{round(price_768p_6s, 2):.2f}"
-        price_512p_10s_str = f"{round(price_512p_10s, 2):.2f}"
-        price_768p_10s_str = f"{round(price_768p_10s, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b>\n\n📺 <b>Разрешение 512p:</b> {price_512p_6s_str}₽ (6с), {price_512p_10s_str}₽ (10с)\n📺 <b>Разрешение 768p:</b> {price_768p_6s_str}₽ (6с), {price_768p_10s_str}₽ (10с)"
-        else:
-            return f"💰 <b>От {price_512p_6s_str} ₽</b>\n\n📺 <b>512p:</b> {price_512p_6s_str}₽ (6с), {price_512p_10s_str}₽ (10с)\n📺 <b>768p:</b> {price_768p_6s_str}₽ (6с), {price_768p_10s_str}₽ (10с)"
-    elif model_id == "hailuo/02-text-to-video-standard":
-        # Show price based on duration (fixed 768P)
-        duration = params.get("duration", "6") if params else "6"
-        price_6s = calculate_price_rub(model_id, {"duration": "6"}, is_admin)
-        price_10s = calculate_price_rub(model_id, {"duration": "10"}, is_admin)
-        price_6s_str = f"{round(price_6s, 2):.2f}"
-        price_10s_str = f"{round(price_10s, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b>\n\n📺 <b>Разрешение 768p:</b> {price_6s_str}₽ (6с), {price_10s_str}₽ (10с)"
-        else:
-            return f"💰 <b>От {price_6s_str} ₽</b>\n\n📺 <b>768p:</b> {price_6s_str}₽ (6с), {price_10s_str}₽ (10с)"
-    elif model_id == "topaz/video-upscale":
-        # Show price per second
-        price_per_sec = calculate_price_rub(model_id, {}, is_admin) / 5  # Divide by default 5 seconds
-        price_per_sec_str = f"{round(price_per_sec, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b> ({price_per_sec_str} ₽/сек)"
-        else:
-            return f"💰 <b>{price_per_sec_str} ₽/сек</b>"
-    elif model_id == "kling/v1-avatar-standard":
-        # Show price per second for 720P
-        price_per_sec = calculate_price_rub(model_id, {}, is_admin) / 5  # Divide by default 5 seconds
-        price_per_sec_str = f"{round(price_per_sec, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b>\n\n📺 <b>Разрешение:</b> 720p\n💰 {price_per_sec_str} ₽/сек\n⏱️ До 15 секунд"
-        else:
-            return f"💰 <b>{price_per_sec_str} ₽/сек</b>\n\n📺 <b>Разрешение:</b> 720p\n⏱️ До 15 секунд"
-    elif model_id == "kling/ai-avatar-v1-pro":
-        # Show price per second for 1080P
-        price_per_sec = calculate_price_rub(model_id, {}, is_admin) / 5  # Divide by default 5 seconds
-        price_per_sec_str = f"{round(price_per_sec, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b>\n\n📺 <b>Разрешение:</b> 1080p\n💰 {price_per_sec_str} ₽/сек\n⏱️ До 15 секунд"
-        else:
-            return f"💰 <b>{price_per_sec_str} ₽/сек</b>\n\n📺 <b>Разрешение:</b> 1080p\n⏱️ До 15 секунд"
-    elif model_id == "bytedance/seedream-v4-text-to-image" or model_id == "bytedance/seedream-v4-edit":
-        # Show price per image
-        max_images = params.get("max_images", 1) if params else 1
-        price_per_image = calculate_price_rub(model_id, {"max_images": 1}, is_admin)
-        price_total = calculate_price_rub(model_id, {"max_images": max_images}, is_admin)
-        price_per_image_str = f"{round(price_per_image, 2):.2f}"
-        price_total_str = f"{round(price_total, 2):.2f}"
-        if is_admin:
-            if max_images > 1:
-                return f"💰 <b>Безлимит</b> ({price_per_image_str} ₽/изображение, до {max_images} изображений = {price_total_str} ₽)"
-            else:
-                return f"💰 <b>Безлимит</b> ({price_per_image_str} ₽/изображение)"
-        else:
-            if max_images > 1:
-                return f"💰 <b>{price_per_image_str} ₽/изображение</b> (до {max_images} изображений = {price_total_str} ₽)"
-            else:
-                return f"💰 <b>{price_per_image_str} ₽/изображение</b>"
-    elif model_id == "infinitalk/from-audio":
-        # Show price per second based on resolution
-        resolution = params.get("resolution", "480p") if params else "480p"
-        price_per_sec_480p = calculate_price_rub(model_id, {"resolution": "480p"}, is_admin) / 5
-        price_per_sec_720p = calculate_price_rub(model_id, {"resolution": "720p"}, is_admin) / 5
-        price_per_sec_480p_str = f"{round(price_per_sec_480p, 2):.2f}"
-        price_per_sec_720p_str = f"{round(price_per_sec_720p, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b>\n\n📺 <b>Разрешение 480p:</b> {price_per_sec_480p_str}₽/сек\n📺 <b>Разрешение 720p:</b> {price_per_sec_720p_str}₽/сек\n⏱️ До 15 секунд"
-        else:
-            return f"💰 <b>От {price_per_sec_480p_str} ₽/сек</b>\n\n📺 <b>480p:</b> {price_per_sec_480p_str}₽/сек\n📺 <b>720p:</b> {price_per_sec_720p_str}₽/сек\n⏱️ До 15 секунд"
-    elif model_id == "recraft/remove-background":
-        # Show free and unlimited price
-        if is_admin:
-            return f"💰 <b>Бесплатно и безлимитно</b>"
-        else:
-            return f"💰 <b>Бесплатно</b> (безлимитно)"
-    elif model_id == "recraft/crisp-upscale":
-        # Show free and unlimited price
-        if is_admin:
-            return f"💰 <b>Бесплатно и безлимитно</b>"
-        else:
-            return f"💰 <b>Бесплатно</b> (безлимитно)"
-    elif model_id == "ideogram/v3-reframe" or model_id == "ideogram/v3-text-to-image" or model_id == "ideogram/v3-edit" or model_id == "ideogram/v3-remix":
-        # Show price based on rendering speed (same for all Ideogram V3 models)
-        rendering_speed = params.get("rendering_speed", "BALANCED") if params else "BALANCED"
-        price_turbo = calculate_price_rub(model_id, {"rendering_speed": "TURBO", "num_images": "1"}, is_admin)
-        price_balanced = calculate_price_rub(model_id, {"rendering_speed": "BALANCED", "num_images": "1"}, is_admin)
-        price_quality = calculate_price_rub(model_id, {"rendering_speed": "QUALITY", "num_images": "1"}, is_admin)
-        price_turbo_str = f"{round(price_turbo, 2):.2f}"
-        price_balanced_str = f"{round(price_balanced, 2):.2f}"
-        price_quality_str = f"{round(price_quality, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b> (Turbo: {price_turbo_str}₽, Balanced: {price_balanced_str}₽, Quality: {price_quality_str}₽)"
-        else:
-            return f"💰 <b>От {price_turbo_str} ₽</b> (Turbo: {price_turbo_str}₽, Balanced: {price_balanced_str}₽, Quality: {price_quality_str}₽)"
-    elif model_id == "wan/2-2-a14b-speech-to-video-turbo":
-        # Show price per second based on resolution
-        resolution = params.get("resolution", "480p") if params else "480p"
-        price_per_sec_480p = calculate_price_rub(model_id, {"resolution": "480p"}, is_admin) / 5
-        price_per_sec_580p = calculate_price_rub(model_id, {"resolution": "580p"}, is_admin) / 5
-        price_per_sec_720p = calculate_price_rub(model_id, {"resolution": "720p"}, is_admin) / 5
-        price_per_sec_480p_str = f"{round(price_per_sec_480p, 2):.2f}"
-        price_per_sec_580p_str = f"{round(price_per_sec_580p, 2):.2f}"
-        price_per_sec_720p_str = f"{round(price_per_sec_720p, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b>\n\n📺 <b>Разрешение 480p:</b> {price_per_sec_480p_str}₽/сек\n📺 <b>Разрешение 580p:</b> {price_per_sec_580p_str}₽/сек\n📺 <b>Разрешение 720p:</b> {price_per_sec_720p_str}₽/сек"
-        else:
-            return f"💰 <b>От {price_per_sec_480p_str} ₽/сек</b>\n\n📺 <b>480p:</b> {price_per_sec_480p_str}₽/сек\n📺 <b>580p:</b> {price_per_sec_580p_str}₽/сек\n📺 <b>720p:</b> {price_per_sec_720p_str}₽/сек"
-    elif model_id == "bytedance/seedream":
-        # Show fixed price per image
-        price = calculate_price_rub(model_id, {}, is_admin)
-        price_str = f"{round(price, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b> ({price_str} ₽ за изображение)"
-        else:
-            return f"💰 <b>{price_str} ₽</b> за изображение"
-    elif model_id == "qwen/text-to-image":
-        # Show price range based on image size (megapixels)
-        price_square = calculate_price_rub(model_id, {"image_size": "square"}, is_admin)
-        price_square_hd = calculate_price_rub(model_id, {"image_size": "square_hd"}, is_admin)
-        price_portrait = calculate_price_rub(model_id, {"image_size": "portrait_16_9"}, is_admin)
-        price_square_str = f"{round(price_square, 2):.2f}"
-        price_square_hd_str = f"{round(price_square_hd, 2):.2f}"
-        price_portrait_str = f"{round(price_portrait, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b> (от {price_square_str}₽, зависит от разрешения: 4 кредита/МП)"
-        else:
-            return f"💰 <b>От {price_square_str} ₽</b> (зависит от разрешения: 4 кредита/МП)"
-    elif model_id == "qwen/image-to-image":
-        # Show fixed price per image
-        price = calculate_price_rub(model_id, {}, is_admin)
-        price_str = f"{round(price, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b> ({price_str} ₽ за изображение)"
-        else:
-            return f"💰 <b>{price_str} ₽</b> за изображение"
-    elif model_id == "qwen/image-edit":
-        # Show price range based on image size (megapixels)
-        price_square = calculate_price_rub(model_id, {"image_size": "square", "num_images": "1"}, is_admin)
-        price_landscape = calculate_price_rub(model_id, {"image_size": "landscape_4_3", "num_images": "1"}, is_admin)
-        price_portrait = calculate_price_rub(model_id, {"image_size": "portrait_16_9", "num_images": "1"}, is_admin)
-        price_square_str = f"{round(price_square, 2):.2f}"
-        price_landscape_str = f"{round(price_landscape, 2):.2f}"
-        price_portrait_str = f"{round(price_portrait, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b> (от {price_square_str}₽, зависит от разрешения: ≈6 кредитов/МП)"
-        else:
-            return f"💰 <b>От {price_square_str} ₽</b> (зависит от разрешения: ≈6 кредитов/МП)"
-    elif model_id == "ideogram/character-edit" or model_id == "ideogram/character-remix" or model_id == "ideogram/character":
-        # Show price based on rendering speed
-        rendering_speed = params.get("rendering_speed", "BALANCED") if params else "BALANCED"
-        price_turbo = calculate_price_rub(model_id, {"rendering_speed": "TURBO", "num_images": "1"}, is_admin)
-        price_balanced = calculate_price_rub(model_id, {"rendering_speed": "BALANCED", "num_images": "1"}, is_admin)
-        price_quality = calculate_price_rub(model_id, {"rendering_speed": "QUALITY", "num_images": "1"}, is_admin)
-        price_turbo_str = f"{round(price_turbo, 2):.2f}"
-        price_balanced_str = f"{round(price_balanced, 2):.2f}"
-        price_quality_str = f"{round(price_quality, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b> (Turbo: {price_turbo_str}₽, Balanced: {price_balanced_str}₽, Quality: {price_quality_str}₽)"
-        else:
-            return f"💰 <b>От {price_turbo_str} ₽</b> (Turbo: {price_turbo_str}₽, Balanced: {price_balanced_str}₽, Quality: {price_quality_str}₽)"
-    elif model_id == "flux-2/pro-image-to-image" or model_id == "flux-2/pro-text-to-image":
-        # Show price based on resolution
-        resolution = params.get("resolution", "1K") if params else "1K"
-        price_1k = calculate_price_rub(model_id, {"resolution": "1K"}, is_admin)
-        price_2k = calculate_price_rub(model_id, {"resolution": "2K"}, is_admin)
-        price_1k_str = f"{round(price_1k, 2):.2f}"
-        price_2k_str = f"{round(price_2k, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b> (1K: {price_1k_str} ₽, 2K: {price_2k_str} ₽)"
-        else:
-            return f"💰 <b>От {price_1k_str} ₽</b> (1K: {price_1k_str} ₽, 2K: {price_2k_str} ₽)"
-    elif model_id == "flux-2/flex-image-to-image" or model_id == "flux-2/flex-text-to-image":
-        # Show price based on resolution
-        resolution = params.get("resolution", "1K") if params else "1K"
-        price_1k = calculate_price_rub(model_id, {"resolution": "1K"}, is_admin)
-        price_2k = calculate_price_rub(model_id, {"resolution": "2K"}, is_admin)
-        price_1k_str = f"{round(price_1k, 2):.2f}"
-        price_2k_str = f"{round(price_2k, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b> (1K: {price_1k_str} ₽, 2K: {price_2k_str} ₽)"
-        else:
-            return f"💰 <b>От {price_1k_str} ₽</b> (1K: {price_1k_str} ₽, 2K: {price_2k_str} ₽)"
-    elif model_id == "topaz/image-upscale":
-        # Show price based on upscale factor
-        upscale_factor = params.get("upscale_factor", "2") if params else "2"
-        price_1x = calculate_price_rub(model_id, {"upscale_factor": "1"}, is_admin)
-        price_2x = calculate_price_rub(model_id, {"upscale_factor": "2"}, is_admin)
-        price_8x = calculate_price_rub(model_id, {"upscale_factor": "8"}, is_admin)
-        price_1x_str = f"{round(price_1x, 2):.2f}"
-        price_2x_str = f"{round(price_2x, 2):.2f}"
-        price_8x_str = f"{round(price_8x, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b> (1x: {price_1x_str} ₽, 2x/4x: {price_2x_str} ₽, 8x: {price_8x_str} ₽)"
-        else:
-            return f"💰 <b>От {price_1x_str} ₽</b> (1x: {price_1x_str} ₽, 2x/4x: {price_2x_str} ₽, 8x: {price_8x_str} ₽)"
-    elif model_id == "elevenlabs/speech-to-text":
-        # Show price per minute for speech-to-text
-        price = calculate_price_rub(model_id, {}, is_admin)
-        price_str = f"{round(price, 2):.2f}"
-        if is_admin:
-            return f"💰 <b>Безлимит</b> ({price_str} ₽ за минуту)"
-        else:
-            return f"💰 <b>{price_str} ₽</b> за минуту"
-
-# NOTE: active_generations already declared above (line 358), this is a duplicate - removed
-
-# Async lock for active_generations operations
-active_generations_lock = asyncio.Lock()
-
-# Store saved generation data for "generate again" feature
-saved_generations = {}
-
-# Maximum concurrent generations per user (to prevent abuse)
-MAX_CONCURRENT_GENERATIONS_PER_USER = 5
-
-# Global HTTP client for connection pooling (optimized for 1000+ users)
-_http_client: Optional[aiohttp.ClientSession] = None
 
 # File operation locks to prevent race conditions (using threading.Lock for sync operations)
 _file_locks = {
@@ -5539,6 +4740,23 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 param_info = properties.get(param_name, {})
                 param_type = param_info.get('type', 'string')
                 
+                # 🔴 ВАЛИДАЦИЯ ENUM ЗНАЧЕНИЙ: Проверяем, что значение находится в списке допустимых
+                enum_values = param_info.get('enum')
+                if enum_values and param_value not in enum_values:
+                    # Недопустимое enum значение
+                    user_lang = get_user_language(user_id) if user_id else 'ru'
+                    error_text = (
+                        f"❌ <b>Недопустимое значение</b>\n\n"
+                        f"Допустимые значения: {', '.join(enum_values)}\n"
+                        f"Введено: {param_value}"
+                    ) if user_lang == 'ru' else (
+                        f"❌ <b>Invalid value</b>\n\n"
+                        f"Allowed values: {', '.join(enum_values)}\n"
+                        f"Entered: {param_value}"
+                    )
+                    await query.answer(error_text, show_alert=True)
+                    return ConversationHandler.END
+                
                 # Convert boolean string to actual boolean
                 if param_type == 'boolean':
                     if param_value.lower() == 'true':
@@ -8620,7 +7838,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     user_lang = get_user_language(user_id) if user_id else 'ru'
                     error_msg = "Ошибка сервера, попробуйте позже" if user_lang == 'ru' else "Server error, please try later"
                     await query.answer(error_msg, show_alert=True)
-                except:
+                except Exception:
                     pass
                 return ConversationHandler.END
     
@@ -8647,7 +7865,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Кнопка устарела, откройте /start" if user_lang == 'ru' else "Button outdated, open /start"
         )
         await query.answer(error_msg, show_alert=True)
-    except:
+    except Exception:
         pass
     return ConversationHandler.END
 
@@ -8889,6 +8107,16 @@ async def start_next_parameter(update: Update, context: ContextTypes.DEFAULT_TYP
                     return None
                 
                 logger.info(f"🔥 start_next_parameter: sending message for {param_name} to chat_id={chat_id}, user_id={user_id}")
+                
+                # Добавляем подсказку для параметра
+                try:
+                    from optimization_ux import get_parameter_hint
+                    hint = get_parameter_hint(param_name, user_lang)
+                    if hint:
+                        param_desc = f"{param_desc}\n\n💡 <i>{hint}</i>" if param_desc else f"💡 <i>{hint}</i>"
+                except ImportError:
+                    pass  # Модуль не доступен
+                
                 await context.bot.send_message(
                     chat_id=chat_id,
                     text=f"📝 <b>Выберите {param_name}:</b>\n\n{param_desc}{default_info}",
@@ -11125,6 +10353,70 @@ async def start_generation_directly(
                     elif param_value.lower() == 'false':
                         params[param_name] = False
     
+    # 🔴 ВАЛИДАЦИЯ ПАРАМЕТРОВ: Проверяем, что все параметры имеют допустимые значения
+    user_lang = get_user_language(user_id) if user_id else 'ru'
+    validation_errors = []
+    
+    for param_name, param_value in params.items():
+        if param_name in input_params:
+            param_info = input_params[param_name]
+            param_type = param_info.get('type', 'string')
+            
+            # Валидация enum значений
+            enum_values = param_info.get('enum')
+            if enum_values:
+                # Преобразуем значение в строку для сравнения
+                param_value_str = str(param_value)
+                if param_value_str not in enum_values:
+                    # Недопустимое enum значение - используем default или отклоняем
+                    default_value = param_info.get('default')
+                    if default_value and default_value in enum_values:
+                        params[param_name] = default_value
+                        logger.warning(f"Invalid enum value for {param_name}: {param_value_str}, using default: {default_value}")
+                    else:
+                        validation_errors.append(
+                            f"❌ <b>Недопустимое значение параметра {param_name}</b>\n\n"
+                            f"Допустимые значения: {', '.join(enum_values)}\n"
+                            f"Введено: {param_value_str}"
+                        )
+            
+            # Валидация текстовых параметров (max_length)
+            if param_type == 'string' and isinstance(param_value, str):
+                max_length = param_info.get('max_length')
+                if max_length and len(param_value) > max_length:
+                    validation_errors.append(
+                        f"❌ <b>Превышена максимальная длина параметра {param_name}</b>\n\n"
+                        f"Максимум: {max_length} символов\n"
+                        f"Введено: {len(param_value)} символов"
+                    )
+            
+            # Валидация массивов (min_items/max_items)
+            if param_type == 'array' and isinstance(param_value, list):
+                min_items = param_info.get('min_items')
+                max_items = param_info.get('max_items')
+                if min_items is not None and len(param_value) < min_items:
+                    validation_errors.append(
+                        f"❌ <b>Недостаточно элементов в параметре {param_name}</b>\n\n"
+                        f"Минимум: {min_items} элементов\n"
+                        f"Введено: {len(param_value)} элементов"
+                    )
+                if max_items is not None and len(param_value) > max_items:
+                    validation_errors.append(
+                        f"❌ <b>Слишком много элементов в параметре {param_name}</b>\n\n"
+                        f"Максимум: {max_items} элементов\n"
+                        f"Введено: {len(param_value)} элементов"
+                    )
+    
+    # Если есть ошибки валидации, показываем их пользователю
+    if validation_errors:
+        error_text = "\n\n".join(validation_errors)
+        await status_message.edit_text(
+            f"❌ <b>Ошибки валидации параметров:</b>\n\n{error_text}\n\n"
+            f"Пожалуйста, исправьте параметры и попробуйте снова.",
+            parse_mode='HTML'
+        )
+        return ConversationHandler.END
+    
     # Check if this is a free generation
     is_free = is_free_generation_available(user_id, model_id)
     
@@ -11158,7 +10450,20 @@ async def start_generation_directly(
             )
             return ConversationHandler.END
     
-    await status_message.edit_text("🔄 Создаю задачу генерации... Пожалуйста, подождите.", parse_mode='HTML')
+    # Отправляем уведомление о начале генерации
+    user_lang = get_user_language(user_id) if user_id else 'ru'
+    notification_text = (
+        "🚀 <b>Генерация запущена!</b>\n\n"
+        "⏳ Ожидайте результат...\n\n"
+        f"Модель: <b>{model_info.get('name', model_id)}</b>\n"
+        f"💰 Стоимость: <b>{price:.2f}</b> ₽"
+    ) if user_lang == 'ru' else (
+        "🚀 <b>Generation started!</b>\n\n"
+        "⏳ Please wait for the result...\n\n"
+        f"Model: <b>{model_info.get('name', model_id)}</b>\n"
+        f"💰 Cost: <b>{price:.2f}</b> ₽"
+    )
+    await status_message.edit_text(notification_text, parse_mode='HTML')
     
     # Prepare params for API
     api_params = params.copy()
@@ -11319,7 +10624,21 @@ async def start_generation_directly(
     
     # 🔴 API CALL: KIE API - create_task через gateway
     try:
+        import time
+        start_time = time.time()
         result = await gateway.create_task(model_id, api_params)
+        elapsed = time.time() - start_time
+        
+        # Логируем время отклика
+        try:
+            from optimization_helpers import log_api_response_time
+            log_api_response_time(f"KIE API create_task (model={model_id})", elapsed)
+        except ImportError:
+            if elapsed > 2.0:
+                logger.warning(f"⏱️ create_task заняло {elapsed:.2f}с (медленно)")
+            else:
+                logger.debug(f"⏱️ create_task заняло {elapsed:.2f}с")
+        
         logger.info(f"📋 Task creation result: ok={result.get('ok')}, taskId={result.get('taskId')}, error={result.get('error')}")
     except Exception as e:
         logger.error(f"❌❌❌ KIE API ERROR in create_task: {e}", exc_info=True)
@@ -11401,25 +10720,43 @@ async def start_generation_directly(
         asyncio.create_task(poll_task_status(mock_update, context, task_id, user_id))
         logger.info(f"✅✅✅ Polling task created for task {task_id}")
         
-        # Deduct balance (только если не DRY_RUN)
-        dry_run = is_dry_run() or not allow_real_generation()
-        if not dry_run:
-            if not is_free:
-                subtract_user_balance(user_id, price)
-                create_operation(user_id, "generation", -price, model_id, None, None)
-            else:
-                use_free_generation(user_id, model_id)
-                create_operation(user_id, "free_generation", Decimal('0.00'), model_id, None, None)
-        else:
-            logger.info(f"🔧 DRY-RUN: Would deduct {price} from user {user_id} (NOT DEDUCTED)")
+        # ⚠️ ВАЖНО: Баланс НЕ списывается здесь!
+        # Баланс будет списан только ПОСЛЕ успешной генерации в poll_task_status
+        # Это гарантирует, что пользователь платит только за успешные генерации
+        logger.info(f"💰 Balance will be deducted after successful generation (task_id={task_id})")
         
         return ConversationHandler.END
     else:
         error = result.get('error', 'Unknown error')
-        await status_message.edit_text(
-            f"❌ <b>Ошибка создания задачи</b>\n\n{error}",
-            parse_mode='HTML'
-        )
+        status_code = result.get('status')
+        
+        # Используем обработчик ошибок для получения понятного сообщения
+        try:
+            from error_handler_providers import get_error_handler
+            handler = get_error_handler()
+            if status_code:
+                user_message, error_details = handler.handle_api_error(
+                    status_code=status_code,
+                    response_data={"error": error},
+                    request_details={
+                        "model_id": model_id,
+                        "params": api_params
+                    }
+                )
+            else:
+                user_message, error_details = handler.handle_task_creation_error(
+                    model_id=model_id,
+                    error=Exception(error),
+                    request_params=api_params
+                )
+        except ImportError:
+            user_message = (
+                f"❌ <b>Ошибка создания задачи</b>\n\n"
+                f"Произошла ошибка: {error}\n\n"
+                "Пожалуйста, попробуйте позже."
+            )
+        
+        await status_message.edit_text(user_message, parse_mode='HTML')
         return ConversationHandler.END
 
 
@@ -23721,6 +23058,20 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                         # For other models, use resultUrls
                         result_urls = result_data.get('resultUrls', [])
                     
+                    # Сохраняем результат в кеш
+                    if result_urls and model_id:
+                        try:
+                            from optimization_results_cache import get_cache_key_for_generation, set_cached_result
+                            cache_key = get_cache_key_for_generation(model_id, params)
+                            set_cached_result(cache_key, {
+                                'ok': True,
+                                'result_urls': result_urls.copy(),
+                                'model_id': model_id,
+                                'params': params.copy()
+                            })
+                        except ImportError:
+                            pass  # Кеш не доступен
+                    
                     # Save to history
                     if result_urls and model_id:
                         model_info = saved_session_data.get('model_info', {}) if saved_session_data else {}
@@ -23925,38 +23276,51 @@ async def poll_task_status(update: Update, context: ContextTypes.DEFAULT_TYPE, t
                 logger.error(f"❌ Task {task_id} failed: code={fail_code}, msg={fail_msg}")
                 logger.error(f"❌ Full status_result: {json.dumps(status_result, ensure_ascii=False, indent=2)}")
                 
-                # Format user-friendly error message
-                error_text = f"❌ <b>Генерация завершена с ошибкой</b>\n\n"
-                if fail_code:
-                    error_text += f"Код ошибки: <code>{fail_code}</code>\n"
-                
-                # Parse error message for better user experience
-                if '422' in str(fail_code) or '422' in str(fail_msg):
-                    error_text += (
-                        f"⚠️ <b>Ошибка валидации параметров</b>\n\n"
-                        f"Возможно, отправлены неверные параметры для модели.\n"
-                        f"Попробуйте начать генерацию заново с правильными параметрами.\n\n"
+                # Используем обработчик ошибок для получения понятного сообщения
+                try:
+                    from error_handler_providers import get_error_handler
+                    handler = get_error_handler()
+                    
+                    # Определяем провайдера из model_id
+                    provider_name = model_id.split('/')[0] if '/' in model_id else "Unknown"
+                    
+                    # Обрабатываем ошибку провайдера
+                    user_message, error_details = handler.handle_provider_error(
+                        provider_name=provider_name,
+                        error_message=fail_msg,
+                        status_code=None,
+                        request_details={
+                            "task_id": task_id,
+                            "model_id": model_id,
+                            "fail_code": fail_code
+                        }
                     )
-                elif 'Connection' in str(fail_msg) or 'RemoteDisconnected' in str(fail_msg) or 'Connection aborted' in str(fail_msg):
-                    error_text += (
-                        f"⚠️ <b>Ошибка соединения с сервером</b>\n\n"
-                        f"Сервер закрыл соединение. Это может быть временная проблема.\n"
-                        f"Попробуйте начать генерацию заново через несколько секунд.\n\n"
+                except ImportError:
+                    # Fallback если обработчик недоступен
+                    user_message = (
+                        f"❌ <b>Генерация завершена с ошибкой</b>\n\n"
+                        f"Ошибка: {fail_msg}\n\n"
+                        "Это техническая проблема на стороне сервера, мы уже работаем над её решением.\n\n"
+                        "Пожалуйста, попробуйте позже."
                     )
                 
-                error_text += f"Техническая информация: {fail_msg[:200]}"
-                
+                # Отправляем понятное сообщение пользователю
                 await context.bot.send_message(
                     chat_id=chat_id,
-                    text=error_text,
+                    text=user_message,
                     parse_mode='HTML'
                 )
                 
-                # Clean up active generation
+                # Обновляем статус задачи как failed
                 generation_key = (user_id, task_id)
                 async with active_generations_lock:
                     if generation_key in active_generations:
-                        del active_generations[generation_key]
+                        session = active_generations[generation_key]
+                        session['status'] = 'failed'
+                        session['error'] = fail_msg
+                        session['fail_code'] = fail_code
+                        # Не удаляем сразу, чтобы пользователь мог увидеть статус
+                
                 break
             
             elif state in ['waiting', 'queuing', 'generating']:
@@ -24389,10 +23753,10 @@ def main():
     else:
         if not database_url:
             logger.info("ℹ️ DATABASE_URL not set, using JSON storage")
+        else:
             database_url_masked = mask_secret(os.getenv('DATABASE_URL', ''))
             logger.debug(f"DATABASE_URL: {database_url_masked}")
-        else:
-            logger.info("ℹ️ Database not available, using JSON storage")
+        logger.info("ℹ️ Database not available, using JSON storage")
         logger.info("ℹ️ To enable database, install psycopg2-binary and set DATABASE_URL")
     
     # Initialize all data files first (for JSON fallback)
@@ -25039,8 +24403,8 @@ def main():
             error_type = type(error).__name__
             error_msg = str(error)
             
-            # Логируем коротко (без полного traceback в продакшене)
-            logger.error(f"❌ Error in handler: {error_type}: {error_msg}")
+            # Логируем с полным traceback для отладки
+            logger.error(f"❌❌❌ GLOBAL ERROR HANDLER: {error_type}: {error_msg}", exc_info=True)
             
             # Пытаемся получить user_id из update
             user_id = None
@@ -25054,6 +24418,15 @@ def main():
                 if update.effective_chat:
                     chat_id = update.effective_chat.id
             
+            # Логируем детали ошибки
+            error_details = {
+                'error_type': error_type,
+                'error_message': error_msg,
+                'user_id': user_id,
+                'chat_id': chat_id
+            }
+            logger.error(f"Error details: {error_details}")
+            
             # Для callback ошибок отвечаем безопасно
             if isinstance(update, Update) and update.callback_query:
                 try:
@@ -25063,14 +24436,16 @@ def main():
                     logger.warning(f"Could not answer callback in error handler: {e}")
             
             # Для сообщений отправляем безопасный ответ
-            elif isinstance(update, Update) and update.message and chat_id:
+            if isinstance(update, Update) and update.message and chat_id:
                 try:
                     error_text = (
                         "❌ <b>Произошла ошибка</b>\n\n"
-                        "Попробуйте еще раз или используйте /start для возврата в меню."
+                        "Ошибка сервера, попробуйте позже.\n\n"
+                        "Если проблема повторяется, обратитесь в поддержку."
                     ) if user_lang == 'ru' else (
                         "❌ <b>An error occurred</b>\n\n"
-                        "Please try again or use /start to return to menu."
+                        "Server error, please try later.\n\n"
+                        "If the problem persists, please contact support."
                     )
                     await context.bot.send_message(
                         chat_id=chat_id,
@@ -25238,60 +24613,7 @@ def main():
     application.add_handler(CallbackQueryHandler(button_callback))
     
     # 🔴 ГЛОБАЛЬНЫЙ ERROR HANDLER
-    async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Глобальный обработчик ошибок для всех исключений в боте."""
-        try:
-            logger.error(f"❌❌❌ GLOBAL ERROR HANDLER: {context.error}", exc_info=context.error)
-            
-            # Пытаемся получить user_id из update
-            user_id = None
-            user_lang = 'ru'
-            chat_id = None
-            
-            if isinstance(update, Update):
-                if update.effective_user:
-                    user_id = update.effective_user.id
-                    user_lang = get_user_language(user_id) if user_id else 'ru'
-                if update.effective_chat:
-                    chat_id = update.effective_chat.id
-            
-            # Логируем детали ошибки
-            error_details = {
-                'error_type': type(context.error).__name__,
-                'error_message': str(context.error),
-                'user_id': user_id,
-                'chat_id': chat_id
-            }
-            logger.error(f"Error details: {error_details}")
-            
-            # Показываем пользователю понятное сообщение
-            if chat_id:
-                try:
-                    error_msg = (
-                        "❌ <b>Произошла ошибка</b>\n\n"
-                        "Ошибка сервера, попробуйте позже.\n\n"
-                        "Если проблема повторяется, обратитесь в поддержку."
-                    ) if user_lang == 'ru' else (
-                        "❌ <b>An error occurred</b>\n\n"
-                        "Server error, please try later.\n\n"
-                        "If the problem persists, please contact support."
-                    )
-                    
-                    try:
-                        await context.bot.send_message(
-                            chat_id=chat_id,
-                            text=error_msg,
-                            parse_mode='HTML'
-                        )
-                    except Exception as send_error:
-                        logger.error(f"Could not send error message: {send_error}")
-                except Exception as e:
-                    logger.error(f"Error in error handler message sending: {e}")
-        except Exception as e:
-            # Если сам error handler упал, логируем критическую ошибку
-            logger.critical(f"❌❌❌ CRITICAL: Error handler itself failed: {e}", exc_info=True)
-    
-    application.add_error_handler(error_handler)
+    # Дубликат error_handler удален - используется обработчик выше (строка 24313)
     
     application.add_handler(generation_handler)
     application.add_handler(CommandHandler("models", list_models))

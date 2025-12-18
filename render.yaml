@@ -1,27 +1,59 @@
-# Render.com Configuration
-# Этот файл позволяет автоматически настроить сервис на Render
+# Render configuration для деплоя бота
+# https://render.com/docs/yaml-spec
 
 services:
   - type: web
-    name: kie-telegram-bot
-    env: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
-    plan: free  # Измените на 'starter' или 'standard' для постоянной работы
+    name: kie-ai-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot_kie.py
     envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PYTHONUNBUFFERED
-        value: "1"
-      - key: PORT
-        value: "10000"
-      # Добавьте остальные переменные через панель Render:
-      # TELEGRAM_BOT_TOKEN
-      # KIE_API_KEY
-      # ADMIN_ID
-    healthCheckPath: /health
-    healthCheckGracePeriod: 300
-    autoDeploy: true
-    buildCommand: ""
-    startCommand: "npm start"
+      # ОБЯЗАТЕЛЬНЫЕ ПЕРЕМЕННЫЕ (установить вручную в Render Dashboard)
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false  # Установить вручную в Dashboard
+      - key: KIE_API_KEY
+        sync: false  # Установить вручную в Dashboard
+      - key: DATABASE_URL
+        fromDatabase:
+          name: kie-ai-bot-db
+          property: connectionString
+      - key: ADMIN_ID
+        sync: false  # Установить вручную в Dashboard
+      
+      # ОПЦИОНАЛЬНЫЕ ПЕРЕМЕННЫЕ (можно установить вручную или оставить значения по умолчанию)
+      - key: KIE_API_URL
+        value: "https://api.kie.ai"
+      - key: ALLOW_REAL_GENERATION
+        value: "1"  # 1 для продакшн, 0 для тестирования
+      - key: TEST_MODE
+        value: "0"  # 0 для продакшн, 1 для тестирования
+      - key: DRY_RUN
+        value: "0"  # 0 для продакшн, 1 для симуляции
+      - key: CREDIT_TO_RUB_RATE
+        value: "0.1"
+      - key: KIE_TIMEOUT_SECONDS
+        value: "30"
+      - key: MAX_CONCURRENT_GENERATIONS_PER_USER
+        value: "3"
+      - key: DB_MAXCONN
+        value: "3"
+      
+      # ПЛАТЕЖИ (опционально, установить вручную если нужны)
+      - key: PAYMENT_BANK
+        sync: false  # Установить вручную если нужны платежи
+      - key: PAYMENT_CARD_HOLDER
+        sync: false  # Установить вручную если нужны платежи
+      - key: PAYMENT_PHONE
+        sync: false  # Установить вручную если нужны платежи
+      
+      # ПОДДЕРЖКА (опционально, установить вручную если нужна)
+      - key: SUPPORT_TELEGRAM
+        sync: false  # Установить вручную если нужна поддержка
+      - key: SUPPORT_TEXT
+        sync: false  # Установить вручную если нужна поддержка
 
+databases:
+  - name: kie-ai-bot-db
+    plan: free  # Или starter/standard для продакшн
+    databaseName: kie_ai_bot
+    user: kie_ai_bot_user
