@@ -24712,21 +24712,50 @@ def main():
     logger.info("Waiting 5 seconds to avoid conflicts with previous instance...")
     time.sleep(5)
     
-    # Try to clear pending updates manually before starting
-    async def clear_updates():
+    # КРИТИЧНО: Удалить ВСЕ webhook перед запуском polling
+    async def force_delete_all_webhooks():
+        """Принудительно удаляет все webhook перед запуском polling."""
         try:
             async with application:
-                # Delete webhook if exists
-                await application.bot.delete_webhook(drop_pending_updates=True)
-                logger.info("Cleared webhook and pending updates")
+                # Получаем информацию о webhook
+                webhook_info = await application.bot.get_webhook_info()
+                if webhook_info.url:
+                    logger.warning(f"⚠️ Webhook обнаружен: {webhook_info.url}")
+                    logger.info("🗑️ Удаляю webhook...")
+                    # Удаляем webhook
+                    result = await application.bot.delete_webhook(drop_pending_updates=True)
+                    logger.info(f"✅ Webhook удалён: {result}")
+                    # Дополнительная проверка
+                    webhook_info_after = await application.bot.get_webhook_info()
+                    if webhook_info_after.url:
+                        logger.error(f"❌ Webhook всё ещё установлен: {webhook_info_after.url}")
+                        logger.error("Повторная попытка удаления...")
+                        await application.bot.delete_webhook(drop_pending_updates=True)
+                        logger.info("✅ Webhook удалён повторно")
+                    else:
+                        logger.info("✅ Webhook полностью удалён, готов к polling")
+                else:
+                    logger.info("✅ Webhook не установлен, готов к polling")
         except Exception as e:
-            logger.warning(f"Could not clear updates: {e}")
+            error_msg = str(e)
+            if "Conflict" in error_msg or "terminated by other getUpdates" in error_msg:
+                logger.error("❌ Конфликт при удалении webhook - другой экземпляр бота работает!")
+                raise
+            else:
+                logger.warning(f"⚠️ Предупреждение при удалении webhook: {e}")
     
-    # Run the clearing in a separate event loop
+    # Принудительное удаление webhook перед запуском
+    logger.info("🔧 Проверка и удаление webhook перед запуском polling...")
     try:
-        asyncio.run(clear_updates())
+        asyncio.run(force_delete_all_webhooks())
+        logger.info("✅ Все webhook удалены, можно запускать polling")
     except Exception as e:
-        logger.warning(f"Could not clear updates: {e}")
+        if "Conflict" in str(e) or "terminated by other getUpdates" in str(e):
+            logger.error("❌ Невозможно удалить webhook - другой экземпляр бота работает!")
+            logger.error("Остановите все другие экземпляры бота перед запуском!")
+            return
+        else:
+            logger.warning(f"⚠️ Предупреждение (продолжаем): {e}")
     
     # CRITICAL: Check if another instance is already running before starting
     async def check_existing_instance():
