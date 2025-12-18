@@ -24809,26 +24809,28 @@ def main():
         except Exception as e:
             error_msg = str(e)
             if "Conflict" in error_msg or "terminated by other getUpdates" in error_msg:
+                logger.error(f"❌❌❌ КРИТИЧЕСКИЙ КОНФЛИКТ! Другой экземпляр бота работает!")
+                logger.error("Это означает, что запущено ДВА экземпляра бота одновременно!")
+                logger.error("")
+                logger.error("РЕШЕНИЕ:")
+                logger.error("1. Остановите ВСЕ локальные экземпляры бота (если запущены)")
+                logger.error("2. Проверьте Render Dashboard - нет ли ДВУХ Web Services")
+                logger.error("3. Suspend ВСЕ сервисы на Render")
+                logger.error("4. Подождите 1 минуту")
+                logger.error("5. Resume только ОДИН сервис")
+                logger.error("6. Удалите webhook: curl https://api.telegram.org/bot<TOKEN>/deleteWebhook")
+                logger.error("")
+                logger.error("Бот будет пытаться перезапуститься, но конфликт сохранится пока не остановите другой экземпляр!")
+                
                 if attempt < max_retries - 1:
-                    logger.warning(f"⚠️  Conflict detected! Another bot instance may be running.")
-                    logger.info(f"Waiting {retry_delay} seconds before retry {attempt + 2}/{max_retries}...")
-                    logger.info("💡 TIP: Check if bot is running locally or on another Render service")
+                    logger.info(f"Попытка {attempt + 2}/{max_retries} через {retry_delay} секунд...")
                     time.sleep(retry_delay)
-                    # Try to clear updates again
-                    try:
-                        asyncio.run(clear_updates())
-                    except:
-                        pass
-                    retry_delay = min(retry_delay + 10, 60)  # Increase delay but cap at 60s
+                    retry_delay = min(retry_delay + 15, 90)  # Увеличиваем задержку
                     continue
                 else:
-                    logger.error("❌ Conflict: Another bot instance is already running!")
-                    logger.error("SOLUTION:")
-                    logger.error("1. Stop local bot instance if running")
-                    logger.error("2. Check Render Dashboard - ensure only ONE service is running")
-                    logger.error("3. Restart Render service")
-                    logger.error("4. Wait 30 seconds and try again")
-                    return
+                    logger.error("❌ Все попытки исчерпаны. Остановите другой экземпляр бота!")
+                    logger.error("Бот завершает работу. Исправьте конфликт и перезапустите.")
+                    sys.exit(1)
                     logger.error("On Render: Check if there are multiple services running with the same bot token.")
                     logger.error("Or wait a few minutes and the old instance should stop automatically.")
                     # Don't raise - let it retry on next deploy
