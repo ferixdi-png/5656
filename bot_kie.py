@@ -898,6 +898,69 @@ def subtract_user_balance(user_id: int, amount: float) -> bool:
     return False
 
 
+# ==================== Async wrappers for database operations ====================
+# These prevent blocking the event loop when calling synchronous DB functions
+
+async def get_user_balance_async(user_id: int) -> float:
+    """Async wrapper for get_user_balance to prevent blocking event loop."""
+    if DATABASE_AVAILABLE:
+        # Run synchronous DB call in thread pool to avoid blocking
+        try:
+            return await asyncio.to_thread(get_user_balance, user_id)
+        except Exception as e:
+            logger.error(f"Error in async get_user_balance: {e}")
+            # Fallback to synchronous call (should be fast for JSON)
+            return get_user_balance(user_id)
+    else:
+        # For JSON fallback, can run synchronously (file I/O is fast)
+        return get_user_balance(user_id)
+
+
+async def set_user_balance_async(user_id: int, amount: float):
+    """Async wrapper for set_user_balance to prevent blocking event loop."""
+    if DATABASE_AVAILABLE:
+        # Run synchronous DB call in thread pool to avoid blocking
+        try:
+            await asyncio.to_thread(set_user_balance, user_id, amount)
+        except Exception as e:
+            logger.error(f"Error in async set_user_balance: {e}")
+            # Fallback to synchronous call
+            set_user_balance(user_id, amount)
+    else:
+        # For JSON fallback, can run synchronously
+        set_user_balance(user_id, amount)
+
+
+async def add_user_balance_async(user_id: int, amount: float) -> float:
+    """Async wrapper for add_user_balance to prevent blocking event loop."""
+    if DATABASE_AVAILABLE:
+        # Run synchronous DB call in thread pool to avoid blocking
+        try:
+            return await asyncio.to_thread(add_user_balance, user_id, amount)
+        except Exception as e:
+            logger.error(f"Error in async add_user_balance: {e}")
+            # Fallback to synchronous call
+            return add_user_balance(user_id, amount)
+    else:
+        # For JSON fallback, can run synchronously
+        return add_user_balance(user_id, amount)
+
+
+async def subtract_user_balance_async(user_id: int, amount: float) -> bool:
+    """Async wrapper for subtract_user_balance to prevent blocking event loop."""
+    if DATABASE_AVAILABLE:
+        # Run synchronous DB call in thread pool to avoid blocking
+        try:
+            return await asyncio.to_thread(subtract_user_balance, user_id, amount)
+        except Exception as e:
+            logger.error(f"Error in async subtract_user_balance: {e}")
+            # Fallback to synchronous call
+            return subtract_user_balance(user_id, amount)
+    else:
+        # For JSON fallback, can run synchronously
+        return subtract_user_balance(user_id, amount)
+
+
 # ==================== User Language System ====================
 
 # Кэш для языков пользователей (для производительности)
@@ -24709,89 +24772,100 @@ def main():
     # Wait a bit to let any previous instance finish
     # NOTE: time and asyncio already imported at top level
     import asyncio
-    logger.info("Waiting 5 seconds to avoid conflicts with previous instance...")
+    logger.info("⏳ Waiting 5 seconds to avoid conflicts with previous instance...")
     time.sleep(5)
     
-    # КРИТИЧНО: Удалить ВСЕ webhook перед запуском polling
-    async def force_delete_all_webhooks():
-        """Принудительно удаляет все webhook перед запуском polling."""
+    # КРИТИЧНО: Удалить ВСЕ webhook и проверить конфликты перед запуском polling
+    async def preflight_telegram():
+        """
+        Preflight проверка: удаляет webhook и проверяет отсутствие конфликтов.
+        Это гарантирует, что polling будет единственным источником апдейтов.
+        """
         try:
             async with application:
-                # Получаем информацию о webhook
+                # Шаг 1: Получаем информацию о webhook
+                logger.info("🔍 Checking webhook status...")
                 webhook_info = await application.bot.get_webhook_info()
+                
                 if webhook_info.url:
                     logger.warning(f"⚠️ Webhook обнаружен: {webhook_info.url}")
-                    logger.info("🗑️ Удаляю webhook...")
-                    # Удаляем webhook
+                    logger.info("🗑️ Удаляю webhook с drop_pending_updates=True...")
+                    
+                    # Удаляем webhook с очисткой очереди
                     result = await application.bot.delete_webhook(drop_pending_updates=True)
                     logger.info(f"✅ Webhook удалён: {result}")
-                    # Дополнительная проверка
+                    
+                    # Проверяем, что webhook действительно удалён
+                    await asyncio.sleep(1)  # Небольшая задержка для Telegram API
                     webhook_info_after = await application.bot.get_webhook_info()
+                    
                     if webhook_info_after.url:
                         logger.error(f"❌ Webhook всё ещё установлен: {webhook_info_after.url}")
-                        logger.error("Повторная попытка удаления...")
+                        logger.error("🔄 Повторная попытка удаления...")
                         await application.bot.delete_webhook(drop_pending_updates=True)
-                        logger.info("✅ Webhook удалён повторно")
+                        await asyncio.sleep(1)
+                        webhook_info_final = await application.bot.get_webhook_info()
+                        if webhook_info_final.url:
+                            logger.error("❌❌❌ Не удалось удалить webhook после 2 попыток!")
+                            raise RuntimeError(f"Webhook still active: {webhook_info_final.url}")
+                        else:
+                            logger.info("✅ Webhook удалён после повторной попытки")
                     else:
                         logger.info("✅ Webhook полностью удалён, готов к polling")
                 else:
                     logger.info("✅ Webhook не установлен, готов к polling")
+                
+                # Шаг 2: Дополнительная проверка на конфликты
+                # Попытка получить webhook info ещё раз для проверки конфликтов
+                try:
+                    final_check = await application.bot.get_webhook_info()
+                    logger.info("✅ Preflight check passed: no conflicts detected")
+                except Exception as check_error:
+                    error_msg = str(check_error)
+                    if "Conflict" in error_msg or "terminated by other getUpdates" in error_msg:
+                        logger.error("❌❌❌ КОНФЛИКТ ОБНАРУЖЕН!")
+                        logger.error("Другой экземпляр бота уже работает с этим токеном!")
+                        raise RuntimeError("Another bot instance is running")
+                    else:
+                        raise
+                        
         except Exception as e:
             error_msg = str(e)
-            if "Conflict" in error_msg or "terminated by other getUpdates" in error_msg:
-                logger.error("❌ Конфликт при удалении webhook - другой экземпляр бота работает!")
+            if "Conflict" in error_msg or "terminated by other getUpdates" in error_msg or "Another bot instance" in error_msg:
+                logger.error("❌❌❌ КРИТИЧЕСКИЙ КОНФЛИКТ!")
+                logger.error("=" * 60)
+                logger.error("РЕШЕНИЕ:")
+                logger.error("1. Остановите ВСЕ локальные экземпляры бота (если запущены)")
+                logger.error("2. Проверьте Render Dashboard - нет ли ДВУХ сервисов с тем же токеном")
+                logger.error("3. Suspend ВСЕ сервисы на Render")
+                logger.error("4. Выполните: curl https://api.telegram.org/bot<TOKEN>/deleteWebhook?drop_pending_updates=true")
+                logger.error("5. Подождите 30 секунд")
+                logger.error("6. Resume только ОДИН сервис (worker)")
+                logger.error("=" * 60)
                 raise
             else:
-                logger.warning(f"⚠️ Предупреждение при удалении webhook: {e}")
+                logger.warning(f"⚠️ Предупреждение при preflight check: {e}")
+                # Не критичная ошибка, продолжаем
     
-    # Принудительное удаление webhook перед запуском
-    logger.info("🔧 Проверка и удаление webhook перед запуском polling...")
+    # Выполняем preflight проверку
+    logger.info("🚀 Starting preflight check (webhook removal + conflict detection)...")
     try:
-        asyncio.run(force_delete_all_webhooks())
-        logger.info("✅ Все webhook удалены, можно запускать polling")
-    except Exception as e:
-        if "Conflict" in str(e) or "terminated by other getUpdates" in str(e):
-            logger.error("❌ Невозможно удалить webhook - другой экземпляр бота работает!")
-            logger.error("Остановите все другие экземпляры бота перед запуском!")
-            return
-        else:
-            logger.warning(f"⚠️ Предупреждение (продолжаем): {e}")
-    
-    # CRITICAL: Check if another instance is already running before starting
-    async def check_existing_instance():
-        """Проверяет, не запущен ли уже другой экземпляр бота."""
-        try:
-            async with application:
-                # Попытка получить webhook info - если другой экземпляр работает, это вызовет конфликт
-                webhook_info = await application.bot.get_webhook_info()
-                # Если webhook установлен, удаляем его (мы используем polling)
-                if webhook_info.url:
-                    logger.info(f"⚠️ Webhook detected: {webhook_info.url}, removing it...")
-                    await application.bot.delete_webhook(drop_pending_updates=True)
-                    logger.info("✅ Webhook removed, ready for polling")
-        except Exception as e:
-            error_msg = str(e)
-            if "Conflict" in error_msg or "terminated by other getUpdates" in error_msg:
-                logger.error("❌ CRITICAL: Another bot instance is already running!")
-                logger.error("Please stop the other instance (on Render or locally) before starting this one.")
-                raise
-            else:
-                logger.warning(f"⚠️ Warning during instance check: {e}")
-    
-    # Проверка перед запуском
-    try:
-        asyncio.run(check_existing_instance())
-        logger.info("✅ No conflicts detected, starting bot...")
-    except Exception as e:
-        if "Conflict" in str(e) or "terminated by other getUpdates" in str(e):
+        asyncio.run(preflight_telegram())
+        logger.info("✅ Preflight check passed: ready to start polling")
+    except RuntimeError as e:
+        if "Another bot instance" in str(e) or "Conflict" in str(e):
             logger.error("❌ Cannot start: Another bot instance is running!")
-            logger.error("SOLUTION:")
-            logger.error("1. If running locally, stop local bot: Ctrl+C or kill process")
-            logger.error("2. If on Render, check Render Dashboard for duplicate services")
-            logger.error("3. Restart Render service to ensure only one instance")
+            logger.error("Fix the conflict and restart the service.")
             return
         else:
-            logger.warning(f"⚠️ Instance check warning (continuing): {e}")
+            raise
+    except Exception as e:
+        if "Conflict" in str(e) or "terminated by other getUpdates" in str(e):
+            logger.error("❌ Cannot start: Conflict detected!")
+            logger.error("Fix the conflict and restart the service.")
+            return
+        else:
+            logger.warning(f"⚠️ Preflight warning (continuing): {e}")
     
     max_retries = 3
     retry_delay = 20

@@ -2,11 +2,11 @@
 # https://render.com/docs/yaml-spec
 
 services:
-  - type: web
+  - type: worker
     name: kie-ai-bot
     env: python
-    # ВАЖНО: Это Python проект, НЕ Node.js!
-    # НЕ используйте npm install или node index.js
+    # ВАЖНО: Background Worker не требует открытия HTTP порта
+    # Бот использует polling (getUpdates), не webhook
     buildCommand: pip install -r requirements.txt
     startCommand: python bot_kie.py
     # Render автоматически определит Python окружение
