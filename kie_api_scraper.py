@@ -796,8 +796,16 @@ class KieApiScraper:
         # Действие 3: Валидация всех моделей
         print("\n" + "=" * 60)
         is_valid = self.validate_all_models()
-        valid_count = sum(1 for m in self.models if self._validate_model_structure(m))
-        invalid_count = len(self.models) - valid_count
+        
+        # Подсчет валидных моделей
+        valid_count = 0
+        invalid_count = 0
+        for model in self.models:
+            if self._validate_model_structure(model):
+                valid_count += 1
+            else:
+                invalid_count += 1
+        
         print("=" * 60)
         
         # Действие 4: Сохранение результатов
@@ -827,8 +835,8 @@ class KieApiScraper:
                 'statistics': stats,
                 'validation': {
                     'all_valid': is_valid,
-                    'valid_count': valid_count if 'valid_count' in locals() else len(self.models),
-                    'invalid_count': invalid_count if 'invalid_count' in locals() else 0
+                    'valid_count': valid_count,
+                    'invalid_count': invalid_count
                 }
             }
             
@@ -866,6 +874,8 @@ class KieApiScraper:
         print(f"   ✅ Валидация: {'ПРОЙДЕНА' if is_valid else 'ЕСТЬ ОШИБКИ'}")
         print(f"   ✅ Файл сохранен: {output_file}")
         print(f"   ✅ Статистика сохранена: {stats_file}")
+        if export_categories:
+            print(f"   ✅ Экспорт по категориям: выполнено")
         print("\n📊 СТАТИСТИКА:")
         print(f"   ⏱️ Время выполнения: {elapsed_time:.2f} сек")
         print(f"   📡 Всего запросов: {self.metrics['total_requests']}")
