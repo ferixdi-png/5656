@@ -431,11 +431,14 @@ class KieApiScraper:
             else:
                 self.metrics['failed_requests'] += 1
         except requests.RequestException as e:
-            print(f"    ❌ ОТВЕТ: Ошибка при парсинге {model_name}: {e}")
+            self.metrics['failed_requests'] += 1
+            # Логируем только критичные ошибки
+            if hasattr(e, 'response') and e.response and e.response.status_code >= 500:
+                print(f"\n  ⚠️ Серверная ошибка для {model_name}: {e.response.status_code}")
         except Exception as e:
-            print(f"    ❌ ОТВЕТ: Неожиданная ошибка для {model_name}: {e}")
-            import traceback
-            print(f"    📋 Детали ошибки: {traceback.format_exc()}")
+            self.metrics['failed_requests'] += 1
+            # Тихая обработка для параллельной работы
+            pass
     
     def _validate_model_structure(self, model_info):
         """Улучшенная проверка структуры модели с валидацией API"""
@@ -695,6 +698,47 @@ class KieApiScraper:
         
         return stats
     
+    def filter_models(self, category=None, has_endpoint=None, has_params=None):
+        """Фильтрация моделей по критериям"""
+        filtered = self.models
+        
+        if category:
+            filtered = [m for m in filtered if m.get('category') == category]
+        
+        if has_endpoint is not None:
+            if has_endpoint:
+                filtered = [m for m in filtered if m.get('endpoint')]
+            else:
+                filtered = [m for m in filtered if not m.get('endpoint')]
+        
+        if has_params is not None:
+            if has_params:
+                filtered = [m for m in filtered if m.get('params')]
+            else:
+                filtered = [m for m in filtered if not m.get('params')]
+        
+        return filtered
+    
+    def export_models_by_category(self, output_dir='exports'):
+        """Экспорт моделей по категориям в отдельные файлы"""
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        
+        stats = self._get_statistics()
+        exported = {}
+        
+        for category, models in stats['by_category'].items():
+            category_models = [m for m in self.models if m.get('category') == category]
+            filename = os.path.join(output_dir, f'models_{category}.json')
+            
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(category_models, f, ensure_ascii=False, indent=2)
+            
+            exported[category] = len(category_models)
+            print(f"   📁 Экспортировано {len(category_models)} моделей категории '{category}' в {filename}")
+        
+        return exported
+    
     def run_full_scrape(self):
         """Полный сбор всех моделей с ответами на каждое действие"""
         self.metrics['start_time'] = time.time()
@@ -752,19 +796,47 @@ class KieApiScraper:
         # Действие 3: Валидация всех моделей
         print("\n" + "=" * 60)
         is_valid = self.validate_all_models()
+        valid_count = sum(1 for m in self.models if self._validate_model_structure(m))
+        invalid_count = len(self.models) - valid_count
         print("=" * 60)
         
         # Действие 4: Сохранение результатов
         print("\n💾 ДЕЙСТВИЕ 4: Сохранение результатов в файл...")
         output_file = 'kie_full_api.json'
+        stats_file = 'kie_scraper_stats.json'
+        
         try:
-            # Убеждаемся что путь относительный (для Render)
+            # Сохранение моделей
             output_path = os.path.join(os.getcwd(), output_file)
             with open(output_path, 'w', encoding='utf-8') as f:
                 json.dump(self.models, f, ensure_ascii=False, indent=2)
-            print(f"✅ ОТВЕТ: Файл {output_file} успешно сохранен")
             file_size = os.path.getsize(output_path) if os.path.exists(output_path) else 0
-            print(f"   📊 Размер файла: {file_size} байт")
+            print(f"✅ ОТВЕТ: Файл {output_file} успешно сохранен ({file_size} байт)")
+            
+            # Сохранение статистики
+            stats_data = {
+                'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+                'metrics': {
+                    'execution_time_seconds': elapsed_time,
+                    'total_requests': self.metrics['total_requests'],
+                    'cached_requests': self.metrics['cached_requests'],
+                    'failed_requests': self.metrics['failed_requests'],
+                    'total_models': len(self.models),
+                    'success_rate': f"{(len(self.models) / max_models * 100):.1f}%" if max_models > 0 else "0%"
+                },
+                'statistics': stats,
+                'validation': {
+                    'all_valid': is_valid,
+                    'valid_count': valid_count if 'valid_count' in locals() else len(self.models),
+                    'invalid_count': invalid_count if 'invalid_count' in locals() else 0
+                }
+            }
+            
+            stats_path = os.path.join(os.getcwd(), stats_file)
+            with open(stats_path, 'w', encoding='utf-8') as f:
+                json.dump(stats_data, f, ensure_ascii=False, indent=2)
+            print(f"✅ ОТВЕТ: Статистика сохранена в {stats_file}")
+            
         except (IOError, OSError, PermissionError) as e:
             print(f"❌ ОТВЕТ: Ошибка при сохранении файла: {e}")
             print(f"   📁 Текущая директория: {os.getcwd()}")
@@ -780,24 +852,36 @@ class KieApiScraper:
         elapsed_time = self.metrics['end_time'] - self.metrics['start_time']
         stats = self._get_statistics()
         
+        # Дополнительный экспорт по категориям (опционально)
+        export_categories = os.getenv('EXPORT_BY_CATEGORY', 'false').lower() == 'true'
+        if export_categories and self.models:
+            print("\n📦 ДЕЙСТВИЕ 5: Экспорт по категориям...")
+            exported = self.export_models_by_category()
+            print(f"✅ ОТВЕТ: Экспортировано {sum(exported.values())} моделей в {len(exported)} файлов")
+        
         # Финальный ответ
         print("\n" + "=" * 60)
         print("🎉 ФИНАЛЬНЫЙ ОТВЕТ:")
         print(f"   ✅ Собрано моделей: {len(self.models)}")
         print(f"   ✅ Валидация: {'ПРОЙДЕНА' if is_valid else 'ЕСТЬ ОШИБКИ'}")
         print(f"   ✅ Файл сохранен: {output_file}")
+        print(f"   ✅ Статистика сохранена: {stats_file}")
         print("\n📊 СТАТИСТИКА:")
         print(f"   ⏱️ Время выполнения: {elapsed_time:.2f} сек")
         print(f"   📡 Всего запросов: {self.metrics['total_requests']}")
         print(f"   💾 Кэшированных: {self.metrics['cached_requests']}")
         print(f"   ❌ Ошибок: {self.metrics['failed_requests']}")
+        if self.metrics['total_requests'] > 0:
+            cache_hit_rate = (self.metrics['cached_requests'] / self.metrics['total_requests']) * 100
+            print(f"   📈 Эффективность кэша: {cache_hit_rate:.1f}%")
         print(f"\n📂 По категориям:")
         for cat, count in sorted(stats['by_category'].items(), key=lambda x: x[1], reverse=True):
-            print(f"   - {cat}: {count}")
+            percentage = (count / len(self.models) * 100) if self.models else 0
+            print(f"   - {cat}: {count} ({percentage:.1f}%)")
         print(f"\n📋 Детали:")
-        print(f"   - С endpoint: {stats['with_endpoints']}")
-        print(f"   - С параметрами: {stats['with_params']}")
-        print(f"   - С примерами: {stats['with_examples']}")
+        print(f"   - С endpoint: {stats['with_endpoints']} ({stats['with_endpoints']/len(self.models)*100:.1f}%)" if self.models else "   - С endpoint: 0")
+        print(f"   - С параметрами: {stats['with_params']} ({stats['with_params']/len(self.models)*100:.1f}%)" if self.models else "   - С параметрами: 0")
+        print(f"   - С примерами: {stats['with_examples']} ({stats['with_examples']/len(self.models)*100:.1f}%)" if self.models else "   - С примерами: 0")
         print("=" * 60)
         
         return self.models
