@@ -14,6 +14,7 @@ import os
 import requests
 import json
 import time
+import csv
 from urllib.parse import urljoin
 import re
 from bs4 import BeautifulSoup
@@ -21,6 +22,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from threading import Lock
 
 # Устанавливаем кодировку для вывода (важно для Render)
 if sys.stdout.encoding is None or sys.stdout.encoding.lower() != 'utf-8':
@@ -47,6 +49,12 @@ class KieApiScraper:
         self.max_workers = max_workers
         self.enable_cache = enable_cache
         self.cache = {} if enable_cache else None
+        self._cache_lock = Lock()  # Блокировка для потокобезопасного кэша
+        
+        # Rate limiting
+        self._last_request_time = 0
+        self._min_request_interval = 0.1  # Минимальный интервал между запросами (секунды)
+        self._rate_limit_lock = Lock()
         
         # Метрики производительности
         self.metrics = {
@@ -71,6 +79,15 @@ class KieApiScraper:
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
         self.session.headers.update(self.headers)
+    
+    def _rate_limit(self):
+        """Rate limiting для запросов"""
+        with self._rate_limit_lock:
+            current_time = time.time()
+            time_since_last = current_time - self._last_request_time
+            if time_since_last < self._min_request_interval:
+                time.sleep(self._min_request_interval - time_since_last)
+            self._last_request_time = time.time()
     
     def get_market_page(self):
         """Улучшенный парсинг главной страницы с моделями"""
@@ -341,22 +358,26 @@ class KieApiScraper:
     def scrape_model_docs(self, model_url, model_name):
         """Улучшенный парсинг документации конкретной модели"""
         try:
-            # Проверка кэша
-            if self.enable_cache and model_url in self.cache:
-                self.metrics['cached_requests'] += 1
-                cached_data = self.cache[model_url]
-                resp_text = cached_data['text']
-                soup = BeautifulSoup(resp_text, 'html.parser')
-            else:
-                self.metrics['total_requests'] += 1
-                resp = self.session.get(model_url, timeout=10)
-                resp.raise_for_status()
-                resp_text = resp.text
-                soup = BeautifulSoup(resp_text, 'html.parser')
-                
-                # Сохранение в кэш
-                if self.enable_cache:
-                    self.cache[model_url] = {'text': resp_text}
+            # Проверка кэша (потокобезопасно)
+            with self._cache_lock:
+                if self.enable_cache and model_url in self.cache:
+                    self.metrics['cached_requests'] += 1
+                    cached_data = self.cache[model_url]
+                    resp_text = cached_data['text']
+                    soup = BeautifulSoup(resp_text, 'html.parser')
+                else:
+                    # Rate limiting
+                    self._rate_limit()
+                    
+                    self.metrics['total_requests'] += 1
+                    resp = self.session.get(model_url, timeout=10)
+                    resp.raise_for_status()
+                    resp_text = resp.text
+                    soup = BeautifulSoup(resp_text, 'html.parser')
+                    
+                    # Сохранение в кэш (потокобезопасно)
+                    if self.enable_cache:
+                        self.cache[model_url] = {'text': resp_text}
             
             # Структура model_info согласована с финальным JSON
             model_info = {
@@ -739,6 +760,59 @@ class KieApiScraper:
         
         return exported
     
+    def export_to_csv(self, output_file='kie_models.csv'):
+        """Экспорт моделей в CSV формат"""
+        if not self.models:
+            print("⚠️ Нет моделей для экспорта")
+            return False
+        
+        try:
+            with open(output_file, 'w', newline='', encoding='utf-8') as f:
+                fieldnames = ['name', 'category', 'endpoint', 'method', 'base_url', 
+                             'params', 'has_example', 'has_input_schema']
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                
+                for model in self.models:
+                    writer.writerow({
+                        'name': model.get('name', ''),
+                        'category': model.get('category', ''),
+                        'endpoint': model.get('endpoint', ''),
+                        'method': model.get('method', ''),
+                        'base_url': model.get('base_url', ''),
+                        'params': json.dumps(model.get('params', {}), ensure_ascii=False),
+                        'has_example': 'yes' if model.get('example') else 'no',
+                        'has_input_schema': 'yes' if model.get('input_schema') else 'no'
+                    })
+            
+            print(f"✅ CSV экспорт: {output_file}")
+            return True
+        except Exception as e:
+            print(f"❌ Ошибка при экспорте в CSV: {e}")
+            return False
+    
+    def export_to_yaml(self, output_file='kie_models.yaml'):
+        """Экспорт моделей в YAML формат"""
+        try:
+            import yaml
+        except ImportError:
+            print("⚠️ PyYAML не установлен. Установите: pip install pyyaml")
+            return False
+        
+        if not self.models:
+            print("⚠️ Нет моделей для экспорта")
+            return False
+        
+        try:
+            with open(output_file, 'w', encoding='utf-8') as f:
+                yaml.dump(self.models, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+            
+            print(f"✅ YAML экспорт: {output_file}")
+            return True
+        except Exception as e:
+            print(f"❌ Ошибка при экспорте в YAML: {e}")
+            return False
+    
     def run_full_scrape(self):
         """Полный сбор всех моделей с ответами на каждое действие"""
         self.metrics['start_time'] = time.time()
@@ -860,12 +934,24 @@ class KieApiScraper:
         elapsed_time = self.metrics['end_time'] - self.metrics['start_time']
         stats = self._get_statistics()
         
-        # Дополнительный экспорт по категориям (опционально)
+        # Дополнительный экспорт (опционально)
         export_categories = os.getenv('EXPORT_BY_CATEGORY', 'false').lower() == 'true'
-        if export_categories and self.models:
-            print("\n📦 ДЕЙСТВИЕ 5: Экспорт по категориям...")
-            exported = self.export_models_by_category()
-            print(f"✅ ОТВЕТ: Экспортировано {sum(exported.values())} моделей в {len(exported)} файлов")
+        export_csv = os.getenv('EXPORT_CSV', 'false').lower() == 'true'
+        export_yaml = os.getenv('EXPORT_YAML', 'false').lower() == 'true'
+        
+        if self.models:
+            if export_categories:
+                print("\n📦 ДЕЙСТВИЕ 5: Экспорт по категориям...")
+                exported = self.export_models_by_category()
+                print(f"✅ ОТВЕТ: Экспортировано {sum(exported.values())} моделей в {len(exported)} файлов")
+            
+            if export_csv:
+                print("\n📊 ДЕЙСТВИЕ 6: Экспорт в CSV...")
+                self.export_to_csv()
+            
+            if export_yaml:
+                print("\n📄 ДЕЙСТВИЕ 7: Экспорт в YAML...")
+                self.export_to_yaml()
         
         # Финальный ответ
         print("\n" + "=" * 60)
