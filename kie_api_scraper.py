@@ -14,7 +14,6 @@ import os
 import requests
 import json
 import time
-import csv
 from urllib.parse import urljoin
 import re
 from bs4 import BeautifulSoup
@@ -22,7 +21,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from threading import Lock
 
 # Устанавливаем кодировку для вывода (важно для Render)
 if sys.stdout.encoding is None or sys.stdout.encoding.lower() != 'utf-8':
@@ -49,12 +47,6 @@ class KieApiScraper:
         self.max_workers = max_workers
         self.enable_cache = enable_cache
         self.cache = {} if enable_cache else None
-        self._cache_lock = Lock()  # Блокировка для потокобезопасного кэша
-        
-        # Rate limiting
-        self._last_request_time = 0
-        self._min_request_interval = 0.1  # Минимальный интервал между запросами (секунды)
-        self._rate_limit_lock = Lock()
         
         # Метрики производительности
         self.metrics = {
@@ -67,35 +59,95 @@ class KieApiScraper:
             'categories': {}
         }
         
+        # Rate limiting
+        self.request_delay = 0.3  # Задержка между запросами (секунды)
+        self.last_request_time = 0
+        
         # Настройка сессии с retry механизмом
         self.session = requests.Session()
         retry_strategy = Retry(
             total=3,
-            backoff_factor=1,
+            backoff_factor=2,  # Увеличиваем backoff для лучшей обработки rate limits
             status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["GET", "POST"]
+            allowed_methods=["GET", "POST"],
+            respect_retry_after_header=True  # Уважаем Retry-After заголовок
         )
-        adapter = HTTPAdapter(max_retries=retry_strategy)
+        adapter = HTTPAdapter(
+            max_retries=retry_strategy,
+            pool_connections=10,
+            pool_maxsize=20
+        )
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
         self.session.headers.update(self.headers)
     
     def _rate_limit(self):
-        """Rate limiting для запросов"""
-        with self._rate_limit_lock:
-            current_time = time.time()
-            time_since_last = current_time - self._last_request_time
-            if time_since_last < self._min_request_interval:
-                time.sleep(self._min_request_interval - time_since_last)
-            self._last_request_time = time.time()
+        """Rate limiting для избежания блокировок"""
+        current_time = time.time()
+        time_since_last = current_time - self.last_request_time
+        if time_since_last < self.request_delay:
+            time.sleep(self.request_delay - time_since_last)
+        self.last_request_time = time.time()
+    
+    def _validate_url(self, url):
+        """Валидация URL перед запросом"""
+        if not url or not isinstance(url, str):
+            return False
+        if not url.startswith(('http://', 'https://')):
+            return False
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            return bool(parsed.netloc)
+        except:
+            return False
+    
+    def _safe_request(self, url, max_retries=3):
+        """Безопасный запрос с обработкой ошибок"""
+        if not self._validate_url(url):
+            raise ValueError(f"Некорректный URL: {url}")
+        
+        for attempt in range(max_retries):
+            try:
+                self._rate_limit()  # Rate limiting
+                resp = self.session.get(url, timeout=15)
+                
+                # Обработка rate limiting (429)
+                if resp.status_code == 429:
+                    retry_after = resp.headers.get('Retry-After')
+                    if retry_after:
+                        wait_time = int(retry_after)
+                    else:
+                        wait_time = (attempt + 1) * 2  # Exponential backoff
+                    print(f"    ⏳ Rate limit, ожидание {wait_time} сек...")
+                    time.sleep(wait_time)
+                    continue
+                
+                resp.raise_for_status()
+                return resp
+                
+            except requests.exceptions.Timeout:
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 2
+                    print(f"    ⏳ Таймаут, повтор через {wait_time} сек...")
+                    time.sleep(wait_time)
+                    continue
+                raise
+            except requests.exceptions.RequestException as e:
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 1
+                    time.sleep(wait_time)
+                    continue
+                raise
+        
+        raise requests.exceptions.RequestException(f"Не удалось выполнить запрос после {max_retries} попыток")
     
     def get_market_page(self):
         """Улучшенный парсинг главной страницы с моделями"""
         try:
             print(f"   📡 Запрос к {self.market_url}...")
-            # Используем сессию с retry
-            resp = self.session.get(self.market_url, timeout=10)
-            resp.raise_for_status()
+            # Используем безопасный запрос
+            resp = self._safe_request(self.market_url)
             print(f"   ✅ ОТВЕТ: Получен ответ со статусом {resp.status_code}")
             
             soup = BeautifulSoup(resp.text, 'html.parser')
@@ -184,15 +236,25 @@ class KieApiScraper:
             return []
     
     def _extract_endpoint(self, text, model_name):
-        """Улучшенное извлечение API endpoint из текста"""
-        # Паттерны для поиска endpoint
+        """Улучшенное извлечение API endpoint из текста с множественными стратегиями"""
+        if not text or not isinstance(text, str):
+            text = ""
+        
+        # Паттерны для поиска endpoint (приоритетные сначала)
         patterns = [
+            # Точные совпадения с api.kie.ai
             r'api\.kie\.ai/api/v1/([a-zA-Z0-9\-_/]+)',
+            r'https?://api\.kie\.ai/api/v1/([a-zA-Z0-9\-_/]+)',
+            # Общие паттерны API
             r'/api/v1/([a-zA-Z0-9\-_/]+)',
             r'endpoint[:\s]+["\']?([a-zA-Z0-9\-_/]+)["\']?',
             r'POST[:\s]+["\']?([a-zA-Z0-9\-_/]+)["\']?',
             r'url[:\s]+["\']?.*?/([a-zA-Z0-9\-_/]+)["\']?',
+            # Паттерны с действиями
             r'/([a-zA-Z0-9\-_]+)/(?:generate|create|text|image|video)',
+            # Поиск в JSON структурах
+            r'"endpoint"[:\s]*["\']([^"\']+)["\']',
+            r'"url"[:\s]*["\']([^"\']+/[a-zA-Z0-9\-_/]+)["\']',
         ]
         
         for pattern in patterns:
@@ -214,7 +276,13 @@ class KieApiScraper:
         
         # Если не нашли, пытаемся извлечь из названия модели
         model_slug = re.sub(r'[^a-zA-Z0-9\-_]', '', model_name.lower().replace(' ', '-'))
-        if model_slug:
+        if model_slug and len(model_slug) > 2:
+            # Убираем общие слова
+            skip_words = ['model', 'api', 'kie', 'ai']
+            words = [w for w in model_slug.split('-') if w not in skip_words and len(w) > 2]
+            if words:
+                clean_slug = '-'.join(words[:3])  # Берем первые 3 значимых слова
+                return f"/{clean_slug}/generate"
             return f"/{model_slug}/generate"
         
         return "/generate"
@@ -358,26 +426,30 @@ class KieApiScraper:
     def scrape_model_docs(self, model_url, model_name):
         """Улучшенный парсинг документации конкретной модели"""
         try:
-            # Проверка кэша (потокобезопасно)
-            with self._cache_lock:
-                if self.enable_cache and model_url in self.cache:
-                    self.metrics['cached_requests'] += 1
-                    cached_data = self.cache[model_url]
-                    resp_text = cached_data['text']
-                    soup = BeautifulSoup(resp_text, 'html.parser')
-                else:
-                    # Rate limiting
-                    self._rate_limit()
-                    
-                    self.metrics['total_requests'] += 1
-                    resp = self.session.get(model_url, timeout=10)
-                    resp.raise_for_status()
-                    resp_text = resp.text
-                    soup = BeautifulSoup(resp_text, 'html.parser')
-                    
-                    # Сохранение в кэш (потокобезопасно)
-                    if self.enable_cache:
-                        self.cache[model_url] = {'text': resp_text}
+            # Проверка кэша
+            if self.enable_cache and model_url in self.cache:
+                self.metrics['cached_requests'] += 1
+                cached_data = self.cache[model_url]
+                resp_text = cached_data['text']
+                soup = BeautifulSoup(resp_text, 'html.parser')
+            else:
+                self.metrics['total_requests'] += 1
+                # Используем безопасный запрос с валидацией
+                if not self._validate_url(model_url):
+                    raise ValueError(f"Некорректный URL модели: {model_url}")
+                
+                resp = self._safe_request(model_url)
+                resp_text = resp.text
+                
+                # Проверка что ответ не пустой
+                if not resp_text or len(resp_text) < 100:
+                    raise ValueError("Получен пустой или слишком короткий ответ")
+                
+                soup = BeautifulSoup(resp_text, 'html.parser')
+                
+                # Сохранение в кэш
+                if self.enable_cache:
+                    self.cache[model_url] = {'text': resp_text}
             
             # Структура model_info согласована с финальным JSON
             model_info = {
@@ -760,59 +832,6 @@ class KieApiScraper:
         
         return exported
     
-    def export_to_csv(self, output_file='kie_models.csv'):
-        """Экспорт моделей в CSV формат"""
-        if not self.models:
-            print("⚠️ Нет моделей для экспорта")
-            return False
-        
-        try:
-            with open(output_file, 'w', newline='', encoding='utf-8') as f:
-                fieldnames = ['name', 'category', 'endpoint', 'method', 'base_url', 
-                             'params', 'has_example', 'has_input_schema']
-                writer = csv.DictWriter(f, fieldnames=fieldnames)
-                writer.writeheader()
-                
-                for model in self.models:
-                    writer.writerow({
-                        'name': model.get('name', ''),
-                        'category': model.get('category', ''),
-                        'endpoint': model.get('endpoint', ''),
-                        'method': model.get('method', ''),
-                        'base_url': model.get('base_url', ''),
-                        'params': json.dumps(model.get('params', {}), ensure_ascii=False),
-                        'has_example': 'yes' if model.get('example') else 'no',
-                        'has_input_schema': 'yes' if model.get('input_schema') else 'no'
-                    })
-            
-            print(f"✅ CSV экспорт: {output_file}")
-            return True
-        except Exception as e:
-            print(f"❌ Ошибка при экспорте в CSV: {e}")
-            return False
-    
-    def export_to_yaml(self, output_file='kie_models.yaml'):
-        """Экспорт моделей в YAML формат"""
-        try:
-            import yaml
-        except ImportError:
-            print("⚠️ PyYAML не установлен. Установите: pip install pyyaml")
-            return False
-        
-        if not self.models:
-            print("⚠️ Нет моделей для экспорта")
-            return False
-        
-        try:
-            with open(output_file, 'w', encoding='utf-8') as f:
-                yaml.dump(self.models, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
-            
-            print(f"✅ YAML экспорт: {output_file}")
-            return True
-        except Exception as e:
-            print(f"❌ Ошибка при экспорте в YAML: {e}")
-            return False
-    
     def run_full_scrape(self):
         """Полный сбор всех моделей с ответами на каждое действие"""
         self.metrics['start_time'] = time.time()
@@ -888,12 +907,21 @@ class KieApiScraper:
         stats_file = 'kie_scraper_stats.json'
         
         try:
+            # Валидация данных перед сохранением
+            valid_models = []
+            for model in self.models:
+                if self._validate_model_structure(model):
+                    valid_models.append(model)
+            
+            if len(valid_models) < len(self.models):
+                print(f"   ⚠️ Отфильтровано {len(self.models) - len(valid_models)} невалидных моделей")
+            
             # Сохранение моделей
             output_path = os.path.join(os.getcwd(), output_file)
             with open(output_path, 'w', encoding='utf-8') as f:
-                json.dump(self.models, f, ensure_ascii=False, indent=2)
+                json.dump(valid_models, f, ensure_ascii=False, indent=2)
             file_size = os.path.getsize(output_path) if os.path.exists(output_path) else 0
-            print(f"✅ ОТВЕТ: Файл {output_file} успешно сохранен ({file_size} байт)")
+            print(f"✅ ОТВЕТ: Файл {output_file} успешно сохранен ({file_size} байт, {len(valid_models)} моделей)")
             
             # Сохранение статистики
             stats_data = {
@@ -934,24 +962,12 @@ class KieApiScraper:
         elapsed_time = self.metrics['end_time'] - self.metrics['start_time']
         stats = self._get_statistics()
         
-        # Дополнительный экспорт (опционально)
+        # Дополнительный экспорт по категориям (опционально)
         export_categories = os.getenv('EXPORT_BY_CATEGORY', 'false').lower() == 'true'
-        export_csv = os.getenv('EXPORT_CSV', 'false').lower() == 'true'
-        export_yaml = os.getenv('EXPORT_YAML', 'false').lower() == 'true'
-        
-        if self.models:
-            if export_categories:
-                print("\n📦 ДЕЙСТВИЕ 5: Экспорт по категориям...")
-                exported = self.export_models_by_category()
-                print(f"✅ ОТВЕТ: Экспортировано {sum(exported.values())} моделей в {len(exported)} файлов")
-            
-            if export_csv:
-                print("\n📊 ДЕЙСТВИЕ 6: Экспорт в CSV...")
-                self.export_to_csv()
-            
-            if export_yaml:
-                print("\n📄 ДЕЙСТВИЕ 7: Экспорт в YAML...")
-                self.export_to_yaml()
+        if export_categories and self.models:
+            print("\n📦 ДЕЙСТВИЕ 5: Экспорт по категориям...")
+            exported = self.export_models_by_category()
+            print(f"✅ ОТВЕТ: Экспортировано {sum(exported.values())} моделей в {len(exported)} файлов")
         
         # Финальный ответ
         print("\n" + "=" * 60)
