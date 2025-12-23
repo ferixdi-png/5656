@@ -25,6 +25,41 @@
 pip install -r requirements.txt
 ```
 
+## 🚀 Deploy to Render
+
+**Service type:** Background Worker (polling)  
+**Branch:** `main`  
+**Auto Deploy:** ON
+**Single source of truth for deploy settings.**
+
+**Build Command:**
+```bash
+pip install -r requirements.txt
+```
+
+**Start Command:**
+```bash
+python main_render.py
+```
+
+**Required ENV:**
+- `TELEGRAM_BOT_TOKEN`
+- `KIE_API_KEY`
+- `KIE_BASE_URL`
+- `DATABASE_URL`
+
+**Bot stack:** aiogram (single runtime stack)
+
+**Optional ENV:**
+- `PORT=10000` (healthcheck listener)
+- `DRY_RUN=0`
+- `KIE_STUB=0`
+- `BOT_MODE=polling`
+- `STORAGE_MODE=auto`
+
+**Важно:** Не запускай одновременно Replit + Render + локально на одном токене (будет Conflict).  
+**Перед деплоем:** останови другие инстансы / отключи Replit Run.
+
 ### Конфигурация (опционально)
 
 Создайте `config.json` на основе `config.json.example`:
@@ -157,4 +192,3 @@ scraper.export_models_by_category('exports')
 ## 📝 Лицензия
 
 MIT
-

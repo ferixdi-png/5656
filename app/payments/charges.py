@@ -26,6 +26,23 @@ class ChargeManager:
         self._pending_charges: Dict[str, Dict[str, Any]] = {}  # task_id -> charge_info
         self._committed_charges: Set[str] = set()  # task_id set for idempotency
         self._released_charges: Set[str] = set()  # task_id set for released charges
+        self._committed_info: Dict[str, Dict[str, Any]] = {}
+        self._balances: Dict[int, float] = {}
+        self._welcomed_users: Set[int] = set()
+
+    def get_user_balance(self, user_id: int) -> float:
+        return self._balances.get(user_id, 0.0)
+
+    def adjust_balance(self, user_id: int, delta: float) -> None:
+        self._balances[user_id] = self.get_user_balance(user_id) + delta
+
+    def ensure_welcome_credit(self, user_id: int, amount: float) -> bool:
+        if user_id in self._welcomed_users:
+            return False
+        self._welcomed_users.add(user_id)
+        if amount > 0:
+            self.adjust_balance(user_id, amount)
+        return True
     
     async def create_pending_charge(
         self,
@@ -33,7 +50,8 @@ class ChargeManager:
         user_id: int,
         amount: float,
         model_id: str,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
+        reserve_balance: bool = False
     ) -> Dict[str, Any]:
         """
         Create pending charge (reserve funds, don't charge yet).
@@ -66,6 +84,17 @@ class ChargeManager:
                 'message': 'Оплата уже отменена'
             }
         
+        if reserve_balance and amount > 0:
+            balance = self.get_user_balance(user_id)
+            if balance < amount:
+                return {
+                    'status': 'insufficient_balance',
+                    'task_id': task_id,
+                    'amount': amount,
+                    'message': 'Недостаточно средств'
+                }
+            self.adjust_balance(user_id, -amount)
+
         charge_info = {
             'task_id': task_id,
             'user_id': user_id,
@@ -73,7 +102,8 @@ class ChargeManager:
             'model_id': model_id,
             'status': 'pending',
             'created_at': datetime.now().isoformat(),
-            'metadata': metadata or {}
+            'metadata': metadata or {},
+            'reserved': reserve_balance
         }
         
         self._pending_charges[task_id] = charge_info
@@ -144,6 +174,7 @@ class ChargeManager:
                 self._committed_charges.add(task_id)
                 charge_info['status'] = 'committed'
                 charge_info['committed_at'] = datetime.now().isoformat()
+                self._committed_info[task_id] = charge_info
                 
                 # Remove from pending
                 if task_id in self._pending_charges:
@@ -211,6 +242,9 @@ class ChargeManager:
                 refund_result = await self._execute_refund(task_id, reason)
                 if refund_result.get('success'):
                     self._released_charges.add(task_id)
+                    committed_info = self._committed_info.get(task_id)
+                    if committed_info and committed_info.get('reserved'):
+                        self.adjust_balance(committed_info['user_id'], committed_info['amount'])
                     return {
                         'status': 'refunded',
                         'task_id': task_id,
@@ -239,6 +273,8 @@ class ChargeManager:
             charge_info['status'] = 'released'
             charge_info['released_at'] = datetime.now().isoformat()
             charge_info['release_reason'] = reason
+            if charge_info.get('reserved'):
+                self.adjust_balance(charge_info['user_id'], charge_info['amount'])
             
             self._released_charges.add(task_id)
             
@@ -324,4 +360,3 @@ def get_charge_manager(storage=None) -> ChargeManager:
     if _charge_manager is None:
         _charge_manager = ChargeManager(storage)
     return _charge_manager
-

@@ -25,6 +25,11 @@ wheels/
 
 # Результаты работы
 kie_full_api.json
+kie_scraper.log
+kie_scraper_stats.json
+missing_report.txt
+repository_analysis.json
+next_data_*.json
 
 # IDE
 .vscode/
@@ -45,4 +50,3 @@ desktop.ini
 5656-main/
 Новая папка/
 bot.rar
-
