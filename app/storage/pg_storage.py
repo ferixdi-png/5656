@@ -110,10 +110,12 @@ class PGStorage:
         if HAS_ASYNCPG:
             self._pool = await asyncpg.create_pool(self.dsn)
             logger.info("PostgreSQL connection pool created")
+            await self._ensure_tables()
             return True
         elif HAS_PSYCOPG:
             self._connection = await psycopg.AsyncConnection.connect(self.dsn)
             logger.info("PostgreSQL connection created")
+            await self._ensure_tables()
             return True
         else:
             raise ImportError("No async PostgreSQL driver available (asyncpg or psycopg required)")
@@ -127,7 +129,89 @@ class PGStorage:
             await self._connection.close()
             self._connection = None
 
+    async def _ensure_tables(self) -> None:
+        query = (
+            "CREATE TABLE IF NOT EXISTS charge_events ("
+            "task_id TEXT PRIMARY KEY,"
+            "status TEXT NOT NULL,"
+            "user_id BIGINT,"
+            "amount NUMERIC,"
+            "model_id TEXT,"
+            "metadata JSONB,"
+            "updated_at TIMESTAMPTZ DEFAULT NOW()"
+            ")"
+        )
+        await self._execute(query, None)
+
+    async def _execute(self, query: str, values: Optional[tuple]) -> None:
+        if self._pool:
+            async with self._pool.acquire() as conn:
+                await conn.execute(query, *(values or ()))
+            return
+        if self._connection:
+            query = query.replace("$1", "%s").replace("$2", "%s").replace("$3", "%s").replace("$4", "%s").replace("$5", "%s").replace("$6", "%s")
+            async with self._connection.cursor() as cur:
+                await cur.execute(query, values or ())
+                await self._connection.commit()
+
+    async def _fetchrow(self, query: str, values: Optional[tuple]) -> Optional[dict]:
+        if self._pool:
+            async with self._pool.acquire() as conn:
+                row = await conn.fetchrow(query, *(values or ()))
+                return dict(row) if row else None
+        if self._connection:
+            query = query.replace("$1", "%s")
+            async with self._connection.cursor(row_factory=dict_row) as cur:
+                await cur.execute(query, values or ())
+                return await cur.fetchone()
+        return None
+
+    async def save_pending_charge(self, charge_info: dict) -> None:
+        query = (
+            "INSERT INTO charge_events (task_id, status, user_id, amount, model_id, metadata) "
+            "VALUES ($1, $2, $3, $4, $5, $6) "
+            "ON CONFLICT (task_id) DO UPDATE SET "
+            "status = EXCLUDED.status, user_id = EXCLUDED.user_id, amount = EXCLUDED.amount, "
+            "model_id = EXCLUDED.model_id, metadata = EXCLUDED.metadata, updated_at = NOW()"
+        )
+        values = (
+            charge_info["task_id"],
+            "pending",
+            charge_info["user_id"],
+            charge_info["amount"],
+            charge_info["model_id"],
+            charge_info.get("metadata", {}),
+        )
+        await self._execute(query, values)
+
+    async def save_committed_charge(self, charge_info: dict) -> None:
+        await self._update_status(charge_info, "committed")
+
+    async def save_released_charge(self, charge_info: dict) -> None:
+        await self._update_status(charge_info, "released")
+
+    async def _update_status(self, charge_info: dict, status: str) -> None:
+        query = (
+            "INSERT INTO charge_events (task_id, status, user_id, amount, model_id, metadata) "
+            "VALUES ($1, $2, $3, $4, $5, $6) "
+            "ON CONFLICT (task_id) DO UPDATE SET "
+            "status = EXCLUDED.status, updated_at = NOW()"
+        )
+        values = (
+            charge_info["task_id"],
+            status,
+            charge_info["user_id"],
+            charge_info["amount"],
+            charge_info["model_id"],
+            charge_info.get("metadata", {}),
+        )
+        await self._execute(query, values)
+
+    async def get_charge_status(self, task_id: str) -> Optional[str]:
+        query = "SELECT status FROM charge_events WHERE task_id = $1"
+        row = await self._fetchrow(query, (task_id,))
+        return row.get("status") if row else None
+
 
 # Alias for compatibility
 PostgresStorage = PGStorage
-
