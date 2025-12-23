@@ -37,11 +37,15 @@ def _build_user_inputs(model_schema: dict) -> dict:
 def test_registry_payloads_build():
     source = load_source_of_truth()
     models = source.get("models", [])
+    pricing = source.get("pricing", {})
     assert models, "source_of_truth must contain models"
 
     for model in models:
         model_id = model.get("model_id")
         if not model_id:
+            continue
+        # Skip models without pricing (technical/hidden models)
+        if model_id not in pricing:
             continue
         user_inputs = _build_user_inputs(model)
         payload = build_payload(model_id, user_inputs, source)

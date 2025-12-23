@@ -202,6 +202,33 @@ async def main():
         free_manager = FreeModelManager(db_service)
         logger.info("FreeModelManager initialized")
         
+        # AUTO-SETUP: Configure 5 cheapest models as free tier (idempotent)
+        try:
+            import json
+            registry_path = "models/kie_models_source_of_truth.json"
+            with open(registry_path, 'r') as f:
+                sot = json.load(f)
+            
+            models = [m for m in sot['models'] if m.get('is_pricing_known')]
+            models.sort(key=lambda m: m.get('price', 999999))
+            cheapest_5 = models[:5]
+            
+            for model in cheapest_5:
+                model_id = model['model_id']
+                is_free = await free_manager.is_model_free(model_id)
+                
+                if not is_free:
+                    await free_manager.add_free_model(
+                        model_id=model_id,
+                        daily_limit=10,
+                        hourly_limit=3
+                    )
+                    logger.info(f"✅ Auto-configured free: {model_id} (10/day, 3/hour)")
+            
+            logger.info("Free tier auto-setup complete")
+        except Exception as e:
+            logger.warning(f"Free tier auto-setup skipped: {e}")
+        
         # Initialize AdminService
         admin_service = AdminService(db_service, free_manager)
         logger.info("AdminService initialized")

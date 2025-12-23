@@ -68,16 +68,60 @@ def build_payload(
         'model': model_id
     }
     
-    # FALLBACK: If no properties defined, assume simple prompt-only model
+    # FALLBACK: If no properties defined, use intelligent defaults based on model category
     if not properties:
+        logger.info(f"Using fallback schema for {model_id} (no properties defined)")
+        
+        # Detect model type from category
+        category = model_schema.get('category', '')
+        
         # Try to find prompt/text in user_inputs
         prompt_value = user_inputs.get('prompt') or user_inputs.get('text')
-        if prompt_value:
-            payload['prompt'] = prompt_value
-        # Add any other user_inputs as-is (for flexibility)
-        for key, value in user_inputs.items():
-            if key not in ['prompt', 'text'] and value is not None:
-                payload[key] = value
+        url_value = user_inputs.get('url') or user_inputs.get('image_url') or user_inputs.get('video_url')
+        file_value = user_inputs.get('file') or user_inputs.get('file_id')
+        
+        # Text-to-X models: need prompt
+        if category in ['t2i', 't2v', 'tts', 'music', 'sfx'] or 'text' in model_id.lower():
+            if prompt_value:
+                payload['prompt'] = prompt_value
+            else:
+                raise ValueError(f"Model {model_id} (category: {category}) requires 'prompt' or 'text' field")
+        
+        # Image/Video input models: need url or file
+        elif category in ['i2v', 'i2i', 'v2v', 'lip_sync', 'upscale', 'bg_remove', 'watermark_remove']:
+            if url_value:
+                # Determine correct field name based on category
+                if 'image' in category or category in ['i2v', 'i2i', 'upscale', 'bg_remove']:
+                    payload['image_url'] = url_value
+                elif 'video' in category or category == 'v2v':
+                    payload['video_url'] = url_value
+                else:
+                    payload['source_url'] = url_value
+            elif file_value:
+                payload['file_id'] = file_value
+            else:
+                raise ValueError(f"Model {model_id} (category: {category}) requires 'url' or 'file' field")
+            
+            # Optional prompt for guided processing
+            if prompt_value:
+                payload['prompt'] = prompt_value
+        
+        # Audio models
+        elif category in ['stt', 'audio_isolation']:
+            if url_value:
+                payload['audio_url'] = url_value
+            elif file_value:
+                payload['file_id'] = file_value
+            else:
+                raise ValueError(f"Model {model_id} (category: {category}) requires audio file or URL")
+        
+        # Unknown category: try to accept anything user provided
+        else:
+            logger.warning(f"Unknown category '{category}' for {model_id}, accepting all user inputs")
+            for key, value in user_inputs.items():
+                if value is not None:
+                    payload[key] = value
+        
         return payload
     
     # Process required fields

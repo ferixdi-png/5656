@@ -109,14 +109,41 @@ def validate_model_inputs(
     """
     input_schema = model_schema.get('input_schema', {})
     
-    # FALLBACK: If model has no input_schema or empty properties, assume simple prompt-only model
+    # FALLBACK: If no properties defined in schema, validate based on category
     if not input_schema or not input_schema.get('properties'):
-        # Simple validation: must have 'prompt' or 'text' field
-        if not user_inputs.get('prompt') and not user_inputs.get('text'):
-            raise ModelContractError(
-                f"Model {model_id} requires 'prompt' or 'text' field"
-            )
-        # Allow this simple case
+        logger.info(f"Using fallback validation for {model_id} (no schema properties)")
+        
+        category = model_schema.get('category', '')
+        
+        # Get available inputs
+        has_prompt = bool(user_inputs.get('prompt') or user_inputs.get('text'))
+        has_url = bool(user_inputs.get('url') or user_inputs.get('image_url') or 
+                      user_inputs.get('video_url') or user_inputs.get('audio_url'))
+        has_file = bool(user_inputs.get('file') or user_inputs.get('file_id'))
+        
+        # Text-based models require prompt
+        if category in ['t2i', 't2v', 'tts', 'music', 'sfx'] or 'text' in model_id.lower():
+            if not has_prompt:
+                raise ModelContractError(
+                    f"Text-based model {model_id} requires 'prompt' or 'text' field"
+                )
+        
+        # Media input models require url or file
+        elif category in ['i2v', 'i2i', 'v2v', 'lip_sync', 'upscale', 'bg_remove', 
+                         'watermark_remove', 'stt', 'audio_isolation']:
+            if not has_url and not has_file:
+                raise ModelContractError(
+                    f"Media model {model_id} requires URL or file input"
+                )
+        
+        # Unknown category: accept if any input provided
+        else:
+            if not user_inputs or all(v is None for v in user_inputs.values()):
+                raise ModelContractError(
+                    f"Model {model_id} requires at least one input"
+                )
+        
+        # Fallback validation passed
         return
     
     required_fields = input_schema.get('required', [])
