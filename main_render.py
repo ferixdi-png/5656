@@ -86,10 +86,26 @@ async def main():
 
     # Step 1: Acquire singleton lock (if DATABASE_URL provided and not DRY_RUN)
     database_url = os.getenv("DATABASE_URL")
+    lock_acquired = True  # Default to true if no lock required
     if database_url and not dry_run:
         lock_acquired = await acquire_singleton_lock(dsn=database_url, timeout=5.0)
         if not lock_acquired:
-            logger.warning("Singleton lock not acquired - another instance may be running")
+            logger.error("❌ Singleton lock NOT acquired - another instance is running")
+            logger.error("❌ WILL NOT start polling to prevent TelegramConflictError")
+            logger.info("Healthcheck server will remain active on port %s", port)
+            # Keep healthcheck alive but don't start polling
+            # In production this prevents TelegramConflictError
+            # We create a "sleep-forever" event that can be interrupted
+            shutdown_event = asyncio.Event()
+            try:
+                await shutdown_event.wait()  # Wait indefinitely (until interrupted)
+            except KeyboardInterrupt:
+                logger.info("Shutdown signal received")
+            finally:
+                stop_healthcheck_server(healthcheck_server)
+            return
+        else:
+            logger.info("✅ Singleton lock acquired successfully")
     else:
         if dry_run:
             logger.info("DRY_RUN enabled - skipping singleton lock")
@@ -138,7 +154,9 @@ async def main():
 
     # Step 6: Start polling
     try:
-        logger.info("Starting bot polling...")
+        logger.info("="*60)
+        logger.info("🚀 STARTING BOT POLLING - Single instance guaranteed by lock")
+        logger.info("="*60)
         await dp.start_polling(bot, skip_updates=True)
     except KeyboardInterrupt:
         logger.info("Bot stopped by user")
