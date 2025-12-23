@@ -1,11 +1,40 @@
 {
-  "version": "1.0.0",
+  "version": "1.0",
   "source": "repository_docs_only",
-  "total_models": 104,
-  "source_files": [
-    "models\\kie_models_source_of_truth.json"
-  ],
   "models": [
+    {
+      "model_id": "image_processor",
+      "category": "general",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "url",
+      "description": ""
+    },
+    {
+      "model_id": "url_processor",
+      "category": "general",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "url",
+      "description": ""
+    },
+    {
+      "model_id": "text_processor",
+      "category": "general",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "url",
+      "description": ""
+    },
     {
       "model_id": "AI_INTEGRATION_IMPROVEMENTS",
       "category": "other",
@@ -15,12 +44,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "ARCHITECTURE",
@@ -31,12 +55,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "FLOWS",
@@ -47,12 +66,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "KLING_V2_1_STANDARD_INTEGRATION",
@@ -63,12 +77,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "MODELS_AND_PRICING_RU",
@@ -79,12 +88,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "OFFICIAL_API_DOCUMENTATION_INDEX",
@@ -95,12 +99,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "PLAN",
@@ -111,12 +110,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "RENDER",
@@ -127,12 +121,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "RISK_REGISTER",
@@ -143,12 +132,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "STATE",
@@ -159,12 +143,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "STRICT_INTEGRATION_RULES",
@@ -175,12 +154,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "all_models_test_results",
@@ -191,12 +165,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "bytedance/seedance",
@@ -207,12 +176,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "bytedance/seedream",
@@ -223,12 +187,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "bytedance/seedream-v4-edit",
@@ -239,12 +198,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "bytedance/seedream-v4-text-to-image",
@@ -255,12 +209,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "bytedance/v1-lite-image-to-video",
@@ -271,12 +220,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "bytedance/v1-lite-text-to-video",
@@ -287,12 +231,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "bytedance/v1-pro-fast-image-to-video",
@@ -303,12 +242,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "bytedance/v1-pro-image-to-video",
@@ -319,12 +253,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "bytedance/v1-pro-text-to-video",
@@ -335,12 +264,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "cheap_models_test_results",
@@ -351,12 +275,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "elevenlabs/audio-isolation",
@@ -367,12 +286,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "elevenlabs/sound-effect",
@@ -383,12 +297,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "elevenlabs/sound-effect-v2",
@@ -399,12 +308,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "elevenlabs/speech-to-text",
@@ -415,12 +319,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "elevenlabs/text-to-speech",
@@ -431,12 +330,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "elevenlabs/text-to-speech-multilingual-v2",
@@ -447,12 +341,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "flux-2/flex-image-to-image",
@@ -463,12 +352,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "flux-2/flex-text-to-image",
@@ -479,12 +363,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "flux-2/pro-image-to-image",
@@ -495,12 +374,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "flux-2/pro-text-to-image",
@@ -511,12 +385,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "flux/kontext",
@@ -527,12 +396,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "generation_test_results_20251217_170008",
@@ -543,12 +407,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "generation_test_results_20251217_170332",
@@ -559,12 +418,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "google/imagen4",
@@ -575,12 +429,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "google/imagen4-fast",
@@ -591,12 +440,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "google/imagen4-ultra",
@@ -607,12 +451,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "google/nano-banana",
@@ -623,12 +462,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "google/nano-banana-edit",
@@ -639,12 +473,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "google/nano-banana-pro",
@@ -655,12 +484,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "google/veo-3",
@@ -671,12 +495,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "google/veo-3.1",
@@ -687,12 +506,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "grok-imagine/image-to-video",
@@ -703,12 +517,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "grok-imagine/text-to-image",
@@ -719,12 +528,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "grok-imagine/text-to-video",
@@ -735,12 +539,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "grok/imagine",
@@ -751,12 +550,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "hailuo/02-image-to-video-pro",
@@ -767,12 +561,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "hailuo/02-image-to-video-standard",
@@ -783,12 +572,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "hailuo/02-text-to-video-pro",
@@ -799,12 +583,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "hailuo/02-text-to-video-standard",
@@ -815,12 +594,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "hailuo/2-3-image-to-video-pro",
@@ -831,12 +605,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "hailuo/2-3-image-to-video-standard",
@@ -847,12 +616,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "hailuo/2.3",
@@ -863,12 +627,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "ideogram/character",
@@ -879,12 +638,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "ideogram/character-edit",
@@ -895,12 +649,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "ideogram/character-remix",
@@ -911,12 +660,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "ideogram/v3-edit",
@@ -927,12 +671,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "ideogram/v3-reframe",
@@ -943,12 +682,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "ideogram/v3-remix",
@@ -959,12 +693,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "ideogram/v3-text-to-image",
@@ -975,12 +704,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "infinitalk/from-audio",
@@ -991,12 +715,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "kling-2.6/image-to-video",
@@ -1007,12 +726,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "kling-2.6/text-to-video",
@@ -1023,12 +737,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "kling/ai-avatar-v1-pro",
@@ -1039,12 +748,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "kling/v1-avatar-standard",
@@ -1055,12 +759,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "kling/v2-1-master-image-to-video",
@@ -1071,12 +770,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "kling/v2-1-master-text-to-video",
@@ -1087,12 +781,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "kling/v2-1-pro",
@@ -1103,12 +792,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "kling/v2-1-standard",
@@ -1119,12 +803,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "kling/v2-5-turbo-image-to-video-pro",
@@ -1135,12 +814,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "kling/v2-5-turbo-text-to-video-pro",
@@ -1151,12 +825,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "midjourney/api",
@@ -1167,12 +836,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "nano-banana-pro",
@@ -1183,12 +847,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "openai/4o-image",
@@ -1199,12 +858,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "qwen/image-edit",
@@ -1215,12 +869,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "qwen/image-to-image",
@@ -1231,12 +880,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "qwen/text-to-image",
@@ -1247,12 +891,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "recraft/crisp-upscale",
@@ -1263,12 +902,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "recraft/remove-background",
@@ -1279,12 +913,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "runway/gen-4",
@@ -1295,12 +924,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "seedream/4.5-edit",
@@ -1311,12 +935,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "seedream/4.5-text-to-image",
@@ -1327,12 +946,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "sora-2-image-to-video",
@@ -1343,12 +957,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "sora-2-pro-image-to-video",
@@ -1359,12 +968,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "sora-2-pro-storyboard",
@@ -1375,12 +979,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "sora-2-pro-text-to-video",
@@ -1391,12 +990,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "sora-2-text-to-video",
@@ -1407,12 +1001,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "sora-watermark-remover",
@@ -1423,12 +1012,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "source",
@@ -1439,12 +1023,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "suno/v5",
@@ -1455,12 +1034,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "topaz/image-upscale",
@@ -1471,12 +1045,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "topaz/video-upscale",
@@ -1487,12 +1056,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "wan/2-2-a14b-image-to-video-turbo",
@@ -1503,12 +1067,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "wan/2-2-a14b-speech-to-video-turbo",
@@ -1519,12 +1078,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "wan/2-2-a14b-text-to-video-turbo",
@@ -1535,12 +1089,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "wan/2-2-animate-move",
@@ -1551,12 +1100,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "wan/2-2-animate-replace",
@@ -1567,12 +1111,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "wan/2-5-image-to-video",
@@ -1583,12 +1122,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "wan/2-5-text-to-video",
@@ -1599,12 +1133,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "wan/2-6-image-to-video",
@@ -1615,12 +1144,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "wan/2-6-text-to-video",
@@ -1631,12 +1155,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "wan/2-6-video-to-video",
@@ -1647,12 +1166,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     },
     {
       "model_id": "z-image",
@@ -1663,13 +1177,7 @@
         "properties": {}
       },
       "output_type": "json",
-      "example_payload": {},
-      "source_file": "models\\kie_models_source_of_truth.json",
-      "metadata": {
-        "endpoint": "",
-        "method": "POST"
-      }
+      "description": ""
     }
-  ],
-  "note": "This registry contains ONLY models documented in repository. NO marketplace parsing."
+  ]
 }
