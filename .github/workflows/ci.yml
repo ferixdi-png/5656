@@ -31,4 +31,4 @@ jobs:
       - name: Verify project
         run: python scripts/verify_project.py
       - name: Dry run startup
-        run: DRY_RUN=1 TELEGRAM_BOT_TOKEN=123456:TEST python main_render.py
+        run: DRY_RUN=1 TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN python main_render.py

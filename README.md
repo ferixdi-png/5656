@@ -30,6 +30,7 @@ pip install -r requirements.txt
 **Service type:** Background Worker (polling)  
 **Branch:** `main`  
 **Auto Deploy:** ON
+**Single source of truth for deploy settings.**
 
 **Build Command:**
 ```bash
