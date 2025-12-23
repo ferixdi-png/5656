@@ -293,7 +293,8 @@ class KieApiScraper:
             resp = self._safe_request(self.market_url)
             print(f"   ✅ ОТВЕТ: Получен ответ со статусом {resp.status_code}")
             
-            soup = BeautifulSoup(resp.text, 'html.parser')
+            resp_text = resp.text
+            soup = BeautifulSoup(resp_text, 'html.parser')
             print(f"   🔍 ОТВЕТ: Парсинг HTML страницы...")
             
             model_links = []
@@ -400,6 +401,24 @@ class KieApiScraper:
                     if not script_text or len(script_text) < 10:
                         continue
                     
+                    # Ищем __NEXT_DATA__ или подобные структуры (Next.js)
+                    if '__NEXT_DATA__' in script_text or '__NEXT_PAGE__' in script_text:
+                        logger.info("Найден __NEXT_DATA__, пытаемся извлечь данные")
+                        # Ищем JSON объект после __NEXT_DATA__ =
+                        next_data_match = re.search(r'__NEXT_DATA__\s*=\s*({.+?})\s*</script>', script_text, re.DOTALL)
+                        if next_data_match:
+                            try:
+                                next_data = json.loads(next_data_match.group(1))
+                                # Ищем в props или pageProps
+                                if 'props' in next_data:
+                                    self._extract_models_from_json(next_data['props'], model_links)
+                                if 'pageProps' in next_data:
+                                    self._extract_models_from_json(next_data['pageProps'], model_links)
+                                # Рекурсивный поиск
+                                self._extract_models_from_json(next_data, model_links)
+                            except (json.JSONDecodeError, ValueError, IndexError) as e:
+                                logger.debug(f"Ошибка парсинга __NEXT_DATA__: {e}")
+                    
                     # Пытаемся найти JSON в тексте
                     # Ищем паттерны типа window.__INITIAL_STATE__ или подобные
                     json_patterns = [
@@ -415,6 +434,9 @@ class KieApiScraper:
                         for match in matches:
                             try:
                                 json_str = match.group(1)
+                                # Ограничиваем размер для безопасности
+                                if len(json_str) > 100000:
+                                    continue
                                 data = json.loads(json_str)
                                 # Рекурсивный поиск моделей в JSON
                                 self._extract_models_from_json(data, model_links)
@@ -433,7 +455,30 @@ class KieApiScraper:
                     # Игнорируем ошибки
                     pass
             
-            # Стратегия 4: Поиск по тексту страницы (fallback)
+            # Стратегия 4: Поиск в data-атрибутах и JavaScript переменных
+            # Ищем data-model, data-api и подобные атрибуты
+            data_elements = soup.find_all(attrs={'data-model': True})
+            data_elements.extend(soup.find_all(attrs={'data-api': True}))
+            data_elements.extend(soup.find_all(attrs={'data-name': True}))
+            
+            for elem in data_elements:
+                name = elem.get('data-model') or elem.get('data-api') or elem.get('data-name')
+                href = elem.get('href') or elem.find('a', href=True)
+                if href and isinstance(href, str):
+                    url = urljoin(self.market_url, href)
+                elif hasattr(href, 'get'):
+                    url = urljoin(self.market_url, href.get('href', ''))
+                else:
+                    url = urljoin(self.market_url, f"/ru/market/{name.lower().replace(' ', '-')}")
+                
+                if name and self._validate_url(url):
+                    if not any(m['name'] == name for m in model_links):
+                        model_links.append({
+                            'name': name,
+                            'url': url
+                        })
+            
+            # Стратегия 5: Поиск по тексту страницы (fallback)
             if len(model_links) == 0:
                 logger.warning("Модели не найдены стандартными методами, используем fallback поиск")
                 # Ищем любые упоминания моделей в тексте
@@ -1327,6 +1372,10 @@ class KieApiScraper:
             file_size = os.path.getsize(output_path) if os.path.exists(output_path) else 0
             print(f"✅ ОТВЕТ: Файл {output_file} успешно сохранен ({file_size} байт, {len(valid_models)} моделей)")
             
+            # Вычисляем время выполнения
+            self.metrics['end_time'] = time.time()
+            elapsed_time = self.metrics['end_time'] - self.metrics['start_time']
+            
             # Генерация резюме
             summary = self.generate_summary()
             
@@ -1385,8 +1434,9 @@ class KieApiScraper:
             print(f"   📋 Детали: {traceback.format_exc()}")
             return []
         
-        # Статистика и метрики
-        self.metrics['end_time'] = time.time()
+        # Статистика и метрики (если еще не вычислено)
+        if self.metrics['end_time'] is None:
+            self.metrics['end_time'] = time.time()
         elapsed_time = self.metrics['end_time'] - self.metrics['start_time']
         stats = self._get_statistics()
         
