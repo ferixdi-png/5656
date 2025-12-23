@@ -216,24 +216,38 @@ class KieGenerator:
                     if time_since_heartbeat >= self._heartbeat_interval:
                         if progress_callback:
                             # Use real progress from Kie.ai if available
+                            # MASTER PROMPT: "7. Прогресс / ETA" - enhanced formatting
                             progress_percent = parsed.get('progress', 0)
                             eta_seconds = parsed.get('eta')
                             
                             if progress_percent and progress_percent > 0:
-                                progress_callback(
-                                    f"⏳ Генерация: {progress_percent}% готово\n"
-                                    f"Пожалуйста, подождите."
-                                )
+                                # Show progress bar
+                                bar_length = 10
+                                filled = int(progress_percent / 10)
+                                bar = '█' * filled + '░' * (bar_length - filled)
+                                
+                                if eta_seconds:
+                                    progress_callback(
+                                        f"⏳ <b>Генерация</b>\n\n"
+                                        f"{bar} {progress_percent}%\n"
+                                        f"Осталось: ~{eta_seconds} сек"
+                                    )
+                                else:
+                                    progress_callback(
+                                        f"⏳ <b>Генерация</b>\n\n"
+                                        f"{bar} {progress_percent}%"
+                                    )
                             elif eta_seconds:
                                 progress_callback(
-                                    f"⏳ Генерация... (осталось ~{eta_seconds}с)\n"
-                                    f"Пожалуйста, подождите."
+                                    f"⏳ <b>Генерация...</b>\n\n"
+                                    f"Осталось: ~{eta_seconds} сек"
                                 )
                             else:
-                                # Fallback: show elapsed time
+                                # Fallback: show elapsed time with animation
+                                dots = '.' * (int(elapsed) % 4)
                                 progress_callback(
-                                    f"⏳ Генерация в процессе... ({int(elapsed)}с)\n"
-                                    f"Пожалуйста, подождите."
+                                    f"⏳ <b>Генерация{dots}</b>\n\n"
+                                    f"Прошло: {int(elapsed)} сек"
                                 )
                         last_heartbeat = datetime.now()
                     

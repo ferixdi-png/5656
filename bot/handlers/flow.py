@@ -1112,10 +1112,15 @@ async def confirm_cb(callback: CallbackQuery, state: FSMContext) -> None:
         await state.clear()
         return
 
-    await callback.message.edit_text("⏳ <b>Генерация запущена</b>\n\nЯ сообщу о результате. Пожалуйста, подождите...")
+    # Send initial progress message
+    progress_msg = await callback.message.edit_text(
+        "⏳ <b>Генерация запущена</b>\n\nИнициализация..."
+    )
 
+    # MASTER PROMPT: "7. Прогресс / ETA"
+    # Update SAME message instead of creating new ones
     def heartbeat(text: str) -> None:
-        asyncio.create_task(callback.message.answer(text))
+        asyncio.create_task(progress_msg.edit_text(text, parse_mode="HTML"))
 
     charge_task_id = f"charge_{callback.from_user.id}_{callback.message.message_id}"
     result = await generate_with_payment(
