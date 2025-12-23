@@ -68,6 +68,18 @@ def build_payload(
         'model': model_id
     }
     
+    # FALLBACK: If no properties defined, assume simple prompt-only model
+    if not properties:
+        # Try to find prompt/text in user_inputs
+        prompt_value = user_inputs.get('prompt') or user_inputs.get('text')
+        if prompt_value:
+            payload['prompt'] = prompt_value
+        # Add any other user_inputs as-is (for flexibility)
+        for key, value in user_inputs.items():
+            if key not in ['prompt', 'text'] and value is not None:
+                payload[key] = value
+        return payload
+    
     # Process required fields
     for field_name in required_fields:
         field_spec = properties.get(field_name, {})

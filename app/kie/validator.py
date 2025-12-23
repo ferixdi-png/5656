@@ -108,10 +108,16 @@ def validate_model_inputs(
         ModelContractError: If contract is violated
     """
     input_schema = model_schema.get('input_schema', {})
-    if not input_schema:
-        raise ModelContractError(
-            f"Model {model_id} has no input_schema defined"
-        )
+    
+    # FALLBACK: If model has no input_schema or empty properties, assume simple prompt-only model
+    if not input_schema or not input_schema.get('properties'):
+        # Simple validation: must have 'prompt' or 'text' field
+        if not user_inputs.get('prompt') and not user_inputs.get('text'):
+            raise ModelContractError(
+                f"Model {model_id} requires 'prompt' or 'text' field"
+            )
+        # Allow this simple case
+        return
     
     required_fields = input_schema.get('required', [])
     optional_fields = input_schema.get('optional', [])

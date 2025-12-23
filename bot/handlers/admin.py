@@ -97,6 +97,7 @@ async def cb_admin_models(callback: CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="🎁 Список бесплатных", callback_data="admin:models:list_free")],
         [InlineKeyboardButton(text="➕ Сделать модель бесплатной", callback_data="admin:models:add_free")],
         [InlineKeyboardButton(text="📊 Статистика моделей", callback_data="admin:models:stats")],
+        [InlineKeyboardButton(text="⚠️ Модели без schema", callback_data="admin:models:broken")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin:main")]
     ])
     
@@ -456,6 +457,72 @@ async def cb_admin_log(callback: CallbackQuery):
     await callback.answer()
 
 
+@router.callback_query(F.data == "admin:models:broken")
+async def cb_admin_models_broken(callback: CallbackQuery, state: FSMContext):
+    """Show models without valid input_schema."""
+    if not await is_admin(callback.from_user.id, _db_service):
+        await callback.answer("⛔️ Доступ запрещён", show_alert=True)
+        return
+    
+    # Load registry and find broken models
+    from app.ui.marketing_menu import load_registry
+    
+    registry = load_registry()
+    broken_models = []
+    
+    for model in registry:
+        if model.get("type") != "model":
+            continue
+        
+        # Check if model has valid schema
+        input_schema = model.get("input_schema", {})
+        properties = input_schema.get("properties", {})
+        
+        if not input_schema or not properties:
+            model_id = model.get("model_id", "unknown")
+            price = model.get("price", 0)
+            is_pricing_known = model.get("is_pricing_known", False)
+            broken_models.append({
+                "model_id": model_id,
+                "price": price,
+                "enabled": is_pricing_known
+            })
+    
+    if not broken_models:
+        text = (
+            f"✅ <b>Все модели валидны</b>\n\n"
+            f"Нет моделей без input_schema"
+        )
+    else:
+        text = (
+            f"⚠️ <b>Модели без input_schema</b>\n\n"
+            f"Найдено: {len(broken_models)}\n\n"
+            f"Эти модели скрыты от пользователей:\n\n"
+        )
+        
+        for m in broken_models[:10]:  # Limit to 10
+            status = "🟢" if m["enabled"] else "🔴"
+            text += f"{status} {m['model_id']}\n"
+            text += f"   Цена: {m['price']} RUB\n\n"
+        
+        if len(broken_models) > 10:
+            text += f"... ещё {len(broken_models) - 10} моделей\n\n"
+        
+        text += (
+            f"<b>Решение:</b>\n"
+            f"• Enrichment через KIE API\n"
+            f"• Ручное добавление schema\n"
+            f"• Используется fallback (prompt-only)"
+        )
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin:models")]
+    ])
+    
+    await callback.message.edit_text(text, reply_markup=keyboard)
+    await callback.answer()
+
+
 @router.callback_query(F.data == "admin:main")
 async def cb_admin_main(callback: CallbackQuery, state: FSMContext):
     """Return to admin main menu."""
@@ -484,3 +551,4 @@ async def cb_admin_main(callback: CallbackQuery, state: FSMContext):
 
 # Export
 __all__ = ["router", "set_services"]
+

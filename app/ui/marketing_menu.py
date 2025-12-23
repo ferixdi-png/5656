@@ -103,7 +103,13 @@ def map_model_to_marketing_category(model: Dict) -> str:
 
 
 def build_ui_tree() -> Dict[str, List[Dict]]:
-    """Build UI tree from registry."""
+    """
+    Build UI tree from registry.
+    
+    Only includes models that:
+    - Are enabled (is_pricing_known=True)
+    - Have valid input_schema with properties defined
+    """
     registry = load_registry()
     tree = {cat: [] for cat in MARKETING_CATEGORIES.keys()}
     
@@ -114,6 +120,18 @@ def build_ui_tree() -> Dict[str, List[Dict]]:
         
         # Skip disabled models without pricing
         if not model.get("is_pricing_known", False):
+            continue
+        
+        # CRITICAL: Skip models without valid input_schema
+        # These models will fail validation during generation
+        input_schema = model.get("input_schema", {})
+        properties = input_schema.get("properties", {})
+        
+        if not input_schema or not properties:
+            # Model has no defined inputs - cannot be used
+            model_id = model.get("model_id", "unknown")
+            # Silently skip - don't show to users
+            # (Admin panel will show these as "needs schema")
             continue
         
         mk_cat = map_model_to_marketing_category(model)
