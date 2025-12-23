@@ -48,8 +48,23 @@ def _source_of_truth() -> Dict[str, Any]:
     return load_source_of_truth()
 
 
+def _is_valid_model(model: Dict[str, Any]) -> bool:
+    """Filter out technical/invalid models from registry."""
+    model_id = model.get("model_id", "")
+    if not model_id:
+        return False
+    # Skip uppercase technical entries
+    if model_id.isupper():
+        return False
+    # Skip processor entries
+    if model_id.endswith("_processor"):
+        return False
+    # Prefer vendor/name format
+    return "/" in model_id
+
+
 def _models_by_category() -> Dict[str, List[Dict[str, Any]]]:
-    models = [model for model in _source_of_truth().get("models", []) if model.get("model_id")]
+    models = [model for model in _source_of_truth().get("models", []) if _is_valid_model(model)]
     grouped: Dict[str, List[Dict[str, Any]]] = {}
     for model in models:
         category = model.get("category", "other") or "other"
@@ -81,9 +96,13 @@ def _category_keyboard() -> InlineKeyboardMarkup:
 def _main_menu_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🚀 Генерация", callback_data="menu:generate")],
-            [InlineKeyboardButton(text="💳 Баланс / Оплата", callback_data="menu:balance")],
-            [InlineKeyboardButton(text="ℹ️ Поддержка", callback_data="menu:support")],
+            [InlineKeyboardButton(text="🎬 Видео для Reels/TikTok", callback_data="cat:t2v")],
+            [InlineKeyboardButton(text="🎨 Картинка/пост/баннер", callback_data="cat:t2i")],
+            [InlineKeyboardButton(text="✏️ Улучшить/редактировать", callback_data="menu:edit")],
+            [InlineKeyboardButton(text="⭐ Все категории", callback_data="menu:all_categories")],
+            [InlineKeyboardButton(text="🔎 Поиск модели", callback_data="menu:search")],
+            [InlineKeyboardButton(text="� История", callback_data="menu:history")],
+            [InlineKeyboardButton(text="�💳 Баланс / Оплата", callback_data="menu:balance")],
         ]
     )
 
@@ -244,6 +263,93 @@ async def generate_menu_cb(callback: CallbackQuery, state: FSMContext) -> None:
     )
 
 
+@router.callback_query(F.data == "menu:all_categories")
+async def all_categories_cb(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    await state.clear()
+    await callback.message.edit_text(
+        "📂 Все категории\n\nВыберите категорию:",
+        reply_markup=_category_keyboard(),
+    )
+
+
+@router.callback_query(F.data == "menu:edit")
+async def edit_menu_cb(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    await state.clear()
+    # Show editing categories
+    edit_categories = ["i2i", "upscale", "bg_remove", "watermark_remove"]
+    grouped = _models_by_category()
+    rows = []
+    for cat in edit_categories:
+        if cat in grouped and grouped[cat]:
+            label = _category_label(cat)
+            rows.append([InlineKeyboardButton(text=label, callback_data=f"cat:{cat}")])
+    rows.append([InlineKeyboardButton(text="◀️ В меню", callback_data="main_menu")])
+    await callback.message.edit_text(
+        "✏️ Редактирование\n\nВыберите действие:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
+    )
+
+
+class SearchFlow(StatesGroup):
+    waiting_query = State()
+
+
+@router.callback_query(F.data == "menu:search")
+async def search_menu_cb(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    await state.set_state(SearchFlow.waiting_query)
+    await callback.message.edit_text(
+        "🔎 Поиск модели\n\n"
+        "Введите название модели или ключевые слова (например: flux, kling, video, upscale):",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="◀️ В меню", callback_data="main_menu")]]
+        ),
+    )
+
+
+@router.message(SearchFlow.waiting_query, F.text)
+async def search_query_handler(message: Message, state: FSMContext) -> None:
+    query = (message.text or "").lower().strip()
+    if not query:
+        await message.answer("⚠️ Введите поисковый запрос.")
+        return
+    
+    await state.clear()
+    
+    # Search models
+    all_models = [m for m in _source_of_truth().get("models", []) if _is_valid_model(m)]
+    matches = []
+    for model in all_models:
+        model_id = model.get("model_id", "").lower()
+        name = (model.get("name") or "").lower()
+        desc = (model.get("description") or "").lower()
+        best_for = (model.get("best_for") or "").lower()
+        
+        if query in model_id or query in name or query in desc or query in best_for:
+            matches.append(model)
+    
+    if not matches:
+        await message.answer(
+            f"❌ По запросу '{query}' ничего не найдено.\n\n"
+            "Попробуйте другие ключевые слова.",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="🔎 Новый поиск", callback_data="menu:search")],
+                    [InlineKeyboardButton(text="◀️ В меню", callback_data="main_menu")],
+                ]
+            ),
+        )
+        return
+    
+    # Show results
+    await message.answer(
+        f"🔎 Найдено моделей: {len(matches)}\n\nВыберите модель:",
+        reply_markup=_model_keyboard(matches[:20], "menu:search"),  # Limit to first 20
+    )
+
+
 @router.callback_query(F.data.in_({"support", "menu:support"}))
 async def support_cb(callback: CallbackQuery) -> None:
     await callback.answer()
@@ -266,6 +372,135 @@ async def balance_cb(callback: CallbackQuery) -> None:
             ]
         ),
     )
+
+
+@router.callback_query(F.data == "menu:history")
+async def history_cb(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    await state.clear()
+    history = get_charge_manager().get_user_history(callback.from_user.id, limit=10)
+    
+    if not history:
+        await callback.message.edit_text(
+            "🕘 История генераций пуста.\n\n"
+            "Создайте свою первую генерацию!",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[[InlineKeyboardButton(text="◀️ В меню", callback_data="main_menu")]]
+            ),
+        )
+        return
+    
+    # Show history
+    text_lines = ["🕘 <b>Последние генерации:</b>\n"]
+    rows = []
+    for idx, record in enumerate(history[:5]):
+        model_id = record.get('model_id', 'unknown')
+        success = record.get('success', False)
+        timestamp = record.get('timestamp', '')[:16]  # YYYY-MM-DDTHH:MM
+        status_icon = "✅" if success else "❌"
+        text_lines.append(f"{status_icon} {model_id} - {timestamp}")
+        # Add repeat button
+        if success and idx < 3:  # Only first 3
+            rows.append([InlineKeyboardButton(text=f"🔁 {model_id}", callback_data=f"repeat:{idx}")])
+    
+    text_lines.append("\nНажмите 🔁 чтобы повторить генерацию.")
+    rows.append([InlineKeyboardButton(text="◀️ В меню", callback_data="main_menu")])
+    
+    await callback.message.edit_text(
+        "\n".join(text_lines),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
+    )
+
+
+@router.callback_query(F.data.startswith("repeat:"))
+async def repeat_cb(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    idx_str = callback.data.split(":", 1)[1]
+    try:
+        idx = int(idx_str)
+    except ValueError:
+        await callback.message.edit_text("⚠️ Ошибка.")
+        return
+    
+    history = get_charge_manager().get_user_history(callback.from_user.id, limit=10)
+    if idx >= len(history):
+        await callback.message.edit_text("⚠️ Генерация не найдена.")
+        return
+    
+    record = history[idx]
+    model_id = record.get('model_id')
+    inputs = record.get('inputs', {})
+    
+    # Re-run generation with same inputs
+    model = next((m for m in _source_of_truth().get("models", []) if m.get("model_id") == model_id), None)
+    if not model:
+        await callback.message.edit_text("⚠️ Модель не найдена.")
+        return
+    
+    price_raw = model.get("price") or 0
+    try:
+        amount = float(price_raw)
+    except (TypeError, ValueError):
+        amount = 0.0
+    
+    charge_manager = get_charge_manager()
+    balance = charge_manager.get_user_balance(callback.from_user.id)
+    if amount > 0 and balance < amount:
+        await callback.message.edit_text(
+            "❌ Недостаточно средств для повтора.\n\n"
+            f"Цена: {amount:.2f}\n"
+            f"Баланс: {balance:.2f}",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="💳 Пополнить", callback_data="menu:balance")],
+                    [InlineKeyboardButton(text="◀️ В меню", callback_data="main_menu")],
+                ]
+            ),
+        )
+        return
+    
+    await callback.message.edit_text("⏳ Повторная генерация запущена...")
+    
+    def heartbeat(text: str) -> None:
+        asyncio.create_task(callback.message.answer(text))
+    
+    charge_task_id = f"repeat_{callback.from_user.id}_{callback.message.message_id}"
+    result = await generate_with_payment(
+        model_id=model_id,
+        user_inputs=inputs,
+        user_id=callback.from_user.id,
+        amount=amount,
+        progress_callback=heartbeat,
+        task_id=charge_task_id,
+        reserve_balance=True,
+    )
+    
+    if result.get("success"):
+        urls = result.get("result_urls") or []
+        if urls:
+            await callback.message.answer("\n".join(urls))
+        else:
+            await callback.message.answer("✅ Готово!")
+        await callback.message.answer(
+            "Что дальше?",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="🔁 Ещё раз", callback_data=f"repeat:{idx}")],
+                    [InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu")],
+                ]
+            ),
+        )
+    else:
+        await callback.message.answer(result.get("message", "❌ Ошибка"))
+        await callback.message.answer(
+            "Попробовать ещё?",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="🔁 Повторить", callback_data=f"repeat:{idx}")],
+                    [InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu")],
+                ]
+            ),
+        )
 
 
 @router.callback_query(F.data.startswith("cat:"))

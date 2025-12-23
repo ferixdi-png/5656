@@ -4,9 +4,20 @@ Uses standard library only.
 """
 from __future__ import annotations
 
+import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 from typing import Optional, Tuple
+
+
+# Global state for healthcheck
+_health_state = {"mode": "starting", "reason": "initializing"}
+
+
+def set_health_state(mode: str, reason: str = "") -> None:
+    """Update health state visible in /health endpoint."""
+    global _health_state
+    _health_state = {"mode": mode, "reason": reason, "status": "ok"}
 
 
 class _HealthcheckHandler(BaseHTTPRequestHandler):
@@ -15,7 +26,8 @@ class _HealthcheckHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()
-            self.wfile.write(b'{"status":"ok"}')
+            response = json.dumps(_health_state).encode('utf-8')
+            self.wfile.write(response)
             return
         self.send_response(404)
         self.end_headers()

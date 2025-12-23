@@ -18,9 +18,9 @@ logger = logging.getLogger(__name__)
 
 # Explicit imports - no try/except, no importlib, no fallbacks
 from app.utils.singleton_lock import acquire_singleton_lock, release_singleton_lock
-from app.utils.healthcheck import start_healthcheck_server, stop_healthcheck_server
+from app.utils.healthcheck import start_healthcheck_server, stop_healthcheck_server, set_health_state
 from app.storage.pg_storage import PGStorage, PostgresStorage
-from bot.handlers import zero_silence_router, error_handler_router
+from bot.handlers import flow_router, zero_silence_router, error_handler_router
 
 # Import aiogram components
 from aiogram import Bot, Dispatcher
@@ -60,7 +60,8 @@ def create_bot_application() -> Tuple[Dispatcher, Bot]:
     # Create dispatcher
     dp = Dispatcher()
     
-    # Register routers in order
+    # Register routers in order (flow first for /start and main UX)
+    dp.include_router(flow_router)
     dp.include_router(zero_silence_router)
     dp.include_router(error_handler_router)
     
@@ -85,14 +86,30 @@ async def main():
     bot_mode = os.getenv("BOT_MODE", "polling").lower()
 
     # Step 1: Acquire singleton lock (if DATABASE_URL provided and not DRY_RUN)
+    lock_acquired = False
     database_url = os.getenv("DATABASE_URL")
     if database_url and not dry_run:
         lock_acquired = await acquire_singleton_lock(dsn=database_url, timeout=5.0)
         if not lock_acquired:
-            logger.warning("Singleton lock not acquired - another instance may be running")
+            logger.warning("Singleton lock not acquired - another instance is running. Running in passive mode (healthcheck only).")
+            set_health_state("passive", "lock_not_acquired")
+            # Passive mode: keep healthcheck running, but NO polling
+            logger.info("Passive mode: healthcheck available, polling disabled")
+            # Block indefinitely to keep healthcheck alive
+            try:
+                await asyncio.Event().wait()  # Wait forever
+            except KeyboardInterrupt:
+                logger.info("Passive mode interrupted by user")
+            finally:
+                stop_healthcheck_server(healthcheck_server)
+            return
+        logger.info("Singleton lock acquired successfully - running in active mode")
+        set_health_state("active", "lock_acquired")
     else:
         if dry_run:
             logger.info("DRY_RUN enabled - skipping singleton lock")
+            lock_acquired = True  # Allow DRY_RUN to proceed
+            set_health_state("active", "dry_run_mode")
     
     # Step 2: Initialize storage (if DATABASE_URL provided and not DRY_RUN)
     storage = None

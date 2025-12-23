@@ -13,20 +13,25 @@ def _flatten_buttons(markup):
 def test_main_menu_buttons():
     markup = flow._main_menu_keyboard()
     buttons = _flatten_buttons(markup)
-    assert ("🚀 Генерация", "menu:generate") in buttons
-    assert ("💳 Баланс / Оплата", "menu:balance") in buttons
-    assert ("ℹ️ Поддержка", "menu:support") in buttons
+    callbacks = [cb for _, cb in buttons]
+    # Check callback_data instead of text (emoji issues in terminal)
+    assert "cat:t2v" in callbacks
+    assert "cat:t2i" in callbacks
+    assert "menu:balance" in callbacks
+    assert "menu:search" in callbacks
+    assert "menu:history" in callbacks
 
 
 def test_categories_cover_registry():
     source = load_source_of_truth()
-    models = source.get("models", [])
+    # Only valid models (filtered)
+    models = [m for m in source.get("models", []) if flow._is_valid_model(m)]
     model_categories = {
         (model.get("category", "other") or "other")
         for model in models
-        if model.get("model_id")
     }
     registry_categories = {category for category, _ in flow._categories_from_registry()}
+    # All model categories should be in registry
     assert model_categories <= registry_categories
 
 

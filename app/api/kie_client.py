@@ -48,20 +48,30 @@ class KieApiClient:
         return f"{self.base_url}/api/v1"
 
     async def create_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Create Kie.ai task."""
+        """Create Kie.ai task with retry logic."""
         url = f"{self._api_base()}/jobs/createTask"
-        try:
-            return await asyncio.to_thread(self._post, url, payload)
-        except requests.RequestException as exc:
-            logger.error("Kie createTask failed: %s", exc, exc_info=True)
-            return {"error": str(exc), "state": "fail"}
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                return await asyncio.to_thread(self._post, url, payload)
+            except requests.RequestException as exc:
+                logger.warning(f"Kie createTask attempt {attempt+1}/{max_retries} failed: {exc}")
+                if attempt == max_retries - 1:
+                    logger.error("Kie createTask failed after retries: %s", exc, exc_info=True)
+                    return {"error": str(exc), "state": "fail"}
+                await asyncio.sleep(1 * (attempt + 1))  # Exponential backoff
 
     async def get_record_info(self, task_id: str) -> Dict[str, Any]:
-        """Get Kie.ai task record info."""
+        """Get Kie.ai task record info with retry logic."""
         url = f"{self._api_base()}/jobs/recordInfo"
         payload = {"taskId": task_id}
-        try:
-            return await asyncio.to_thread(self._get, url, payload)
-        except requests.RequestException as exc:
-            logger.error("Kie recordInfo failed: %s", exc, exc_info=True)
-            return {"error": str(exc), "state": "fail"}
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                return await asyncio.to_thread(self._get, url, payload)
+            except requests.RequestException as exc:
+                logger.warning(f"Kie recordInfo attempt {attempt+1}/{max_retries} failed: {exc}")
+                if attempt == max_retries - 1:
+                    logger.error("Kie recordInfo failed after retries: %s", exc, exc_info=True)
+                    return {"error": str(exc), "state": "fail"}
+                await asyncio.sleep(1 * (attempt + 1))  # Exponential backoff

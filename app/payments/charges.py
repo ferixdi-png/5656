@@ -29,6 +29,7 @@ class ChargeManager:
         self._committed_info: Dict[str, Dict[str, Any]] = {}
         self._balances: Dict[int, float] = {}
         self._welcomed_users: Set[int] = set()
+        self._generation_history: Dict[int, list] = {}  # user_id -> [generation_record]
 
     def get_user_balance(self, user_id: int) -> float:
         return self._balances.get(user_id, 0.0)
@@ -348,6 +349,27 @@ class ChargeManager:
         # TODO: Implement actual refund API call
         logger.info(f"Executing refund for task {task_id}, reason: {reason}")
         return {'success': True, 'refund_id': f"refund_{task_id}"}
+
+    def add_to_history(self, user_id: int, model_id: str, inputs: Dict[str, Any], result: str, success: bool) -> None:
+        """Add generation to user history."""
+        if user_id not in self._generation_history:
+            self._generation_history[user_id] = []
+        
+        record = {
+            'timestamp': datetime.now().isoformat(),
+            'model_id': model_id,
+            'inputs': inputs,
+            'result': result,
+            'success': success,
+        }
+        self._generation_history[user_id].insert(0, record)  # Most recent first
+        # Keep only last 20
+        self._generation_history[user_id] = self._generation_history[user_id][:20]
+
+    def get_user_history(self, user_id: int, limit: int = 10) -> list:
+        """Get user generation history."""
+        history = self._generation_history.get(user_id, [])
+        return history[:limit]
 
 
 # Global instance

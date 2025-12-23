@@ -83,6 +83,10 @@ async def generate_with_payment(
     if gen_result.get('success'):
         # SUCCESS: Commit charge
         commit_result = await charge_manager.commit_charge(charge_task_id)
+        # Add to history
+        result_urls = gen_result.get('result_urls', [])
+        result_text = '\n'.join(result_urls) if result_urls else 'Success'
+        charge_manager.add_to_history(user_id, model_id, user_inputs, result_text, True)
         return {
             **gen_result,
             'charge_task_id': charge_task_id,
@@ -95,6 +99,9 @@ async def generate_with_payment(
             charge_task_id,
             reason=gen_result.get('error_code', 'generation_failed')
         )
+        # Add to history
+        error_msg = gen_result.get('message', 'Failed')
+        charge_manager.add_to_history(user_id, model_id, user_inputs, error_msg, False)
         return {
             **gen_result,
             'charge_task_id': charge_task_id,
