@@ -27,9 +27,9 @@ except ImportError:
     HAS_PSYCOPG = False
 
 
-# Lock TTL in seconds (reduced for faster rolling deployment)
-LOCK_TTL = 30
-HEARTBEAT_INTERVAL = 10
+# Lock TTL in seconds (aggressive for zero-downtime rolling deployment)
+LOCK_TTL = 10
+HEARTBEAT_INTERVAL = 3  # Heartbeat more frequently to avoid false stale detection
 
 
 class SingletonLock:

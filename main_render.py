@@ -104,14 +104,20 @@ async def main():
         shutdown_event.set()
         
         # CRITICAL: Release singleton lock IMMEDIATELY to allow new instance to acquire it
+        # Use ensure_future instead of create_task for better reliability
         if singleton_lock_ref["lock"] and singleton_lock_ref["lock"]._acquired:
             logger.info("⚡ Releasing singleton lock immediately for new instance...")
-            # Create emergency task to release lock without blocking signal handler
-            asyncio.create_task(_emergency_lock_release(singleton_lock_ref["lock"]))
+            asyncio.ensure_future(_emergency_lock_release(singleton_lock_ref["lock"]))
     
     async def _emergency_lock_release(lock):
         """Emergency lock release on shutdown signal - allows zero-downtime deployment."""
         try:
+            # Stop heartbeat FIRST to avoid race condition
+            lock._acquired = False
+            if lock._heartbeat_task:
+                lock._heartbeat_task.cancel()
+            
+            # Release lock immediately
             await lock.release()
             logger.info("✅ Singleton lock released successfully on shutdown signal")
         except Exception as e:
@@ -141,8 +147,9 @@ async def main():
         singleton_lock_ref["lock"] = singleton_lock  # Store reference for signal handler
         
         # AGGRESSIVE RETRY: Try to acquire lock multiple times during rolling deployment
-        max_retries = 3
-        retry_delay = 2  # seconds
+        # Total wait time: 5 retries × 3s = 15s (enough for old instance to shutdown + stale detection)
+        max_retries = 5
+        retry_delay = 3  # seconds
         
         for attempt in range(1, max_retries + 1):
             logger.info(f"Lock acquisition attempt {attempt}/{max_retries}...")
@@ -152,10 +159,12 @@ async def main():
                 break
             
             if attempt < max_retries:
-                logger.warning(f"Lock not acquired on attempt {attempt}, waiting {retry_delay}s for old instance to release...")
+                logger.warning(f"Lock not acquired on attempt {attempt}/{max_retries}, waiting {retry_delay}s for old instance to release...")
+                logger.info(f"Next attempt will be at {attempt + 1}/{max_retries} after {retry_delay}s delay")
                 await asyncio.sleep(retry_delay)
             else:
-                logger.warning(f"Lock not acquired after {max_retries} attempts - another instance is running. Running in passive mode (healthcheck only).")
+                logger.error(f"❌ Lock not acquired after {max_retries} attempts ({max_retries * retry_delay}s total wait time)")
+                logger.error("Another instance is still running or lock is stuck. Entering passive mode.")
         
         if not lock_acquired:
             set_health_state("passive", "lock_not_acquired")
