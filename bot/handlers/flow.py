@@ -877,30 +877,42 @@ async def _ask_optional_params(message: Message, state: FSMContext, flow_ctx: In
     """Ask user if they want to configure optional parameters (MASTER PROMPT compliance)."""
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
     
-    # Build keyboard with all optional params
+    # Build keyboard with all optional params (mark configured ones with ✓)
     buttons = []
     for opt_field in flow_ctx.optional_fields:
         field_spec = flow_ctx.properties.get(opt_field, {})
-        field_desc = field_spec.get("description", opt_field)
         default = field_spec.get("default")
         
-        button_text = f"{opt_field}"
-        if default is not None:
-            button_text += f" (default: {default})"
+        # Check if already configured
+        is_configured = opt_field in flow_ctx.collected
+        
+        if is_configured:
+            button_text = f"✓ {opt_field}: {flow_ctx.collected[opt_field]}"
+        else:
+            button_text = f"○ {opt_field}"
+            if default is not None:
+                button_text += f" (default: {default})"
         
         buttons.append([InlineKeyboardButton(text=button_text, callback_data=f"opt_start:{opt_field}")])
     
-    # Add "Skip all" button
-    buttons.append([InlineKeyboardButton(text="⏭ Пропустить все (использовать defaults)", callback_data="opt_skip_all")])
+    # Add "Finish" or "Skip all" button
+    any_configured = any(opt in flow_ctx.collected for opt in flow_ctx.optional_fields)
+    if any_configured:
+        buttons.append([InlineKeyboardButton(text="✅ Готово, перейти к подтверждению", callback_data="opt_skip_all")])
+    else:
+        buttons.append([InlineKeyboardButton(text="⏭ Пропустить все (использовать defaults)", callback_data="opt_skip_all")])
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     
-    params_list = "\n".join([f"• {f}" for f in flow_ctx.optional_fields])
+    # Show status of parameters
+    configured_count = sum(1 for opt in flow_ctx.optional_fields if opt in flow_ctx.collected)
+    total_count = len(flow_ctx.optional_fields)
+    
     await message.answer(
-        f"✅ Обязательные параметры собраны.\n\n"
-        f"🎛 <b>Дополнительные параметры</b> (MASTER PROMPT: ввод ВСЕХ параметров):\n\n"
-        f"{params_list}\n\n"
-        f"Выберите параметр для настройки или пропустите все:",
+        f"🎛 <b>Дополнительные параметры</b> ({configured_count}/{total_count} настроено)\n\n"
+        f"✓ = настроено\n"
+        f"○ = default значение\n\n"
+        f"Выберите параметр для настройки:",
         reply_markup=keyboard
     )
 
@@ -926,13 +938,25 @@ async def _save_input_and_continue(message: Message, state: FSMContext, value: A
         return
 
     flow_ctx.collected[field_name] = value
+    
+    # CRITICAL UX FIX: If collecting optional, RETURN to optional menu after each param
+    # This allows flexible configuration of ANY optional params
+    if flow_ctx.collecting_optional:
+        # Reset to allow selecting another optional param
+        flow_ctx.index = 0
+        flow_ctx.collecting_optional = False
+        await state.update_data(flow_ctx=flow_ctx.__dict__)
+        await _ask_optional_params(message, state, flow_ctx)
+        return
+    
+    # For required fields, continue sequentially
     flow_ctx.index += 1
     await state.update_data(flow_ctx=flow_ctx.__dict__)
 
-    # Check if we finished current field list
+    # Check if we finished required fields
     if flow_ctx.index >= len(current_fields):
         # If we finished required and have optional fields, offer to configure them
-        if not flow_ctx.collecting_optional and flow_ctx.optional_fields:
+        if flow_ctx.optional_fields:
             await _ask_optional_params(message, state, flow_ctx)
             return
         
@@ -941,7 +965,7 @@ async def _save_input_and_continue(message: Message, state: FSMContext, value: A
         await _show_confirmation(message, state, model)
         return
 
-    # Continue to next field in current list
+    # Continue to next required field
     next_field = current_fields[flow_ctx.index]
     next_spec = flow_ctx.properties.get(next_field, {})
     await message.answer(
