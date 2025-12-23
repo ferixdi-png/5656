@@ -187,10 +187,12 @@ class SingletonLock:
             return False
     
     async def release(self):
-        """Release singleton lock."""
+        """Release singleton lock with detailed logging for zero-downtime deployment tracking."""
         if not self._acquired:
+            logger.debug("Lock already released or not acquired - skipping release")
             return
         
+        logger.info(f"🔓 Starting lock release for {self.instance_name}...")
         self._acquired = False
         
         # Cancel heartbeat task
@@ -198,37 +200,44 @@ class SingletonLock:
             self._heartbeat_task.cancel()
             try:
                 await self._heartbeat_task
+                logger.info("Heartbeat task cancelled successfully")
             except asyncio.CancelledError:
-                pass
+                logger.info("Heartbeat task cancelled (expected)")
             self._heartbeat_task = None
         
         if not self._connection:
+            logger.warning("No connection available for lock release")
             return
         
         try:
             # Release advisory lock
             if HAS_ASYNCPG:
-                await self._connection.execute(
+                released = await self._connection.fetchval(
                     "SELECT pg_advisory_unlock($1)",
                     self._lock_id
                 )
+                logger.info(f"Advisory lock released: {released}")
             else:  # psycopg
                 async with self._connection.cursor() as cur:
                     await cur.execute("SELECT pg_advisory_unlock(%s)", (self._lock_id,))
+                    result = await cur.fetchone()
+                    logger.info(f"Advisory lock released: {result[0] if result else False}")
             
             # Remove heartbeat record
-            await self._connection.execute(
+            deleted = await self._connection.execute(
                 "DELETE FROM singleton_heartbeat WHERE lock_id = $1",
                 self._lock_id
             )
+            logger.info(f"Heartbeat record removed (rows affected: {deleted})")
             
-            logger.info(f"✅ Singleton lock released by {self.instance_name}")
+            logger.info(f"✅ Singleton lock fully released by {self.instance_name} - new instance can acquire")
         except Exception as e:
-            logger.warning(f"Error releasing lock: {e}")
+            logger.error(f"❌ Error releasing lock: {e}", exc_info=True)
         finally:
             try:
                 await self._connection.close()
-            except:
-                pass
+                logger.info("Database connection closed")
+            except Exception as e:
+                logger.warning(f"Error closing connection: {e}")
             self._connection = None
 

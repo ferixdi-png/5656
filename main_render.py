@@ -97,10 +97,25 @@ async def main():
     
     # Shutdown event for graceful termination
     shutdown_event = asyncio.Event()
+    singleton_lock_ref = {"lock": None}  # Shared reference for signal handler
     
     def signal_handler(sig):
         logger.info(f"Received signal {sig}, initiating graceful shutdown...")
         shutdown_event.set()
+        
+        # CRITICAL: Release singleton lock IMMEDIATELY to allow new instance to acquire it
+        if singleton_lock_ref["lock"] and singleton_lock_ref["lock"]._acquired:
+            logger.info("⚡ Releasing singleton lock immediately for new instance...")
+            # Create emergency task to release lock without blocking signal handler
+            asyncio.create_task(_emergency_lock_release(singleton_lock_ref["lock"]))
+    
+    async def _emergency_lock_release(lock):
+        """Emergency lock release on shutdown signal - allows zero-downtime deployment."""
+        try:
+            await lock.release()
+            logger.info("✅ Singleton lock released successfully on shutdown signal")
+        except Exception as e:
+            logger.error(f"Error during emergency lock release: {e}", exc_info=True)
     
     # Register signal handlers
     loop = asyncio.get_event_loop()
@@ -123,6 +138,7 @@ async def main():
     if database_url and not dry_run:
         instance_name = config.instance_name
         singleton_lock = SingletonLock(dsn=database_url, instance_name=instance_name)
+        singleton_lock_ref["lock"] = singleton_lock  # Store reference for signal handler
         lock_acquired = await singleton_lock.acquire(timeout=5.0)
         if not lock_acquired:
             logger.warning("Singleton lock not acquired - another instance is running. Running in passive mode (healthcheck only).")

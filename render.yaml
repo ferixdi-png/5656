@@ -7,6 +7,12 @@ services:
     plan: free
     branch: main
     autoDeploy: true
+    # Health check configuration for zero-downtime deployment
+    healthCheckPath: /health
+    # Graceful shutdown configuration
+    preDeployCommand: echo "Starting zero-downtime deployment..."
+    # Give old instance 30 seconds to release lock and shutdown gracefully
+    maxShutdownDelaySeconds: 30
     envVars:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
