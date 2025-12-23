@@ -8,7 +8,8 @@ from app.payments.pricing import (
     format_price_rub,
     create_charge_metadata,
     MARKUP_MULTIPLIER,
-    FALLBACK_PRICES_RUB
+    FALLBACK_PRICES_USD,
+    USD_TO_RUB
 )
 
 
@@ -52,69 +53,76 @@ def test_calculate_kie_cost_from_api_response():
 
 
 def test_calculate_kie_cost_from_registry():
-    """Test extracting Kie cost from registry."""
-    model = {"model_id": "flux-dev", "price": 25.0}
+    """Test extracting Kie cost from registry (USD → RUB)."""
+    model = {"model_id": "flux-dev", "price": 25.0}  # 25 USD
     user_inputs = {}
     
     cost = calculate_kie_cost(model, user_inputs)
-    assert cost == 25.0
+    # 25 USD * 78 = 1950 RUB
+    assert cost == 25.0 * USD_TO_RUB
 
 
 def test_calculate_kie_cost_from_fallback():
-    """Test fallback pricing table."""
+    """Test fallback pricing table (USD → RUB)."""
     # Model exists in fallback
     model = {"model_id": "flux/pro"}  # No price in registry
     cost = calculate_kie_cost(model, {})
-    assert cost == FALLBACK_PRICES_RUB["flux/pro"]
+    # flux/pro = 12.0 USD * 78 = 936.0 RUB
+    assert cost == FALLBACK_PRICES_USD["flux/pro"] * USD_TO_RUB
     
     # Model not in fallback
     model_unknown = {"model_id": "unknown-model-xyz"}
     cost_unknown = calculate_kie_cost(model_unknown, {})
-    assert cost_unknown == 10.0  # Default fallback
+    # Default 10.0 USD * 78 = 780.0 RUB
+    assert cost_unknown == 10.0 * USD_TO_RUB
 
 
 def test_calculate_kie_cost_priority():
     """Test that API response has priority over registry and fallback."""
-    model = {"model_id": "flux/pro", "price": 50.0}
+    model = {"model_id": "flux/pro", "price": 50.0}  # 50 USD
     user_inputs = {}
     
-    # API response should win
+    # API response should win (assumed already in RUB)
     kie_response = {"price": 100.0}
     cost = calculate_kie_cost(model, user_inputs, kie_response)
-    assert cost == 100.0
+    assert cost == 100.0  # RUB from API
     
-    # Registry should win over fallback
-    model2 = {"model_id": "flux/pro", "price": 30.0}
+    # Registry should win over fallback (USD → RUB)
+    model2 = {"model_id": "flux/pro", "price": 30.0}  # 30 USD
     cost2 = calculate_kie_cost(model2, {})
-    assert cost2 == 30.0
+    assert cost2 == 30.0 * USD_TO_RUB  # 30 * 78 = 2340 RUB
 
 
 def test_create_charge_metadata():
     """Test charge metadata creation with pricing."""
-    model = {"model_id": "flux/pro", "price": 48.0}
+    model = {"model_id": "flux/pro", "price": 48.0}  # 48 USD
     user_inputs = {"prompt": "test"}
     
     metadata = create_charge_metadata(model, user_inputs)
     
-    assert metadata["kie_cost_rub"] == 48.0
-    assert metadata["user_price_rub"] == 96.0
+    # 48 USD * 78 = 3744 RUB (Kie cost)
+    # 3744 * 2 = 7488 RUB (User price)
+    assert metadata["kie_cost_rub"] == 48.0 * USD_TO_RUB
+    assert metadata["user_price_rub"] == 48.0 * USD_TO_RUB * 2
     assert metadata["markup"] == "x2"
     assert metadata["model_id"] == "flux/pro"
     assert "timestamp" in metadata
 
 
 def test_create_charge_metadata_assertion():
-    """Test that metadata creation validates x2 formula."""
+    """Test that metadata creation validates x2 formula (with USD→RUB conversion)."""
     # Should pass
-    model = {"model_id": "test", "price": 50.0}
+    model = {"model_id": "test", "price": 50.0}  # 50 USD
     metadata = create_charge_metadata(model, {})
-    assert metadata["user_price_rub"] == 100.0
+    # 50 USD * 78 * 2 = 7800 RUB
+    assert metadata["user_price_rub"] == 50.0 * USD_TO_RUB * 2
     
     # Try different values
-    for kie_cost in [10.0, 25.5, 99.0]:
-        model = {"model_id": "test", "price": kie_cost}
+    for price_usd in [10.0, 25.5, 99.0]:
+        model = {"model_id": "test", "price": price_usd}
         metadata = create_charge_metadata(model, {})
-        assert metadata["user_price_rub"] == kie_cost * 2
+        # price_usd * 78 (to RUB) * 2 (markup)
+        assert metadata["user_price_rub"] == price_usd * USD_TO_RUB * 2
 
 
 def test_free_models():
@@ -149,22 +157,24 @@ def test_fallback_table_coverage():
     ]
     
     for model_id in expected_models:
-        assert model_id in FALLBACK_PRICES_RUB
-        assert FALLBACK_PRICES_RUB[model_id] > 0
+        assert model_id in FALLBACK_PRICES_USD
+        assert FALLBACK_PRICES_USD[model_id] > 0
 
 
 def test_pricing_consistency():
     """Test that pricing is consistent across different paths."""
-    # Same Kie cost should always produce same user price
-    kie_cost = 48.0
+    # Same Kie cost (in RUB) should always produce same user price
+    kie_cost_rub = 3744.0  # Example: 48 USD * 78 = 3744 RUB
     
-    user_price_1 = calculate_user_price(kie_cost)
+    user_price_1 = calculate_user_price(kie_cost_rub)
     
-    model = {"model_id": "test", "price": kie_cost}
+    # Model with price in USD will be converted to RUB first
+    model = {"model_id": "test", "price": 48.0}  # 48 USD
     metadata = create_charge_metadata(model, {})
     user_price_2 = metadata["user_price_rub"]
     
-    assert user_price_1 == user_price_2 == 96.0
+    # Both should give same result: 3744 * 2 = 7488
+    assert user_price_1 == user_price_2 == 7488.0
 
 
 def test_no_credits_in_pricing():

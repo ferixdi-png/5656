@@ -1,6 +1,6 @@
 # Pricing Table
 
-Generated: 2025-12-23T18:01:30.659257
+Generated: 2025-12-23T18:06:53.559322
 
 ## Configuration
 

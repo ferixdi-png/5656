@@ -1,5 +1,12 @@
 """
-Pricing calculator: USER_PRICE_RUB = KIE_PRICE_RUB × 2
+Pricing calculator: USER_PRICE_RUB = PRICE_USD × USD_TO_RUB × 2
+
+ФОРМУЛА ЦЕНООБРАЗОВАНИЯ:
+  1. Цены в source_of_truth.json в USD
+  2. Конвертация в RUB: kie_cost_rub = price_usd × USD_TO_RUB
+  3. Наценка пользователю: user_price_rub = kie_cost_rub × 2
+  
+  Итого: user_price_rub = price_usd × USD_TO_RUB × MARKUP_MULTIPLIER
 
 ЗАКОН ПРОЕКТА: цена для пользователя всегда в 2 раза выше стоимости Kie.ai.
 Это правило НЕ конфигурируется и применяется ко всем моделям.
@@ -9,13 +16,16 @@ from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
+# Exchange rate (MUST match scripts/audit_pricing.py)
+USD_TO_RUB = 78.0
+
 # Markup коэффициент (НЕ ИЗМЕНЯТЬ)
 MARKUP_MULTIPLIER = 2.0
 
-# Fallback цены если Kie.ai не возвращает cost
+# Fallback цены в USD (если модель не в source_of_truth)
 # Синхронизировано с scripts/enrich_registry.py
-# Формат: {model_id: base_price_rub}
-FALLBACK_PRICES_RUB = {
+# Формат: {model_id: price_usd}
+FALLBACK_PRICES_USD = {
     # Text-to-Image
     "flux/pro": 12.0,
     "flux/dev": 8.0,
@@ -144,50 +154,54 @@ def calculate_kie_cost(
     Calculate real Kie.ai cost in RUB.
     
     Priority:
-    1. kie_response['cost'] or ['price'] if available
-    2. model['price'] from registry (may have parameter-based formula)
-    3. FALLBACK_PRICES_RUB
-    4. Default 10.0 RUB
+    1. kie_response['cost'] or ['price'] if available (assumed in RUB)
+    2. model['price'] from registry (in USD) → convert to RUB
+    3. FALLBACK_PRICES_USD (in USD) → convert to RUB
+    4. Default 10.0 USD → convert to RUB
     
     Args:
         model: Model metadata from registry
         user_inputs: User parameters (steps, duration, resolution, etc.)
-        kie_response: Optional Kie.ai API response with actual cost
+        kie_response: Optional Kie.ai API response with actual cost (in RUB)
         
     Returns:
         Cost in RUB (float)
     """
     model_id = model.get("model_id", "unknown")
     
-    # Priority 1: Use Kie.ai response cost if available
+    # Priority 1: Use Kie.ai response cost if available (assumed in RUB)
     if kie_response:
         for key in ["cost", "price", "usage_cost", "credits_used"]:
             if key in kie_response:
-                cost = float(kie_response[key])
-                logger.info(f"Using Kie.ai response cost for {model_id}: {cost} RUB")
-                return cost
+                cost_rub = float(kie_response[key])
+                logger.info(f"Using Kie.ai response cost for {model_id}: {cost_rub} RUB")
+                return cost_rub
     
-    # Priority 2: Model registry price (может быть формула)
-    registry_price = model.get("price")
-    if registry_price is not None:
+    # Priority 2: Model registry price (in USD → convert to RUB)
+    registry_price_usd = model.get("price")
+    if registry_price_usd is not None:
         try:
-            cost = float(registry_price)
-            if cost > 0:
-                logger.info(f"Using registry price for {model_id}: {cost} RUB")
-                return cost
+            price_usd = float(registry_price_usd)
+            if price_usd > 0:
+                cost_rub = price_usd * USD_TO_RUB
+                logger.info(f"Using registry price for {model_id}: ${price_usd} → {cost_rub} RUB")
+                return cost_rub
         except (TypeError, ValueError):
-            # Может быть строка с формулой, но пока не реализуем
+            logger.warning(f"Invalid registry price for {model_id}: {registry_price_usd}")
             pass
     
-    # Priority 3: Fallback table
-    if model_id in FALLBACK_PRICES_RUB:
-        cost = FALLBACK_PRICES_RUB[model_id]
-        logger.info(f"Using fallback price for {model_id}: {cost} RUB")
-        return cost
+    # Priority 3: Fallback table (in USD → convert to RUB)
+    if model_id in FALLBACK_PRICES_USD:
+        price_usd = FALLBACK_PRICES_USD[model_id]
+        cost_rub = price_usd * USD_TO_RUB
+        logger.info(f"Using fallback price for {model_id}: ${price_usd} → {cost_rub} RUB")
+        return cost_rub
     
-    # Priority 4: Default
-    logger.warning(f"No price info for {model_id}, using default 10.0 RUB")
-    return 10.0
+    # Priority 4: Default (in USD → convert to RUB)
+    default_usd = 10.0
+    cost_rub = default_usd * USD_TO_RUB
+    logger.warning(f"No price info for {model_id}, using default ${default_usd} → {cost_rub} RUB")
+    return cost_rub
 
 
 def calculate_user_price(kie_cost_rub: float) -> float:
@@ -195,13 +209,19 @@ def calculate_user_price(kie_cost_rub: float) -> float:
     Calculate user price: USER_PRICE_RUB = KIE_COST_RUB × 2
     
     Args:
-        kie_cost_rub: Kie.ai cost in RUB
+        kie_cost_rub: Kie.ai cost in RUB (already converted from USD if needed)
         
     Returns:
         User price in RUB (rounded to 2 decimals)
     """
     user_price = kie_cost_rub * MARKUP_MULTIPLIER
-    return round(user_price, 2)
+    result = round(user_price, 2)
+    
+    # ASSERT: verify pricing formula
+    assert result == round(kie_cost_rub * 2, 2), \
+        f"Pricing formula violated: {result} != {kie_cost_rub} * 2"
+    
+    return result
 
 
 def format_price_rub(price: float) -> str:
