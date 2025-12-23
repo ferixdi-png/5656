@@ -1,4 +1,4 @@
-Ôªø"""
+"""
 End-to-end generator for Kie.ai models with heartbeat and error handling.
 """
 import asyncio
@@ -152,7 +152,7 @@ class KieGenerator:
             if not task_id:
                 return {
                     'success': False,
-                    'message': '—Ç–≠–ú ‚ï®–≠‚ï®‚ï° ‚ï§–ì‚ï®‚î§‚ï®‚ñë‚ï®‚ïó‚ï®‚ïõ‚ï§–ë‚ï§–ú ‚ï§–ë‚ï®‚ïõ‚ï®‚ïñ‚ï®‚î§‚ï®‚ñë‚ï§–í‚ï§–ú ‚ï®‚ïñ‚ï®‚ñë‚ï®‚î§‚ï®‚ñë‚ï§–ó‚ï§–ì',
+                    'message': 'Ú›Ã ¶›¶¶ T√¶+¶-¶¨¶-T¡TÃ T¡¶-¶¨¶+¶-T¬TÃ ¶¨¶-¶+¶-T«T√',
                     'result_urls': [],
                     'result_object': None,
                     'error_code': 'NO_TASK_ID',
@@ -170,7 +170,7 @@ class KieGenerator:
                 if elapsed > timeout:
                     return {
                         'success': False,
-                        'message': f'—Ç–ü‚ñí—è‚ïï–ü ‚ï®–Ø‚ï§–ê‚ï®‚ï°‚ï®‚ñì‚ï§–õ‚ï§–ò‚ï®‚ï°‚ï®‚ïú‚ï®‚ïõ ‚ï®‚ñì‚ï§–ê‚ï®‚ï°‚ï®‚ïù‚ï§–ü ‚ï®‚ïõ‚ï®‚ï¢‚ï®‚ïï‚ï®‚î§‚ï®‚ñë‚ï®‚ïú‚ï®‚ïï‚ï§–ü ({timeout} ‚ï§–ë‚ï®‚ï°‚ï®‚ïë)',
+                        'message': f'Úœ-ˇ¨œ ¶ﬂT¿¶¶¶-TÀT»¶¶¶-¶- ¶-T¿¶¶¶-Tœ ¶-¶¶¶¨¶+¶-¶-¶¨Tœ ({timeout} T¡¶¶¶¶)',
                         'result_urls': [],
                         'result_object': None,
                         'error_code': 'TIMEOUT',
@@ -202,7 +202,7 @@ class KieGenerator:
                     )
                     return {
                         'success': False,
-                        'message': f"—Ç–≠–ú {error_msg}\n\n‚ï®–≠‚ï®‚ñë‚ï®‚ï¢‚ï®‚ïù‚ï®‚ïï‚ï§–í‚ï®‚ï° /start ‚ï®‚î§‚ï®‚ïó‚ï§–ü ‚ï®‚ñì‚ï®‚ïõ‚ï®‚ïñ‚ï®‚ñì‚ï§–ê‚ï®‚ñë‚ï§–í‚ï®‚ñë ‚ï®‚ñì ‚ï®‚ïù‚ï®‚ï°‚ï®‚ïú‚ï§–û.",
+                        'message': f"Ú›Ã {error_msg}\n\n¶›¶-¶¶¶-¶¨T¬¶¶ /start ¶+¶¨Tœ ¶-¶-¶¨¶-T¿¶-T¬¶- ¶- ¶-¶¶¶-TŒ.",
                         'result_urls': [],
                         'result_object': None,
                         'error_code': parsed['error_code'],
@@ -219,8 +219,8 @@ class KieGenerator:
                             estimated_total = min(timeout, 60)  # Assume max 60s for estimate
                             remaining = max(0, estimated_total - elapsed)
                             progress_callback(
-                                f"—Ç–ü‚îÇ ‚ï®–Æ‚ï®‚ñí‚ï§–ê‚ï®‚ñë‚ï®‚ñí‚ï®‚ñë‚ï§–í‚ï§–õ‚ï®‚ñì‚ï®‚ñë‚ï§–û... (‚ï®‚îê‚ï§–ê‚ï®‚ïï‚ï®‚ïù‚ï®‚ï°‚ï§–ê‚ï®‚ïú‚ï®‚ïõ {int(remaining)} ‚ï§–ë‚ï®‚ï°‚ï®‚ïë ‚ï®‚ïõ‚ï§–ë‚ï§–í‚ï®‚ñë‚ï®‚ïó‚ï®‚ïõ‚ï§–ë‚ï§–ú)\n"
-                                f"‚ï®–Ø‚ï®‚ïõ‚ï®‚ï¢‚ï®‚ñë‚ï®‚ïó‚ï§–ì‚ï®‚ï£‚ï§–ë‚ï§–í‚ï®‚ñë, ‚ï®‚îê‚ï®‚ïõ‚ï®‚î§‚ï®‚ïõ‚ï®‚ï¢‚ï®‚î§‚ï®‚ïï‚ï§–í‚ï®‚ï°."
+                                f"Úœ¶ ¶ﬁ¶-T¿¶-¶-¶-T¬TÀ¶-¶-TŒ... (¶¨T¿¶¨¶-¶¶T¿¶-¶- {int(remaining)} T¡¶¶¶¶ ¶-T¡T¬¶-¶¨¶-T¡TÃ)\n"
+                                f"¶ﬂ¶-¶¶¶-¶¨T√¶¶T¡T¬¶-, ¶¨¶-¶+¶-¶¶¶+¶¨T¬¶¶."
                             )
                         last_heartbeat = datetime.now()
                     
@@ -237,7 +237,7 @@ class KieGenerator:
             # Payload building error
             return {
                 'success': False,
-                'message': f"—Ç–≠–ú ‚ï®–Æ‚ï§–ò‚ï®‚ïï‚ï®‚ñí‚ï®‚ïë‚ï®‚ñë ‚ï®‚ñì ‚ï®‚îê‚ï®‚ñë‚ï§–ê‚ï®‚ñë‚ï®‚ïù‚ï®‚ï°‚ï§–í‚ï§–ê‚ï®‚ñë‚ï§–ï: {str(e)}\n\n‚ï®–≠‚ï®‚ñë‚ï®‚ï¢‚ï®‚ïù‚ï®‚ïï‚ï§–í‚ï®‚ï° /start ‚ï®‚î§‚ï®‚ïó‚ï§–ü ‚ï®‚ñì‚ï®‚ïõ‚ï®‚ïñ‚ï®‚ñì‚ï§–ê‚ï®‚ñë‚ï§–í‚ï®‚ñë ‚ï®‚ñì ‚ï®‚ïù‚ï®‚ï°‚ï®‚ïú‚ï§–û.",
+                'message': f"Ú›Ã ¶ﬁT»¶¨¶-¶¶¶- ¶- ¶¨¶-T¿¶-¶-¶¶T¬T¿¶-T≈: {str(e)}\n\n¶›¶-¶¶¶-¶¨T¬¶¶ /start ¶+¶¨Tœ ¶-¶-¶¨¶-T¿¶-T¬¶- ¶- ¶-¶¶¶-TŒ.",
                 'result_urls': [],
                 'result_object': None,
                 'error_code': 'INVALID_INPUT',
@@ -249,7 +249,7 @@ class KieGenerator:
             logger.error(f"Error in generate: {e}", exc_info=True)
             return {
                 'success': False,
-                'message': f"—Ç–≠–ú ‚ï®–Ø‚ï§–ê‚ï®‚ïõ‚ï®‚ïï‚ï®‚ïñ‚ï®‚ïõ‚ï§–ò‚ï®‚ïó‚ï®‚ñë ‚ï®‚ïõ‚ï§–ò‚ï®‚ïï‚ï®‚ñí‚ï®‚ïë‚ï®‚ñë: {str(e)}\n\n‚ï®–≠‚ï®‚ñë‚ï®‚ï¢‚ï®‚ïù‚ï®‚ïï‚ï§–í‚ï®‚ï° /start ‚ï®‚î§‚ï®‚ïó‚ï§–ü ‚ï®‚ñì‚ï®‚ïõ‚ï®‚ïñ‚ï®‚ñì‚ï§–ê‚ï®‚ñë‚ï§–í‚ï®‚ñë ‚ï®‚ñì ‚ï®‚ïù‚ï®‚ï°‚ï®‚ïú‚ï§–û.",
+                'message': f"Ú›Ã ¶ﬂT¿¶-¶¨¶¨¶-T»¶¨¶- ¶-T»¶¨¶-¶¶¶-: {str(e)}\n\n¶›¶-¶¶¶-¶¨T¬¶¶ /start ¶+¶¨Tœ ¶-¶-¶¨¶-T¿¶-T¬¶- ¶- ¶-¶¶¶-TŒ.",
                 'result_urls': [],
                 'result_object': None,
                 'error_code': 'UNKNOWN_ERROR',
