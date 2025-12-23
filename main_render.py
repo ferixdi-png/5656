@@ -146,10 +146,10 @@ async def main():
         singleton_lock = SingletonLock(dsn=database_url, instance_name=instance_name)
         singleton_lock_ref["lock"] = singleton_lock  # Store reference for signal handler
         
-        # AGGRESSIVE RETRY: Try to acquire lock multiple times during rolling deployment
-        # Total wait time: 5 retries × 3s = 15s (enough for old instance to shutdown + stale detection)
-        max_retries = 5
-        retry_delay = 3  # seconds
+        # ULTRA-AGGRESSIVE RETRY: Force acquisition even if old instance is slow to shutdown
+        # Total wait time: 8 retries × 2s = 16s (exceeds TTL 10s + margin 6s)
+        max_retries = 8
+        retry_delay = 2  # seconds
         
         for attempt in range(1, max_retries + 1):
             logger.info(f"Lock acquisition attempt {attempt}/{max_retries}...")
