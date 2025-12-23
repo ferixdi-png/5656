@@ -231,9 +231,11 @@ class InputFlow(StatesGroup):
 class InputContext:
     model_id: str
     required_fields: List[str]
+    optional_fields: List[str]  # MASTER PROMPT: "Ввод ВСЕХ параметров (без автоподстановок)"
     properties: Dict[str, Any]
     collected: Dict[str, Any]
     index: int = 0
+    collecting_optional: bool = False  # Track if collecting optional params
 
 
 def _field_prompt(field_name: str, field_spec: Dict[str, Any]) -> str:
@@ -754,8 +756,16 @@ async def generate_cb(callback: CallbackQuery, state: FSMContext) -> None:
 
     input_schema = model.get("input_schema", {})
     required_fields = input_schema.get("required", [])
+    optional_fields = input_schema.get("optional", [])  # MASTER PROMPT: "Ввод ВСЕХ параметров"
     properties = input_schema.get("properties", {})
-    ctx = InputContext(model_id=model_id, required_fields=required_fields, properties=properties, collected={})
+    ctx = InputContext(
+        model_id=model_id,
+        required_fields=required_fields,
+        optional_fields=optional_fields,
+        properties=properties,
+        collected={},
+        collecting_optional=False
+    )
     await state.update_data(flow_ctx=ctx.__dict__)
 
     if not required_fields:
@@ -778,11 +788,58 @@ async def enum_cb(callback: CallbackQuery, state: FSMContext) -> None:
     await _save_input_and_continue(callback.message, state, value)
 
 
+@router.callback_query(F.data == "opt_skip_all")
+async def opt_skip_all_cb(callback: CallbackQuery, state: FSMContext) -> None:
+    """Skip all optional parameters and proceed to confirmation (MASTER PROMPT)."""
+    await callback.answer("Используем значения по умолчанию")
+    data = await state.get_data()
+    flow_ctx = InputContext(**data.get("flow_ctx"))
+    model = next((m for m in _source_of_truth().get("models", []) if m.get("model_id") == flow_ctx.model_id), None)
+    await _show_confirmation(callback.message, state, model)
+
+
+@router.callback_query(F.data.startswith("opt_start:"))
+async def opt_start_cb(callback: CallbackQuery, state: FSMContext) -> None:
+    """Start collecting a specific optional parameter (MASTER PROMPT compliance)."""
+    await callback.answer()
+    field_name = callback.data.split(":", 1)[1]
+    
+    data = await state.get_data()
+    flow_ctx = InputContext(**data.get("flow_ctx"))
+    
+    # Find index of this optional field
+    try:
+        opt_index = flow_ctx.optional_fields.index(field_name)
+    except ValueError:
+        await callback.message.answer("⚠️ Параметр не найден.")
+        return
+    
+    # Switch to collecting optional params
+    flow_ctx.collecting_optional = True
+    flow_ctx.index = opt_index
+    await state.update_data(flow_ctx=flow_ctx.__dict__)
+    
+    # Show input prompt
+    field_spec = flow_ctx.properties.get(field_name, {})
+    await state.set_state(InputFlow.waiting_input)
+    await callback.message.answer(
+        _field_prompt(field_name, field_spec),
+        reply_markup=_enum_keyboard(field_spec),
+    )
+
+
 @router.message(InputFlow.waiting_input)
 async def input_message(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     flow_ctx = InputContext(**data.get("flow_ctx"))
-    field_name = flow_ctx.required_fields[flow_ctx.index]
+    
+    # Determine which field we're collecting
+    if flow_ctx.collecting_optional:
+        current_fields = flow_ctx.optional_fields
+    else:
+        current_fields = flow_ctx.required_fields
+    
+    field_name = current_fields[flow_ctx.index]
     field_spec = flow_ctx.properties.get(field_name, {})
     field_type = field_spec.get("type", "string")
 
@@ -816,10 +873,49 @@ async def input_message(message: Message, state: FSMContext) -> None:
     await _save_input_and_continue(message, state, value)
 
 
+async def _ask_optional_params(message: Message, state: FSMContext, flow_ctx: InputContext) -> None:
+    """Ask user if they want to configure optional parameters (MASTER PROMPT compliance)."""
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    
+    # Build keyboard with all optional params
+    buttons = []
+    for opt_field in flow_ctx.optional_fields:
+        field_spec = flow_ctx.properties.get(opt_field, {})
+        field_desc = field_spec.get("description", opt_field)
+        default = field_spec.get("default")
+        
+        button_text = f"{opt_field}"
+        if default is not None:
+            button_text += f" (default: {default})"
+        
+        buttons.append([InlineKeyboardButton(text=button_text, callback_data=f"opt_start:{opt_field}")])
+    
+    # Add "Skip all" button
+    buttons.append([InlineKeyboardButton(text="⏭ Пропустить все (использовать defaults)", callback_data="opt_skip_all")])
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+    
+    params_list = "\n".join([f"• {f}" for f in flow_ctx.optional_fields])
+    await message.answer(
+        f"✅ Обязательные параметры собраны.\n\n"
+        f"🎛 <b>Дополнительные параметры</b> (MASTER PROMPT: ввод ВСЕХ параметров):\n\n"
+        f"{params_list}\n\n"
+        f"Выберите параметр для настройки или пропустите все:",
+        reply_markup=keyboard
+    )
+
+
 async def _save_input_and_continue(message: Message, state: FSMContext, value: Any) -> None:
     data = await state.get_data()
     flow_ctx = InputContext(**data.get("flow_ctx"))
-    field_name = flow_ctx.required_fields[flow_ctx.index]
+    
+    # Determine which field list we're working on
+    if flow_ctx.collecting_optional:
+        current_fields = flow_ctx.optional_fields
+    else:
+        current_fields = flow_ctx.required_fields
+    
+    field_name = current_fields[flow_ctx.index]
     field_spec = flow_ctx.properties.get(field_name, {})
     value = _coerce_value(value, field_spec)
 
@@ -833,12 +929,20 @@ async def _save_input_and_continue(message: Message, state: FSMContext, value: A
     flow_ctx.index += 1
     await state.update_data(flow_ctx=flow_ctx.__dict__)
 
-    if flow_ctx.index >= len(flow_ctx.required_fields):
+    # Check if we finished current field list
+    if flow_ctx.index >= len(current_fields):
+        # If we finished required and have optional fields, offer to configure them
+        if not flow_ctx.collecting_optional and flow_ctx.optional_fields:
+            await _ask_optional_params(message, state, flow_ctx)
+            return
+        
+        # Otherwise, show confirmation
         model = next((m for m in _source_of_truth().get("models", []) if m.get("model_id") == flow_ctx.model_id), None)
         await _show_confirmation(message, state, model)
         return
 
-    next_field = flow_ctx.required_fields[flow_ctx.index]
+    # Continue to next field in current list
+    next_field = current_fields[flow_ctx.index]
     next_spec = flow_ctx.properties.get(next_field, {})
     await message.answer(
         _field_prompt(next_field, next_spec),
@@ -893,9 +997,27 @@ async def _show_confirmation(message: Message, state: FSMContext, model: Optiona
     else:
         result_desc = "Файл результата"
     
-    # Format parameters
-    if flow_ctx.collected:
-        params_str = "\n".join([f"• {k}: {v}" for k, v in flow_ctx.collected.items()])
+    # Format parameters - show ALL (required + optional) with defaults for missing optional
+    # MASTER PROMPT: "Ввод ВСЕХ параметров (без автоподстановок)"
+    params_lines = []
+    
+    # Show collected parameters
+    for k, v in flow_ctx.collected.items():
+        # Truncate long values
+        v_str = str(v)
+        if len(v_str) > 60:
+            v_str = v_str[:57] + "..."
+        params_lines.append(f"✓ {k}: {v_str}")
+    
+    # Show optional parameters that weren't collected (with defaults)
+    for opt_field in flow_ctx.optional_fields:
+        if opt_field not in flow_ctx.collected:
+            field_spec = flow_ctx.properties.get(opt_field, {})
+            default = field_spec.get("default", "auto")
+            params_lines.append(f"○ {opt_field}: {default} (default)")
+    
+    if params_lines:
+        params_str = "\n".join(params_lines)
     else:
         params_str = "Параметры по умолчанию"
     

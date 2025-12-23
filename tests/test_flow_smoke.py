@@ -244,8 +244,10 @@ async def test_confirm_insufficient_balance(callback, state):
     ctx = InputContext(
         model_id=model_id,
         required_fields=[],
+        optional_fields=[],
         properties={},
-        collected={}
+        collected={},
+        collecting_optional=False
     )
     await state.update_data(flow_ctx=ctx.__dict__)
     
@@ -300,8 +302,10 @@ async def test_confirm_with_balance(callback, state):
     ctx = InputContext(
         model_id=model_id,
         required_fields=[],
+        optional_fields=[],
         properties={},
-        collected={}
+        collected={},
+        collecting_optional=False
     )
     await state.update_data(flow_ctx=ctx.__dict__)
     
