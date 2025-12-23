@@ -173,16 +173,19 @@ def _model_detail_text(model: Dict[str, Any]) -> str:
         else:
             best_for = "Обработка и генерация контента"
     
-    # Price formatting - estimated user price (x2 from Kie.ai)
+    # Price formatting - CORRECT FORMULA: price_usd × 78 (USD→RUB) × 2 (markup)
     price_raw = model.get("price")
     if price_raw:
         try:
-            kie_cost = float(price_raw)
-            if kie_cost == 0:
+            price_usd = float(price_raw)
+            if price_usd == 0:
                 price_str = "Бесплатно"
             else:
-                user_price = calculate_user_price(kie_cost)
-                price_str = format_price_rub(user_price)
+                # Step 1: Convert USD to RUB (using calculate_kie_cost)
+                kie_cost_rub = calculate_kie_cost(model, {}, None)
+                # Step 2: Apply 2x markup for user price
+                user_price_rub = calculate_user_price(kie_cost_rub)
+                price_str = format_price_rub(user_price_rub)
         except (TypeError, ValueError):
             price_str = str(price_raw)
     else:
