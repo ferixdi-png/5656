@@ -42,6 +42,9 @@ async def generate_with_payment(
     charge_manager = charge_manager or get_charge_manager()
     generator = KieGenerator()
     charge_task_id = task_id or f"charge_{user_id}_{model_id}_{uuid4().hex[:8]}"
+    correlation_id = f"corr_{user_id}_{uuid4().hex[:8]}"
+    
+    logger.info(f"[{correlation_id}] Starting generate_with_payment: user={user_id}, model={model_id}, amount={amount}")
     
     # Create pending charge
     charge_result = await charge_manager.create_pending_charge(
@@ -54,7 +57,8 @@ async def generate_with_payment(
     
     if charge_result['status'] == 'already_committed':
         # Already paid, just generate
-        gen_result = await generator.generate(model_id, user_inputs, progress_callback, timeout)
+        logger.info(f"[{correlation_id}] Charge already committed, proceeding with generation")
+        gen_result = await generator.generate(model_id, user_inputs, progress_callback, timeout, correlation_id)
         return {
             **gen_result,
             'charge_task_id': charge_task_id,
@@ -62,6 +66,7 @@ async def generate_with_payment(
             'payment_message': 'Оплата уже подтверждена'
         }
     if charge_result['status'] == 'insufficient_balance':
+        logger.warning(f"[{correlation_id}] Insufficient balance: user={user_id}, required={amount}")
         return {
             'success': False,
             'message': '❌ Недостаточно средств. Пополните баланс и попробуйте снова.',
@@ -76,12 +81,14 @@ async def generate_with_payment(
         }
     
     # Generate
-    gen_result = await generator.generate(model_id, user_inputs, progress_callback, timeout)
+    logger.info(f"[{correlation_id}] Pending charge created, starting generation")
+    gen_result = await generator.generate(model_id, user_inputs, progress_callback, timeout, correlation_id)
     
     # Determine task_id from generation (if available)
     # Commit or release charge based on generation result
     if gen_result.get('success'):
         # SUCCESS: Commit charge
+        logger.info(f"[{correlation_id}] Generation successful, committing charge")
         commit_result = await charge_manager.commit_charge(charge_task_id)
         return {
             **gen_result,
@@ -91,6 +98,7 @@ async def generate_with_payment(
         }
     else:
         # FAIL/TIMEOUT: Release charge (auto-refund)
+        logger.warning(f"[{correlation_id}] Generation failed, releasing charge (auto-refund)")
         release_result = await charge_manager.release_charge(
             charge_task_id,
             reason=gen_result.get('error_code', 'generation_failed')

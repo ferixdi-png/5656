@@ -21,6 +21,7 @@ from app.utils.singleton_lock import acquire_singleton_lock, release_singleton_l
 from app.utils.healthcheck import start_healthcheck_server, stop_healthcheck_server
 from app.storage.pg_storage import PGStorage, PostgresStorage
 from bot.handlers import zero_silence_router, error_handler_router
+from app.kie.generator import run_smoke_test, SMOKE_TEST_ON_START
 
 # Import aiogram components
 from aiogram import Bot, Dispatcher
@@ -86,10 +87,26 @@ async def main():
 
     # Step 1: Acquire singleton lock (if DATABASE_URL provided and not DRY_RUN)
     database_url = os.getenv("DATABASE_URL")
+    lock_acquired = True  # Default to true if no lock required
     if database_url and not dry_run:
         lock_acquired = await acquire_singleton_lock(dsn=database_url, timeout=5.0)
         if not lock_acquired:
-            logger.warning("Singleton lock not acquired - another instance may be running")
+            logger.error("❌ Singleton lock NOT acquired - another instance is running")
+            logger.error("❌ WILL NOT start polling to prevent TelegramConflictError")
+            logger.info("Healthcheck server will remain active on port %s", port)
+            # Keep healthcheck alive but don't start polling
+            # In production this prevents TelegramConflictError
+            # We create a "sleep-forever" event that can be interrupted
+            shutdown_event = asyncio.Event()
+            try:
+                await shutdown_event.wait()  # Wait indefinitely (until interrupted)
+            except KeyboardInterrupt:
+                logger.info("Shutdown signal received")
+            finally:
+                stop_healthcheck_server(healthcheck_server)
+            return
+        else:
+            logger.info("✅ Singleton lock acquired successfully")
     else:
         if dry_run:
             logger.info("DRY_RUN enabled - skipping singleton lock")
@@ -133,12 +150,25 @@ async def main():
         stop_healthcheck_server(healthcheck_server)
         return
 
+    # Step 4.5: Run smoke test if enabled
+    if SMOKE_TEST_ON_START:
+        logger.info("🧪 SMOKE_TEST_ON_START enabled - running smoke test before polling")
+        smoke_result = await run_smoke_test()
+        if smoke_result.get('success'):
+            logger.info(f"✅ Smoke test PASSED: {smoke_result.get('message')}")
+        else:
+            logger.error(f"❌ Smoke test FAILED: {smoke_result.get('message')}")
+            logger.error("⚠️ Continuing with bot startup despite smoke test failure")
+            # Note: We continue anyway - smoke test is informational, not blocking
+
     # Step 5: Preflight - delete webhook before polling
     await preflight_webhook(bot)
 
     # Step 6: Start polling
     try:
-        logger.info("Starting bot polling...")
+        logger.info("="*60)
+        logger.info("🚀 STARTING BOT POLLING - Single instance guaranteed by lock")
+        logger.info("="*60)
         await dp.start_polling(bot, skip_updates=True)
     except KeyboardInterrupt:
         logger.info("Bot stopped by user")

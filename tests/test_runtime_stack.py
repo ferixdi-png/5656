@@ -23,10 +23,10 @@ def test_python_telegram_bot_not_required():
 
 
 def test_bot_mode_webhook_disables_polling(monkeypatch):
-    from main_render import build_application, preflight_webhook
+    from main_render import create_bot_application, preflight_webhook
     monkeypatch.setenv("BOT_MODE", "webhook")
     monkeypatch.setenv("DRY_RUN", "0")
-    dp, bot = build_application()
+    dp, bot = create_bot_application()
     assert dp is not None
     assert bot is not None
     assert preflight_webhook is not None
@@ -71,7 +71,7 @@ async def test_lock_failure_skips_polling(monkeypatch):
 
     monkeypatch.setattr(main_render, "acquire_singleton_lock", fake_acquire_lock)
     monkeypatch.setattr(main_render, "PostgresStorage", lambda *_args, **_kwargs: DummyStorage())
-    monkeypatch.setattr(main_render, "build_application", lambda: (DummyDispatcher(), DummyBot()))
+    monkeypatch.setattr(main_render, "create_bot_application", lambda: (DummyDispatcher(), DummyBot()))
     monkeypatch.setattr(main_render.asyncio, "Event", lambda: DummyEvent())
 
     await main_render.main()
