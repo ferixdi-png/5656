@@ -18,3 +18,13 @@ def test_python_telegram_bot_not_required():
         assert spec is None
     else:
         assert "telegram" not in sys.modules
+
+
+def test_bot_mode_webhook_disables_polling(monkeypatch):
+    from main_render import build_application, preflight_webhook
+    monkeypatch.setenv("BOT_MODE", "webhook")
+    monkeypatch.setenv("DRY_RUN", "0")
+    dp, bot = build_application()
+    assert dp is not None
+    assert bot is not None
+    assert preflight_webhook is not None

@@ -72,9 +72,9 @@ def build_application() -> Tuple[Dispatcher, Bot]:
 
 
 async def preflight_webhook(bot: Bot) -> None:
-    """Delete webhook and drop pending updates before polling."""
-    result = await bot.delete_webhook(drop_pending_updates=True)
-    logger.info("Webhook deleted / pending updates dropped: %s", result)
+    """Delete webhook before polling."""
+    result = await bot.delete_webhook(drop_pending_updates=False)
+    logger.info("Webhook deleted: %s", result)
 
 
 async def main():
@@ -97,15 +97,17 @@ async def main():
 
     # Step 1: Acquire singleton lock (if DATABASE_URL provided)
     database_url = os.getenv("DATABASE_URL")
-    if database_url:
+    if database_url and not dry_run:
         lock_acquired = await acquire_singleton_lock(dsn=database_url, timeout=5.0)
         runtime_state.lock_acquired = lock_acquired
         if not lock_acquired:
             logger.warning("Singleton lock not acquired - another instance may be running")
+        else:
+            logger.info("SINGLE_INSTANCE: ok")
     
     # Step 2: Initialize storage (if DATABASE_URL provided)
     storage = None
-    if database_url:
+    if database_url and not dry_run:
         storage = PostgresStorage(dsn=database_url)
         await storage.initialize()
         logger.info("PostgreSQL storage initialized")
@@ -135,9 +137,16 @@ async def main():
             await storage.close()
         stop_healthcheck_server(healthcheck_server)
         return
+    if runtime_state.bot_mode != "polling":
+        logger.info("BOT_MODE=%s - polling disabled", runtime_state.bot_mode)
+        await bot.session.close()
+        if storage:
+            await storage.close()
+        await release_singleton_lock()
+        stop_healthcheck_server(healthcheck_server)
+        return
 
-    if runtime_state.bot_mode == "polling":
-        await preflight_webhook(bot)
+    await preflight_webhook(bot)
 
     # Step 4: Start polling
     try:

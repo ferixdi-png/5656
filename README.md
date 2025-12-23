@@ -53,6 +53,11 @@ python main_render.py
 **Optional ENV:**
 - `PORT=10000` (healthcheck listener)
 - `DRY_RUN=0`
+- `BOT_MODE=polling`
+- `STORAGE_MODE=auto`
+
+**Важно:** Не запускай одновременно Replit + Render + локально на одном токене (будет Conflict).  
+**Перед деплоем:** останови другие инстансы / отключи Replit Run.
 
 ### Конфигурация (опционально)
 

@@ -11,4 +11,4 @@ async def test_preflight_deletes_webhook():
 
     await preflight_webhook(bot)
 
-    bot.delete_webhook.assert_awaited_once_with(drop_pending_updates=True)
+    bot.delete_webhook.assert_awaited_once_with(drop_pending_updates=False)
