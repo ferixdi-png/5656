@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 import os
 
 from app.kie.builder import build_payload, load_source_of_truth
+from app.kie.validator import ModelContractError
 from app.kie.parser import parse_record_info, get_human_readable_error
 
 logger = logging.getLogger(__name__)
@@ -34,11 +35,11 @@ class KieGenerator:
         
     def _get_api_client(self):
         """Get API client (real or stub)."""
-        if TEST_MODE or KIE_STUB:
-            return self._get_stub_client()
-        
         if self.api_client:
             return self.api_client
+
+        if TEST_MODE or KIE_STUB:
+            return self._get_stub_client()
         
         # Import real client - explicit, no fallback
         from app.api.kie_client import KieApiClient
@@ -155,7 +156,8 @@ class KieGenerator:
                     'result_urls': [],
                     'result_object': None,
                     'error_code': 'NO_TASK_ID',
-                    'error_message': 'Task ID not returned'
+                    'error_message': 'Task ID not returned',
+                    'task_id': None
                 }
             
             # Wait for completion with heartbeat
@@ -172,7 +174,8 @@ class KieGenerator:
                         'result_urls': [],
                         'result_object': None,
                         'error_code': 'TIMEOUT',
-                        'error_message': f'Task timeout after {timeout} seconds'
+                        'error_message': f'Task timeout after {timeout} seconds',
+                        'task_id': task_id
                     }
                 
                 # Get record info
@@ -188,7 +191,8 @@ class KieGenerator:
                         'result_urls': parsed['result_urls'],
                         'result_object': parsed['result_object'],
                         'error_code': None,
-                        'error_message': None
+                        'error_message': None,
+                        'task_id': task_id
                     }
                 
                 elif state == 'fail':
@@ -202,7 +206,8 @@ class KieGenerator:
                         'result_urls': [],
                         'result_object': None,
                         'error_code': parsed['error_code'],
-                        'error_message': parsed['error_message']
+                        'error_message': parsed['error_message'],
+                        'task_id': task_id
                     }
                 
                 elif state == 'waiting':
@@ -228,7 +233,7 @@ class KieGenerator:
                     await asyncio.sleep(2)
                     continue
         
-        except ValueError as e:
+        except (ValueError, ModelContractError) as e:
             # Payload building error
             return {
                 'success': False,
@@ -236,7 +241,8 @@ class KieGenerator:
                 'result_urls': [],
                 'result_object': None,
                 'error_code': 'INVALID_INPUT',
-                'error_message': str(e)
+                'error_message': str(e),
+                'task_id': None
             }
         
         except Exception as e:
@@ -247,7 +253,8 @@ class KieGenerator:
                 'result_urls': [],
                 'result_object': None,
                 'error_code': 'UNKNOWN_ERROR',
-                'error_message': str(e)
+                'error_message': str(e),
+                'task_id': None
             }
 
 
@@ -286,4 +293,3 @@ async def generate_from_file(
     generator = KieGenerator()
     user_inputs = {'file': file_id, 'file_id': file_id, **kwargs}
     return await generator.generate(model_id, user_inputs, progress_callback)
-
