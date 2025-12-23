@@ -78,7 +78,17 @@ class KieApiScraper:
             'cached_requests': 0,
             'failed_requests': 0,
             'total_models_processed': 0,
-            'categories': {}
+            'categories': {},
+            'empty_responses': 0,
+            'parsing_errors': 0,
+            'validation_errors': 0,
+            'models_with_endpoint': 0,
+            'models_with_params': 0,
+            'models_with_example': 0,
+            'models_with_input_schema': 0,
+            'valid_models_count': 0,
+            'invalid_models_count': 0,
+            'fixed_models_count': 0
         }
         
         # Rate limiting (из конфигурации)
@@ -276,7 +286,14 @@ class KieApiScraper:
             print(f"   ✅ ОТВЕТ: Найдено {len(cards)} карточек, извлечено {len(unique_links)} уникальных ссылок на модели")
             return unique_links
         except requests.RequestException as e:
+            self.metrics['failed_requests'] += 1
+            logger.error(f"Ошибка при получении страницы маркета: {e}")
             print(f"   ❌ ОТВЕТ: Ошибка при получении страницы маркета: {e}")
+            return []
+        except Exception as e:
+            self.metrics['parsing_errors'] += 1
+            logger.error(f"Неожиданная ошибка при парсинге маркета: {e}")
+            print(f"   ❌ ОТВЕТ: Неожиданная ошибка: {e}")
             return []
     
     def _extract_endpoint(self, text, model_name):
@@ -442,8 +459,23 @@ class KieApiScraper:
             required_str = required_match.group(1)
             required_fields = [f.strip().strip('"\'') for f in required_str.split(',')]
         
-        # Базовые обязательные поля для API
+        # Базовые обязательные поля для API (расширенный список)
         base_required = ['prompt']
+        
+        # Улучшенный поиск обязательных полей из документации
+        # Ищем таблицы с параметрами
+        param_tables = soup.find_all(['table', 'dl', 'ul'], class_=re.compile(r'(param|field|input|schema)', re.I))
+        for table in param_tables:
+            rows = table.find_all(['tr', 'li', 'dt'])
+            for row in rows:
+                cells = row.find_all(['td', 'dd', 'span'])
+                if len(cells) >= 2:
+                    param_name = cells[0].get_text().strip().lower()
+                    param_desc = cells[1].get_text().strip().lower()
+                    # Проверяем является ли обязательным
+                    if any(keyword in param_desc for keyword in ['required', 'обязательный', 'must', 'необходим']):
+                        if param_name and param_name not in base_required:
+                            base_required.append(param_name)
         
         # Извлекаем типы параметров
         type_patterns = {
@@ -487,7 +519,13 @@ class KieApiScraper:
                 
                 # Проверка что ответ не пустой
                 if not resp_text or len(resp_text) < 100:
+                    self.metrics['empty_responses'] += 1
+                    logger.warning(f"Получен пустой ответ для {model_name}")
                     raise ValueError("Получен пустой или слишком короткий ответ")
+                
+                # Проверка на ошибки в HTML
+                if 'error' in resp_text.lower()[:500] or 'not found' in resp_text.lower()[:500]:
+                    logger.warning(f"Возможная ошибка в ответе для {model_name}")
                 
                 soup = BeautifulSoup(resp_text, 'html.parser')
                 
@@ -565,8 +603,20 @@ class KieApiScraper:
             # Валидация структуры модели перед добавлением
             if self._validate_model_structure(model_info):
                 self.models.append(model_info)
+                logger.info(f"Модель {model_name} успешно добавлена")
+                # Обновление метрик
+                if model_info.get('endpoint'):
+                    self.metrics['models_with_endpoint'] += 1
+                if model_info.get('params'):
+                    self.metrics['models_with_params'] += 1
+                if model_info.get('example'):
+                    self.metrics['models_with_example'] += 1
+                if model_info.get('input_schema'):
+                    self.metrics['models_with_input_schema'] += 1
             else:
                 self.metrics['failed_requests'] += 1
+                self.metrics['validation_errors'] += 1
+                logger.warning(f"Модель {model_name} не прошла валидацию")
         except requests.RequestException as e:
             self.metrics['failed_requests'] += 1
             # Логируем только критичные ошибки
@@ -574,6 +624,8 @@ class KieApiScraper:
                 print(f"\n  ⚠️ Серверная ошибка для {model_name}: {e.response.status_code}")
         except Exception as e:
             self.metrics['failed_requests'] += 1
+            self.metrics['parsing_errors'] += 1
+            logger.error(f"Ошибка при обработке модели {model_name}: {e}")
             # Тихая обработка для параллельной работы
             pass
     
@@ -1004,6 +1056,15 @@ class KieApiScraper:
                     'cached_requests': self.metrics['cached_requests'],
                     'failed_requests': self.metrics['failed_requests'],
                     'total_models': len(self.models),
+                    'valid_models': self.metrics['valid_models_count'],
+                    'invalid_models': self.metrics['invalid_models_count'],
+                    'models_with_endpoint': self.metrics['models_with_endpoint'],
+                    'models_with_params': self.metrics['models_with_params'],
+                    'models_with_example': self.metrics['models_with_example'],
+                    'models_with_input_schema': self.metrics['models_with_input_schema'],
+                    'empty_responses': self.metrics['empty_responses'],
+                    'parsing_errors': self.metrics['parsing_errors'],
+                    'validation_errors': self.metrics['validation_errors'],
                     'success_rate': f"{(len(self.models) / max_models * 100):.1f}%" if max_models > 0 else "0%",
                     'cache_hit_rate': f"{(self.metrics['cached_requests'] / self.metrics['total_requests'] * 100):.1f}%" if self.metrics['total_requests'] > 0 else "0%"
                 },
@@ -1061,6 +1122,10 @@ class KieApiScraper:
         print(f"   📡 Всего запросов: {self.metrics['total_requests']}")
         print(f"   💾 Кэшированных: {self.metrics['cached_requests']}")
         print(f"   ❌ Ошибок: {self.metrics['failed_requests']}")
+        print(f"   📊 Пустых ответов: {self.metrics['empty_responses']}")
+        print(f"   🔍 Ошибок парсинга: {self.metrics['parsing_errors']}")
+        print(f"   ✅ Валидных моделей: {self.metrics['valid_models_count']}")
+        print(f"   ❌ Невалидных моделей: {self.metrics['invalid_models_count']}")
         if self.metrics['total_requests'] > 0:
             cache_hit_rate = (self.metrics['cached_requests'] / self.metrics['total_requests']) * 100
             print(f"   📈 Эффективность кэша: {cache_hit_rate:.1f}%")
