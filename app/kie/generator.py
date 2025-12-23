@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 import os
 
 from app.kie.builder import build_payload, load_source_of_truth
+from app.kie.validator import ModelContractError
 from app.kie.parser import parse_record_info, get_human_readable_error
 
 logger = logging.getLogger(__name__)
@@ -34,18 +35,48 @@ class KieGenerator:
         
     def _get_api_client(self):
         """Get API client (real or stub)."""
-        if TEST_MODE or KIE_STUB:
-            return self._get_stub_client()
-        
         if self.api_client:
             return self.api_client
+
+        if TEST_MODE or KIE_STUB:
+            if not self.source_of_truth:
+                self.source_of_truth = load_source_of_truth()
+            return self._get_stub_client(self.source_of_truth)
         
         # Import real client - explicit, no fallback
         from app.api.kie_client import KieApiClient
         return KieApiClient()
     
-    def _get_stub_client(self):
+    def _get_stub_client(self, source_of_truth: Dict[str, Any]):
         """Get stub client for testing."""
+        model_index = {model.get("model_id"): model for model in source_of_truth.get("models", [])}
+
+        def infer_result_urls(model_id: str) -> list[str]:
+            model_schema = model_index.get(model_id, {})
+            output_type = model_schema.get("output_type")
+            category = model_schema.get("category", "unknown")
+
+            if output_type == "text":
+                return ["https://example.com/result.txt"]
+            if output_type == "url":
+                return ["https://example.com/result.jpg"]
+            if output_type == "video":
+                return ["https://example.com/result.mp4"]
+            if output_type == "audio":
+                return ["https://example.com/result.mp3"]
+
+            if category in {"t2i", "i2i", "upscale", "bg_remove", "watermark_remove"}:
+                return ["https://example.com/result.jpg"]
+            if category in {"t2v", "i2v", "v2v", "lip_sync"}:
+                return ["https://example.com/result.mp4"]
+            if category in {"music", "sfx", "tts", "audio_isolation"}:
+                return ["https://example.com/result.mp3"]
+            if category in {"stt", "general"}:
+                return ["https://example.com/result.txt"]
+
+            logger.warning("KIE_STUB: unknown category/output for model %s", model_id)
+            return ["https://example.com/result.bin"]
+
         class StubClient:
             async def create_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
                 """Stub create_task."""
@@ -58,56 +89,23 @@ class KieGenerator:
             async def get_record_info(self, task_id: str) -> Dict[str, Any]:
                 """Stub get_record_info."""
                 # Simulate different states for testing
-                if 'text' in task_id or 'test_text' in task_id:
-                    return {
-                        'state': 'success',
-                        'resultJson': json.dumps({
-                            'resultUrls': ['https://example.com/result1.txt']
-                        })
-                    }
-                elif 'image' in task_id or 'test_image' in task_id:
-                    return {
-                        'state': 'success',
-                        'resultJson': json.dumps({
-                            'resultUrls': ['https://example.com/result1.jpg']
-                        })
-                    }
-                elif 'video' in task_id or 'test_video' in task_id:
-                    return {
-                        'state': 'success',
-                        'resultJson': json.dumps({
-                            'resultUrls': ['https://example.com/result1.mp4']
-                        })
-                    }
-                elif 'audio' in task_id or 'test_audio' in task_id:
-                    return {
-                        'state': 'success',
-                        'resultJson': json.dumps({
-                            'resultUrls': ['https://example.com/result1.mp3']
-                        })
-                    }
-                elif 'url' in task_id or 'test_url' in task_id:
-                    return {
-                        'state': 'success',
-                        'resultJson': json.dumps({
-                            'resultUrls': ['https://example.com/processed.jpg']
-                        })
-                    }
-                elif 'file' in task_id or 'test_file' in task_id:
-                    return {
-                        'state': 'success',
-                        'resultJson': json.dumps({
-                            'resultUrls': ['https://example.com/processed_file.pdf']
-                        })
-                    }
-                elif 'fail' in task_id:
+                if 'fail' in task_id:
                     return {
                         'state': 'fail',
                         'failCode': 'TEST_ERROR',
                         'failMsg': 'Test error message'
                     }
-                else:
+                if 'timeout' in task_id:
                     return {'state': 'waiting'}
+
+                model_id = task_id.replace("stub_task_", "")
+                result_urls = infer_result_urls(model_id)
+                return {
+                    'state': 'success',
+                    'resultJson': json.dumps({
+                        'resultUrls': result_urls
+                    })
+                }
         
         return StubClient()
     
@@ -155,7 +153,8 @@ class KieGenerator:
                     'result_urls': [],
                     'result_object': None,
                     'error_code': 'NO_TASK_ID',
-                    'error_message': 'Task ID not returned'
+                    'error_message': 'Task ID not returned',
+                    'task_id': None
                 }
             
             # Wait for completion with heartbeat
@@ -172,7 +171,8 @@ class KieGenerator:
                         'result_urls': [],
                         'result_object': None,
                         'error_code': 'TIMEOUT',
-                        'error_message': f'Task timeout after {timeout} seconds'
+                        'error_message': f'Task timeout after {timeout} seconds',
+                        'task_id': task_id
                     }
                 
                 # Get record info
@@ -188,7 +188,8 @@ class KieGenerator:
                         'result_urls': parsed['result_urls'],
                         'result_object': parsed['result_object'],
                         'error_code': None,
-                        'error_message': None
+                        'error_message': None,
+                        'task_id': task_id
                     }
                 
                 elif state == 'fail':
@@ -202,7 +203,8 @@ class KieGenerator:
                         'result_urls': [],
                         'result_object': None,
                         'error_code': parsed['error_code'],
-                        'error_message': parsed['error_message']
+                        'error_message': parsed['error_message'],
+                        'task_id': task_id
                     }
                 
                 elif state == 'waiting':
@@ -228,7 +230,7 @@ class KieGenerator:
                     await asyncio.sleep(2)
                     continue
         
-        except ValueError as e:
+        except (ValueError, ModelContractError) as e:
             # Payload building error
             return {
                 'success': False,
@@ -236,7 +238,8 @@ class KieGenerator:
                 'result_urls': [],
                 'result_object': None,
                 'error_code': 'INVALID_INPUT',
-                'error_message': str(e)
+                'error_message': str(e),
+                'task_id': None
             }
         
         except Exception as e:
@@ -247,7 +250,8 @@ class KieGenerator:
                 'result_urls': [],
                 'result_object': None,
                 'error_code': 'UNKNOWN_ERROR',
-                'error_message': str(e)
+                'error_message': str(e),
+                'task_id': None
             }
 
 
@@ -286,4 +290,3 @@ async def generate_from_file(
     generator = KieGenerator()
     user_inputs = {'file': file_id, 'file_id': file_id, **kwargs}
     return await generator.generate(model_id, user_inputs, progress_callback)
-

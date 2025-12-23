@@ -107,7 +107,14 @@ async def test_fail_state(generator):
     
     generator.api_client = FailClient()
     # Use a model that exists or bypass source_of_truth check
-    generator.source_of_truth = {'models': [{'model_id': 'test_model', 'input_schema': {}}]}
+    generator.source_of_truth = {
+        'models': [
+            {
+                'model_id': 'test_model',
+                'input_schema': {'required': [], 'optional': [], 'properties': {}}
+            }
+        ]
+    }
     result = await generator.generate('test_model', {'text': 'test'})
     
     assert result['success'] is False
@@ -128,7 +135,14 @@ async def test_timeout(generator):
     
     generator.api_client = TimeoutClient()
     # Use a model that exists or bypass source_of_truth check
-    generator.source_of_truth = {'models': [{'model_id': 'test_model', 'input_schema': {}}]}
+    generator.source_of_truth = {
+        'models': [
+            {
+                'model_id': 'test_model',
+                'input_schema': {'required': [], 'optional': [], 'properties': {}}
+            }
+        ]
+    }
     result = await generator.generate('test_model', {'text': 'test'}, timeout=5)
     
     assert result['success'] is False
@@ -186,4 +200,3 @@ def test_parse_record_info_waiting():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-

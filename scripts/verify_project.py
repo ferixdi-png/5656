@@ -160,11 +160,32 @@ def verify_project() -> bool:
             logger.warning(f"  - {warning}")
     else:
         logger.info("[OK] All invariants satisfied!")
-    
+
+    # Verify polling preflight uses deleteWebhook and respects BOT_MODE/DRY_RUN
+    try:
+        main_render_path = Path("main_render.py")
+        if main_render_path.exists():
+            content = main_render_path.read_text(encoding="utf-8")
+            if "delete_webhook" not in content:
+                errors.append("main_render.py missing delete_webhook preflight call")
+            if "BOT_MODE" not in content:
+                errors.append("main_render.py missing BOT_MODE guard")
+            if "DRY_RUN" not in content:
+                errors.append("main_render.py missing DRY_RUN guard")
+        else:
+            errors.append("main_render.py not found for preflight verification")
+    except Exception as e:
+        errors.append(f"Failed to verify preflight: {e}")
+
+    if errors:
+        logger.error("[ERROR] ERRORS:")
+        for error in errors:
+            logger.error(f"  - {error}")
+        return False
+
     return True
 
 
 if __name__ == "__main__":
     success = verify_project()
     sys.exit(0 if success else 1)
-
