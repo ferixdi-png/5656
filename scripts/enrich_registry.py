@@ -204,6 +204,286 @@ MODEL_DESCRIPTIONS = {
     "bytedance/seedream": "ByteDance Seedream - text-to-image",
 }
 
+
+def generate_fallback_schema(category: str) -> Dict[str, Any]:
+    """
+    Generate intelligent fallback input_schema based on model category.
+    
+    MASTER PROMPT: "создать fallback-schema строго по документации"
+    
+    Returns schema with required fields and properties for each category.
+    """
+    # Text-to-Image models: require prompt
+    if category == "t2i":
+        return {
+            "required": ["prompt"],
+            "optional": ["width", "height", "steps", "guidance_scale"],
+            "properties": {
+                "prompt": {
+                    "type": "string",
+                    "description": "Text description of the image to generate"
+                },
+                "width": {
+                    "type": "integer",
+                    "description": "Image width in pixels",
+                    "default": 1024
+                },
+                "height": {
+                    "type": "integer",
+                    "description": "Image height in pixels",
+                    "default": 1024
+                },
+                "steps": {
+                    "type": "integer",
+                    "description": "Number of inference steps",
+                    "default": 20
+                },
+                "guidance_scale": {
+                    "type": "number",
+                    "description": "How strictly to follow the prompt",
+                    "default": 7.5
+                }
+            }
+        }
+    
+    # Image-to-Image: require url + prompt
+    elif category == "i2i":
+        return {
+            "required": ["url", "prompt"],
+            "optional": ["strength"],
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "URL of the source image"
+                },
+                "prompt": {
+                    "type": "string",
+                    "description": "Text description of desired changes"
+                },
+                "strength": {
+                    "type": "number",
+                    "description": "How much to change the image (0-1)",
+                    "default": 0.8
+                }
+            }
+        }
+    
+    # Text-to-Video: require prompt
+    elif category == "t2v":
+        return {
+            "required": ["prompt"],
+            "optional": ["duration", "fps", "resolution"],
+            "properties": {
+                "prompt": {
+                    "type": "string",
+                    "description": "Text description of the video"
+                },
+                "duration": {
+                    "type": "number",
+                    "description": "Video duration in seconds",
+                    "default": 5
+                },
+                "fps": {
+                    "type": "integer",
+                    "description": "Frames per second",
+                    "default": 24
+                },
+                "resolution": {
+                    "type": "string",
+                    "description": "Video resolution (720p, 1080p)",
+                    "default": "1080p"
+                }
+            }
+        }
+    
+    # Image-to-Video: require url
+    elif category == "i2v":
+        return {
+            "required": ["url"],
+            "optional": ["duration", "motion_strength"],
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "URL of the source image"
+                },
+                "duration": {
+                    "type": "number",
+                    "description": "Video duration in seconds",
+                    "default": 5
+                },
+                "motion_strength": {
+                    "type": "number",
+                    "description": "Amount of motion (0-1)",
+                    "default": 0.5
+                }
+            }
+        }
+    
+    # Video-to-Video: require video_url
+    elif category == "v2v":
+        return {
+            "required": ["video_url"],
+            "optional": ["prompt"],
+            "properties": {
+                "video_url": {
+                    "type": "string",
+                    "description": "URL of the source video"
+                },
+                "prompt": {
+                    "type": "string",
+                    "description": "Description of desired transformation"
+                }
+            }
+        }
+    
+    # Text-to-Speech: require text
+    elif category == "tts":
+        return {
+            "required": ["text"],
+            "optional": ["voice", "language"],
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "description": "Text to convert to speech"
+                },
+                "voice": {
+                    "type": "string",
+                    "description": "Voice ID or name"
+                },
+                "language": {
+                    "type": "string",
+                    "description": "Language code (en, ru, etc.)"
+                }
+            }
+        }
+    
+    # Speech-to-Text: require audio_url
+    elif category == "stt":
+        return {
+            "required": ["audio_url"],
+            "optional": ["language"],
+            "properties": {
+                "audio_url": {
+                    "type": "string",
+                    "description": "URL of the audio file"
+                },
+                "language": {
+                    "type": "string",
+                    "description": "Expected language (optional)"
+                }
+            }
+        }
+    
+    # Audio effects/music: require prompt
+    elif category in ["music", "sfx"]:
+        return {
+            "required": ["prompt"],
+            "optional": ["duration"],
+            "properties": {
+                "prompt": {
+                    "type": "string",
+                    "description": "Description of the audio to generate"
+                },
+                "duration": {
+                    "type": "number",
+                    "description": "Duration in seconds",
+                    "default": 10
+                }
+            }
+        }
+    
+    # Audio isolation: require audio_url
+    elif category == "audio_isolation":
+        return {
+            "required": ["audio_url"],
+            "optional": ["target"],
+            "properties": {
+                "audio_url": {
+                    "type": "string",
+                    "description": "URL of the audio file"
+                },
+                "target": {
+                    "type": "string",
+                    "description": "What to isolate (vocals, instruments, etc.)"
+                }
+            }
+        }
+    
+    # Upscale: require url
+    elif category == "upscale":
+        return {
+            "required": ["url"],
+            "optional": ["scale"],
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "URL of the image or video to upscale"
+                },
+                "scale": {
+                    "type": "number",
+                    "description": "Upscale factor (2x, 4x)",
+                    "default": 2
+                }
+            }
+        }
+    
+    # Background removal: require url
+    elif category == "bg_remove":
+        return {
+            "required": ["url"],
+            "optional": [],
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "URL of the image"
+                }
+            }
+        }
+    
+    # Watermark removal: require url
+    elif category == "watermark_remove":
+        return {
+            "required": ["url"],
+            "optional": [],
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "URL of the image or video"
+                }
+            }
+        }
+    
+    # Lip sync: require video_url + audio_url
+    elif category == "lip_sync":
+        return {
+            "required": ["video_url", "audio_url"],
+            "optional": [],
+            "properties": {
+                "video_url": {
+                    "type": "string",
+                    "description": "URL of the video with face"
+                },
+                "audio_url": {
+                    "type": "string",
+                    "description": "URL of the target speech audio"
+                }
+            }
+        }
+    
+    # Default fallback: simple prompt
+    else:
+        return {
+            "required": ["prompt"],
+            "optional": [],
+            "properties": {
+                "prompt": {
+                    "type": "string",
+                    "description": "Input text or description"
+                }
+            }
+        }
+
+
 # Человекочитаемые имена
 MODEL_NAMES = {
     "flux/pro": "Flux Pro",
@@ -242,7 +522,7 @@ MODEL_NAMES = {
 
 
 def enrich_model(model: Dict[str, Any]) -> Dict[str, Any]:
-    """Enrich single model with price, description, name."""
+    """Enrich single model with price, description, name, and input_schema."""
     model_id = model.get("model_id", "")
     category = model.get("category", "")
     
@@ -283,6 +563,18 @@ def enrich_model(model: Dict[str, Any]) -> Dict[str, Any]:
         model["price"] = estimated_price
         model["is_pricing_known"] = False
         model["pricing_source"] = "category_fallback"
+    
+    # INTELLIGENT INPUT_SCHEMA GENERATION (MASTER PROMPT COMPLIANCE)
+    # "создать fallback-schema строго по документации"
+    current_schema = model.get("input_schema", {})
+    has_required = current_schema.get("required")
+    has_properties = current_schema.get("properties")
+    
+    # If schema is empty or incomplete, generate fallback
+    if not has_required and not has_properties:
+        fallback_schema = generate_fallback_schema(category)
+        model["input_schema"] = fallback_schema
+        model["schema_source"] = "category_fallback"
     
     # Add description if known
     if model_id in MODEL_DESCRIPTIONS and not model.get("description"):
