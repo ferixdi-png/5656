@@ -7,7 +7,7 @@ import asyncio
 import logging
 import os
 import sys
-from typing import Optional
+from typing import Optional, Tuple
 
 # Configure logging first
 logging.basicConfig(
@@ -27,7 +27,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 
-def create_bot_application() -> tuple[Dispatcher, Bot]:
+def create_bot_application() -> Tuple[Dispatcher, Bot]:
     """
     Create and configure bot application.
     
