@@ -14,12 +14,15 @@ def test_main_menu_buttons():
     markup = flow._main_menu_keyboard()
     buttons = _flatten_buttons(markup)
     callbacks = [cb for _, cb in buttons]
-    # Check callback_data instead of text (emoji issues in terminal)
-    assert "cat:t2v" in callbacks
-    assert "cat:t2i" in callbacks
-    assert "menu:balance" in callbacks
-    assert "menu:search" in callbacks
-    assert "menu:history" in callbacks
+    # Check canonical menu items
+    assert "cat:t2v" in callbacks  # Видео для Reels/TikTok
+    assert "cat:t2i" in callbacks  # Картинка/баннер/пост
+    assert "menu:edit" in callbacks  # Улучшить/изменить
+    assert "menu:audio" in callbacks  # Аудио/озвучка
+    assert "menu:top" in callbacks  # Лучшие модели
+    assert "menu:search" in callbacks  # Поиск
+    assert "menu:history" in callbacks  # История
+    assert "menu:balance" in callbacks  # Баланс
 
 
 def test_categories_cover_registry():

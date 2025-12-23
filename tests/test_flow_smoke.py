@@ -110,7 +110,8 @@ async def test_start_command(message, state):
     # Should answer with welcome message
     assert message.answer.called
     call_args = message.answer.call_args
-    assert "Добро пожаловать" in call_args[0][0]
+    # Updated canonical text
+    assert "создать сегодня" in call_args[0][0] or "нейросеть" in call_args[0][0]
     
     # Should have keyboard
     assert "reply_markup" in call_args[1]

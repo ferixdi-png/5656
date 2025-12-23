@@ -96,41 +96,115 @@ def _category_keyboard() -> InlineKeyboardMarkup:
 def _main_menu_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🎬 Видео для Reels/TikTok", callback_data="cat:t2v")],
-            [InlineKeyboardButton(text="🎨 Картинка/пост/баннер", callback_data="cat:t2i")],
-            [InlineKeyboardButton(text="✏️ Улучшить/редактировать", callback_data="menu:edit")],
-            [InlineKeyboardButton(text="⭐ Все категории", callback_data="menu:all_categories")],
+            [InlineKeyboardButton(text="🎬 Видео для Reels / TikTok", callback_data="cat:t2v")],
+            [InlineKeyboardButton(text="🎨 Картинка / баннер / пост", callback_data="cat:t2i")],
+            [InlineKeyboardButton(text="✏️ Улучшить / изменить / апскейл", callback_data="menu:edit")],
+            [InlineKeyboardButton(text="🎧 Аудио / озвучка", callback_data="menu:audio")],
+            [InlineKeyboardButton(text="⭐ Лучшие модели", callback_data="menu:top")],
             [InlineKeyboardButton(text="🔎 Поиск модели", callback_data="menu:search")],
-            [InlineKeyboardButton(text="� История", callback_data="menu:history")],
-            [InlineKeyboardButton(text="�💳 Баланс / Оплата", callback_data="menu:balance")],
+            [InlineKeyboardButton(text="🕘 История", callback_data="menu:history")],
+            [InlineKeyboardButton(text="💳 Баланс", callback_data="menu:balance")],
         ]
     )
 
 
-def _model_keyboard(models: List[Dict[str, Any]], back_cb: str) -> InlineKeyboardMarkup:
+def _model_keyboard(models: List[Dict[str, Any]], back_cb: str, page: int = 0, per_page: int = 6) -> InlineKeyboardMarkup:
+    """Create paginated model keyboard."""
     rows: List[List[InlineKeyboardButton]] = []
-    for model in models:
+    
+    # Calculate pagination
+    start = page * per_page
+    end = start + per_page
+    page_models = models[start:end]
+    total_pages = (len(models) + per_page - 1) // per_page
+    
+    # Model buttons
+    for model in page_models:
         model_id = model.get("model_id", "unknown")
         title = model.get("name") or model_id
+        # Truncate long names
+        if len(title) > 40:
+            title = title[:37] + "..."
         rows.append([InlineKeyboardButton(text=title, callback_data=f"model:{model_id}")])
-    rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data=back_cb)])
+    
+    # Pagination buttons
+    if total_pages > 1:
+        nav_buttons = []
+        if page > 0:
+            nav_buttons.append(InlineKeyboardButton(text="◀️ Пред", callback_data=f"page:{back_cb}:{page-1}"))
+        nav_buttons.append(InlineKeyboardButton(text=f"{page+1}/{total_pages}", callback_data="noop"))
+        if page < total_pages - 1:
+            nav_buttons.append(InlineKeyboardButton(text="След ▶️", callback_data=f"page:{back_cb}:{page+1}"))
+        rows.append(nav_buttons)
+    
+    rows.append([InlineKeyboardButton(text="◀️ В меню", callback_data="main_menu")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def _model_detail_text(model: Dict[str, Any]) -> str:
+    """Create human-friendly model card."""
     name = model.get("name") or model.get("model_id")
-    best_for = model.get("best_for") or model.get("description") or "Описание отсутствует"
-    price = model.get("price") or "N/A"
-    eta = model.get("eta") or "N/A"
+    model_id = model.get("model_id", "")
+    
+    # Human-friendly description
+    best_for = model.get("best_for") or model.get("description")
+    if not best_for:
+        # Generate description from model_id
+        if "video" in model_id.lower():
+            best_for = "Создание видео из текста или изображений"
+        elif "image" in model_id.lower() or "flux" in model_id.lower():
+            best_for = "Генерация изображений по описанию"
+        elif "upscale" in model_id.lower():
+            best_for = "Улучшение качества и разрешения изображений"
+        elif "audio" in model_id.lower() or "tts" in model_id.lower():
+            best_for = "Генерация голоса и озвучка текста"
+        else:
+            best_for = "Обработка и генерация контента"
+    
+    # Price formatting
+    price_raw = model.get("price")
+    if price_raw:
+        try:
+            price_val = float(price_raw)
+            if price_val == 0:
+                price_str = "Бесплатно"
+            else:
+                price_str = f"{price_val:.2f} кредитов"
+        except (TypeError, ValueError):
+            price_str = str(price_raw)
+    else:
+        price_str = "Уточняется"
+    
+    # ETA
+    eta = model.get("eta")
+    if eta:
+        eta_str = f"~{eta} сек"
+    else:
+        # Estimate by category
+        category = model.get("category", "")
+        if "video" in category or "v2v" in category:
+            eta_str = "~30-60 сек"
+        elif "upscale" in category:
+            eta_str = "~15-30 сек"
+        else:
+            eta_str = "~10-20 сек"
+    
+    # Example result
     input_schema = model.get("input_schema", {})
     required_fields = input_schema.get("required", [])
-    required_label = ", ".join(required_fields) if required_fields else "нет"
+    if not required_fields:
+        example = "Результат придет автоматически"
+    elif len(required_fields) == 1:
+        example = "Нужен 1 параметр"
+    else:
+        example = f"Нужно {len(required_fields)} параметра"
+    
     return (
-        f"<b>{name}</b>\n\n"
-        f"Best for: {best_for}\n"
-        f"Поля: {required_label}\n"
-        f"Цена: {price}\n"
-        f"ETA: {eta}\n"
+        f"✨ <b>{name}</b>\n\n"
+        f"<b>Для чего:</b> {best_for}\n\n"
+        f"<b>Что получите:</b> {example}\n"
+        f"<b>Цена:</b> {price_str}\n"
+        f"<b>Время:</b> {eta_str}"
     )
 
 
@@ -158,18 +232,42 @@ class InputContext:
 
 
 def _field_prompt(field_name: str, field_spec: Dict[str, Any]) -> str:
+    """Generate human-friendly prompt with examples."""
     field_type = field_spec.get("type", "string")
     enum = field_spec.get("enum")
     max_length = field_spec.get("max_length")
+    
     if enum:
         return f"Выберите значение для <b>{field_name}</b>:"
+    
     if field_type in {"file", "file_id", "file_url"}:
-        return f"Отправьте файл для <b>{field_name}</b>:"
+        return (
+            f"📎 <b>Загрузите файл</b>\n\n"
+            f"Отправьте изображение, видео или документ для параметра: {field_name}"
+        )
+    
     if field_type in {"url", "link", "source_url"}:
-        return f"Отправьте ссылку для <b>{field_name}</b> (http/https):"
+        return (
+            f"🔗 <b>Отправьте ссылку</b>\n\n"
+            f"Вставьте URL для параметра: {field_name}\n\n"
+            f"<i>Пример: https://example.com/image.jpg</i>"
+        )
+    
+    # Text/prompt fields - make them human-friendly
+    if field_name in {"prompt", "text", "description", "input"}:
+        return (
+            f"✍️ <b>Опишите, что вы хотите создать</b>\n\n"
+            f"<i>Пример:</i>\n"
+            f"\"Неоновый баннер для Instagram, стиль киберпанк, тёмный фон\""
+        )
+    
     if max_length:
-        return f"Введите значение для <b>{field_name}</b> (до {max_length} символов):"
-    return f"Введите значение для <b>{field_name}</b>:"
+        return (
+            f"✍️ <b>Введите {field_name}</b>\n\n"
+            f"Максимум {max_length} символов"
+        )
+    
+    return f"✍️ <b>Введите {field_name}</b>"
 
 
 def _enum_keyboard(field_spec: Dict[str, Any]) -> Optional[InlineKeyboardMarkup]:
@@ -237,8 +335,8 @@ async def start_cmd(message: Message, state: FSMContext) -> None:
     charge_manager = get_charge_manager()
     charge_manager.ensure_welcome_credit(message.from_user.id, WELCOME_CREDITS)
     await message.answer(
-        "👋 Добро пожаловать!\n\n"
-        "Выберите действие:",
+        "� <b>Что вы хотите создать сегодня?</b>\n"
+        "Я подберу лучшую нейросеть под вашу задачу",
         reply_markup=_main_menu_keyboard(),
     )
 
@@ -289,6 +387,53 @@ async def edit_menu_cb(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.message.edit_text(
         "✏️ Редактирование\n\nВыберите действие:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
+    )
+
+
+@router.callback_query(F.data == "menu:audio")
+async def audio_menu_cb(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    await state.clear()
+    # Show audio categories
+    audio_categories = ["tts", "stt", "music", "sfx", "audio_isolation"]
+    grouped = _models_by_category()
+    rows = []
+    for cat in audio_categories:
+        if cat in grouped and grouped[cat]:
+            label = _category_label(cat)
+            rows.append([InlineKeyboardButton(text=label, callback_data=f"cat:{cat}")])
+    if not rows:
+        rows.append([InlineKeyboardButton(text="⚠️ Аудио модели скоро появятся", callback_data="noop")])
+    rows.append([InlineKeyboardButton(text="◀️ В меню", callback_data="main_menu")])
+    await callback.message.edit_text(
+        "🎧 Аудио / Озвучка\n\nВыберите действие:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
+    )
+
+
+@router.callback_query(F.data == "menu:top")
+async def top_menu_cb(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    await state.clear()
+    # Top models - based on popularity/price
+    all_models = [m for m in _source_of_truth().get("models", []) if _is_valid_model(m)]
+    
+    # Sort by: has price, then by category popularity
+    popular_categories = ["t2i", "t2v", "i2i", "upscale"]
+    top_models = []
+    
+    for cat in popular_categories:
+        cat_models = [m for m in all_models if m.get("category") == cat]
+        if cat_models:
+            top_models.append(cat_models[0])  # First model from each popular category
+    
+    if not top_models:
+        top_models = all_models[:5]  # Fallback to first 5
+    
+    await state.update_data(top_models=True)
+    await callback.message.edit_text(
+        "⭐ Лучшие модели\n\nПопулярные и проверенные нейросети:",
+        reply_markup=_model_keyboard(top_models, "main_menu", page=0),
     )
 
 
@@ -344,9 +489,10 @@ async def search_query_handler(message: Message, state: FSMContext) -> None:
         return
     
     # Show results
+    await state.update_data(category_models=matches)
     await message.answer(
         f"🔎 Найдено моделей: {len(matches)}\n\nВыберите модель:",
-        reply_markup=_model_keyboard(matches[:20], "menu:search"),  # Limit to first 20
+        reply_markup=_model_keyboard(matches, "menu:search", page=0),
     )
 
 
@@ -354,7 +500,16 @@ async def search_query_handler(message: Message, state: FSMContext) -> None:
 async def support_cb(callback: CallbackQuery) -> None:
     await callback.answer()
     await callback.message.edit_text(
-        "ℹ️ Поддержка\n\nНапишите в поддержку, если нужна помощь."
+        "ℹ️ <b>Поддержка</b>\n\n"
+        "Если у вас возникли вопросы или проблемы:\n\n"
+        "📧 Email: support@example.com\n"
+        "💬 Telegram: @support_bot\n\n"
+        "Мы отвечаем в течение 24 часов.",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="◀️ В меню", callback_data="main_menu")],
+            ]
+        ),
     )
 
 
@@ -514,11 +669,51 @@ async def category_cb(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.message.edit_text("⚠️ В этой категории пока нет моделей.", reply_markup=_category_keyboard())
         return
 
-    await state.update_data(category=category)
+    await state.update_data(category=category, category_models=models)
     await callback.message.edit_text(
         f"Категория: {_category_label(category)}\n\nВыберите модель:",
-        reply_markup=_model_keyboard(models, "menu:generate"),
+        reply_markup=_model_keyboard(models, f"cat:{category}", page=0),
     )
+
+
+@router.callback_query(F.data.startswith("page:"))
+async def page_cb(callback: CallbackQuery, state: FSMContext) -> None:
+    """Handle pagination callbacks."""
+    await callback.answer()
+    parts = callback.data.split(":", 2)
+    if len(parts) < 3:
+        return
+    
+    back_cb = parts[1]
+    try:
+        page = int(parts[2])
+    except ValueError:
+        return
+    
+    data = await state.get_data()
+    
+    # Get models from state
+    models = data.get("category_models")
+    if not models:
+        # Fallback: try to get from category
+        if back_cb.startswith("cat:"):
+            category = back_cb.split(":", 1)[1]
+            grouped = _models_by_category()
+            models = grouped.get(category, [])
+    
+    if not models:
+        await callback.answer("⚠️ Модели не найдены", show_alert=True)
+        return
+    
+    await callback.message.edit_reply_markup(
+        reply_markup=_model_keyboard(models, back_cb, page=page)
+    )
+
+
+@router.callback_query(F.data == "noop")
+async def noop_cb(callback: CallbackQuery) -> None:
+    """No-op callback for pagination display."""
+    await callback.answer()
 
 
 @router.callback_query(F.data.startswith("model:"))
@@ -647,23 +842,72 @@ async def _save_input_and_continue(message: Message, state: FSMContext, value: A
 
 
 async def _show_confirmation(message: Message, state: FSMContext, model: Optional[Dict[str, Any]]) -> None:
+    """Show canonical confirmation screen."""
     if not model:
         await message.answer("⚠️ Модель не найдена.")
         return
+    
     data = await state.get_data()
     flow_ctx = InputContext(**data.get("flow_ctx"))
-    price = model.get("price") or "N/A"
+    
+    model_name = model.get("name") or model.get("model_id")
+    
+    # Price formatting
+    price_raw = model.get("price") or 0
+    try:
+        price_amount = float(price_raw)
+        if price_amount == 0:
+            price_str = "Бесплатно"
+        else:
+            price_str = f"{price_amount:.2f} кредитов"
+    except (TypeError, ValueError):
+        price_str = str(price_raw)
+    
+    # ETA
+    eta = model.get("eta")
+    if eta:
+        eta_str = f"~{eta} сек"
+    else:
+        category = model.get("category", "")
+        if "video" in category:
+            eta_str = "~30-60 сек"
+        elif "upscale" in category:
+            eta_str = "~15-30 сек"
+        else:
+            eta_str = "~10-20 сек"
+    
+    # What user will get
+    output_type = model.get("output_type", "url")
+    if output_type == "url":
+        result_desc = "Ссылка на результат"
+    elif "video" in str(model.get("category", "")):
+        result_desc = "Видеофайл"
+    elif "image" in str(model.get("category", "")):
+        result_desc = "Изображение"
+    else:
+        result_desc = "Файл результата"
+    
+    # Format parameters
+    if flow_ctx.collected:
+        params_str = "\n".join([f"• {k}: {v}" for k, v in flow_ctx.collected.items()])
+    else:
+        params_str = "Параметры по умолчанию"
+    
     balance = get_charge_manager().get_user_balance(message.from_user.id)
+    
     await state.set_state(InputFlow.confirm)
     await message.answer(
-        f"{_model_detail_text(model)}\n"
-        f"Параметры: {flow_ctx.collected}\n\n"
-        f"Цена: {price}\n"
-        f"Баланс: {balance:.2f}\n"
-        "Подтвердить генерацию?",
+        f"🔍 <b>Проверьте заказ</b>\n\n"
+        f"<b>Модель:</b> {model_name}\n"
+        f"<b>Задача:</b>\n{params_str}\n\n"
+        f"<b>Цена:</b> {price_str}\n"
+        f"<b>Ожидание:</b> {eta_str}\n"
+        f"<b>Получите:</b> {result_desc}\n\n"
+        f"💰 <b>Ваш баланс:</b> {balance:.2f} кредитов\n\n"
+        f"После запуска средства будут зарезервированы",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="🚀 Подтвердить", callback_data="confirm")],
+                [InlineKeyboardButton(text="✅ Запустить", callback_data="confirm")],
                 [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel")],
             ]
         ),
@@ -674,7 +918,10 @@ async def _show_confirmation(message: Message, state: FSMContext, model: Optiona
 async def cancel_cb(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     await state.clear()
-    await callback.message.edit_text("❌ Отменено. Возврат в меню.", reply_markup=_category_keyboard())
+    await callback.message.edit_text(
+        "❌ Отменено. Возврат в меню.",
+        reply_markup=_main_menu_keyboard()
+    )
 
 
 @router.callback_query(F.data == "confirm", InputFlow.confirm)
@@ -712,7 +959,7 @@ async def confirm_cb(callback: CallbackQuery, state: FSMContext) -> None:
         await state.clear()
         return
 
-    await callback.message.edit_text("⏳ Генерация запущена. Пожалуйста, подождите...")
+    await callback.message.edit_text("⏳ <b>Генерация запущена</b>\n\nЯ сообщу о результате. Пожалуйста, подождите...")
 
     def heartbeat(text: str) -> None:
         asyncio.create_task(callback.message.answer(text))
