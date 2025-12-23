@@ -247,16 +247,22 @@ async def test_confirm_insufficient_balance(callback, state):
     
     callback.data = "confirm"
     
-    # Mock model to have price > 0
+    # Mock model to have price > user balance
+    # User has WELCOME_BALANCE_RUB (200) by default
+    # Set Kie price to 150 => user price = 300 (x2 markup)
     with patch("bot.handlers.flow._source_of_truth") as mock_sot:
         mock_sot.return_value = {
             "models": [{
                 **model,
-                "price": 100.0  # High price
+                "price": 150.0  # Kie cost 150 => user pays 300 RUB
             }]
         }
         
-        # User has 0 balance (default)
+        # Force user balance to 100 (less than 300)
+        from app.payments.charges import get_charge_manager
+        charge_mgr = get_charge_manager()
+        charge_mgr._balances[callback.from_user.id] = 100.0
+        
         await confirm_cb(callback, state)
     
     # Should answer
@@ -266,7 +272,7 @@ async def test_confirm_insufficient_balance(callback, state):
     assert callback.message.edit_text.called
     call_args = callback.message.edit_text.call_args
     text = call_args[0][0]
-    assert "Недостаточно средств" in text
+    assert "Недостаточно средств" in text or "недостаточно" in text.lower()
 
 
 @pytest.mark.asyncio

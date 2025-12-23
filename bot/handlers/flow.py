@@ -18,6 +18,7 @@ from app.kie.builder import load_source_of_truth
 from app.kie.validator import validate_input_type, ModelContractError
 from app.payments.charges import get_charge_manager
 from app.payments.integration import generate_with_payment
+from app.payments.pricing import calculate_user_price, format_price_rub
 
 router = Router(name="flow")
 
@@ -41,7 +42,7 @@ CATEGORY_LABELS = {
     "other": "⭐ Other",
 }
 
-WELCOME_CREDITS = float(os.getenv("WELCOME_CREDITS", "10"))
+WELCOME_BALANCE_RUB = float(os.getenv("WELCOME_BALANCE_RUB", "200"))
 
 
 def _source_of_truth() -> Dict[str, Any]:
@@ -161,15 +162,16 @@ def _model_detail_text(model: Dict[str, Any]) -> str:
         else:
             best_for = "Обработка и генерация контента"
     
-    # Price formatting
+    # Price formatting - estimated user price (x2 from Kie.ai)
     price_raw = model.get("price")
     if price_raw:
         try:
-            price_val = float(price_raw)
-            if price_val == 0:
+            kie_cost = float(price_raw)
+            if kie_cost == 0:
                 price_str = "Бесплатно"
             else:
-                price_str = f"{price_val:.2f} кредитов"
+                user_price = calculate_user_price(kie_cost)
+                price_str = format_price_rub(user_price)
         except (TypeError, ValueError):
             price_str = str(price_raw)
     else:
@@ -333,7 +335,7 @@ def _validate_field_value(value: Any, field_spec: Dict[str, Any], field_name: st
 async def start_cmd(message: Message, state: FSMContext) -> None:
     await state.clear()
     charge_manager = get_charge_manager()
-    charge_manager.ensure_welcome_credit(message.from_user.id, WELCOME_CREDITS)
+    charge_manager.ensure_welcome_credit(message.from_user.id, WELCOME_BALANCE_RUB)
     await message.answer(
         "� <b>Что вы хотите создать сегодня?</b>\n"
         "Я подберу лучшую нейросеть под вашу задачу",
@@ -518,7 +520,7 @@ async def balance_cb(callback: CallbackQuery) -> None:
     await callback.answer()
     balance = get_charge_manager().get_user_balance(callback.from_user.id)
     await callback.message.edit_text(
-        f"💰 Баланс: {balance:.2f} кредитов\n\n"
+        f"💰 Баланс: {format_price_rub(balance)}\n\n"
         "Пополнение временно доступно через поддержку.",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
@@ -603,8 +605,8 @@ async def repeat_cb(callback: CallbackQuery, state: FSMContext) -> None:
     if amount > 0 and balance < amount:
         await callback.message.edit_text(
             "❌ Недостаточно средств для повтора.\n\n"
-            f"Цена: {amount:.2f}\n"
-            f"Баланс: {balance:.2f}",
+            f"Стоимость: {format_price_rub(amount)}\n"
+            f"Баланс: {format_price_rub(balance)}",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [InlineKeyboardButton(text="💳 Пополнить", callback_data="menu:balance")],
@@ -852,14 +854,15 @@ async def _show_confirmation(message: Message, state: FSMContext, model: Optiona
     
     model_name = model.get("name") or model.get("model_id")
     
-    # Price formatting
+    # Price formatting - estimated user price (x2 from Kie.ai)
     price_raw = model.get("price") or 0
     try:
-        price_amount = float(price_raw)
-        if price_amount == 0:
+        kie_cost_estimate = float(price_raw)
+        if kie_cost_estimate == 0:
             price_str = "Бесплатно"
         else:
-            price_str = f"{price_amount:.2f} кредитов"
+            user_price_estimate = calculate_user_price(kie_cost_estimate)
+            price_str = format_price_rub(user_price_estimate)
     except (TypeError, ValueError):
         price_str = str(price_raw)
     
@@ -900,11 +903,12 @@ async def _show_confirmation(message: Message, state: FSMContext, model: Optiona
         f"🔍 <b>Проверьте заказ</b>\n\n"
         f"<b>Модель:</b> {model_name}\n"
         f"<b>Задача:</b>\n{params_str}\n\n"
-        f"<b>Цена:</b> {price_str}\n"
-        f"<b>Ожидание:</b> {eta_str}\n"
-        f"<b>Получите:</b> {result_desc}\n\n"
-        f"💰 <b>Ваш баланс:</b> {balance:.2f} кредитов\n\n"
-        f"После запуска средства будут зарезервированы",
+        f"💰 <b>Стоимость генерации:</b> {price_str}\n"
+        f"📌 <b>Цена сформирована на основе тарифа модели</b>\n"
+        f"⏱ <b>Ожидание:</b> {eta_str}\n"
+        f"📦 <b>Получите:</b> {result_desc}\n\n"
+        f"💳 <b>Ваш баланс:</b> {format_price_rub(balance)}\n\n"
+        f"ℹ️ <i>Деньги спишутся ТОЛЬКО при успешной генерации</i>",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
                 [InlineKeyboardButton(text="✅ Запустить", callback_data="confirm")],
