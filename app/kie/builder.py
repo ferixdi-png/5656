@@ -53,7 +53,11 @@ def build_payload(
     model_schema = get_model_schema(model_id, source_of_truth)
     if not model_schema:
         raise ValueError(f"Model {model_id} not found in source of truth")
-    
+
+    from app.kie.validator import validate_model_inputs, validate_payload_before_create_task
+
+    validate_model_inputs(model_id, model_schema, user_inputs)
+
     input_schema = model_schema.get('input_schema', {})
     required_fields = input_schema.get('required', [])
     optional_fields = input_schema.get('optional', [])
@@ -130,12 +134,7 @@ def build_payload(
             
             payload[field_name] = value
     
-    # Add any additional fields from user_inputs that are not in schema
-    # (for backward compatibility)
-    for key, value in user_inputs.items():
-        if key not in payload and key not in ['model', 'model_id']:
-            payload[key] = value
-    
+    validate_payload_before_create_task(model_id, payload, model_schema)
     return payload
 
 
@@ -155,4 +154,3 @@ def build_payload_from_file(model_id: str, file_id: str, **kwargs) -> Dict[str, 
     """Convenience method to build payload from file input."""
     user_inputs = {'file': file_id, 'file_id': file_id, 'file_url': file_id, **kwargs}
     return build_payload(model_id, user_inputs)
-
