@@ -1,102 +1,8 @@
 {
   "version": "1.0.0",
+  "source": "repository_docs_only",
   "total_models": 104,
   "source_files": [
-    "5656-main\\all_models_test_results.json",
-    "5656-main\\app\\kie_catalog\\models_pricing.yaml",
-    "5656-main\\artifacts\\models\\source.json",
-    "5656-main\\cheap_models_test_results.json",
-    "5656-main\\data\\kie_models_complete_pricing.json",
-    "5656-main\\docs\\ARCHITECTURE.md",
-    "5656-main\\docs\\BYTEDANCE_SEEDREAM_INTEGRATION.md",
-    "5656-main\\docs\\BYTEDANCE_SEEDREAM_V4_EDIT_INTEGRATION.md",
-    "5656-main\\docs\\BYTEDANCE_SEEDREAM_V4_TEXT_TO_IMAGE_INTEGRATION.md",
-    "5656-main\\docs\\BYTEDANCE_V1_LITE_IMAGE_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\BYTEDANCE_V1_LITE_TEXT_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\BYTEDANCE_V1_PRO_FAST_IMAGE_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\BYTEDANCE_V1_PRO_IMAGE_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\BYTEDANCE_V1_PRO_TEXT_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\ELEVENLABS_AUDIO_ISOLATION_INTEGRATION.md",
-    "5656-main\\docs\\ELEVENLABS_SOUND_EFFECT_V2_INTEGRATION.md",
-    "5656-main\\docs\\ELEVENLABS_SPEECH_TO_TEXT_INTEGRATION.md",
-    "5656-main\\docs\\ELEVENLABS_TEXT_TO_SPEECH_MULTILINGUAL_V2_INTEGRATION.md",
-    "5656-main\\docs\\FLOWS.md",
-    "5656-main\\docs\\FLUX_2_FLEX_IMAGE_TO_IMAGE_INTEGRATION.md",
-    "5656-main\\docs\\FLUX_2_FLEX_TEXT_TO_IMAGE_INTEGRATION.md",
-    "5656-main\\docs\\FLUX_2_PRO_IMAGE_TO_IMAGE_INTEGRATION.md",
-    "5656-main\\docs\\FLUX_2_PRO_TEXT_TO_IMAGE_INTEGRATION.md",
-    "5656-main\\docs\\GOOGLE_IMAGEN4_FAST_INTEGRATION.md",
-    "5656-main\\docs\\GOOGLE_IMAGEN4_INTEGRATION.md",
-    "5656-main\\docs\\GOOGLE_IMAGEN4_ULTRA_INTEGRATION.md",
-    "5656-main\\docs\\GOOGLE_NANO_BANANA_EDIT_INTEGRATION.md",
-    "5656-main\\docs\\GOOGLE_NANO_BANANA_INTEGRATION.md",
-    "5656-main\\docs\\GROK_IMAGINE_IMAGE_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\GROK_IMAGINE_TEXT_TO_IMAGE_INTEGRATION.md",
-    "5656-main\\docs\\GROK_IMAGINE_TEXT_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\GROK_IMAGINE_UPSCALE_INTEGRATION.md",
-    "5656-main\\docs\\HAILUO_02_IMAGE_TO_VIDEO_PRO_INTEGRATION.md",
-    "5656-main\\docs\\HAILUO_02_IMAGE_TO_VIDEO_STANDARD_INTEGRATION.md",
-    "5656-main\\docs\\HAILUO_02_TEXT_TO_VIDEO_PRO_INTEGRATION.md",
-    "5656-main\\docs\\HAILUO_02_TEXT_TO_VIDEO_STANDARD_INTEGRATION.md",
-    "5656-main\\docs\\HAILUO_2_3_IMAGE_TO_VIDEO_PRO_INTEGRATION.md",
-    "5656-main\\docs\\HAILUO_2_3_IMAGE_TO_VIDEO_STANDARD_INTEGRATION.md",
-    "5656-main\\docs\\IDEOGRAM_CHARACTER_EDIT_INTEGRATION.md",
-    "5656-main\\docs\\IDEOGRAM_CHARACTER_INTEGRATION.md",
-    "5656-main\\docs\\IDEOGRAM_CHARACTER_REMIX_INTEGRATION.md",
-    "5656-main\\docs\\IDEOGRAM_V3_EDIT_INTEGRATION.md",
-    "5656-main\\docs\\IDEOGRAM_V3_REFrame_INTEGRATION.md",
-    "5656-main\\docs\\IDEOGRAM_V3_REMIX_INTEGRATION.md",
-    "5656-main\\docs\\IDEOGRAM_V3_TEXT_TO_IMAGE_INTEGRATION.md",
-    "5656-main\\docs\\INFINITALK_FROM_AUDIO_INTEGRATION.md",
-    "5656-main\\docs\\KIE_AI_INTEGRATION_IMPROVEMENTS.md",
-    "5656-main\\docs\\KIE_MODELS_AND_PRICING_RU.md",
-    "5656-main\\docs\\KLING_2_6_IMAGE_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\KLING_2_6_TEXT_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\KLING_AI_AVATAR_V1_PRO_INTEGRATION.md",
-    "5656-main\\docs\\KLING_V1_AVATAR_STANDARD_INTEGRATION.md",
-    "5656-main\\docs\\KLING_V2_1_MASTER_IMAGE_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\KLING_V2_1_MASTER_TEXT_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\KLING_V2_1_PRO_INTEGRATION.md",
-    "5656-main\\docs\\KLING_V2_1_STANDARD_INTEGRATION.md",
-    "5656-main\\docs\\KLING_V2_5_TURBO_IMAGE_TO_VIDEO_PRO_INTEGRATION.md",
-    "5656-main\\docs\\KLING_V2_5_TURBO_TEXT_TO_VIDEO_PRO_INTEGRATION.md",
-    "5656-main\\docs\\NANO_BANANA_PRO_INTEGRATION.md",
-    "5656-main\\docs\\OFFICIAL_API_DOCUMENTATION_INDEX.md",
-    "5656-main\\docs\\PLAN.md",
-    "5656-main\\docs\\QWEN_IMAGE_EDIT_INTEGRATION.md",
-    "5656-main\\docs\\QWEN_IMAGE_TO_IMAGE_INTEGRATION.md",
-    "5656-main\\docs\\QWEN_TEXT_TO_IMAGE_INTEGRATION.md",
-    "5656-main\\docs\\RECRAFT_CRISP_UPSCALE_INTEGRATION.md",
-    "5656-main\\docs\\RECRAFT_REMOVE_BACKGROUND_INTEGRATION.md",
-    "5656-main\\docs\\RENDER.md",
-    "5656-main\\docs\\RISK_REGISTER.md",
-    "5656-main\\docs\\SEEDREAM_4_5_EDIT_INTEGRATION.md",
-    "5656-main\\docs\\SEEDREAM_4_5_TEXT_TO_IMAGE_INTEGRATION.md",
-    "5656-main\\docs\\SORA_2_IMAGE_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\SORA_2_PRO_IMAGE_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\SORA_2_PRO_STORYBOARD_INTEGRATION.md",
-    "5656-main\\docs\\SORA_2_PRO_TEXT_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\SORA_2_TEXT_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\SORA_WATERMARK_REMOVER_INTEGRATION.md",
-    "5656-main\\docs\\STATE.md",
-    "5656-main\\docs\\STRICT_INTEGRATION_RULES.md",
-    "5656-main\\docs\\TOPAZ_IMAGE_UPSCALE_INTEGRATION.md",
-    "5656-main\\docs\\WAN_2_2_A14B_IMAGE_TO_VIDEO_TURBO_INTEGRATION.md",
-    "5656-main\\docs\\WAN_2_2_A14B_SPEECH_TO_VIDEO_TURBO_INTEGRATION.md",
-    "5656-main\\docs\\WAN_2_2_A14B_TEXT_TO_VIDEO_TURBO_INTEGRATION.md",
-    "5656-main\\docs\\WAN_2_2_ANIMATE_MOVE_INTEGRATION.md",
-    "5656-main\\docs\\WAN_2_2_ANIMATE_REPLACE_INTEGRATION.md",
-    "5656-main\\docs\\WAN_2_5_IMAGE_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\WAN_2_5_TEXT_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\WAN_2_6_IMAGE_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\WAN_2_6_TEXT_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\WAN_2_6_VIDEO_TO_VIDEO_INTEGRATION.md",
-    "5656-main\\docs\\Z_IMAGE_INTEGRATION.md",
-    "5656-main\\model_generation_test_results_20251217_170008.json",
-    "5656-main\\model_generation_test_results_20251217_170332.json",
-    "5656-main\\models\\catalog.yaml",
-    "5656-main\\models\\kie_models.yaml",
-    "5656-main\\models\\kie_registry.generated.json",
     "models\\kie_models_source_of_truth.json"
   ],
   "models": [
@@ -110,11 +16,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\KIE_AI_INTEGRATION_IMPROVEMENTS.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -127,11 +32,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\ARCHITECTURE.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -144,11 +48,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\FLOWS.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -161,11 +64,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\KLING_V2_1_STANDARD_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -178,11 +80,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\KIE_MODELS_AND_PRICING_RU.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -195,11 +96,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\OFFICIAL_API_DOCUMENTATION_INDEX.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -212,11 +112,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\PLAN.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -229,11 +128,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\RENDER.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -246,11 +144,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\RISK_REGISTER.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -263,11 +160,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\STATE.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -280,11 +176,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\STRICT_INTEGRATION_RULES.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -297,11 +192,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\all_models_test_results.json",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -314,11 +208,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -331,11 +224,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -348,11 +240,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\BYTEDANCE_SEEDREAM_V4_EDIT_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -365,11 +256,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\BYTEDANCE_SEEDREAM_V4_TEXT_TO_IMAGE_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -382,11 +272,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\BYTEDANCE_V1_LITE_IMAGE_TO_VIDEO_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -399,11 +288,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\BYTEDANCE_V1_LITE_TEXT_TO_VIDEO_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -416,11 +304,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -433,11 +320,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\BYTEDANCE_V1_PRO_IMAGE_TO_VIDEO_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -450,11 +336,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\BYTEDANCE_V1_PRO_TEXT_TO_VIDEO_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -467,11 +352,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\cheap_models_test_results.json",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -484,11 +368,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -501,11 +384,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -518,11 +400,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\ELEVENLABS_SOUND_EFFECT_V2_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -535,11 +416,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -552,11 +432,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -569,11 +448,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\ELEVENLABS_TEXT_TO_SPEECH_MULTILINGUAL_V2_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -586,11 +464,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -603,11 +480,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -620,11 +496,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -637,11 +512,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -654,11 +528,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -671,11 +544,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\model_generation_test_results_20251217_170008.json",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -688,11 +560,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\model_generation_test_results_20251217_170332.json",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -705,11 +576,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -722,11 +592,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -739,11 +608,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -756,11 +624,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -773,11 +640,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -790,11 +656,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -807,11 +672,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -824,11 +688,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -841,11 +704,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\GROK_IMAGINE_IMAGE_TO_VIDEO_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -858,11 +720,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\GROK_IMAGINE_TEXT_TO_IMAGE_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -875,11 +736,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\GROK_IMAGINE_TEXT_TO_VIDEO_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -892,11 +752,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -909,11 +768,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\HAILUO_02_IMAGE_TO_VIDEO_PRO_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -926,11 +784,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -943,11 +800,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\HAILUO_02_TEXT_TO_VIDEO_PRO_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -960,11 +816,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -977,11 +832,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\HAILUO_2_3_IMAGE_TO_VIDEO_PRO_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -994,11 +848,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\HAILUO_2_3_IMAGE_TO_VIDEO_STANDARD_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1011,11 +864,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1028,11 +880,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1045,11 +896,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1062,11 +912,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1079,11 +928,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1096,11 +944,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1113,11 +960,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1130,11 +976,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1147,11 +992,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1164,11 +1008,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1181,11 +1024,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1198,11 +1040,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1215,11 +1056,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1232,11 +1072,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1249,11 +1088,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1266,11 +1104,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1283,11 +1120,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1300,11 +1136,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1317,11 +1152,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1334,11 +1168,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1351,11 +1184,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\NANO_BANANA_PRO_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1368,11 +1200,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1385,11 +1216,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1402,11 +1232,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1419,11 +1248,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1436,11 +1264,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1453,11 +1280,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1470,11 +1296,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1487,11 +1312,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1504,11 +1328,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1521,11 +1344,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\SORA_2_IMAGE_TO_VIDEO_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1538,11 +1360,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1555,11 +1376,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1572,11 +1392,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1589,11 +1408,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1606,11 +1424,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1623,11 +1440,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\artifacts\\models\\source.json",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1640,11 +1456,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1657,11 +1472,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1674,11 +1488,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1691,11 +1504,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1708,11 +1520,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1725,11 +1536,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1742,11 +1552,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1759,11 +1568,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\docs\\WAN_2_2_ANIMATE_REPLACE_INTEGRATION.md",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1776,11 +1584,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1793,11 +1600,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1810,11 +1616,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1827,11 +1632,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1844,11 +1648,10 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     },
     {
@@ -1861,12 +1664,12 @@
       },
       "output_type": "json",
       "example_payload": {},
-      "source_file": "5656-main\\app\\kie_catalog\\models_pricing.yaml",
+      "source_file": "models\\kie_models_source_of_truth.json",
       "metadata": {
         "endpoint": "",
-        "method": "POST",
-        "base_url": ""
+        "method": "POST"
       }
     }
-  ]
+  ],
+  "note": "This registry contains ONLY models documented in repository. NO marketplace parsing."
 }
