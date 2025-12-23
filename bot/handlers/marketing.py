@@ -528,20 +528,10 @@ async def cb_confirm_generation(callback: CallbackQuery, state: FSMContext):
             await callback.message.edit_text(text, reply_markup=keyboard)
             return
     else:
-        # Log free usage BEFORE generation
+        # Log free usage BEFORE generation for tracking
         if free_manager:
             await free_manager.log_usage(user_id, model_id, job_id)
-        text = (
-            f"❌ <b>Недостаточно средств</b>\n\n"
-            f"Стоимость: {format_price_rub(user_price)}\n\n"
-            f"Пополните баланс и попробуйте снова"
-        )
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="💳 Пополнить", callback_data="balance:topup")],
-            [InlineKeyboardButton(text="◀️ Назад", callback_data="marketing:main")]
-        ])
-        await callback.message.edit_text(text, reply_markup=keyboard)
-        return
+            logger.info(f"Free usage logged for user {user_id}, model {model_id}, job {job_id}")
     
     # Create job
     job_params = {
@@ -568,7 +558,7 @@ async def cb_confirm_generation(callback: CallbackQuery, state: FSMContext):
     )
     await callback.answer("Генерация запущена!")
     
-    # Generate in background
+    # Generate in background with proper timeout and retry logic
     try:
         # Initialize KIE generator
         generator = KieGenerator()
@@ -576,20 +566,49 @@ async def cb_confirm_generation(callback: CallbackQuery, state: FSMContext):
         # Update status
         await job_service.update_status(job_id, "running")
         
-        # Call KIE API
-        result = await generator.generate(model_id, job_params)
+        # Prepare user inputs for KIE API
+        user_inputs = {"prompt": prompt}
+        
+        # Call KIE API with timeout=300s and progress updates
+        async def progress_update(msg: str):
+            """Send progress updates to user."""
+            try:
+                await callback.message.edit_text(
+                    f"🔄 <b>Генерация в процессе</b>\n\n"
+                    f"Модель: {model.get('name', model_id)}\n"
+                    f"Промпт: {prompt}\n\n"
+                    f"{msg}"
+                )
+            except Exception:
+                pass  # Ignore edit errors
+        
+        result = await generator.generate(
+            model_id=model_id,
+            user_inputs=user_inputs,
+            progress_callback=progress_update,
+            timeout=300  # 5 minutes max
+        )
+        
+        # Validate result structure
+        if not isinstance(result, dict):
+            raise ValueError(f"Invalid KIE result type: {type(result)}")
+        
+        success = result.get("success", False)
+        result_urls = result.get("result_urls", [])
+        error_code = result.get("error_code")
+        error_message = result.get("error_message")
         
         # Check result
-        if result.get("status") == "succeeded":
-            # Extract result URL or data
-            output = result.get("output", {})
-            file_url = output.get("file_url") or output.get("url")
-            text_result = output.get("text")
-            
-            # Charge balance (SKIP for free models)
+        if success and result_urls:
+            # SUCCESS: Charge balance (SKIP for free models)
             if not is_free:
                 charge_ref = f"charge_{job_id}"
-                await wallet_service.charge(user_id, user_price, charge_ref, hold_ref=hold_ref)
+                charge_ok = await wallet_service.charge(user_id, user_price, charge_ref, hold_ref=hold_ref)
+                if not charge_ok:
+                    logger.error(f"Failed to charge user {user_id} for job {job_id} after successful generation!")
+                    # Refund immediately
+                    refund_ref = f"refund_{job_id}"
+                    await wallet_service.refund(user_id, user_price, refund_ref, hold_ref=hold_ref)
             
             # Update job
             await job_service.update_status(job_id, "succeeded")
@@ -599,45 +618,55 @@ async def cb_confirm_generation(callback: CallbackQuery, state: FSMContext):
             if is_free:
                 cost_text = "Стоимость: <b>БЕСПЛАТНО</b> 🎁"
             else:
-                cost_text = f"Стоимость: {format_price_rub(user_price)}"
+                cost_text = f"Списано: {format_price_rub(user_price)}"
             
             result_text = (
                 f"✅ <b>Генерация завершена!</b>\n\n"
                 f"Модель: {model.get('name', model_id)}\n"
                 f"{cost_text}\n\n"
+                f"Результат готов!"
             )
-            
-            if text_result:
-                result_text += f"<b>Результат:</b>\n{text_result}\n\n"
-            
-            if file_url:
-                result_text += f"<b>Файл:</b> {file_url}\n\n"
             
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🎨 Новая генерация", callback_data="marketing:main")],
-                [InlineKeyboardButton(text="💳 Баланс", callback_data="balance:main")]
+                [InlineKeyboardButton(text="💳 Баланс", callback_data="balance:main")],
+                [InlineKeyboardButton(text="📜 История", callback_data="history:main")]
             ])
+            
+            # Send result URLs
+            for url in result_urls[:3]:  # Max 3 results
+                await callback.message.answer(url)
             
             await callback.message.answer(result_text, reply_markup=keyboard)
         
         else:
-            # Generation failed - refund (SKIP for free models)
-            error = result.get("error", "Неизвестная ошибка")
-            
+            # FAILURE: Refund (SKIP for free models)
             if not is_free:
                 refund_ref = f"refund_{job_id}"
                 await wallet_service.refund(user_id, user_price, refund_ref, hold_ref=hold_ref)
-                refund_text = f"Средства возвращены на баланс: {format_price_rub(user_price)}"
+                refund_text = f"💰 Средства возвращены: {format_price_rub(user_price)}"
             else:
-                refund_text = "Бесплатная попытка не засчитана"
+                # Don't count failed free attempt against limits
+                if free_manager:
+                    # Delete the usage record to allow retry
+                    logger.info(f"Free usage NOT counted due to failure: job {job_id}")
+                refund_text = "🎁 Бесплатная попытка не засчитана"
             
             await job_service.update_status(job_id, "failed")
             await job_service.update_result(job_id, result)
             
-            error_text = (
-                f"❌ <b>Ошибка генерации</b>\n\n"
+            # Format error message
+            if error_code == "TIMEOUT":
+                error_text = "⏱️ Превышено время ожидания (5 минут)"
+            elif error_message:
+                error_text = f"Ошибка: {error_message}"
+            else:
+                error_text = "Неизвестная ошибка KIE API"
+            
+            fail_text = (
+                f"❌ <b>Генерация не удалась</b>\n\n"
                 f"Модель: {model.get('name', model_id)}\n"
-                f"Ошибка: {error}\n\n"
+                f"{error_text}\n\n"
                 f"{refund_text}"
             )
             
@@ -646,23 +675,30 @@ async def cb_confirm_generation(callback: CallbackQuery, state: FSMContext):
                 [InlineKeyboardButton(text="◀️ В меню", callback_data="marketing:main")]
             ])
             
-            await callback.message.answer(error_text, reply_markup=keyboard)
+            await callback.message.answer(fail_text, reply_markup=keyboard)
     
     except Exception as e:
-        logger.exception(f"Generation error for job {job_id}")
+        logger.exception(f"Critical exception in generation for job {job_id}: {e}")
         
         # Refund on exception (SKIP for free models)
         if not is_free:
-            refund_ref = f"refund_{job_id}"
-            await wallet_service.refund(user_id, user_price, refund_ref, hold_ref=hold_ref)
-            refund_text = f"Средства возвращены: {format_price_rub(user_price)}"
+            try:
+                refund_ref = f"refund_{job_id}"
+                await wallet_service.refund(user_id, user_price, refund_ref, hold_ref=hold_ref)
+                refund_text = f"💰 Средства возвращены: {format_price_rub(user_price)}"
+            except Exception as refund_err:
+                logger.error(f"Failed to refund user {user_id} after exception: {refund_err}")
+                refund_text = "⚠️ Свяжитесь с поддержкой для возврата средств"
         else:
-            refund_text = "Бесплатная попытка не засчитана"
+            refund_text = "🎁 Бесплатная попытка не засчитана"
         
-        await job_service.update_status(job_id, "failed")
+        try:
+            await job_service.update_status(job_id, "failed")
+        except Exception:
+            pass
         
         error_text = (
-            f"❌ <b>Произошла ошибка</b>\n\n"
+            f"❌ <b>Критическая ошибка</b>\n\n"
             f"Не удалось выполнить генерацию.\n"
             f"{refund_text}\n\n"
             f"Попробуйте позже или обратитесь в поддержку"
