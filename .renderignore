@@ -2,16 +2,13 @@
 *.pyc
 __pycache__/
 *.log
-*.json
 .git/
-*.md
-!README.md
 .gitignore
 .renderignore
 git_push.ps1
 GITHUB_PUSH.md
-CHANGELOG.md
 *.rar
 *.lnk
 desktop.ini
+# DO NOT ignore .py files, app/, bot/, models/, scripts/, docs/
 
