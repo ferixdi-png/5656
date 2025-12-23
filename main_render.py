@@ -65,22 +65,19 @@ async def main():
     """
     logger.info("Starting bot application...")
     
-    # Step 1: Acquire singleton lock
+    # Step 1: Acquire singleton lock (if DATABASE_URL provided)
     database_url = os.getenv("DATABASE_URL")
-    lock_acquired = await acquire_singleton_lock(dsn=database_url, timeout=5.0)
+    if database_url:
+        lock_acquired = await acquire_singleton_lock(dsn=database_url, timeout=5.0)
+        if not lock_acquired:
+            logger.warning("Singleton lock not acquired - another instance may be running")
     
-    if not lock_acquired:
-        logger.warning("Singleton lock not acquired - running in passive mode")
-    
-    # Step 2: Initialize storage (optional, graceful if fails)
+    # Step 2: Initialize storage (if DATABASE_URL provided)
     storage = None
     if database_url:
-        try:
-            storage = PostgresStorage(dsn=database_url)
-            # Storage initialization is optional - continue even if fails
-            logger.info("PostgreSQL storage available")
-        except Exception as e:
-            logger.warning(f"Storage initialization error (non-fatal): {e}")
+        storage = PostgresStorage(dsn=database_url)
+        await storage.initialize()
+        logger.info("PostgreSQL storage initialized")
     
     # Step 3: Create bot application
     try:
@@ -104,12 +101,7 @@ async def main():
     finally:
         # Cleanup
         if storage:
-            try:
-                # Close storage if it has close method
-                if hasattr(storage, 'close'):
-                    await storage.close()
-            except Exception as e:
-                logger.warning(f"Error closing storage: {e}")
+            await storage.close()
         await release_singleton_lock()
         await bot.session.close()
         logger.info("Bot shutdown complete")

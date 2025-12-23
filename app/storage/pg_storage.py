@@ -101,29 +101,22 @@ class PGStorage:
     async def initialize(self) -> bool:
         """Initialize PostgreSQL connection pool."""
         if not self.dsn:
-            logger.warning("DATABASE_URL not set, skipping PostgreSQL initialization")
-            return False
+            raise ValueError("DATABASE_URL not set - storage requires database URL")
             
-        # Use async_check_pg instead of sync check
+        # Test connection first
         if not await async_check_pg(self.dsn):
-            logger.error("PostgreSQL connection test failed")
-            return False
+            raise ConnectionError("PostgreSQL connection test failed")
             
-        try:
-            if HAS_ASYNCPG:
-                self._pool = await asyncpg.create_pool(self.dsn)
-                logger.info("PostgreSQL connection pool created")
-                return True
-            elif HAS_PSYCOPG:
-                self._connection = await psycopg.AsyncConnection.connect(self.dsn)
-                logger.info("PostgreSQL connection created")
-                return True
-            else:
-                logger.error("No async PostgreSQL driver available")
-                return False
-        except Exception as e:
-            logger.error(f"Failed to initialize PostgreSQL: {e}")
-            return False
+        if HAS_ASYNCPG:
+            self._pool = await asyncpg.create_pool(self.dsn)
+            logger.info("PostgreSQL connection pool created")
+            return True
+        elif HAS_PSYCOPG:
+            self._connection = await psycopg.AsyncConnection.connect(self.dsn)
+            logger.info("PostgreSQL connection created")
+            return True
+        else:
+            raise ImportError("No async PostgreSQL driver available (asyncpg or psycopg required)")
     
     async def close(self):
         """Close PostgreSQL connections."""

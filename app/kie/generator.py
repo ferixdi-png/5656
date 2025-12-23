@@ -40,13 +40,9 @@ class KieGenerator:
         if self.api_client:
             return self.api_client
         
-        # Import real client (adjust import based on your structure)
-        try:
-            from app.api.kie_client import KieApiClient
-            return KieApiClient()
-        except ImportError:
-            logger.warning("Real API client not available, using stub")
-            return self._get_stub_client()
+        # Import real client - explicit, no fallback
+        from app.api.kie_client import KieApiClient
+        return KieApiClient()
     
     def _get_stub_client(self):
         """Get stub client for testing."""

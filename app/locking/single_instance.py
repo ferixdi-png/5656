@@ -38,58 +38,55 @@ class SingletonLock:
             
         Returns:
             True if lock acquired, False otherwise
+            
+        Raises:
+            ValueError: If dsn not provided
+            ImportError: If no PostgreSQL driver available
+            ConnectionError: If connection fails
+            asyncio.TimeoutError: If timeout exceeded
         """
         if not self.dsn:
-            logger.warning("No database URL provided, skipping singleton lock")
-            return False
+            raise ValueError("Database URL required for singleton lock")
         
-        try:
-            if HAS_ASYNCPG:
-                self._connection = await asyncio.wait_for(
-                    asyncpg.connect(self.dsn),
-                    timeout=timeout
+        if HAS_ASYNCPG:
+            self._connection = await asyncio.wait_for(
+                asyncpg.connect(self.dsn),
+                timeout=timeout
+            )
+            # Try to acquire advisory lock
+            acquired = await self._connection.fetchval(
+                "SELECT pg_try_advisory_lock($1)",
+                self._lock_id
+            )
+            if acquired:
+                logger.info("Singleton lock acquired")
+                return True
+            else:
+                logger.warning("Singleton lock not acquired (another instance running?)")
+                await self._connection.close()
+                self._connection = None
+                return False
+        elif HAS_PSYCOPG:
+            self._connection = await asyncio.wait_for(
+                psycopg.AsyncConnection.connect(self.dsn),
+                timeout=timeout
+            )
+            async with self._connection.cursor() as cur:
+                await cur.execute(
+                    "SELECT pg_try_advisory_lock(%s)",
+                    (self._lock_id,)
                 )
-                # Try to acquire advisory lock
-                acquired = await self._connection.fetchval(
-                    "SELECT pg_try_advisory_lock($1)",
-                    self._lock_id
-                )
-                if acquired:
+                result = await cur.fetchone()
+                if result and result[0]:
                     logger.info("Singleton lock acquired")
                     return True
                 else:
-                    logger.warning("Singleton lock not acquired (another instance running?)")
+                    logger.warning("Singleton lock not acquired")
                     await self._connection.close()
                     self._connection = None
                     return False
-            elif HAS_PSYCOPG:
-                self._connection = await asyncio.wait_for(
-                    psycopg.AsyncConnection.connect(self.dsn),
-                    timeout=timeout
-                )
-                async with self._connection.cursor() as cur:
-                    await cur.execute(
-                        "SELECT pg_try_advisory_lock(%s)",
-                        (self._lock_id,)
-                    )
-                    result = await cur.fetchone()
-                    if result and result[0]:
-                        logger.info("Singleton lock acquired")
-                        return True
-                    else:
-                        logger.warning("Singleton lock not acquired")
-                        await self._connection.close()
-                        self._connection = None
-                        return False
-            else:
-                logger.warning("No PostgreSQL driver available, skipping singleton lock")
-                return False
-        except asyncio.TimeoutError:
-            logger.warning(f"Singleton lock acquisition timed out after {timeout}s")
-            return False
-        except Exception as e:
-            logger.warning(f"Failed to acquire singleton lock: {e}")
-            return False
+        else:
+            raise ImportError("No PostgreSQL driver available (asyncpg or psycopg required)")
     
     async def release(self) -> None:
         """Release singleton lock."""
