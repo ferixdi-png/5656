@@ -1,11 +1,13 @@
 services:
   - type: worker
-    name: kie-api-scraper
+    name: telegram-bot
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python -c "print('✅ Сервис готов. Используйте данные из kie_full_api.json')"
+    startCommand: python main_render.py
     plan: free
     envVars:
-      - key: SKIP_SCRAPING
-        value: "true"
+      - key: BOT_TOKEN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
 
