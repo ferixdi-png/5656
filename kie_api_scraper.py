@@ -90,7 +90,10 @@ class KieApiScraper:
             'invalid_models_count': 0,
             'fixed_models_count': 0,
             'timeout_errors': 0,
-            'network_errors': 0
+            'network_errors': 0,
+            'duplicate_models': 0,
+            'quality_checks_passed': 0,
+            'quality_checks_failed': 0
         }
         
         # Rate limiting (из конфигурации)
@@ -169,6 +172,56 @@ class KieApiScraper:
         elif isinstance(data, list):
             for item in data:
                 self._extract_models_from_json(item, model_links)
+    
+    def _check_data_quality(self, model_info):
+        """Проверка качества данных модели (возвращает score от 0 до 1)"""
+        score = 0.0
+        max_score = 0.0
+        
+        # Проверка endpoint (30%)
+        max_score += 0.3
+        if model_info.get('endpoint') and len(model_info['endpoint']) > 3:
+            if model_info['endpoint'].startswith('/'):
+                score += 0.3
+            else:
+                score += 0.15  # Частичный балл если нет слеша
+        
+        # Проверка параметров (20%)
+        max_score += 0.2
+        params = model_info.get('params', {})
+        if params and len(params) > 0:
+            score += 0.2
+        elif 'prompt' in str(model_info.get('example', '')).lower():
+            score += 0.1  # Частичный балл если есть пример с prompt
+        
+        # Проверка example (25%)
+        max_score += 0.25
+        example = model_info.get('example', '')
+        if example and len(example) > 20:
+            try:
+                # Проверяем что это валидный JSON
+                json.loads(example)
+                score += 0.25
+            except:
+                score += 0.1  # Частичный балл если не JSON но есть текст
+        elif example:
+            score += 0.05
+        
+        # Проверка input_schema (15%)
+        max_score += 0.15
+        input_schema = model_info.get('input_schema', {})
+        if input_schema and input_schema.get('required'):
+            score += 0.15
+        elif input_schema:
+            score += 0.05
+        
+        # Проверка названия (10%)
+        max_score += 0.1
+        name = model_info.get('name', '')
+        if name and len(name) > 2 and len(name) < 100:
+            score += 0.1
+        
+        return score / max_score if max_score > 0 else 0.0
     
     def _validate_url(self, url):
         """Валидация URL перед запросом"""
@@ -771,19 +824,38 @@ class KieApiScraper:
             cat = model_info['category']
             self.metrics['categories'][cat] = self.metrics['categories'].get(cat, 0) + 1
             
+            # Проверка на дубликаты перед добавлением
+            is_duplicate = any(
+                m.get('name', '').lower() == model_name.lower() or 
+                m.get('endpoint', '') == model_info.get('endpoint', '')
+                for m in self.models
+            )
+            
+            if is_duplicate:
+                self.metrics['duplicate_models'] += 1
+                logger.warning(f"Дубликат модели {model_name} пропущен")
+                return
+            
             # Валидация структуры модели перед добавлением
             if self._validate_model_structure(model_info):
-                self.models.append(model_info)
-                logger.info(f"Модель {model_name} успешно добавлена")
-                # Обновление метрик
-                if model_info.get('endpoint'):
-                    self.metrics['models_with_endpoint'] += 1
-                if model_info.get('params'):
-                    self.metrics['models_with_params'] += 1
-                if model_info.get('example'):
-                    self.metrics['models_with_example'] += 1
-                if model_info.get('input_schema'):
-                    self.metrics['models_with_input_schema'] += 1
+                # Проверка качества данных
+                quality_score = self._check_data_quality(model_info)
+                if quality_score >= 0.5:  # Минимальный порог качества
+                    self.models.append(model_info)
+                    logger.info(f"Модель {model_name} успешно добавлена (качество: {quality_score:.2f})")
+                    self.metrics['quality_checks_passed'] += 1
+                    # Обновление метрик
+                    if model_info.get('endpoint'):
+                        self.metrics['models_with_endpoint'] += 1
+                    if model_info.get('params'):
+                        self.metrics['models_with_params'] += 1
+                    if model_info.get('example'):
+                        self.metrics['models_with_example'] += 1
+                    if model_info.get('input_schema'):
+                        self.metrics['models_with_input_schema'] += 1
+                else:
+                    self.metrics['quality_checks_failed'] += 1
+                    logger.warning(f"Модель {model_name} не прошла проверку качества (score: {quality_score:.2f})")
             else:
                 self.metrics['failed_requests'] += 1
                 self.metrics['validation_errors'] += 1
@@ -1198,14 +1270,55 @@ class KieApiScraper:
         stats_file = 'kie_scraper_stats.json'
         
         try:
-            # Валидация данных перед сохранением
+            # Валидация и проверка качества данных перед сохранением
             valid_models = []
+            quality_scores = []
+            
             for model in self.models:
                 if self._validate_model_structure(model):
-                    valid_models.append(model)
+                    quality_score = self._check_data_quality(model)
+                    quality_scores.append(quality_score)
+                    # Сохраняем только модели с качеством >= 0.3
+                    if quality_score >= 0.3:
+                        valid_models.append(model)
             
             if len(valid_models) < len(self.models):
-                print(f"   ⚠️ Отфильтровано {len(self.models) - len(valid_models)} невалидных моделей")
+                print(f"   ⚠️ Отфильтровано {len(self.models) - len(valid_models)} невалидных/низкокачественных моделей")
+            
+            # Статистика качества
+            if quality_scores:
+                avg_quality = sum(quality_scores) / len(quality_scores)
+                print(f"   📊 Среднее качество данных: {avg_quality:.2%}")
+                print(f"   ✅ Высокое качество (>=0.7): {sum(1 for s in quality_scores if s >= 0.7)}")
+                print(f"   ⚠️ Среднее качество (0.3-0.7): {sum(1 for s in quality_scores if 0.3 <= s < 0.7)}")
+                print(f"   ❌ Низкое качество (<0.3): {sum(1 for s in quality_scores if s < 0.3)}")
+            
+            # Удаление дубликатов перед сохранением
+            unique_models = []
+            seen_endpoints = set()
+            seen_names = set()
+            
+            for model in valid_models:
+                endpoint = model.get('endpoint', '')
+                name = model.get('name', '').lower()
+                
+                # Проверяем по endpoint и имени
+                if endpoint and endpoint not in seen_endpoints:
+                    if name and name not in seen_names:
+                        unique_models.append(model)
+                        seen_endpoints.add(endpoint)
+                        seen_names.add(name)
+                    elif not name:
+                        unique_models.append(model)
+                        seen_endpoints.add(endpoint)
+                elif name and name not in seen_names:
+                    unique_models.append(model)
+                    seen_names.add(name)
+            
+            if len(unique_models) < len(valid_models):
+                print(f"   🔍 Удалено {len(valid_models) - len(unique_models)} дубликатов")
+            
+            valid_models = unique_models
             
             # Сохранение моделей
             output_path = os.path.join(os.getcwd(), output_file)
@@ -1238,6 +1351,9 @@ class KieApiScraper:
                     'validation_errors': self.metrics['validation_errors'],
                     'timeout_errors': self.metrics['timeout_errors'],
                     'network_errors': self.metrics['network_errors'],
+                    'duplicate_models': self.metrics['duplicate_models'],
+                    'quality_checks_passed': self.metrics['quality_checks_passed'],
+                    'quality_checks_failed': self.metrics['quality_checks_failed'],
                     'success_rate': f"{(len(self.models) / max_models * 100):.1f}%" if max_models > 0 else "0%",
                     'cache_hit_rate': f"{(self.metrics['cached_requests'] / self.metrics['total_requests'] * 100):.1f}%" if self.metrics['total_requests'] > 0 else "0%"
                 },
@@ -1299,6 +1415,9 @@ class KieApiScraper:
         print(f"   🔍 Ошибок парсинга: {self.metrics['parsing_errors']}")
         print(f"   ⏱️ Таймаутов: {self.metrics['timeout_errors']}")
         print(f"   🌐 Ошибок сети: {self.metrics['network_errors']}")
+        print(f"   🔄 Дубликатов: {self.metrics['duplicate_models']}")
+        print(f"   ✅ Проверок качества пройдено: {self.metrics['quality_checks_passed']}")
+        print(f"   ❌ Проверок качества провалено: {self.metrics['quality_checks_failed']}")
         print(f"   ✅ Валидных моделей: {self.metrics['valid_models_count']}")
         print(f"   ❌ Невалидных моделей: {self.metrics['invalid_models_count']}")
         if self.metrics['total_requests'] > 0:
