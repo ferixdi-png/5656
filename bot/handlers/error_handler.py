@@ -4,6 +4,7 @@ Contract: All errors caught, user always gets response.
 """
 from aiogram import Router
 from aiogram.types import ErrorEvent
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 import logging
 
 logger = logging.getLogger(__name__)
@@ -29,27 +30,30 @@ async def global_error_handler(event: ErrorEvent):
     
     # User-friendly error message (no stacktrace)
     error_message = (
-        "⚠️ Произошла ошибка\n\n"
+        "❌ Ошибка. Средства не списаны.\n\n"
         "Попробуйте еще раз или нажмите /start для главного меню."
+    )
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text="🏠 Главное меню", callback_data="home")]]
     )
     
     # Determine update type and respond accordingly
     try:
         if update.message:
-            await update.message.answer(error_message)
+            await update.message.answer(error_message, reply_markup=keyboard)
         elif update.callback_query:
             callback = update.callback_query
             await callback.answer("⚠️ Ошибка")
             try:
-                await callback.message.answer(error_message)
+                await callback.message.answer(error_message, reply_markup=keyboard)
             except:
                 # If edit fails, try to send new message
                 try:
-                    await callback.message.answer(error_message)
+                    await callback.message.answer(error_message, reply_markup=keyboard)
                 except:
                     pass
         elif update.edited_message:
-            await update.edited_message.answer(error_message)
+            await update.edited_message.answer(error_message, reply_markup=keyboard)
     except Exception as e:
         # Last resort - log but don't crash
         logger.critical(f"Failed to send error message to user: {e}")
