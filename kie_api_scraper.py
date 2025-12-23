@@ -21,6 +21,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+import logging
+from datetime import datetime
 
 # Устанавливаем кодировку для вывода (важно для Render)
 if sys.stdout.encoding is None or sys.stdout.encoding.lower() != 'utf-8':
@@ -31,12 +33,32 @@ if sys.stdout.encoding is None or sys.stdout.encoding.lower() != 'utf-8':
         import codecs
         sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
 
+# Настройка логирования
+def setup_logging(log_file='kie_scraper.log'):
+    """Настройка логирования в файл и консоль"""
+    log_format = '%(asctime)s - %(levelname)s - %(message)s'
+    logging.basicConfig(
+        level=logging.INFO,
+        format=log_format,
+        handlers=[
+            logging.FileHandler(log_file, encoding='utf-8'),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    return logging.getLogger(__name__)
+
+logger = setup_logging()
+
 class KieApiScraper:
-    def __init__(self, max_workers=5, enable_cache=True):
+    def __init__(self, max_workers=5, enable_cache=True, config_file=None):
+        # Загрузка конфигурации
+        self.config = self._load_config(config_file)
+        
         # Проверка согласованности URL параметров
-        self.base_url = "https://api.kie.ai/api/v1"
-        self.docs_base = "https://docs.kie.ai"
-        self.market_url = "https://kie.ai/ru/market"
+        self.base_url = self.config.get('base_url', "https://api.kie.ai/api/v1")
+        self.docs_base = self.config.get('docs_base', "https://docs.kie.ai")
+        self.market_url = self.config.get('market_url', "https://kie.ai/ru/market")
+        self.max_models_limit = self.config.get('max_models', 50)
         
         # Единые headers для всех запросов
         self.headers = {
@@ -59,8 +81,8 @@ class KieApiScraper:
             'categories': {}
         }
         
-        # Rate limiting
-        self.request_delay = 0.3  # Задержка между запросами (секунды)
+        # Rate limiting (из конфигурации)
+        self.request_delay = self.config.get('request_delay', 0.3)
         self.last_request_time = 0
         
         # Настройка сессии с retry механизмом
@@ -80,6 +102,27 @@ class KieApiScraper:
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
         self.session.headers.update(self.headers)
+    
+    def _load_config(self, config_file=None):
+        """Загрузка конфигурации из файла или переменных окружения"""
+        config = {
+            'base_url': os.getenv('KIE_BASE_URL', "https://api.kie.ai/api/v1"),
+            'market_url': os.getenv('KIE_MARKET_URL', "https://kie.ai/ru/market"),
+            'max_models': int(os.getenv('MAX_MODELS', '50')),
+            'request_delay': float(os.getenv('REQUEST_DELAY', '0.3')),
+            'timeout': int(os.getenv('REQUEST_TIMEOUT', '15')),
+        }
+        
+        if config_file and os.path.exists(config_file):
+            try:
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    file_config = json.load(f)
+                    config.update(file_config)
+                logger.info(f"Конфигурация загружена из {config_file}")
+            except Exception as e:
+                logger.warning(f"Не удалось загрузить конфигурацию: {e}")
+        
+        return config
     
     def _rate_limit(self):
         """Rate limiting для избежания блокировок"""
@@ -110,7 +153,8 @@ class KieApiScraper:
         for attempt in range(max_retries):
             try:
                 self._rate_limit()  # Rate limiting
-                resp = self.session.get(url, timeout=15)
+                timeout = self.config.get('timeout', 15)
+                resp = self.session.get(url, timeout=timeout)
                 
                 # Обработка rate limiting (429)
                 if resp.status_code == 429:
@@ -832,9 +876,32 @@ class KieApiScraper:
         
         return exported
     
+    def generate_summary(self):
+        """Генерация краткого резюме результатов"""
+        stats = self._get_statistics()
+        summary = {
+            'timestamp': datetime.now().isoformat(),
+            'total_models': len(self.models),
+            'categories': stats['by_category'],
+            'coverage': {
+                'with_endpoints': stats['with_endpoints'],
+                'with_params': stats['with_params'],
+                'with_examples': stats['with_examples']
+            },
+            'performance': {
+                'total_requests': self.metrics['total_requests'],
+                'cached_requests': self.metrics['cached_requests'],
+                'failed_requests': self.metrics['failed_requests']
+            }
+        }
+        return summary
+    
     def run_full_scrape(self):
         """Полный сбор всех моделей с ответами на каждое действие"""
         self.metrics['start_time'] = time.time()
+        logger.info("=" * 60)
+        logger.info("ЗАПУСК АВТОМАТИЧЕСКОГО СБОРЩИКА МОДЕЛЕЙ KIE.AI")
+        logger.info("=" * 60)
         
         print("=" * 60)
         print("🚀 ЗАПУСК АВТОМАТИЧЕСКОГО СБОРЩИКА МОДЕЛЕЙ KIE.AI")
@@ -852,7 +919,8 @@ class KieApiScraper:
         
         # Действие 2: Парсинг документации (параллельно)
         print(f"\n📚 ДЕЙСТВИЕ 2: Парсинг документации моделей...")
-        max_models = min(50, len(model_links))  # Увеличиваем лимит для большего покрытия
+        max_models = min(self.max_models_limit, len(model_links))
+        logger.info(f"Начинаем парсинг {max_models} моделей (параллельно, {self.max_workers} потоков)")
         print(f"✅ ОТВЕТ: Начинаем парсинг {max_models} моделей (параллельно, {self.max_workers} потоков)")
         
         # Параллельная обработка
@@ -923,22 +991,32 @@ class KieApiScraper:
             file_size = os.path.getsize(output_path) if os.path.exists(output_path) else 0
             print(f"✅ ОТВЕТ: Файл {output_file} успешно сохранен ({file_size} байт, {len(valid_models)} моделей)")
             
+            # Генерация резюме
+            summary = self.generate_summary()
+            
             # Сохранение статистики
             stats_data = {
-                'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+                'timestamp': datetime.now().isoformat(),
+                'summary': summary,
                 'metrics': {
                     'execution_time_seconds': elapsed_time,
                     'total_requests': self.metrics['total_requests'],
                     'cached_requests': self.metrics['cached_requests'],
                     'failed_requests': self.metrics['failed_requests'],
                     'total_models': len(self.models),
-                    'success_rate': f"{(len(self.models) / max_models * 100):.1f}%" if max_models > 0 else "0%"
+                    'success_rate': f"{(len(self.models) / max_models * 100):.1f}%" if max_models > 0 else "0%",
+                    'cache_hit_rate': f"{(self.metrics['cached_requests'] / self.metrics['total_requests'] * 100):.1f}%" if self.metrics['total_requests'] > 0 else "0%"
                 },
                 'statistics': stats,
                 'validation': {
                     'all_valid': is_valid,
                     'valid_count': valid_count,
                     'invalid_count': invalid_count
+                },
+                'configuration': {
+                    'max_workers': self.max_workers,
+                    'enable_cache': self.enable_cache,
+                    'request_delay': self.request_delay
                 }
             }
             
