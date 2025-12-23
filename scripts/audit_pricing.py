@@ -14,7 +14,7 @@ from typing import Dict, List, Any
 
 
 # Exchange rate (should match app/payments/pricing.py)
-USD_TO_RUB = 95.0  # Updated rate
+USD_TO_RUB = 78.0  # Updated rate
 
 
 def load_registry() -> Dict[str, Any]:

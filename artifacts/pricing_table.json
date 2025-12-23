@@ -1,8 +1,8 @@
 {
   "config": {
-    "fx_rate": 95.0,
+    "fx_rate": 78.0,
     "markup": 2.0,
-    "formula": "price_rub = price_usd * 95.0 * 2"
+    "formula": "price_rub = price_usd * 78.0 * 2"
   },
   "summary": {
     "total_models": 80,
@@ -11,8 +11,8 @@
     "price_ranges": {
       "0-1000": 0,
       "1000-5000": 38,
-      "5000-10000": 1,
-      "10000+": 36
+      "5000-10000": 2,
+      "10000+": 35
     }
   },
   "models": [
@@ -20,7 +20,7 @@
       "rank": 1,
       "model_id": "elevenlabs/speech-to-text",
       "price_usd": 3.0,
-      "price_rub": 570.0,
+      "price_rub": 468.0,
       "is_free": true,
       "category": "stt"
     },
@@ -28,7 +28,7 @@
       "rank": 2,
       "model_id": "elevenlabs/audio-isolation",
       "price_usd": 5.0,
-      "price_rub": 950.0,
+      "price_rub": 780.0,
       "is_free": true,
       "category": "audio_isolation"
     },
@@ -36,7 +36,7 @@
       "rank": 3,
       "model_id": "elevenlabs/text-to-speech",
       "price_usd": 5.0,
-      "price_rub": 950.0,
+      "price_rub": 780.0,
       "is_free": true,
       "category": "tts"
     },
@@ -44,7 +44,7 @@
       "rank": 4,
       "model_id": "elevenlabs/text-to-speech-multilingual-v2",
       "price_usd": 5.0,
-      "price_rub": 950.0,
+      "price_rub": 780.0,
       "is_free": true,
       "category": "other"
     },
@@ -52,7 +52,7 @@
       "rank": 5,
       "model_id": "elevenlabs/sound-effect",
       "price_usd": 8.0,
-      "price_rub": 1520.0,
+      "price_rub": 1248.0,
       "is_free": true,
       "category": "sfx"
     },
@@ -60,7 +60,7 @@
       "rank": 6,
       "model_id": "elevenlabs/sound-effect-v2",
       "price_usd": 8.0,
-      "price_rub": 1520.0,
+      "price_rub": 1248.0,
       "is_free": false,
       "category": "other"
     },
@@ -68,7 +68,7 @@
       "rank": 7,
       "model_id": "google/nano-banana",
       "price_usd": 8.0,
-      "price_rub": 1520.0,
+      "price_rub": 1248.0,
       "is_free": false,
       "category": "t2i"
     },
@@ -76,7 +76,7 @@
       "rank": 8,
       "model_id": "recraft/remove-background",
       "price_usd": 8.0,
-      "price_rub": 1520.0,
+      "price_rub": 1248.0,
       "is_free": false,
       "category": "bg_remove"
     },
@@ -84,7 +84,7 @@
       "rank": 9,
       "model_id": "bytedance/seedream",
       "price_usd": 10.0,
-      "price_rub": 1900.0,
+      "price_rub": 1560.0,
       "is_free": false,
       "category": "t2i"
     },
@@ -92,7 +92,7 @@
       "rank": 10,
       "model_id": "flux-2/flex-text-to-image",
       "price_usd": 10.0,
-      "price_rub": 1900.0,
+      "price_rub": 1560.0,
       "is_free": false,
       "category": "t2i"
     },
@@ -100,7 +100,7 @@
       "rank": 11,
       "model_id": "google/imagen4-fast",
       "price_usd": 10.0,
-      "price_rub": 1900.0,
+      "price_rub": 1560.0,
       "is_free": false,
       "category": "t2i"
     },
@@ -108,7 +108,7 @@
       "rank": 12,
       "model_id": "google/nano-banana-edit",
       "price_usd": 10.0,
-      "price_rub": 1900.0,
+      "price_rub": 1560.0,
       "is_free": false,
       "category": "i2i"
     },
@@ -116,7 +116,7 @@
       "rank": 13,
       "model_id": "bytedance/seedream-v4-text-to-image",
       "price_usd": 12.0,
-      "price_rub": 2280.0,
+      "price_rub": 1872.0,
       "is_free": false,
       "category": "other"
     },
@@ -124,7 +124,7 @@
       "rank": 14,
       "model_id": "flux-2/flex-image-to-image",
       "price_usd": 12.0,
-      "price_rub": 2280.0,
+      "price_rub": 1872.0,
       "is_free": false,
       "category": "i2i"
     },
@@ -132,7 +132,7 @@
       "rank": 15,
       "model_id": "flux/kontext",
       "price_usd": 12.0,
-      "price_rub": 2280.0,
+      "price_rub": 1872.0,
       "is_free": false,
       "category": "t2i"
     },
@@ -140,7 +140,7 @@
       "rank": 16,
       "model_id": "google/nano-banana-pro",
       "price_usd": 12.0,
-      "price_rub": 2280.0,
+      "price_rub": 1872.0,
       "is_free": false,
       "category": "t2i"
     },
@@ -148,7 +148,7 @@
       "rank": 17,
       "model_id": "grok-imagine/text-to-image",
       "price_usd": 12.0,
-      "price_rub": 2280.0,
+      "price_rub": 1872.0,
       "is_free": false,
       "category": "other"
     },
@@ -156,7 +156,7 @@
       "rank": 18,
       "model_id": "midjourney/api",
       "price_usd": 12.0,
-      "price_rub": 2280.0,
+      "price_rub": 1872.0,
       "is_free": false,
       "category": "t2i"
     },
@@ -164,7 +164,7 @@
       "rank": 19,
       "model_id": "openai/4o-image",
       "price_usd": 12.0,
-      "price_rub": 2280.0,
+      "price_rub": 1872.0,
       "is_free": false,
       "category": "t2i"
     },
@@ -172,7 +172,7 @@
       "rank": 20,
       "model_id": "qwen/text-to-image",
       "price_usd": 12.0,
-      "price_rub": 2280.0,
+      "price_rub": 1872.0,
       "is_free": false,
       "category": "t2i"
     },
@@ -180,7 +180,7 @@
       "rank": 21,
       "model_id": "recraft/crisp-upscale",
       "price_usd": 12.0,
-      "price_rub": 2280.0,
+      "price_rub": 1872.0,
       "is_free": false,
       "category": "upscale"
     },
@@ -188,7 +188,7 @@
       "rank": 22,
       "model_id": "seedream/4.5-text-to-image",
       "price_usd": 12.0,
-      "price_rub": 2280.0,
+      "price_rub": 1872.0,
       "is_free": false,
       "category": "t2i"
     },
@@ -196,7 +196,7 @@
       "rank": 23,
       "model_id": "bytedance/seedream-v4-edit",
       "price_usd": 15.0,
-      "price_rub": 2850.0,
+      "price_rub": 2340.0,
       "is_free": false,
       "category": "other"
     },
@@ -204,7 +204,7 @@
       "rank": 24,
       "model_id": "flux-2/pro-text-to-image",
       "price_usd": 15.0,
-      "price_rub": 2850.0,
+      "price_rub": 2340.0,
       "is_free": false,
       "category": "t2i"
     },
@@ -212,7 +212,7 @@
       "rank": 25,
       "model_id": "google/imagen4",
       "price_usd": 15.0,
-      "price_rub": 2850.0,
+      "price_rub": 2340.0,
       "is_free": false,
       "category": "t2i"
     },
@@ -220,7 +220,7 @@
       "rank": 26,
       "model_id": "ideogram/character",
       "price_usd": 15.0,
-      "price_rub": 2850.0,
+      "price_rub": 2340.0,
       "is_free": false,
       "category": "t2i"
     },
@@ -228,7 +228,7 @@
       "rank": 27,
       "model_id": "ideogram/v3-text-to-image",
       "price_usd": 15.0,
-      "price_rub": 2850.0,
+      "price_rub": 2340.0,
       "is_free": false,
       "category": "t2i"
     },
@@ -236,7 +236,7 @@
       "rank": 28,
       "model_id": "qwen/image-edit",
       "price_usd": 15.0,
-      "price_rub": 2850.0,
+      "price_rub": 2340.0,
       "is_free": false,
       "category": "i2i"
     },
@@ -244,7 +244,7 @@
       "rank": 29,
       "model_id": "qwen/image-to-image",
       "price_usd": 15.0,
-      "price_rub": 2850.0,
+      "price_rub": 2340.0,
       "is_free": false,
       "category": "i2i"
     },
@@ -252,7 +252,7 @@
       "rank": 30,
       "model_id": "seedream/4.5-edit",
       "price_usd": 15.0,
-      "price_rub": 2850.0,
+      "price_rub": 2340.0,
       "is_free": false,
       "category": "i2i"
     },
@@ -260,7 +260,7 @@
       "rank": 31,
       "model_id": "topaz/image-upscale",
       "price_usd": 15.0,
-      "price_rub": 2850.0,
+      "price_rub": 2340.0,
       "is_free": false,
       "category": "upscale"
     },
@@ -268,7 +268,7 @@
       "rank": 32,
       "model_id": "wan/2-2-animate-replace",
       "price_usd": 15.0,
-      "price_rub": 2850.0,
+      "price_rub": 2340.0,
       "is_free": false,
       "category": "other"
     },
@@ -276,7 +276,7 @@
       "rank": 33,
       "model_id": "flux-2/pro-image-to-image",
       "price_usd": 18.0,
-      "price_rub": 3420.0,
+      "price_rub": 2808.0,
       "is_free": false,
       "category": "i2i"
     },
@@ -284,7 +284,7 @@
       "rank": 34,
       "model_id": "ideogram/character-edit",
       "price_usd": 18.0,
-      "price_rub": 3420.0,
+      "price_rub": 2808.0,
       "is_free": false,
       "category": "i2i"
     },
@@ -292,7 +292,7 @@
       "rank": 35,
       "model_id": "ideogram/character-remix",
       "price_usd": 18.0,
-      "price_rub": 3420.0,
+      "price_rub": 2808.0,
       "is_free": false,
       "category": "i2i"
     },
@@ -300,7 +300,7 @@
       "rank": 36,
       "model_id": "ideogram/v3-edit",
       "price_usd": 18.0,
-      "price_rub": 3420.0,
+      "price_rub": 2808.0,
       "is_free": false,
       "category": "i2i"
     },
@@ -308,7 +308,7 @@
       "rank": 37,
       "model_id": "ideogram/v3-reframe",
       "price_usd": 18.0,
-      "price_rub": 3420.0,
+      "price_rub": 2808.0,
       "is_free": false,
       "category": "i2i"
     },
@@ -316,7 +316,7 @@
       "rank": 38,
       "model_id": "ideogram/v3-remix",
       "price_usd": 18.0,
-      "price_rub": 3420.0,
+      "price_rub": 2808.0,
       "is_free": false,
       "category": "i2i"
     },
@@ -324,7 +324,7 @@
       "rank": 39,
       "model_id": "google/imagen4-ultra",
       "price_usd": 20.0,
-      "price_rub": 3800.0,
+      "price_rub": 3120.0,
       "is_free": false,
       "category": "t2i"
     },
@@ -332,7 +332,7 @@
       "rank": 40,
       "model_id": "infinitalk/from-audio",
       "price_usd": 20.0,
-      "price_rub": 3800.0,
+      "price_rub": 3120.0,
       "is_free": false,
       "category": "lip_sync"
     },
@@ -340,7 +340,7 @@
       "rank": 41,
       "model_id": "kling/ai-avatar-v1-pro",
       "price_usd": 20.0,
-      "price_rub": 3800.0,
+      "price_rub": 3120.0,
       "is_free": false,
       "category": "lip_sync"
     },
@@ -348,7 +348,7 @@
       "rank": 42,
       "model_id": "kling/v1-avatar-standard",
       "price_usd": 20.0,
-      "price_rub": 3800.0,
+      "price_rub": 3120.0,
       "is_free": false,
       "category": "lip_sync"
     },
@@ -356,7 +356,7 @@
       "rank": 43,
       "model_id": "suno/v5",
       "price_usd": 25.0,
-      "price_rub": 4750.0,
+      "price_rub": 3900.0,
       "is_free": false,
       "category": "music"
     },
@@ -364,7 +364,7 @@
       "rank": 44,
       "model_id": "topaz/video-upscale",
       "price_usd": 50.0,
-      "price_rub": 9500.0,
+      "price_rub": 7800.0,
       "is_free": false,
       "category": "upscale"
     },
@@ -372,7 +372,7 @@
       "rank": 45,
       "model_id": "bytedance/v1-lite-image-to-video",
       "price_usd": 60.0,
-      "price_rub": 11400.0,
+      "price_rub": 9360.0,
       "is_free": false,
       "category": "other"
     },
@@ -380,7 +380,7 @@
       "rank": 46,
       "model_id": "bytedance/v1-lite-text-to-video",
       "price_usd": 70.0,
-      "price_rub": 13300.0,
+      "price_rub": 10920.0,
       "is_free": false,
       "category": "other"
     },
@@ -388,7 +388,7 @@
       "rank": 47,
       "model_id": "grok/imagine",
       "price_usd": 70.0,
-      "price_rub": 13300.0,
+      "price_rub": 10920.0,
       "is_free": false,
       "category": "i2v"
     },
@@ -396,7 +396,7 @@
       "rank": 48,
       "model_id": "bytedance/seedance",
       "price_usd": 80.0,
-      "price_rub": 15200.0,
+      "price_rub": 12480.0,
       "is_free": false,
       "category": "i2v"
     },
@@ -404,7 +404,7 @@
       "rank": 49,
       "model_id": "hailuo/02-image-to-video-standard",
       "price_usd": 85.0,
-      "price_rub": 16150.0,
+      "price_rub": 13260.0,
       "is_free": false,
       "category": "i2v"
     },
@@ -412,7 +412,7 @@
       "rank": 50,
       "model_id": "hailuo/2-3-image-to-video-standard",
       "price_usd": 85.0,
-      "price_rub": 16150.0,
+      "price_rub": 13260.0,
       "is_free": false,
       "category": "other"
     },
@@ -420,7 +420,7 @@
       "rank": 51,
       "model_id": "grok-imagine/image-to-video",
       "price_usd": 90.0,
-      "price_rub": 17100.0,
+      "price_rub": 14040.0,
       "is_free": false,
       "category": "other"
     },
@@ -428,7 +428,7 @@
       "rank": 52,
       "model_id": "hailuo/02-text-to-video-standard",
       "price_usd": 90.0,
-      "price_rub": 17100.0,
+      "price_rub": 14040.0,
       "is_free": false,
       "category": "t2v"
     },
@@ -436,7 +436,7 @@
       "rank": 53,
       "model_id": "kling/v2-1-master-image-to-video",
       "price_usd": 90.0,
-      "price_rub": 17100.0,
+      "price_rub": 14040.0,
       "is_free": false,
       "category": "i2v"
     },
@@ -444,7 +444,7 @@
       "rank": 54,
       "model_id": "kling/v2-5-turbo-image-to-video-pro",
       "price_usd": 90.0,
-      "price_rub": 17100.0,
+      "price_rub": 14040.0,
       "is_free": false,
       "category": "i2v"
     },
@@ -452,7 +452,7 @@
       "rank": 55,
       "model_id": "runway/gen-4",
       "price_usd": 90.0,
-      "price_rub": 17100.0,
+      "price_rub": 14040.0,
       "is_free": false,
       "category": "i2v"
     },
@@ -460,7 +460,7 @@
       "rank": 56,
       "model_id": "wan/2-2-a14b-image-to-video-turbo",
       "price_usd": 90.0,
-      "price_rub": 17100.0,
+      "price_rub": 14040.0,
       "is_free": false,
       "category": "i2v"
     },
@@ -468,7 +468,7 @@
       "rank": 57,
       "model_id": "wan/2-5-image-to-video",
       "price_usd": 90.0,
-      "price_rub": 17100.0,
+      "price_rub": 14040.0,
       "is_free": false,
       "category": "i2v"
     },
@@ -476,7 +476,7 @@
       "rank": 58,
       "model_id": "wan/2-6-image-to-video",
       "price_usd": 90.0,
-      "price_rub": 17100.0,
+      "price_rub": 14040.0,
       "is_free": false,
       "category": "i2v"
     },
@@ -484,7 +484,7 @@
       "rank": 59,
       "model_id": "bytedance/v1-pro-fast-image-to-video",
       "price_usd": 95.0,
-      "price_rub": 18050.0,
+      "price_rub": 14820.0,
       "is_free": false,
       "category": "i2v"
     },
@@ -492,7 +492,7 @@
       "rank": 60,
       "model_id": "wan/2-6-video-to-video",
       "price_usd": 95.0,
-      "price_rub": 18050.0,
+      "price_rub": 14820.0,
       "is_free": false,
       "category": "v2v"
     },
@@ -500,7 +500,7 @@
       "rank": 61,
       "model_id": "bytedance/v1-pro-image-to-video",
       "price_usd": 100.0,
-      "price_rub": 19000.0,
+      "price_rub": 15600.0,
       "is_free": false,
       "category": "other"
     },
@@ -508,7 +508,7 @@
       "rank": 62,
       "model_id": "grok-imagine/text-to-video",
       "price_usd": 100.0,
-      "price_rub": 19000.0,
+      "price_rub": 15600.0,
       "is_free": false,
       "category": "other"
     },
@@ -516,7 +516,7 @@
       "rank": 63,
       "model_id": "hailuo/2.3",
       "price_usd": 100.0,
-      "price_rub": 19000.0,
+      "price_rub": 15600.0,
       "is_free": false,
       "category": "i2v"
     },
@@ -524,7 +524,7 @@
       "rank": 64,
       "model_id": "kling-2.6/image-to-video",
       "price_usd": 100.0,
-      "price_rub": 19000.0,
+      "price_rub": 15600.0,
       "is_free": false,
       "category": "i2v"
     },
@@ -532,7 +532,7 @@
       "rank": 65,
       "model_id": "kling/v2-1-master-text-to-video",
       "price_usd": 100.0,
-      "price_rub": 19000.0,
+      "price_rub": 15600.0,
       "is_free": false,
       "category": "t2v"
     },
@@ -540,7 +540,7 @@
       "rank": 66,
       "model_id": "kling/v2-1-pro",
       "price_usd": 100.0,
-      "price_rub": 19000.0,
+      "price_rub": 15600.0,
       "is_free": false,
       "category": "t2v"
     },
@@ -548,7 +548,7 @@
       "rank": 67,
       "model_id": "kling/v2-1-standard",
       "price_usd": 100.0,
-      "price_rub": 19000.0,
+      "price_rub": 15600.0,
       "is_free": false,
       "category": "t2v"
     },
@@ -556,7 +556,7 @@
       "rank": 68,
       "model_id": "kling/v2-5-turbo-text-to-video-pro",
       "price_usd": 100.0,
-      "price_rub": 19000.0,
+      "price_rub": 15600.0,
       "is_free": false,
       "category": "t2v"
     },
@@ -564,7 +564,7 @@
       "rank": 69,
       "model_id": "wan/2-2-a14b-speech-to-video-turbo",
       "price_usd": 100.0,
-      "price_rub": 19000.0,
+      "price_rub": 15600.0,
       "is_free": false,
       "category": "t2v"
     },
@@ -572,7 +572,7 @@
       "rank": 70,
       "model_id": "wan/2-2-a14b-text-to-video-turbo",
       "price_usd": 100.0,
-      "price_rub": 19000.0,
+      "price_rub": 15600.0,
       "is_free": false,
       "category": "t2v"
     },
@@ -580,7 +580,7 @@
       "rank": 71,
       "model_id": "wan/2-2-animate-move",
       "price_usd": 100.0,
-      "price_rub": 19000.0,
+      "price_rub": 15600.0,
       "is_free": false,
       "category": "t2v"
     },
@@ -588,7 +588,7 @@
       "rank": 72,
       "model_id": "wan/2-5-text-to-video",
       "price_usd": 100.0,
-      "price_rub": 19000.0,
+      "price_rub": 15600.0,
       "is_free": false,
       "category": "t2v"
     },
@@ -596,7 +596,7 @@
       "rank": 73,
       "model_id": "wan/2-6-text-to-video",
       "price_usd": 100.0,
-      "price_rub": 19000.0,
+      "price_rub": 15600.0,
       "is_free": false,
       "category": "t2v"
     },
@@ -604,7 +604,7 @@
       "rank": 74,
       "model_id": "bytedance/v1-pro-text-to-video",
       "price_usd": 110.0,
-      "price_rub": 20900.0,
+      "price_rub": 17160.0,
       "is_free": false,
       "category": "other"
     },
@@ -612,7 +612,7 @@
       "rank": 75,
       "model_id": "hailuo/02-image-to-video-pro",
       "price_usd": 110.0,
-      "price_rub": 20900.0,
+      "price_rub": 17160.0,
       "is_free": false,
       "category": "other"
     },
@@ -620,7 +620,7 @@
       "rank": 76,
       "model_id": "hailuo/2-3-image-to-video-pro",
       "price_usd": 110.0,
-      "price_rub": 20900.0,
+      "price_rub": 17160.0,
       "is_free": false,
       "category": "other"
     },
@@ -628,7 +628,7 @@
       "rank": 77,
       "model_id": "kling-2.6/text-to-video",
       "price_usd": 110.0,
-      "price_rub": 20900.0,
+      "price_rub": 17160.0,
       "is_free": false,
       "category": "t2v"
     },
@@ -636,7 +636,7 @@
       "rank": 78,
       "model_id": "hailuo/02-text-to-video-pro",
       "price_usd": 120.0,
-      "price_rub": 22800.0,
+      "price_rub": 18720.0,
       "is_free": false,
       "category": "other"
     },
@@ -644,7 +644,7 @@
       "rank": 79,
       "model_id": "google/veo-3",
       "price_usd": 150.0,
-      "price_rub": 28500.0,
+      "price_rub": 23400.0,
       "is_free": false,
       "category": "t2v"
     },
@@ -652,7 +652,7 @@
       "rank": 80,
       "model_id": "google/veo-3.1",
       "price_usd": 180.0,
-      "price_rub": 34200.0,
+      "price_rub": 28080.0,
       "is_free": false,
       "category": "t2v"
     }

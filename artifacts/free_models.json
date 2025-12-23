@@ -4,31 +4,31 @@
     {
       "model_id": "elevenlabs/speech-to-text",
       "price_usd": 3.0,
-      "price_rub": 570.0,
+      "price_rub": 468.0,
       "category": "stt"
     },
     {
       "model_id": "elevenlabs/audio-isolation",
       "price_usd": 5.0,
-      "price_rub": 950.0,
+      "price_rub": 780.0,
       "category": "audio_isolation"
     },
     {
       "model_id": "elevenlabs/text-to-speech",
       "price_usd": 5.0,
-      "price_rub": 950.0,
+      "price_rub": 780.0,
       "category": "tts"
     },
     {
       "model_id": "elevenlabs/text-to-speech-multilingual-v2",
       "price_usd": 5.0,
-      "price_rub": 950.0,
+      "price_rub": 780.0,
       "category": "other"
     },
     {
       "model_id": "elevenlabs/sound-effect",
       "price_usd": 8.0,
-      "price_rub": 1520.0,
+      "price_rub": 1248.0,
       "category": "sfx"
     }
   ]
