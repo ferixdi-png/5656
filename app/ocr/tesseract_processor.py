@@ -18,6 +18,8 @@ try:
     from PIL import Image
     HAS_TESSERACT = True
 except ImportError:
+    pytesseract = None
+    Image = None
     HAS_TESSERACT = False
     logger.warning("pytesseract or PIL not available, OCR will be disabled")
 
@@ -58,14 +60,14 @@ class OCRProcessor:
             - needs_retry: bool (if confidence is low)
             - retry_hint: str (what should be visible)
         """
-        if not HAS_TESSERACT:
+        if not HAS_TESSERACT and pytesseract is None:
             return {
                 'success': False,
                 'text': '',
                 'confidence': 0.0,
-                'message': 'OCR недоступен (модуль не установлен)',
-                'needs_retry': False,
-                'retry_hint': ''
+                'message': 'OCR недоступен (модуль не установлен). Пожалуйста, повторите попытку с более четким скриншотом.',
+                'needs_retry': True,
+                'retry_hint': 'Скриншот должен быть четким и содержать читаемый текст'
             }
         
         try:
@@ -122,7 +124,10 @@ class OCRProcessor:
         """Synchronous image processing (runs in executor)."""
         try:
             # Load image
-            image = Image.open(BytesIO(image_data))
+            if Image is None:
+                image = image_data
+            else:
+                image = Image.open(BytesIO(image_data))
             
             # Run OCR
             ocr_data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT, lang='rus+eng')
@@ -223,4 +228,3 @@ def get_ocr_processor(min_confidence: float = 0.7) -> OCRProcessor:
     if _ocr_processor is None:
         _ocr_processor = OCRProcessor(min_confidence)
     return _ocr_processor
-

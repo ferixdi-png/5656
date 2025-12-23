@@ -25,6 +25,32 @@
 pip install -r requirements.txt
 ```
 
+## 🚀 Deploy to Render
+
+**Service type:** Background Worker (polling)  
+**Branch:** `main`  
+**Auto Deploy:** ON
+
+**Build Command:**
+```bash
+pip install -r requirements.txt
+```
+
+**Start Command:**
+```bash
+python main_render.py
+```
+
+**Required ENV:**
+- `TELEGRAM_BOT_TOKEN`
+- `KIE_API_KEY`
+- `KIE_BASE_URL`
+- `DATABASE_URL`
+
+**Optional ENV:**
+- `PORT=10000` (healthcheck listener)
+- `DRY_RUN=0`
+
 ### Конфигурация (опционально)
 
 Создайте `config.json` на основе `config.json.example`:
@@ -157,4 +183,3 @@ scraper.export_models_by_category('exports')
 ## 📝 Лицензия
 
 MIT
-

@@ -5,9 +5,14 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python main_render.py
     plan: free
+    branch: main
+    autoDeploy: true
     envVars:
-      - key: BOT_TOKEN
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: KIE_API_KEY
+        sync: false
+      - key: KIE_BASE_URL
         sync: false
       - key: DATABASE_URL
         sync: false
-

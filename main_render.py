@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Explicit imports - no try/except, no importlib, no fallbacks
 from app.utils.singleton_lock import acquire_singleton_lock, release_singleton_lock
+from app.utils.healthcheck import start_healthcheck_server, stop_healthcheck_server
 from app.storage.pg_storage import PGStorage, PostgresStorage
 from bot.handlers import zero_silence_router, error_handler_router
 
@@ -35,11 +36,14 @@ def create_bot_application() -> Tuple[Dispatcher, Bot]:
         Tuple of (Dispatcher, Bot) instances
         
     Raises:
-        ValueError: If BOT_TOKEN is not set
+        ValueError: If TELEGRAM_BOT_TOKEN is not set
     """
-    bot_token = os.getenv("BOT_TOKEN")
+    dry_run = os.getenv("DRY_RUN", "0").lower() in {"1", "true", "yes"}
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("BOT_TOKEN")
+    if dry_run and (not bot_token or ":" not in bot_token):
+        bot_token = "123456:TEST"
     if not bot_token:
-        raise ValueError("BOT_TOKEN environment variable is required")
+        raise ValueError("TELEGRAM_BOT_TOKEN environment variable is required")
     
     # Create bot with explicit configuration
     bot = Bot(
@@ -65,6 +69,14 @@ async def main():
     """
     logger.info("Starting bot application...")
     
+    healthcheck_server = None
+    port = int(os.getenv("PORT", "10000"))
+    if port:
+        healthcheck_server, _ = start_healthcheck_server(port)
+        logger.info("Healthcheck server started on port %s", port)
+
+    dry_run = os.getenv("DRY_RUN", "0").lower() in {"1", "true", "yes"}
+
     # Step 1: Acquire singleton lock (if DATABASE_URL provided)
     database_url = os.getenv("DATABASE_URL")
     if database_url:
@@ -89,6 +101,15 @@ async def main():
         logger.error(f"Unexpected error creating bot application: {e}", exc_info=True)
         sys.exit(1)
     
+    if dry_run:
+        logger.info("DRY_RUN enabled - skipping polling startup")
+        await bot.session.close()
+        if storage:
+            await storage.close()
+        await release_singleton_lock()
+        stop_healthcheck_server(healthcheck_server)
+        return
+
     # Step 4: Start polling
     try:
         logger.info("Starting bot polling...")
@@ -104,6 +125,7 @@ async def main():
             await storage.close()
         await release_singleton_lock()
         await bot.session.close()
+        stop_healthcheck_server(healthcheck_server)
         logger.info("Bot shutdown complete")
 
 
@@ -116,4 +138,3 @@ if __name__ == "__main__":
     except Exception as e:
         logger.critical(f"Fatal error in main: {e}", exc_info=True)
         sys.exit(1)
-
