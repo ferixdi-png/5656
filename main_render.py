@@ -21,6 +21,7 @@ from app.utils.singleton_lock import acquire_singleton_lock, release_singleton_l
 from app.utils.healthcheck import start_healthcheck_server, stop_healthcheck_server
 from app.storage.pg_storage import PGStorage, PostgresStorage
 from bot.handlers import zero_silence_router, error_handler_router
+from app.kie.generator import run_smoke_test, SMOKE_TEST_ON_START
 
 # Import aiogram components
 from aiogram import Bot, Dispatcher
@@ -148,6 +149,17 @@ async def main():
         await release_singleton_lock()
         stop_healthcheck_server(healthcheck_server)
         return
+
+    # Step 4.5: Run smoke test if enabled
+    if SMOKE_TEST_ON_START:
+        logger.info("🧪 SMOKE_TEST_ON_START enabled - running smoke test before polling")
+        smoke_result = await run_smoke_test()
+        if smoke_result.get('success'):
+            logger.info(f"✅ Smoke test PASSED: {smoke_result.get('message')}")
+        else:
+            logger.error(f"❌ Smoke test FAILED: {smoke_result.get('message')}")
+            logger.error("⚠️ Continuing with bot startup despite smoke test failure")
+            # Note: We continue anyway - smoke test is informational, not blocking
 
     # Step 5: Preflight - delete webhook before polling
     await preflight_webhook(bot)

@@ -511,7 +511,16 @@ async def confirm_cb(callback: CallbackQuery, state: FSMContext) -> None:
             ),
         )
     else:
-        await callback.message.answer(result.get("message", "❌ Ошибка"))
+        # Generation failed - payment was auto-refunded (see integration.py)
+        payment_status = result.get("payment_status", "")
+        payment_msg = result.get("payment_message", "")
+        error_message = result.get("message", "❌ Ошибка")
+        
+        # Add refund info if payment was involved
+        if payment_status == "released" or payment_status == "refunded":
+            error_message += f"\n\n💰 {payment_msg}"
+        
+        await callback.message.answer(error_message)
         await callback.message.answer(
             "Попробовать ещё раз?",
             reply_markup=InlineKeyboardMarkup(

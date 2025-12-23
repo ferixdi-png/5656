@@ -18,6 +18,94 @@ logger = logging.getLogger(__name__)
 TEST_MODE = os.getenv('TEST_MODE', 'false').lower() == 'true'
 KIE_STUB = os.getenv('KIE_STUB', 'false').lower() == 'true'
 
+# Smoke test configuration
+SMOKE_TEST_ON_START = os.getenv('SMOKE_TEST_ON_START', '0') == '1'
+SMOKE_TEST_MODEL_ID = os.getenv('SMOKE_TEST_MODEL_ID', '')
+SMOKE_TEST_INPUT_JSON = os.getenv('SMOKE_TEST_INPUT_JSON', '')
+
+
+async def run_smoke_test() -> Dict[str, Any]:
+    """
+    Run a smoke test of Kie.ai generation.
+    
+    Returns:
+        Test result dictionary
+    """
+    if not SMOKE_TEST_MODEL_ID:
+        return {
+            'success': False,
+            'message': 'SMOKE_TEST_MODEL_ID not configured',
+            'error': 'MISSING_CONFIG'
+        }
+    
+    try:
+        # Parse input JSON
+        import json
+        user_inputs = json.loads(SMOKE_TEST_INPUT_JSON) if SMOKE_TEST_INPUT_JSON else {}
+    except json.JSONDecodeError as e:
+        return {
+            'success': False,
+            'message': f'Invalid SMOKE_TEST_INPUT_JSON: {e}',
+            'error': 'INVALID_JSON'
+        }
+    
+    logger.info(f"🧪 Running smoke test: model={SMOKE_TEST_MODEL_ID}, inputs={user_inputs}")
+    
+    # Run generation with timeout
+    generator = KieGenerator()
+    start_time = datetime.now()
+    
+    try:
+        result = await asyncio.wait_for(
+            generator.generate(
+                model_id=SMOKE_TEST_MODEL_ID,
+                user_inputs=user_inputs,
+                timeout=120,  # 2 min timeout for smoke test
+                correlation_id="smoke_test"
+            ),
+            timeout=130  # Extra 10s buffer
+        )
+        
+        elapsed = (datetime.now() - start_time).total_seconds()
+        
+        if result.get('success'):
+            logger.info(f"✅ Smoke test PASSED in {elapsed:.1f}s")
+            return {
+                'success': True,
+                'message': f'Smoke test passed in {elapsed:.1f}s',
+                'elapsed_seconds': elapsed,
+                'result': result
+            }
+        else:
+            logger.error(f"❌ Smoke test FAILED: {result.get('message')}")
+            return {
+                'success': False,
+                'message': f"Smoke test failed: {result.get('message')}",
+                'elapsed_seconds': elapsed,
+                'error_code': result.get('error_code'),
+                'error_message': result.get('error_message'),
+                'result': result
+            }
+    
+    except asyncio.TimeoutError:
+        elapsed = (datetime.now() - start_time).total_seconds()
+        logger.error(f"❌ Smoke test TIMEOUT after {elapsed:.1f}s")
+        return {
+            'success': False,
+            'message': f'Smoke test timeout after {elapsed:.1f}s',
+            'elapsed_seconds': elapsed,
+            'error': 'TIMEOUT'
+        }
+    except Exception as e:
+        elapsed = (datetime.now() - start_time).total_seconds()
+        logger.error(f"❌ Smoke test ERROR: {e}", exc_info=True)
+        return {
+            'success': False,
+            'message': f'Smoke test error: {e}',
+            'elapsed_seconds': elapsed,
+            'error': str(e)
+        }
+
 
 class KieGenerator:
     """Universal generator for Kie.ai models."""
@@ -117,7 +205,8 @@ class KieGenerator:
         model_id: str,
         user_inputs: Dict[str, Any],
         progress_callback: Optional[Callable[[str], None]] = None,
-        timeout: int = 300
+        timeout: int = 300,
+        correlation_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Generate content using Kie.ai model.
@@ -127,6 +216,7 @@ class KieGenerator:
             user_inputs: User inputs (text, url, file, etc.)
             progress_callback: Optional callback for progress updates
             timeout: Maximum wait time in seconds
+            correlation_id: Optional correlation ID for tracking
             
         Returns:
             Result dictionary with:
@@ -137,6 +227,9 @@ class KieGenerator:
             - error_code: Optional[str]
             - error_message: Optional[str]
         """
+        correlation_id = correlation_id or f"gen_{model_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        logger.info(f"[{correlation_id}] Starting generation for model={model_id}")
+        
         try:
             # Build payload
             if not self.source_of_truth:
@@ -146,10 +239,12 @@ class KieGenerator:
             
             # Create task
             api_client = self._get_api_client()
+            logger.info(f"[{correlation_id}] Creating task with payload: {payload.get('model', 'unknown')}")
             create_response = await api_client.create_task(payload)
             task_id = create_response.get('taskId')
             
             if not task_id:
+                logger.error(f"[{correlation_id}] No task_id returned from createTask")
                 return {
                     'success': False,
                     'message': '❌ Не удалось создать задачу',
@@ -161,6 +256,7 @@ class KieGenerator:
                 }
             
             # Wait for completion with heartbeat
+            logger.info(f"[{correlation_id}] Task created: {task_id}, waiting for completion (timeout={timeout}s)")
             start_time = datetime.now()
             last_heartbeat = datetime.now()
             
@@ -185,6 +281,7 @@ class KieGenerator:
                 state = parsed['state']
                 
                 if state == 'success':
+                    logger.info(f"[{correlation_id}] Generation SUCCESS for task={task_id}")
                     return {
                         'success': True,
                         'message': parsed['message'],
@@ -196,6 +293,7 @@ class KieGenerator:
                     }
                 
                 elif state == 'fail':
+                    logger.error(f"[{correlation_id}] Generation FAILED for task={task_id}, code={parsed['error_code']}, msg={parsed['error_message']}")
                     error_msg = get_human_readable_error(
                         parsed['error_code'],
                         parsed['error_message']
@@ -235,6 +333,7 @@ class KieGenerator:
         
         except (ValueError, ModelContractError) as e:
             # Payload building error
+            logger.error(f"[{correlation_id}] Payload building error: {e}")
             return {
                 'success': False,
                 'message': f"❌ Ошибка в параметрах: {str(e)}\n\nНажмите /start для возврата в меню.",
@@ -246,7 +345,7 @@ class KieGenerator:
             }
         
         except Exception as e:
-            logger.error(f"Error in generate: {e}", exc_info=True)
+            logger.error(f"[{correlation_id}] Unexpected error in generate: {e}", exc_info=True)
             return {
                 'success': False,
                 'message': f"❌ Произошла ошибка: {str(e)}\n\nНажмите /start для возврата в меню.",
