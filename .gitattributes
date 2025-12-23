@@ -1,3 +1,3 @@
 * text=auto eol=lf
-.github/workflows/*.yml text eol=lf merge=union
-README.md text eol=lf merge=union
+*.yml text eol=lf merge=union
+*.md text eol=lf merge=union
