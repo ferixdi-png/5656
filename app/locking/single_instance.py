@@ -198,7 +198,9 @@ class SingletonLock:
             if self._connection:
                 try:
                     await self._connection.close()
-                except:
+                except Exception as close_err:
+                    # MASTER PROMPT: No bare except - specific exception type
+                    logger.debug(f"Error closing connection during cleanup: {close_err}")
                     pass
                 self._connection = None
             return False

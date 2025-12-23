@@ -17,8 +17,9 @@ def get_admin_ids() -> List[int]:
     
     try:
         return [int(x.strip()) for x in admin_ids_str.split(",") if x.strip()]
-    except:
-        logger.error("Failed to parse ADMIN_IDS from ENV")
+    except (ValueError, AttributeError) as e:
+        # MASTER PROMPT: No bare except - specific exception types
+        logger.error(f"Failed to parse ADMIN_IDS from ENV: {e}")
         return []
 
 
