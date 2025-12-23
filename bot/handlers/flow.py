@@ -1127,8 +1127,28 @@ async def confirm_cb(callback: CallbackQuery, state: FSMContext) -> None:
         return
 
     # Send initial progress message
+    # MASTER PROMPT: "7. Прогресс / ETA" - TRANSPARENCY: show model and prompt
+    # Initial progress message with model and inputs info
+    model_name = _source_of_truth().get("models", [])
+    model_display = "Unknown"
+    for m in model_name:
+        if m.get("model_id") == flow_ctx.model_id:
+            model_display = m.get("name") or flow_ctx.model_id
+            break
+    
+    # Format inputs for display
+    inputs_preview = ""
+    if "prompt" in flow_ctx.collected:
+        prompt_text = flow_ctx.collected["prompt"]
+        if len(prompt_text) > 50:
+            prompt_text = prompt_text[:50] + "..."
+        inputs_preview = f"Промпт: {prompt_text}\n"
+    
     progress_msg = await callback.message.edit_text(
-        "⏳ <b>Генерация запущена</b>\n\nИнициализация..."
+        f"⏳ <b>Генерация запущена</b>\n\n"
+        f"Модель: {model_display}\n"
+        f"{inputs_preview}"
+        f"Инициализация..."
     )
 
     # MASTER PROMPT: "7. Прогресс / ETA"
