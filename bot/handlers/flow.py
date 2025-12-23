@@ -1151,12 +1151,24 @@ async def confirm_cb(callback: CallbackQuery, state: FSMContext) -> None:
             ),
         )
     else:
-        await callback.message.answer(result.get("message", "❌ Ошибка"))
+        # MASTER PROMPT: "10. Возможный refund при ошибке"
+        # Show error + refund notification
+        error_msg = result.get("message", "❌ Ошибка")
+        payment_status = result.get("payment_status", "")
+        
+        # Check if refund happened
+        if payment_status == "released" or "refund" in payment_status.lower():
+            refund_notice = "\n\n💰 <b>Средства возвращены на ваш баланс</b>"
+        else:
+            refund_notice = ""
+        
+        await callback.message.answer(f"{error_msg}{refund_notice}")
         await callback.message.answer(
             "Попробовать ещё раз?",
             reply_markup=InlineKeyboardMarkup(
                 inline_keyboard=[
                     [InlineKeyboardButton(text="🔁 Повторить", callback_data=f"gen:{flow_ctx.model_id}")],
+                    [InlineKeyboardButton(text="💳 Баланс", callback_data="balance:main")],
                     [InlineKeyboardButton(text="🏠 В меню", callback_data="main_menu")],
                 ]
             ),
