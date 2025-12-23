@@ -22,11 +22,20 @@
 ### Вариант 1: Background Worker (рекомендуется)
 
 1. Создайте новый **Background Worker** на Render
-2. Подключите ваш GitHub репозиторий
+2. Подключите ваш GitHub репозиторий: `https://github.com/ferixdi-png/5656`
 3. Настройки:
    - **Build Command**: `pip install -r requirements.txt`
    - **Start Command**: `python kie_api_scraper.py`
    - **Python Version**: 3.11.0 (из runtime.txt)
+   - **Branch**: `main` (убедитесь что выбрана правильная ветка!)
+   - **Root Directory**: оставьте пустым (или `/` если требуется)
+
+### ⚠️ ВАЖНО: Проверка ветки
+
+Render использует коммит из ветки `main`. Убедитесь что:
+- В настройках Render выбрана ветка `main`
+- Последний коммит на GitHub: проверьте https://github.com/ferixdi-png/5656/commits/main
+- Если используется старый коммит - нажмите "Manual Deploy" → "Deploy latest commit"
 
 ### Вариант 2: Web Service (если нужен API)
 
