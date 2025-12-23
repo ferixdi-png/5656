@@ -1,4 +1,4 @@
-name: ci
+﻿name: ci
 
 on:
   push:
@@ -29,6 +29,6 @@ jobs:
       - name: Pytest
         run: pytest -q
       - name: Verify project
-        run: python scripts/verify_project.py
       - name: Dry run startup
         run: DRY_RUN=1 TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN python main_render.py
+        run: python scripts/verify_project.py`n      - name: Dry run startup`n        run: DRY_RUN=1 TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN python main_render.py

@@ -1,4 +1,4 @@
-# Kie.ai API Scraper
+﻿# Kie.ai API Scraper
 
 Автоматический сборщик всех моделей Kie.ai с полной документацией API.
 
@@ -30,7 +30,6 @@ pip install -r requirements.txt
 **Service type:** Background Worker (polling)  
 **Branch:** `main`  
 **Auto Deploy:** ON
-**Single source of truth for deploy settings.**
 
 **Build Command:**
 ```bash
@@ -48,17 +47,9 @@ python main_render.py
 - `KIE_BASE_URL`
 - `DATABASE_URL`
 
-**Bot stack:** aiogram (single runtime stack)
-
 **Optional ENV:**
 - `PORT=10000` (healthcheck listener)
 - `DRY_RUN=0`
-- `KIE_STUB=0`
-- `BOT_MODE=polling`
-- `STORAGE_MODE=auto`
-
-**Важно:** Не запускай одновременно Replit + Render + локально на одном токене (будет Conflict).  
-**Перед деплоем:** останови другие инстансы / отключи Replit Run.
 
 ### Конфигурация (опционально)
 

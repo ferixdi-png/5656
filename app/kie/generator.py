@@ -39,44 +39,14 @@ class KieGenerator:
             return self.api_client
 
         if TEST_MODE or KIE_STUB:
-            if not self.source_of_truth:
-                self.source_of_truth = load_source_of_truth()
-            return self._get_stub_client(self.source_of_truth)
+            return self._get_stub_client()
         
         # Import real client - explicit, no fallback
         from app.api.kie_client import KieApiClient
         return KieApiClient()
     
-    def _get_stub_client(self, source_of_truth: Dict[str, Any]):
+    def _get_stub_client(self):
         """Get stub client for testing."""
-        model_index = {model.get("model_id"): model for model in source_of_truth.get("models", [])}
-
-        def infer_result_urls(model_id: str) -> list[str]:
-            model_schema = model_index.get(model_id, {})
-            output_type = model_schema.get("output_type")
-            category = model_schema.get("category", "unknown")
-
-            if output_type == "text":
-                return ["https://example.com/result.txt"]
-            if output_type == "url":
-                return ["https://example.com/result.jpg"]
-            if output_type == "video":
-                return ["https://example.com/result.mp4"]
-            if output_type == "audio":
-                return ["https://example.com/result.mp3"]
-
-            if category in {"t2i", "i2i", "upscale", "bg_remove", "watermark_remove"}:
-                return ["https://example.com/result.jpg"]
-            if category in {"t2v", "i2v", "v2v", "lip_sync"}:
-                return ["https://example.com/result.mp4"]
-            if category in {"music", "sfx", "tts", "audio_isolation"}:
-                return ["https://example.com/result.mp3"]
-            if category in {"stt", "general"}:
-                return ["https://example.com/result.txt"]
-
-            logger.warning("KIE_STUB: unknown category/output for model %s", model_id)
-            return ["https://example.com/result.bin"]
-
         class StubClient:
             async def create_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
                 """Stub create_task."""
@@ -89,23 +59,56 @@ class KieGenerator:
             async def get_record_info(self, task_id: str) -> Dict[str, Any]:
                 """Stub get_record_info."""
                 # Simulate different states for testing
-                if 'fail' in task_id:
+                if 'text' in task_id or 'test_text' in task_id:
+                    return {
+                        'state': 'success',
+                        'resultJson': json.dumps({
+                            'resultUrls': ['https://example.com/result1.txt']
+                        })
+                    }
+                elif 'image' in task_id or 'test_image' in task_id:
+                    return {
+                        'state': 'success',
+                        'resultJson': json.dumps({
+                            'resultUrls': ['https://example.com/result1.jpg']
+                        })
+                    }
+                elif 'video' in task_id or 'test_video' in task_id:
+                    return {
+                        'state': 'success',
+                        'resultJson': json.dumps({
+                            'resultUrls': ['https://example.com/result1.mp4']
+                        })
+                    }
+                elif 'audio' in task_id or 'test_audio' in task_id:
+                    return {
+                        'state': 'success',
+                        'resultJson': json.dumps({
+                            'resultUrls': ['https://example.com/result1.mp3']
+                        })
+                    }
+                elif 'url' in task_id or 'test_url' in task_id:
+                    return {
+                        'state': 'success',
+                        'resultJson': json.dumps({
+                            'resultUrls': ['https://example.com/processed.jpg']
+                        })
+                    }
+                elif 'file' in task_id or 'test_file' in task_id:
+                    return {
+                        'state': 'success',
+                        'resultJson': json.dumps({
+                            'resultUrls': ['https://example.com/processed_file.pdf']
+                        })
+                    }
+                elif 'fail' in task_id:
                     return {
                         'state': 'fail',
                         'failCode': 'TEST_ERROR',
                         'failMsg': 'Test error message'
                     }
-                if 'timeout' in task_id:
+                else:
                     return {'state': 'waiting'}
-
-                model_id = task_id.replace("stub_task_", "")
-                result_urls = infer_result_urls(model_id)
-                return {
-                    'state': 'success',
-                    'resultJson': json.dumps({
-                        'resultUrls': result_urls
-                    })
-                }
         
         return StubClient()
     
