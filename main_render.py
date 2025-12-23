@@ -6,6 +6,7 @@ Single, explicit initialization path with no fallbacks.
 import asyncio
 import logging
 import os
+import signal
 import sys
 from typing import Optional, Tuple
 
@@ -76,6 +77,18 @@ async def main():
     """
     logger.info("Starting bot application...")
     
+    # Shutdown event for graceful termination
+    shutdown_event = asyncio.Event()
+    
+    def signal_handler(sig):
+        logger.info(f"Received signal {sig}, initiating graceful shutdown...")
+        shutdown_event.set()
+    
+    # Register signal handlers
+    loop = asyncio.get_event_loop()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, lambda s=sig: signal_handler(s))
+    
     healthcheck_server = None
     port = int(os.getenv("PORT", "10000"))
     if port:
@@ -95,11 +108,12 @@ async def main():
             set_health_state("passive", "lock_not_acquired")
             # Passive mode: keep healthcheck running, but NO polling
             logger.info("Passive mode: healthcheck available, polling disabled")
-            # Block indefinitely to keep healthcheck alive
+            # Wait for shutdown signal
             try:
-                await asyncio.Event().wait()  # Wait forever
-            except KeyboardInterrupt:
-                logger.info("Passive mode interrupted by user")
+                await shutdown_event.wait()
+                logger.info("Passive mode shutting down gracefully")
+            except asyncio.CancelledError:
+                logger.info("Passive mode interrupted")
             finally:
                 stop_healthcheck_server(healthcheck_server)
             return
@@ -156,9 +170,33 @@ async def main():
     # Step 6: Start polling
     try:
         logger.info("Starting bot polling...")
-        await dp.start_polling(bot, skip_updates=True)
+        # Use create_task to allow cancellation by shutdown signal
+        polling_task = asyncio.create_task(dp.start_polling(bot, skip_updates=True))
+        
+        # Wait for either polling to finish or shutdown signal
+        done, pending = await asyncio.wait(
+            [polling_task, asyncio.create_task(shutdown_event.wait())],
+            return_when=asyncio.FIRST_COMPLETED
+        )
+        
+        # If shutdown signaled, cancel polling
+        if shutdown_event.is_set():
+            logger.info("Shutdown signal received, stopping polling...")
+            polling_task.cancel()
+            try:
+                await polling_task
+            except asyncio.CancelledError:
+                logger.info("Polling cancelled successfully")
+        else:
+            # Polling finished naturally, check result
+            for task in done:
+                if task == polling_task and task.exception():
+                    raise task.exception()
+                    
     except KeyboardInterrupt:
         logger.info("Bot stopped by user")
+    except asyncio.CancelledError:
+        logger.info("Bot polling cancelled")
     except Exception as e:
         logger.error(f"Error during bot polling: {e}", exc_info=True)
         raise
