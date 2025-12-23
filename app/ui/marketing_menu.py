@@ -108,6 +108,10 @@ def build_ui_tree() -> Dict[str, List[Dict]]:
     
     Includes ALL models that are enabled (is_pricing_known=True).
     Models without input_schema will use fallback (prompt-only).
+    
+    MASTER PROMPT compliance:
+    - Sort models by price: cheapest first, then medium, then expensive
+    - Show ALL models with known pricing
     """
     registry = load_registry()
     tree = {cat: [] for cat in MARKETING_CATEGORIES.keys()}
@@ -126,6 +130,10 @@ def build_ui_tree() -> Dict[str, List[Dict]]:
         
         mk_cat = map_model_to_marketing_category(model)
         tree[mk_cat].append(model)
+    
+    # MASTER PROMPT: Sort each category by price (cheapest first)
+    for cat in tree:
+        tree[cat].sort(key=lambda m: m.get("price", 999999))
     
     return tree
 
