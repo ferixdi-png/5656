@@ -1,5 +1,5 @@
 {
-  "version": "6.3.1",
+  "version": "6.3.2",
   "source": "merged: kie_parsed_models.json + site_scraper",
   "total_models": 77,
   "free_tier_count": 5,
@@ -261,7 +261,7 @@
     {
       "model_id": "nano-banana-pro",
       "display_name": "Nano Banana Pro",
-      "category": "1/2K",
+      "category": "text-to-video",
       "variant": "default",
       "pricing": {
         "credits_per_generation": 18.0,
@@ -270,11 +270,34 @@
         "rub_per_use": 12.83
       },
       "input_schema": {
-        "required": [],
-        "optional": [],
-        "properties": {}
+        "required": [
+          "prompt"
+        ],
+        "optional": [
+          "duration",
+          "resolution",
+          "aspect_ratio"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "Video description"
+          },
+          "duration": {
+            "type": "string",
+            "description": "Video duration"
+          },
+          "resolution": {
+            "type": "string",
+            "description": "Output resolution"
+          },
+          "aspect_ratio": {
+            "type": "string",
+            "description": "Aspect ratio (16:9, 9:16, etc)"
+          }
+        }
       },
-      "enabled": false,
+      "enabled": true,
       "source": "kie_pricing_raw.txt",
       "is_free_tier": false,
       "description": "AI генерация контента",
@@ -285,13 +308,12 @@
         "генерация",
         "контент"
       ],
-      "tech_model_id": "nano-banana-pro",
-      "status": "pending_schema"
+      "tech_model_id": "nano-banana-pro"
     },
     {
       "model_id": "nano-banana-pro:default-v2",
       "display_name": "Google nano banana pro",
-      "category": "4K",
+      "category": "text-to-video",
       "variant": "default",
       "pricing": {
         "credits_per_generation": 24.0,
@@ -300,11 +322,34 @@
         "rub_per_use": 17.1
       },
       "input_schema": {
-        "required": [],
-        "optional": [],
-        "properties": {}
+        "required": [
+          "prompt"
+        ],
+        "optional": [
+          "duration",
+          "resolution",
+          "aspect_ratio"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "Video description"
+          },
+          "duration": {
+            "type": "string",
+            "description": "Video duration"
+          },
+          "resolution": {
+            "type": "string",
+            "description": "Output resolution"
+          },
+          "aspect_ratio": {
+            "type": "string",
+            "description": "Aspect ratio (16:9, 9:16, etc)"
+          }
+        }
       },
-      "enabled": false,
+      "enabled": true,
       "source": "kie_pricing_raw.txt",
       "is_free_tier": false,
       "description": "AI генерация контента",
@@ -315,8 +360,7 @@
         "генерация",
         "контент"
       ],
-      "tech_model_id": "nano-banana-pro:default-v2",
-      "status": "pending_schema"
+      "tech_model_id": "nano-banana-pro:default-v2"
     },
     {
       "model_id": "qwen/z-image",
@@ -552,7 +596,7 @@
     {
       "model_id": "wan-2-2-animate:1-0s-720p",
       "display_name": "Wan 2.2 Animate (720p)",
-      "category": "2.2 Animate Replace",
+      "category": "image-to-video",
       "variant": "1.0s-720p",
       "pricing": {
         "credits_per_generation": 12.5,
@@ -561,11 +605,47 @@
         "rub_per_use": 8.91
       },
       "input_schema": {
-        "required": [],
-        "optional": [],
-        "properties": {}
+        "required": [
+          "image"
+        ],
+        "optional": [
+          "prompt",
+          "duration",
+          "resolution"
+        ],
+        "properties": {
+          "image": {
+            "type": "string",
+            "format": "url",
+            "description": "Input image URL"
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Additional prompt for animation"
+          },
+          "duration": {
+            "type": "string",
+            "enum": [
+              "1.0s",
+              "2.0s",
+              "3.0s",
+              "5.0s"
+            ],
+            "description": "Video duration"
+          },
+          "resolution": {
+            "type": "string",
+            "enum": [
+              "480p",
+              "580p",
+              "720p",
+              "1080p"
+            ],
+            "description": "Output resolution"
+          }
+        }
       },
-      "enabled": false,
+      "enabled": true,
       "source": "kie_pricing_raw.txt",
       "is_free_tier": false,
       "description": "AI генерация контента",
@@ -576,13 +656,12 @@
         "генерация",
         "контент"
       ],
-      "tech_model_id": "wan-2-2-animate:1-0s-720p",
-      "status": "pending_schema"
+      "tech_model_id": "wan-2-2-animate:1-0s-720p"
     },
     {
       "model_id": "wan-2-2-animate:1-0s-580p",
       "display_name": "Wan 2.2 Animate (580p)",
-      "category": "2.2 Animate Replace",
+      "category": "image-to-video",
       "variant": "1.0s-580p",
       "pricing": {
         "credits_per_generation": 9.5,
@@ -591,11 +670,47 @@
         "rub_per_use": 6.77
       },
       "input_schema": {
-        "required": [],
-        "optional": [],
-        "properties": {}
+        "required": [
+          "image"
+        ],
+        "optional": [
+          "prompt",
+          "duration",
+          "resolution"
+        ],
+        "properties": {
+          "image": {
+            "type": "string",
+            "format": "url",
+            "description": "Input image URL"
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Additional prompt for animation"
+          },
+          "duration": {
+            "type": "string",
+            "enum": [
+              "1.0s",
+              "2.0s",
+              "3.0s",
+              "5.0s"
+            ],
+            "description": "Video duration"
+          },
+          "resolution": {
+            "type": "string",
+            "enum": [
+              "480p",
+              "580p",
+              "720p",
+              "1080p"
+            ],
+            "description": "Output resolution"
+          }
+        }
       },
-      "enabled": false,
+      "enabled": true,
       "source": "kie_pricing_raw.txt",
       "is_free_tier": false,
       "description": "AI генерация контента",
@@ -606,13 +721,12 @@
         "генерация",
         "контент"
       ],
-      "tech_model_id": "wan-2-2-animate:1-0s-580p",
-      "status": "pending_schema"
+      "tech_model_id": "wan-2-2-animate:1-0s-580p"
     },
     {
       "model_id": "wan-2-2-animate:1-0s-480p",
       "display_name": "Wan 2.2 Animate (480p)",
-      "category": "2.2 Animate Replace",
+      "category": "image-to-video",
       "variant": "1.0s-480p",
       "pricing": {
         "credits_per_generation": 6.0,
@@ -621,11 +735,47 @@
         "rub_per_use": 4.27
       },
       "input_schema": {
-        "required": [],
-        "optional": [],
-        "properties": {}
+        "required": [
+          "image"
+        ],
+        "optional": [
+          "prompt",
+          "duration",
+          "resolution"
+        ],
+        "properties": {
+          "image": {
+            "type": "string",
+            "format": "url",
+            "description": "Input image URL"
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Additional prompt for animation"
+          },
+          "duration": {
+            "type": "string",
+            "enum": [
+              "1.0s",
+              "2.0s",
+              "3.0s",
+              "5.0s"
+            ],
+            "description": "Video duration"
+          },
+          "resolution": {
+            "type": "string",
+            "enum": [
+              "480p",
+              "580p",
+              "720p",
+              "1080p"
+            ],
+            "description": "Output resolution"
+          }
+        }
       },
-      "enabled": false,
+      "enabled": true,
       "source": "kie_pricing_raw.txt",
       "is_free_tier": false,
       "description": "AI генерация контента",
@@ -636,8 +786,7 @@
         "генерация",
         "контент"
       ],
-      "tech_model_id": "wan-2-2-animate:1-0s-480p",
-      "status": "pending_schema"
+      "tech_model_id": "wan-2-2-animate:1-0s-480p"
     },
     {
       "model_id": "midjourney/image-to-image",
@@ -2679,7 +2828,7 @@
     {
       "model_id": "elevenlabs/tts-multilingual",
       "display_name": "Elevenlabs Text to Speech",
-      "category": "turbo 2.5",
+      "category": "text-to-speech",
       "variant": "default",
       "pricing": {
         "credits_per_generation": 6.0,
@@ -2688,11 +2837,34 @@
         "rub_per_use": 4.27
       },
       "input_schema": {
-        "required": [],
-        "optional": [],
-        "properties": {}
+        "required": [
+          "text"
+        ],
+        "optional": [
+          "voice",
+          "language",
+          "speed"
+        ],
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Text to convert to speech"
+          },
+          "voice": {
+            "type": "string",
+            "description": "Voice identifier"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language code (en, ru, etc)"
+          },
+          "speed": {
+            "type": "number",
+            "description": "Speech speed multiplier"
+          }
+        }
       },
-      "enabled": false,
+      "enabled": true,
       "source": "kie_pricing_raw.txt",
       "is_free_tier": false,
       "description": "AI генерация контента",
@@ -2703,13 +2875,12 @@
         "генерация",
         "контент"
       ],
-      "tech_model_id": "elevenlabs/tts-multilingual",
-      "status": "pending_schema"
+      "tech_model_id": "elevenlabs/tts-multilingual"
     },
     {
       "model_id": "elevenlabs/tts-multilingual:default-v2",
       "display_name": "Elevenlabs Text to Speech",
-      "category": "multilingual v2",
+      "category": "text-to-speech",
       "variant": "default",
       "pricing": {
         "credits_per_generation": 12.0,
@@ -2718,11 +2889,34 @@
         "rub_per_use": 8.55
       },
       "input_schema": {
-        "required": [],
-        "optional": [],
-        "properties": {}
+        "required": [
+          "text"
+        ],
+        "optional": [
+          "voice",
+          "language",
+          "speed"
+        ],
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Text to convert to speech"
+          },
+          "voice": {
+            "type": "string",
+            "description": "Voice identifier"
+          },
+          "language": {
+            "type": "string",
+            "description": "Language code (en, ru, etc)"
+          },
+          "speed": {
+            "type": "number",
+            "description": "Speech speed multiplier"
+          }
+        }
       },
-      "enabled": false,
+      "enabled": true,
       "source": "kie_pricing_raw.txt",
       "is_free_tier": false,
       "description": "AI генерация контента",
@@ -2733,8 +2927,7 @@
         "генерация",
         "контент"
       ],
-      "tech_model_id": "elevenlabs/tts-multilingual:default-v2",
-      "status": "pending_schema"
+      "tech_model_id": "elevenlabs/tts-multilingual:default-v2"
     },
     {
       "model_id": "recraft/crisp-upscale",
@@ -2962,7 +3155,7 @@
     {
       "model_id": "topaz/video-upscaler",
       "display_name": "Topaz Video Upscaler",
-      "category": "upscale factor 1x/2x/4xs",
+      "category": "video-upscale",
       "variant": "default",
       "pricing": {
         "credits_per_generation": 12.0,
@@ -2971,11 +3164,40 @@
         "rub_per_use": 8.55
       },
       "input_schema": {
-        "required": [],
-        "optional": [],
-        "properties": {}
+        "required": [
+          "video"
+        ],
+        "optional": [
+          "upscale_factor",
+          "resolution"
+        ],
+        "properties": {
+          "video": {
+            "type": "string",
+            "format": "url",
+            "description": "Input video URL"
+          },
+          "upscale_factor": {
+            "type": "string",
+            "enum": [
+              "1x",
+              "2x",
+              "4x"
+            ],
+            "description": "Upscale multiplier"
+          },
+          "resolution": {
+            "type": "string",
+            "enum": [
+              "1080p",
+              "2K",
+              "4K"
+            ],
+            "description": "Target resolution"
+          }
+        }
       },
-      "enabled": false,
+      "enabled": true,
       "source": "kie_pricing_raw.txt",
       "is_free_tier": false,
       "description": "Увеличение разрешения изображений",
@@ -2987,8 +3209,7 @@
         "4K",
         "апскейл"
       ],
-      "tech_model_id": "topaz/video-upscaler",
-      "status": "pending_schema"
+      "tech_model_id": "topaz/video-upscaler"
     },
     {
       "model_id": "topaz/image-upscaler",
@@ -4128,7 +4349,7 @@
     {
       "model_id": "suno/music-generation",
       "display_name": "Suno",
-      "category": "Generate Music",
+      "category": "music-generation",
       "variant": "default",
       "pricing": {
         "credits_per_generation": 12.0,
@@ -4137,11 +4358,34 @@
         "rub_per_use": 8.55
       },
       "input_schema": {
-        "required": [],
-        "optional": [],
-        "properties": {}
+        "required": [
+          "prompt"
+        ],
+        "optional": [
+          "duration",
+          "genre",
+          "mood"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "Music description"
+          },
+          "duration": {
+            "type": "number",
+            "description": "Duration in seconds"
+          },
+          "genre": {
+            "type": "string",
+            "description": "Music genre"
+          },
+          "mood": {
+            "type": "string",
+            "description": "Mood/atmosphere"
+          }
+        }
       },
-      "enabled": false,
+      "enabled": true,
       "source": "kie_pricing_raw.txt",
       "is_free_tier": false,
       "description": "AI генерация контента",
@@ -4152,8 +4396,7 @@
         "генерация",
         "контент"
       ],
-      "tech_model_id": "suno/music-generation",
-      "status": "pending_schema"
+      "tech_model_id": "suno/music-generation"
     },
     {
       "model_id": "grok-imagine/text-to-image",
@@ -4395,6 +4638,7 @@
   "changelog": {
     "v6.3.1": "Disabled 9 models with incomplete input_schema (pending fix)",
     "v6.3.0": "Added UX enrichment + tech_model_id",
-    "v6.2.0": "Merged pricing + site scraper data"
+    "v6.2.0": "Merged pricing + site scraper data",
+    "v6.3.2": "Fixed schema for 9 disabled models"
   }
 }

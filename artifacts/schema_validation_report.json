@@ -1,30 +1,24 @@
 {
-  "registry_version": "6.3.1",
+  "registry_version": "6.3.2",
   "total_models": 77,
   "valid_models": 77,
   "invalid_models": 0,
   "with_pricing": 77,
   "with_schema": 77,
-  "builder_works": 68,
+  "builder_works": 77,
   "categories": {
-    "image-to-video": 16,
-    "text-to-video": 13,
-    "1/2K": 1,
-    "4K": 1,
+    "image-to-video": 19,
+    "text-to-video": 15,
     "text-to-image": 20,
     "image-to-image": 13,
     "video-to-video": 1,
-    "2.2 Animate Replace": 3,
     "video-generation": 4,
-    "turbo 2.5": 1,
-    "multilingual v2": 1,
-    "upscale factor 1x/2x/4xs": 1,
+    "text-to-speech": 2,
+    "video-upscale": 1,
     "image-upscale": 1,
-    "Generate Music": 1
+    "music-generation": 1
   },
-  "issues": {
-    "Payload builder failed": 9
-  },
+  "issues": {},
   "results": [
     {
       "model_id": "wan/2-5-image-to-video",
@@ -81,28 +75,28 @@
     {
       "model_id": "nano-banana-pro",
       "display_name": "Nano Banana Pro",
-      "category": "1/2K",
+      "category": "text-to-video",
       "schema_valid": true,
       "schema_issues": [],
       "has_pricing": true,
       "has_schema": true,
-      "required_params": 0,
-      "optional_params": 0,
-      "builder_works": false,
-      "builder_error": "Model nano-banana-pro requires at least one input"
+      "required_params": 1,
+      "optional_params": 3,
+      "builder_works": true,
+      "builder_error": null
     },
     {
       "model_id": "nano-banana-pro:default-v2",
       "display_name": "Google nano banana pro",
-      "category": "4K",
+      "category": "text-to-video",
       "schema_valid": true,
       "schema_issues": [],
       "has_pricing": true,
       "has_schema": true,
-      "required_params": 0,
-      "optional_params": 0,
-      "builder_works": false,
-      "builder_error": "Model nano-banana-pro:default-v2 requires at least one input"
+      "required_params": 1,
+      "optional_params": 3,
+      "builder_works": true,
+      "builder_error": null
     },
     {
       "model_id": "qwen/z-image",
@@ -159,41 +153,41 @@
     {
       "model_id": "wan-2-2-animate:1-0s-720p",
       "display_name": "Wan 2.2 Animate (720p)",
-      "category": "2.2 Animate Replace",
+      "category": "image-to-video",
       "schema_valid": true,
       "schema_issues": [],
       "has_pricing": true,
       "has_schema": true,
-      "required_params": 0,
-      "optional_params": 0,
-      "builder_works": false,
-      "builder_error": "Model wan-2-2-animate:1-0s-720p requires at least one input"
+      "required_params": 1,
+      "optional_params": 3,
+      "builder_works": true,
+      "builder_error": null
     },
     {
       "model_id": "wan-2-2-animate:1-0s-580p",
       "display_name": "Wan 2.2 Animate (580p)",
-      "category": "2.2 Animate Replace",
+      "category": "image-to-video",
       "schema_valid": true,
       "schema_issues": [],
       "has_pricing": true,
       "has_schema": true,
-      "required_params": 0,
-      "optional_params": 0,
-      "builder_works": false,
-      "builder_error": "Model wan-2-2-animate:1-0s-580p requires at least one input"
+      "required_params": 1,
+      "optional_params": 3,
+      "builder_works": true,
+      "builder_error": null
     },
     {
       "model_id": "wan-2-2-animate:1-0s-480p",
       "display_name": "Wan 2.2 Animate (480p)",
-      "category": "2.2 Animate Replace",
+      "category": "image-to-video",
       "schema_valid": true,
       "schema_issues": [],
       "has_pricing": true,
       "has_schema": true,
-      "required_params": 0,
-      "optional_params": 0,
-      "builder_works": false,
-      "builder_error": "Model wan-2-2-animate:1-0s-480p requires at least one input"
+      "required_params": 1,
+      "optional_params": 3,
+      "builder_works": true,
+      "builder_error": null
     },
     {
       "model_id": "midjourney/image-to-image",
@@ -627,28 +621,28 @@
     {
       "model_id": "elevenlabs/tts-multilingual",
       "display_name": "Elevenlabs Text to Speech",
-      "category": "turbo 2.5",
+      "category": "text-to-speech",
       "schema_valid": true,
       "schema_issues": [],
       "has_pricing": true,
       "has_schema": true,
-      "required_params": 0,
-      "optional_params": 0,
-      "builder_works": false,
-      "builder_error": "Model elevenlabs/tts-multilingual requires at least one input"
+      "required_params": 1,
+      "optional_params": 3,
+      "builder_works": true,
+      "builder_error": null
     },
     {
       "model_id": "elevenlabs/tts-multilingual:default-v2",
       "display_name": "Elevenlabs Text to Speech",
-      "category": "multilingual v2",
+      "category": "text-to-speech",
       "schema_valid": true,
       "schema_issues": [],
       "has_pricing": true,
       "has_schema": true,
-      "required_params": 0,
-      "optional_params": 0,
-      "builder_works": false,
-      "builder_error": "Model elevenlabs/tts-multilingual:default-v2 requires at least one input"
+      "required_params": 1,
+      "optional_params": 3,
+      "builder_works": true,
+      "builder_error": null
     },
     {
       "model_id": "recraft/crisp-upscale",
@@ -705,15 +699,15 @@
     {
       "model_id": "topaz/video-upscaler",
       "display_name": "Topaz Video Upscaler",
-      "category": "upscale factor 1x/2x/4xs",
+      "category": "video-upscale",
       "schema_valid": true,
       "schema_issues": [],
       "has_pricing": true,
       "has_schema": true,
-      "required_params": 0,
-      "optional_params": 0,
-      "builder_works": false,
-      "builder_error": "Model topaz/video-upscaler requires at least one input"
+      "required_params": 1,
+      "optional_params": 2,
+      "builder_works": true,
+      "builder_error": null
     },
     {
       "model_id": "topaz/image-upscaler",
@@ -965,15 +959,15 @@
     {
       "model_id": "suno/music-generation",
       "display_name": "Suno",
-      "category": "Generate Music",
+      "category": "music-generation",
       "schema_valid": true,
       "schema_issues": [],
       "has_pricing": true,
       "has_schema": true,
-      "required_params": 0,
-      "optional_params": 0,
-      "builder_works": false,
-      "builder_error": "Model suno/music-generation requires at least one input"
+      "required_params": 1,
+      "optional_params": 3,
+      "builder_works": true,
+      "builder_error": null
     },
     {
       "model_id": "grok-imagine/text-to-image",
