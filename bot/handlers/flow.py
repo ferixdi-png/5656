@@ -25,39 +25,40 @@ router = Router(name="flow")
 
 
 CATEGORY_LABELS = {
-    # New format (verbose)
-    "text-to-image": "🎨 Text → Image",
-    "image-to-image": "✏️ Image → Image",
-    "text-to-video": "🎬 Text → Video",
-    "image-to-video": "🎬 Image → Video",
-    "video-to-video": "🎬 Video → Video",
-    "text-to-speech": "🎵 Text → Speech",
-    "speech-to-text": "🎵 Speech → Text",
-    "audio-generation": "🎵 Audio / Music",
-    "upscale": "✏️ Upscale / Enhance",
-    "ocr": "📝 OCR / Document",
+    # User-friendly, task-oriented labels (not technical)
+    "text-to-image": "🎨 Создать картинку",
+    "image-to-image": "✏️ Редактировать изображение",
+    "text-to-video": "🎬 Создать видео",
+    "image-to-video": "🎬 Оживить картинку",
+    "video-to-video": "🎬 Редактировать видео",
+    "text-to-speech": "🎵 Озвучка текста",
+    "speech-to-text": "📝 Распознать речь",
+    "audio-generation": "🎵 Создать музыку",
+    "audio": "🎵 Аудио и музыка",
+    "upscale": "✨ Улучшить качество",
+    "ocr": "📝 Распознать текст",
     "lip-sync": "🎬 Lip Sync",
-    "background-removal": "✏️ Background Remove",
-    "watermark-removal": "✏️ Watermark Remove",
-    "music-generation": "🎵 Music Generation",
-    "sound-effects": "🎵 Sound Effects",
-    "general": "⭐ General",
-    "other": "⭐ Other",
+    "background-removal": "✂️ Убрать фон",
+    "watermark-removal": "✂️ Убрать водяной знак",
+    "music-generation": "🎵 Создать музыку",
+    "sound-effects": "🔊 Звуковые эффекты",
+    "general": "⭐ Разное",
+    "other": "⭐ Другое",
     
     # Old format (backward compatibility)
-    "t2i": "🎨 Text → Image",
-    "i2i": "✏️ Image → Image",
-    "t2v": "🎬 Text → Video",
-    "i2v": "🎬 Image → Video",
-    "v2v": "🎬 Video → Video",
+    "t2i": "🎨 Создать картинку",
+    "i2i": "✏️ Редактировать изображение",
+    "t2v": "🎬 Создать видео",
+    "i2v": "🎬 Оживить картинку",
+    "v2v": "🎬 Редактировать видео",
     "lip_sync": "🎬 Lip Sync",
-    "music": "🎵 Music",
-    "sfx": "🎵 SFX",
-    "tts": "🎵 Text → Speech",
-    "stt": "🎵 Speech → Text",
-    "audio_isolation": "🎵 Audio Isolation",
-    "bg_remove": "✏️ Background Remove",
-    "watermark_remove": "✏️ Watermark Remove",
+    "music": "🎵 Музыка",
+    "sfx": "🔊 Звуковые эффекты",
+    "tts": "🎵 Озвучка",
+    "stt": "📝 Распознать речь",
+    "audio_isolation": "🎵 Очистить аудио",
+    "bg_remove": "✂️ Убрать фон",
+    "watermark_remove": "✂️ Убрать водяной знак",
 }
 
 WELCOME_BALANCE_RUB = float(os.getenv("WELCOME_BALANCE_RUB", "200"))
@@ -131,6 +132,62 @@ def _category_keyboard() -> InlineKeyboardMarkup:
 
 def _main_menu_keyboard() -> InlineKeyboardMarkup:
     """
+    Main menu keyboard - human-friendly, task-oriented (not technical).
+    
+    ARCHITECTURE:
+    - Categories based on USER TASKS, not technical types
+    - Dynamic: only shows categories that exist in registry
+    - Sorted: cheap/free first
+    """
+    # Get actual categories from registry
+    grouped = _models_by_category()
+    
+    # Build dynamic menu
+    buttons = []
+    
+    # Priority mapping: technical category -> user-friendly task
+    priority_map = [
+        ('text-to-video', '🎬 Видео для Reels/TikTok/Ads'),
+        ('text-to-image', '🎨 Картинки/баннеры/посты'),
+        ('image-to-image', '✏️ Редактировать изображение'),
+        ('upscale', '✨ Улучшить/апскейлить'),
+        ('audio', '🎵 Аудио/музыка/озвучка'),
+        ('image-to-video', '🎬 Изображение → Видео'),
+    ]
+    
+    # Add buttons for existing categories
+    for cat_id, label in priority_map:
+        if cat_id in grouped and len(grouped[cat_id]) > 0:
+            buttons.append([InlineKeyboardButton(text=label, callback_data=f"cat:{cat_id}")])
+    
+    # Browse all categories
+    buttons.append([InlineKeyboardButton(text="📂 Все категории", callback_data="menu:categories")])
+    
+    # Bottom row: balance, history, help
+    buttons.append([
+        InlineKeyboardButton(text="💰 Баланс", callback_data="menu:balance"),
+        InlineKeyboardButton(text="📜 История", callback_data="menu:history"),
+    ])
+    buttons.append([InlineKeyboardButton(text="❓ Помощь", callback_data="menu:help")])
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def _help_menu_keyboard() -> InlineKeyboardMarkup:
+    """Help menu with FAQ."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🆓 Как получить бесплатные генерации?", callback_data="help:free")],
+            [InlineKeyboardButton(text="💳 Как пополнить баланс?", callback_data="help:topup")],
+            [InlineKeyboardButton(text="📊 Как работает ценообразование?", callback_data="help:pricing")],
+            [InlineKeyboardButton(text="🔧 Что делать при ошибке?", callback_data="help:errors")],
+            [InlineKeyboardButton(text="◀️ В меню", callback_data="main_menu")],
+        ]
+    )
+
+
+def _main_menu_keyboard_OLD() -> InlineKeyboardMarkup:
+    """
     Main menu keyboard with category shortcuts.
     
     ARCHITECTURE:
@@ -191,6 +248,109 @@ def _model_keyboard(models: List[Dict[str, Any]], back_cb: str, page: int = 0, p
 
 
 def _model_detail_text(model: Dict[str, Any]) -> str:
+    """
+    Create human-friendly model card.
+    
+    PRODUCTION-READY:
+    - Clear value proposition (what user gets)
+    - Honest pricing (exact formula)
+    - No technical jargon
+    - Examples when available
+    """
+    name = model.get("display_name") or model.get("name") or model.get("model_id")
+    model_id = model.get("model_id", "")
+    vendor = model.get("vendor", "")
+    
+    # Description - human-friendly
+    description = model.get("description", "")
+    if not description:
+        # Fallback description based on category
+        category = model.get("category", "")
+        if category == "text-to-image":
+            description = "Создаёт изображения по вашему описанию"
+        elif category == "text-to-video":
+            description = "Создаёт видео из текста"
+        elif category == "audio":
+            description = "Работа с аудио: озвучка, музыка, обработка"
+        elif category == "upscale":
+            description = "Улучшает качество изображений"
+        elif category == "image-to-image":
+            description = "Редактирует и улучшает изображения"
+        elif category == "image-to-video":
+            description = "Превращает картинку в видео"
+        else:
+            description = "Генерация и обработка контента"
+    
+    # Pricing - EXACT FORMULA
+    from app.pricing.free_models import is_free_model
+    
+    if is_free_model(model_id):
+        price_line = "💰 <b>Цена:</b> 🆓 БЕСПЛАТНО (FREE tier)"
+    else:
+        pricing = model.get("pricing", {})
+        rub_per_use = pricing.get("rub_per_use")
+        if rub_per_use:
+            price_line = f"💰 <b>Цена:</b> {format_price_rub(rub_per_use)}"
+        else:
+            # Fallback calculation
+            from app.payments.pricing import calculate_kie_cost, calculate_user_price
+            kie_cost = calculate_kie_cost(model, {}, None)
+            user_price = calculate_user_price(kie_cost)
+            price_line = f"💰 <b>Цена:</b> {format_price_rub(user_price)}"
+    
+    # Parameters
+    input_schema = model.get("input_schema", {})
+    if 'properties' in input_schema:
+        # Nested format
+        required = input_schema.get("required", [])
+        optional = input_schema.get("optional", [])
+    else:
+        # Flat format (source_of_truth.json)
+        properties = input_schema
+        required = [k for k, v in properties.items() if v.get('required', False)]
+        optional = [k for k in properties.keys() if k not in required]
+    
+    params_total = len(required) + len(optional)
+    if params_total == 0:
+        params_line = "⚙️ <b>Параметры:</b> Не требуются"
+    elif len(required) == 0:
+        params_line = f"⚙️ <b>Параметры:</b> {params_total} опциональных"
+    else:
+        params_line = f"⚙️ <b>Параметры:</b> {len(required)} обязательных"
+        if optional:
+            params_line += f", {len(optional)} опциональных"
+    
+    # Vendor info
+    if vendor:
+        vendor_line = f"🏢 <b>Модель:</b> {vendor}"
+    else:
+        vendor_line = ""
+    
+    # Build card
+    lines = [
+        f"✨ <b>{name}</b>",
+        "",
+        f"📝 {description}",
+        "",
+        price_line,
+        params_line,
+    ]
+    
+    if vendor_line:
+        lines.append(vendor_line)
+    
+    # Add example prompt if available
+    examples = model.get("example_prompts", [])
+    if examples:
+        lines.append("")
+        lines.append("💡 <b>Примеры:</b>")
+        for ex in examples[:2]:  # Show max 2 examples
+            lines.append(f"   • {ex}")
+    
+    return "\n".join(lines)
+
+
+def _model_detail_text_OLD(model: Dict[str, Any]) -> str:
     """Create human-friendly model card."""
     name = model.get("name") or model.get("model_id")
     model_id = model.get("model_id", "")
@@ -409,6 +569,94 @@ async def main_menu_cb(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.message.edit_text(
         "📋 Главное меню\n\nВыберите действие:",
         reply_markup=_main_menu_keyboard(),
+    )
+
+
+@router.callback_query(F.data == "menu:help")
+async def help_menu_cb(callback: CallbackQuery, state: FSMContext) -> None:
+    """Show help menu."""
+    await callback.answer()
+    await callback.message.edit_text(
+        "❓ Помощь и FAQ\n\nВыберите вопрос:",
+        reply_markup=_help_menu_keyboard(),
+    )
+
+
+@router.callback_query(F.data == "help:free")
+async def help_free_cb(callback: CallbackQuery) -> None:
+    """Explain free tier."""
+    await callback.answer()
+    from app.pricing.free_models import get_free_models
+    
+    free_models = get_free_models()
+    await callback.message.edit_text(
+        f"🆓 **Бесплатные генерации**\n\n"
+        f"У нас есть {len(free_models)} бесплатных моделей (TOP-{len(free_models)} самые дешёвые):\n\n"
+        f"Эти модели доступны ВСЕМ пользователям без списания баланса.\n\n"
+        f"📍 Найти их: Главное меню → Все категории → выбрать любую категорию\n"
+        f"💡 Модели с ценой 0.16₽ - 0.39₽ - это FREE tier",
+        reply_markup=_help_menu_keyboard(),
+        parse_mode="Markdown"
+    )
+
+
+@router.callback_query(F.data == "help:topup")
+async def help_topup_cb(callback: CallbackQuery) -> None:
+    """Explain how to top up balance."""
+    await callback.answer()
+    await callback.message.edit_text(
+        "💳 **Пополнение баланса**\n\n"
+        "1. Нажмите 'Баланс' в главном меню\n"
+        "2. Выберите сумму пополнения\n"
+        "3. Оплатите по реквизитам\n"
+        "4. Отправьте скриншот оплаты боту\n"
+        "5. Баланс пополнится автоматически (OCR проверка)\n\n"
+        "⚡️ Обычно обработка занимает 1-2 минуты\n\n"
+        "❗️ Если баланс не пополнился - напишите в поддержку",
+        reply_markup=_help_menu_keyboard(),
+        parse_mode="Markdown"
+    )
+
+
+@router.callback_query(F.data == "help:pricing")
+async def help_pricing_cb(callback: CallbackQuery) -> None:
+    """Explain pricing model."""
+    await callback.answer()
+    await callback.message.edit_text(
+        "📊 **Ценообразование**\n\n"
+        "Цена каждой генерации зависит от модели:\n\n"
+        "• 🆓 FREE: 0₽ (топ-5 самых дешёвых)\n"
+        "• 💚 Cheap: 0.40₽ - 10₽\n"
+        "• 💛 Mid: 10₽ - 50₽\n"
+        "• 🔴 Expensive: 50₽+\n\n"
+        "Цена показывается ПЕРЕД запуском генерации.\n"
+        "Списание происходит только после подтверждения.\n\n"
+        "Формула: price_usd × 78.59 (курс) × 2.0 (наценка)\n\n"
+        "💡 Начните с бесплатных моделей!",
+        reply_markup=_help_menu_keyboard(),
+        parse_mode="Markdown"
+    )
+
+
+@router.callback_query(F.data == "help:errors")
+async def help_errors_cb(callback: CallbackQuery) -> None:
+    """Explain error handling."""
+    await callback.answer()
+    await callback.message.edit_text(
+        "🔧 **Что делать при ошибке?**\n\n"
+        "**Ошибка генерации:**\n"
+        "• Деньги вернутся автоматически (auto-refund)\n"
+        "• Проверьте баланс через 'История'\n\n"
+        "**Ошибка оплаты:**\n"
+        "• Убедитесь что сумма совпадает\n"
+        "• Скриншот чёткий и читаемый\n"
+        "• Попробуйте ещё раз\n\n"
+        "**Модель не работает:**\n"
+        "• Попробуйте другую модель\n"
+        "• Проверьте параметры (формат, размер)\n\n"
+        "❗️ Если проблема не решилась - напишите /support",
+        reply_markup=_help_menu_keyboard(),
+        parse_mode="Markdown"
     )
 
 
