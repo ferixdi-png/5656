@@ -1,13 +1,38 @@
 {
   "version": "4.0",
   "source": "kie_truth_engine",
-  "timestamp": "2025-12-24T07:55:51.158334",
+  "timestamp": "2025-12-24T08:04:45.122474",
   "fx_rate": 78.58546168958742,
   "markup": 2.0,
   "models": [
     {
+      "model_id": "elevenlabs",
+      "display_name": "ElevenLabs Audio Isolation",
+      "url": "https://kie.ai/elevenlabs",
+      "category": "audio",
+      "enabled": true,
+      "verified": false,
+      "pricing": {
+        "usd_per_run": 0.001,
+        "rub_per_use": 0.16
+      },
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "Input text"
+          }
+        }
+      },
+      "source": "known_list"
+    },
+    {
       "model_id": "recraft",
-      "display_name": "Recraft",
+      "display_name": "Recraft Upscale",
       "url": "https://kie.ai/recraft",
       "category": "image-processing",
       "enabled": true,
@@ -38,7 +63,6 @@
       "enabled": true,
       "verified": true,
       "pricing": {
-        "credits_per_run": 0.8,
         "usd_per_run": 0.004,
         "rub_per_use": 0.63
       },
@@ -51,7 +75,6 @@
         "properties": {
           "prompt": {
             "type": "string",
-            "description": "Image description",
             "max_length": 1000
           },
           "aspect_ratio": {
@@ -67,12 +90,11 @@
           }
         }
       },
-      "source": "known_list",
-      "description": "Fast and affordable text-to-image by Qwen"
+      "source": "known_list"
     },
     {
       "model_id": "midjourney",
-      "display_name": "Midjourney",
+      "display_name": "Midjourney Relaxed",
       "url": "https://kie.ai/midjourney",
       "category": "text-to-image",
       "enabled": true,
@@ -97,7 +119,7 @@
     },
     {
       "model_id": "ideogram-v3",
-      "display_name": "Ideogram v3",
+      "display_name": "Ideogram v3 Turbo",
       "url": "https://kie.ai/ideogram-v3",
       "category": "text-to-image",
       "enabled": true,
@@ -122,7 +144,7 @@
     },
     {
       "model_id": "ideogram-v3-remix",
-      "display_name": "Ideogram v3 Remix",
+      "display_name": "Ideogram v3 Remix Turbo",
       "url": "https://kie.ai/ideogram-v3-remix",
       "category": "image-to-image",
       "enabled": true,
@@ -147,7 +169,7 @@
     },
     {
       "model_id": "ideogram-v3-edit",
-      "display_name": "Ideogram v3 Edit",
+      "display_name": "Ideogram v3 Edit Turbo",
       "url": "https://kie.ai/ideogram-v3-edit",
       "category": "image-to-image",
       "enabled": true,
@@ -197,7 +219,7 @@
     },
     {
       "model_id": "imagen4",
-      "display_name": "Google Imagen 4",
+      "display_name": "Google Imagen 4 Fast",
       "url": "https://kie.ai/imagen4",
       "category": "text-to-image",
       "enabled": true,
@@ -246,8 +268,158 @@
       "source": "known_list"
     },
     {
+      "model_id": "flux-1-kontext",
+      "display_name": "FLUX 1 Kontext",
+      "url": "https://kie.ai/flux-1-kontext",
+      "category": "text-to-image",
+      "enabled": true,
+      "verified": false,
+      "pricing": {
+        "usd_per_run": 0.025,
+        "rub_per_use": 3.93
+      },
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "Input text"
+          }
+        }
+      },
+      "source": "known_list"
+    },
+    {
+      "model_id": "seedream-4-0",
+      "display_name": "Seedream 4.0",
+      "url": "https://kie.ai/seedream-4-0",
+      "category": "text-to-image",
+      "enabled": true,
+      "verified": false,
+      "pricing": {
+        "usd_per_run": 0.025,
+        "rub_per_use": 3.93
+      },
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "Input text"
+          }
+        }
+      },
+      "source": "known_list"
+    },
+    {
+      "model_id": "openai-4o-image",
+      "display_name": "OpenAI 4o Image",
+      "url": "https://kie.ai/openai-4o-image",
+      "category": "text-to-image",
+      "enabled": true,
+      "verified": false,
+      "pricing": {
+        "usd_per_run": 0.03,
+        "rub_per_use": 4.72
+      },
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "Input text"
+          }
+        }
+      },
+      "source": "known_list"
+    },
+    {
+      "model_id": "seedream-4-5",
+      "display_name": "Seedream 4.5",
+      "url": "https://kie.ai/seedream-4-5",
+      "category": "text-to-image",
+      "enabled": true,
+      "verified": false,
+      "pricing": {
+        "usd_per_run": 0.0325,
+        "rub_per_use": 5.11
+      },
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "Input text"
+          }
+        }
+      },
+      "source": "known_list"
+    },
+    {
+      "model_id": "topaz",
+      "display_name": "Topaz Image Upscaler",
+      "url": "https://kie.ai/topaz",
+      "category": "upscale",
+      "enabled": true,
+      "verified": false,
+      "pricing": {
+        "usd_per_run": 0.05,
+        "rub_per_use": 7.86
+      },
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "Input text"
+          }
+        }
+      },
+      "source": "known_list"
+    },
+    {
+      "model_id": "hailuo-02",
+      "display_name": "Hailuo 02",
+      "url": "https://kie.ai/hailuo-02",
+      "category": "text-to-video",
+      "enabled": true,
+      "verified": false,
+      "pricing": {
+        "usd_per_run": 0.06,
+        "rub_per_use": 9.43
+      },
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "Input text"
+          }
+        }
+      },
+      "source": "known_list"
+    },
+    {
       "model_id": "suno",
-      "display_name": "Suno",
+      "display_name": "Suno Music",
       "url": "https://kie.ai/suno",
       "category": "audio",
       "enabled": true,
@@ -296,224 +468,15 @@
       "source": "known_list"
     },
     {
-      "model_id": "flux-1-kontext",
-      "display_name": "Flux 1 Kontext",
-      "url": "https://kie.ai/flux-1-kontext",
-      "category": "other",
+      "model_id": "nano-banana",
+      "display_name": "Google Nano Banana",
+      "url": "https://kie.ai/nano-banana",
+      "category": "text-to-image",
       "enabled": true,
       "verified": false,
       "pricing": {
-        "credits_per_run": null,
-        "usd_per_run": null,
-        "rub_per_use": 0.0
-      },
-      "input_schema": {
-        "type": "object",
-        "required": [
-          "prompt"
-        ],
-        "properties": {
-          "prompt": {
-            "type": "string",
-            "description": "Input text"
-          }
-        }
-      },
-      "source": "known_list"
-    },
-    {
-      "model_id": "seedream-4-0",
-      "display_name": "Seedream 4 0",
-      "url": "https://kie.ai/seedream-4-0",
-      "category": "other",
-      "enabled": true,
-      "verified": false,
-      "pricing": {
-        "credits_per_run": null,
-        "usd_per_run": null,
-        "rub_per_use": 0.0
-      },
-      "input_schema": {
-        "type": "object",
-        "required": [
-          "prompt"
-        ],
-        "properties": {
-          "prompt": {
-            "type": "string",
-            "description": "Input text"
-          }
-        }
-      },
-      "source": "known_list"
-    },
-    {
-      "model_id": "seedream-4-5",
-      "display_name": "Seedream 4 5",
-      "url": "https://kie.ai/seedream-4-5",
-      "category": "other",
-      "enabled": true,
-      "verified": false,
-      "pricing": {
-        "credits_per_run": null,
-        "usd_per_run": null,
-        "rub_per_use": 0.0
-      },
-      "input_schema": {
-        "type": "object",
-        "required": [
-          "prompt"
-        ],
-        "properties": {
-          "prompt": {
-            "type": "string",
-            "description": "Input text"
-          }
-        }
-      },
-      "source": "known_list"
-    },
-    {
-      "model_id": "openai-4o-image",
-      "display_name": "Openai 4O Image",
-      "url": "https://kie.ai/openai-4o-image",
-      "category": "other",
-      "enabled": true,
-      "verified": false,
-      "pricing": {
-        "credits_per_run": null,
-        "usd_per_run": null,
-        "rub_per_use": 0.0
-      },
-      "input_schema": {
-        "type": "object",
-        "required": [
-          "prompt"
-        ],
-        "properties": {
-          "prompt": {
-            "type": "string",
-            "description": "Input text"
-          }
-        }
-      },
-      "source": "known_list"
-    },
-    {
-      "model_id": "wan-2-6",
-      "display_name": "Wan 2 6",
-      "url": "https://kie.ai/wan-2-6",
-      "category": "other",
-      "enabled": true,
-      "verified": false,
-      "pricing": {
-        "credits_per_run": null,
-        "usd_per_run": null,
-        "rub_per_use": 0.0
-      },
-      "input_schema": {
-        "type": "object",
-        "required": [
-          "prompt"
-        ],
-        "properties": {
-          "prompt": {
-            "type": "string",
-            "description": "Input text"
-          }
-        }
-      },
-      "source": "known_list"
-    },
-    {
-      "model_id": "wan-2-5",
-      "display_name": "Wan 2 5",
-      "url": "https://kie.ai/wan-2-5",
-      "category": "other",
-      "enabled": true,
-      "verified": false,
-      "pricing": {
-        "credits_per_run": null,
-        "usd_per_run": null,
-        "rub_per_use": 0.0
-      },
-      "input_schema": {
-        "type": "object",
-        "required": [
-          "prompt"
-        ],
-        "properties": {
-          "prompt": {
-            "type": "string",
-            "description": "Input text"
-          }
-        }
-      },
-      "source": "known_list"
-    },
-    {
-      "model_id": "wan-2-2",
-      "display_name": "Wan 2 2",
-      "url": "https://kie.ai/wan-2-2",
-      "category": "other",
-      "enabled": true,
-      "verified": false,
-      "pricing": {
-        "credits_per_run": null,
-        "usd_per_run": null,
-        "rub_per_use": 0.0
-      },
-      "input_schema": {
-        "type": "object",
-        "required": [
-          "prompt"
-        ],
-        "properties": {
-          "prompt": {
-            "type": "string",
-            "description": "Input text"
-          }
-        }
-      },
-      "source": "known_list"
-    },
-    {
-      "model_id": "veo-3-1",
-      "display_name": "Veo 3 1",
-      "url": "https://kie.ai/veo-3-1",
-      "category": "other",
-      "enabled": true,
-      "verified": false,
-      "pricing": {
-        "credits_per_run": null,
-        "usd_per_run": null,
-        "rub_per_use": 0.0
-      },
-      "input_schema": {
-        "type": "object",
-        "required": [
-          "prompt"
-        ],
-        "properties": {
-          "prompt": {
-            "type": "string",
-            "description": "Input text"
-          }
-        }
-      },
-      "source": "known_list"
-    },
-    {
-      "model_id": "kling-2-6",
-      "display_name": "Kling 2 6",
-      "url": "https://kie.ai/kling-2-6",
-      "category": "other",
-      "enabled": true,
-      "verified": false,
-      "pricing": {
-        "credits_per_run": null,
-        "usd_per_run": null,
-        "rub_per_use": 0.0
+        "usd_per_run": 0.09,
+        "rub_per_use": 14.15
       },
       "input_schema": {
         "type": "object",
@@ -531,15 +494,14 @@
     },
     {
       "model_id": "kling-2-1",
-      "display_name": "Kling 2 1",
+      "display_name": "Kling 2.1 Standard",
       "url": "https://kie.ai/kling-2-1",
-      "category": "other",
+      "category": "text-to-video",
       "enabled": true,
       "verified": false,
       "pricing": {
-        "credits_per_run": null,
-        "usd_per_run": null,
-        "rub_per_use": 0.0
+        "usd_per_run": 0.125,
+        "rub_per_use": 19.65
       },
       "input_schema": {
         "type": "object",
@@ -557,15 +519,14 @@
     },
     {
       "model_id": "hailuo-2-3",
-      "display_name": "Hailuo 2 3",
+      "display_name": "Hailuo 2.3",
       "url": "https://kie.ai/hailuo-2-3",
-      "category": "other",
+      "category": "image-to-video",
       "enabled": true,
       "verified": false,
       "pricing": {
-        "credits_per_run": null,
-        "usd_per_run": null,
-        "rub_per_use": 0.0
+        "usd_per_run": 0.15,
+        "rub_per_use": 23.58
       },
       "input_schema": {
         "type": "object",
@@ -582,16 +543,115 @@
       "source": "known_list"
     },
     {
-      "model_id": "hailuo-02",
-      "display_name": "Hailuo 02",
-      "url": "https://kie.ai/hailuo-02",
-      "category": "other",
+      "model_id": "wan-2-2",
+      "display_name": "Wan 2.2",
+      "url": "https://kie.ai/wan-2-2",
+      "category": "text-to-video",
       "enabled": true,
       "verified": false,
       "pricing": {
-        "credits_per_run": null,
-        "usd_per_run": null,
-        "rub_per_use": 0.0
+        "usd_per_run": 0.2,
+        "rub_per_use": 31.43
+      },
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "Input text"
+          }
+        }
+      },
+      "source": "known_list"
+    },
+    {
+      "model_id": "kling-2-6",
+      "display_name": "Kling 2.6",
+      "url": "https://kie.ai/kling-2-6",
+      "category": "text-to-video",
+      "enabled": true,
+      "verified": false,
+      "pricing": {
+        "usd_per_run": 0.275,
+        "rub_per_use": 43.22
+      },
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "Input text"
+          }
+        }
+      },
+      "source": "known_list"
+    },
+    {
+      "model_id": "wan-2-5",
+      "display_name": "Wan 2.5",
+      "url": "https://kie.ai/wan-2-5",
+      "category": "text-to-video",
+      "enabled": true,
+      "verified": false,
+      "pricing": {
+        "usd_per_run": 0.3,
+        "rub_per_use": 47.15
+      },
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "Input text"
+          }
+        }
+      },
+      "source": "known_list"
+    },
+    {
+      "model_id": "veo-3-1",
+      "display_name": "Google Veo 3.1 Fast",
+      "url": "https://kie.ai/veo-3-1",
+      "category": "text-to-video",
+      "enabled": true,
+      "verified": false,
+      "pricing": {
+        "usd_per_run": 0.3,
+        "rub_per_use": 47.15
+      },
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "Input text"
+          }
+        }
+      },
+      "source": "known_list"
+    },
+    {
+      "model_id": "wan-2-6",
+      "display_name": "Wan 2.6",
+      "url": "https://kie.ai/wan-2-6",
+      "category": "text-to-video",
+      "enabled": true,
+      "verified": false,
+      "pricing": {
+        "usd_per_run": 0.35,
+        "rub_per_use": 55.01
       },
       "input_schema": {
         "type": "object",
@@ -611,91 +671,12 @@
       "model_id": "runway-aleph",
       "display_name": "Runway Aleph",
       "url": "https://kie.ai/runway-aleph",
-      "category": "other",
+      "category": "text-to-video",
       "enabled": true,
       "verified": false,
       "pricing": {
-        "credits_per_run": null,
-        "usd_per_run": null,
-        "rub_per_use": 0.0
-      },
-      "input_schema": {
-        "type": "object",
-        "required": [
-          "prompt"
-        ],
-        "properties": {
-          "prompt": {
-            "type": "string",
-            "description": "Input text"
-          }
-        }
-      },
-      "source": "known_list"
-    },
-    {
-      "model_id": "elevenlabs",
-      "display_name": "Elevenlabs",
-      "url": "https://kie.ai/elevenlabs",
-      "category": "other",
-      "enabled": true,
-      "verified": false,
-      "pricing": {
-        "credits_per_run": null,
-        "usd_per_run": null,
-        "rub_per_use": 0.0
-      },
-      "input_schema": {
-        "type": "object",
-        "required": [
-          "prompt"
-        ],
-        "properties": {
-          "prompt": {
-            "type": "string",
-            "description": "Input text"
-          }
-        }
-      },
-      "source": "known_list"
-    },
-    {
-      "model_id": "topaz",
-      "display_name": "Topaz",
-      "url": "https://kie.ai/topaz",
-      "category": "other",
-      "enabled": true,
-      "verified": false,
-      "pricing": {
-        "credits_per_run": null,
-        "usd_per_run": null,
-        "rub_per_use": 0.0
-      },
-      "input_schema": {
-        "type": "object",
-        "required": [
-          "prompt"
-        ],
-        "properties": {
-          "prompt": {
-            "type": "string",
-            "description": "Input text"
-          }
-        }
-      },
-      "source": "known_list"
-    },
-    {
-      "model_id": "nano-banana",
-      "display_name": "Nano Banana",
-      "url": "https://kie.ai/nano-banana",
-      "category": "other",
-      "enabled": true,
-      "verified": false,
-      "pricing": {
-        "credits_per_run": null,
-        "usd_per_run": null,
-        "rub_per_use": 0.0
+        "usd_per_run": 0.55,
+        "rub_per_use": 86.44
       },
       "input_schema": {
         "type": "object",
@@ -717,18 +698,20 @@
     "verified_models": 1,
     "enabled_models": 27,
     "categories": {
+      "audio": 2,
       "image-processing": 1,
-      "text-to-image": 7,
+      "text-to-image": 12,
       "image-to-image": 2,
-      "audio": 1,
-      "other": 16
+      "upscale": 1,
+      "text-to-video": 8,
+      "image-to-video": 1
     },
     "cheapest_models": [
+      "elevenlabs",
       "recraft",
       "z-image",
       "midjourney",
-      "ideogram-v3",
-      "ideogram-v3-remix"
+      "ideogram-v3"
     ]
   }
 }

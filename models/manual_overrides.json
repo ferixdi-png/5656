@@ -5,75 +5,196 @@
     "category": "text-to-image",
     "enabled": true,
     "verified": true,
-    "pricing": {"credits_per_run": 0.8, "usd_per_run": 0.004},
+    "pricing": {"usd_per_run": 0.004},
     "input_schema": {
       "type": "object",
       "required": ["prompt", "aspect_ratio"],
       "properties": {
-        "prompt": {"type": "string", "description": "Image description", "max_length": 1000},
+        "prompt": {"type": "string", "max_length": 1000},
         "aspect_ratio": {"type": "string", "enum": ["1:1", "4:3", "3:4", "16:9", "9:16"], "default": "1:1"}
       }
-    },
-    "description": "Fast and affordable text-to-image by Qwen"
+    }
   },
   {
     "model_id": "recraft",
-    "display_name": "Recraft",
+    "display_name": "Recraft Upscale",
     "category": "image-processing",
+    "enabled": true,
     "pricing": {"usd_per_run": 0.0025}
   },
   {
+    "model_id": "elevenlabs",
+    "display_name": "ElevenLabs Audio Isolation",
+    "category": "audio",
+    "enabled": true,
+    "pricing": {"usd_per_run": 0.001}
+  },
+  {
     "model_id": "midjourney",
-    "display_name": "Midjourney",
+    "display_name": "Midjourney Relaxed",
     "category": "text-to-image",
+    "enabled": true,
     "pricing": {"usd_per_run": 0.015}
   },
   {
     "model_id": "ideogram-v3",
-    "display_name": "Ideogram v3",
+    "display_name": "Ideogram v3 Turbo",
     "category": "text-to-image",
+    "enabled": true,
     "pricing": {"usd_per_run": 0.0175}
   },
   {
     "model_id": "ideogram-v3-remix",
-    "display_name": "Ideogram v3 Remix",
+    "display_name": "Ideogram v3 Remix Turbo",
     "category": "image-to-image",
+    "enabled": true,
     "pricing": {"usd_per_run": 0.0175}
   },
   {
     "model_id": "ideogram-v3-edit",
-    "display_name": "Ideogram v3 Edit",
+    "display_name": "Ideogram v3 Edit Turbo",
     "category": "image-to-image",
+    "enabled": true,
     "pricing": {"usd_per_run": 0.0175}
+  },
+  {
+    "model_id": "seedream-4-0",
+    "display_name": "Seedream 4.0",
+    "category": "text-to-image",
+    "enabled": true,
+    "pricing": {"usd_per_run": 0.025}
+  },
+  {
+    "model_id": "seedream-4-5",
+    "display_name": "Seedream 4.5",
+    "category": "text-to-image",
+    "enabled": true,
+    "pricing": {"usd_per_run": 0.0325}
   },
   {
     "model_id": "grok-imagine",
     "display_name": "Grok Imagine",
     "category": "text-to-image",
+    "enabled": true,
     "pricing": {"usd_per_run": 0.02}
   },
   {
-    "model_id": "imagen4",
-    "display_name": "Google Imagen 4",
+    "model_id": "nano-banana",
+    "display_name": "Google Nano Banana",
     "category": "text-to-image",
+    "enabled": true,
+    "pricing": {"usd_per_run": 0.09}
+  },
+  {
+    "model_id": "imagen4",
+    "display_name": "Google Imagen 4 Fast",
+    "category": "text-to-image",
+    "enabled": true,
     "pricing": {"usd_per_run": 0.02}
   },
   {
     "model_id": "flux-2-pro",
     "display_name": "FLUX 2 Pro",
     "category": "text-to-image",
+    "enabled": true,
     "pricing": {"usd_per_run": 0.025}
   },
   {
     "model_id": "flux-2-flex",
     "display_name": "FLUX 2 Flex",
     "category": "text-to-image",
+    "enabled": true,
     "pricing": {"usd_per_run": 0.07}
   },
   {
+    "model_id": "flux-1-kontext",
+    "display_name": "FLUX 1 Kontext",
+    "category": "text-to-image",
+    "enabled": true,
+    "pricing": {"usd_per_run": 0.025}
+  },
+  {
+    "model_id": "openai-4o-image",
+    "display_name": "OpenAI 4o Image",
+    "category": "text-to-image",
+    "enabled": true,
+    "pricing": {"usd_per_run": 0.03}
+  },
+  {
+    "model_id": "topaz",
+    "display_name": "Topaz Image Upscaler",
+    "category": "upscale",
+    "enabled": true,
+    "pricing": {"usd_per_run": 0.05}
+  },
+  {
     "model_id": "suno",
-    "display_name": "Suno",
+    "display_name": "Suno Music",
     "category": "audio",
+    "enabled": true,
     "pricing": {"usd_per_run": 0.06}
+  },
+  {
+    "model_id": "hailuo-02",
+    "display_name": "Hailuo 02",
+    "category": "text-to-video",
+    "enabled": true,
+    "pricing": {"usd_per_run": 0.06}
+  },
+  {
+    "model_id": "hailuo-2-3",
+    "display_name": "Hailuo 2.3",
+    "category": "image-to-video",
+    "enabled": true,
+    "pricing": {"usd_per_run": 0.15}
+  },
+  {
+    "model_id": "wan-2-2",
+    "display_name": "Wan 2.2",
+    "category": "text-to-video",
+    "enabled": true,
+    "pricing": {"usd_per_run": 0.2}
+  },
+  {
+    "model_id": "wan-2-5",
+    "display_name": "Wan 2.5",
+    "category": "text-to-video",
+    "enabled": true,
+    "pricing": {"usd_per_run": 0.3}
+  },
+  {
+    "model_id": "wan-2-6",
+    "display_name": "Wan 2.6",
+    "category": "text-to-video",
+    "enabled": true,
+    "pricing": {"usd_per_run": 0.35}
+  },
+  {
+    "model_id": "kling-2-1",
+    "display_name": "Kling 2.1 Standard",
+    "category": "text-to-video",
+    "enabled": true,
+    "pricing": {"usd_per_run": 0.125}
+  },
+  {
+    "model_id": "kling-2-6",
+    "display_name": "Kling 2.6",
+    "category": "text-to-video",
+    "enabled": true,
+    "pricing": {"usd_per_run": 0.275}
+  },
+  {
+    "model_id": "veo-3-1",
+    "display_name": "Google Veo 3.1 Fast",
+    "category": "text-to-video",
+    "enabled": true,
+    "pricing": {"usd_per_run": 0.3}
+  },
+  {
+    "model_id": "runway-aleph",
+    "display_name": "Runway Aleph",
+    "category": "text-to-video",
+    "enabled": true,
+    "pricing": {"usd_per_run": 0.55}
   }
 ]
