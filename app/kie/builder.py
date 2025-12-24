@@ -15,15 +15,20 @@ def load_source_of_truth(file_path: str = "models/kie_api_models.json") -> Dict[
     Load source of truth file.
     
     Priority:
-    1. kie_parsed_models.json (v6 - auto-parsed from kie_pricing_raw.txt, 77 models)
-    2. kie_api_models.json (v5 - from API docs)
-    3. kie_source_of_truth_v4.json (v4 - category-specific)
-    4. kie_source_of_truth.json (v3 - legacy)
-    5. kie_models_source_of_truth.json (v2 - very old)
+    1. kie_models_final_truth.json (v6.2 - merged: pricing + site scraper, 77 models)
+    2. kie_parsed_models.json (v6 - auto-parsed from kie_pricing_raw.txt)
+    3. kie_api_models.json (v5 - from API docs)
+    4. kie_source_of_truth_v4.json (v4 - category-specific)
+    5. kie_source_of_truth.json (v3 - legacy)
     """
-    # Try v6 (auto-parsed) first
-    v6_path = "models/kie_parsed_models.json"
-    if os.path.exists(v6_path):
+    # Try v6.2 (merged) first - PRODUCTION
+    v62_path = "models/kie_models_final_truth.json"
+    if os.path.exists(v62_path):
+        logger.info(f"Using V6.2 (merged, 77 models): {v62_path}")
+        file_path = v62_path
+    # Try v6 (auto-parsed)
+    elif os.path.exists("models/kie_parsed_models.json"):
+        v6_path = "models/kie_parsed_models.json"
         logger.info(f"Using V6 (77 models): {v6_path}")
         file_path = v6_path
     # Try v5 (API docs)

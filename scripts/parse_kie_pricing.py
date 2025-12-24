@@ -46,6 +46,17 @@ def normalize_model_id(raw_name: str, category: str, variant: str) -> str:
     # Known mappings from existing working models
     name_lower = raw_name.lower()
     
+    # Create unique suffix from variant if needed
+    variant_suffix = ""
+    if variant and variant != "default":
+        # Extract key parts from variant
+        variant_clean = re.sub(r'[^a-z0-9-]', '-', variant.lower())
+        variant_clean = re.sub(r'-+', '-', variant_clean).strip('-')
+        
+        # Only add suffix if variant has meaningful info
+        if variant_clean and variant_clean not in ['default', '0-0s']:
+            variant_suffix = f":{variant_clean}"
+    
     # Grok Imagine
     if "grok" in name_lower:
         if "text-to-image" in category:
@@ -202,7 +213,9 @@ def normalize_model_id(raw_name: str, category: str, variant: str) -> str:
     # Fallback: create ID from name
     clean_name = re.sub(r'[^a-z0-9]+', '-', name_lower)
     clean_name = clean_name.strip('-')
-    return clean_name
+    
+    # Add variant suffix to make unique
+    return clean_name + variant_suffix
 
 def generate_input_schema(model_id: str, category: str, variant: str) -> dict:
     """Generate input schema based on model type"""
@@ -329,6 +342,20 @@ def main():
             
             models.append(model)
             print(f"  ✓ {line_num:3d}. {model_id:40s} | {parsed['price_rub']:7.2f}₽ | {parsed['credits']:8.1f} credits")
+    
+    # Deduplicate model IDs by adding suffix
+    seen_ids = {}
+    for model in models:
+        original_id = model['model_id']
+        
+        if original_id in seen_ids:
+            # Add counter suffix
+            seen_ids[original_id] += 1
+            counter = seen_ids[original_id]
+            model['model_id'] = f"{original_id}:{model['variant'].replace(' ', '-').lower()}-v{counter}"
+            print(f"  🔄 Renamed duplicate: {original_id} → {model['model_id']}")
+        else:
+            seen_ids[original_id] = 1
     
     print(f"\n📊 Summary:")
     print(f"  ✅ Parsed: {len(models)} models")

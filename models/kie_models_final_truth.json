@@ -1,8 +1,15 @@
 {
-  "version": "6.0.0",
-  "source": "kie_pricing_raw.txt",
-  "generated_at": "2025-12-24",
+  "version": "6.2.0",
+  "source": "merged: kie_parsed_models.json + site_scraper",
   "total_models": 77,
+  "free_tier_count": 5,
+  "free_tier_models": [
+    "recraft/crisp-upscale",
+    "qwen/z-image",
+    "recraft/remove-background",
+    "midjourney/image-to-image:relaxed-v3",
+    "midjourney/text-to-image:relaxed-v3"
+  ],
   "api_endpoint": "/api/v1/jobs/createTask",
   "models": [
     {
@@ -55,7 +62,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "veo3.1/text-to-video-fast",
@@ -101,7 +109,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "grok-imagine/image-to-video",
@@ -153,7 +162,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "grok-imagine/text-to-video",
@@ -199,7 +209,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "nano-banana-pro",
@@ -217,7 +228,8 @@
         "properties": {}
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "nano-banana-pro:default-v2",
@@ -235,7 +247,8 @@
         "properties": {}
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "qwen/z-image",
@@ -280,7 +293,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": true
     },
     {
       "model_id": "flux/2-pro-image-to-image",
@@ -319,7 +333,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "kling/2-6-image-to-video",
@@ -371,7 +386,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "wan/2-6-video-to-video",
@@ -418,7 +434,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "wan-2-2-animate:1-0s-720p",
@@ -436,7 +453,8 @@
         "properties": {}
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "wan-2-2-animate:1-0s-580p",
@@ -454,7 +472,8 @@
         "properties": {}
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "wan-2-2-animate:1-0s-480p",
@@ -472,7 +491,8 @@
         "properties": {}
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "midjourney/image-to-image",
@@ -523,7 +543,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "midjourney/image-to-image:turbo-v2",
@@ -574,7 +595,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "midjourney/image-to-video",
@@ -626,7 +648,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "midjourney/text-to-image",
@@ -671,7 +694,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "midjourney/text-to-image:turbo-v2",
@@ -716,7 +740,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "midjourney/image-to-image:relaxed-v3",
@@ -767,7 +792,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": true
     },
     {
       "model_id": "google/imagen4",
@@ -812,7 +838,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "midjourney/text-to-image:relaxed-v3",
@@ -857,7 +884,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": true
     },
     {
       "model_id": "google/imagen4:fast-v2",
@@ -902,7 +930,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "wan/2-2-image-to-video",
@@ -954,7 +983,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "google/imagen4:ultra-v3",
@@ -999,7 +1029,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "wan/2-2-image-to-video:5.0s-720p-v2",
@@ -1051,7 +1082,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "wan/2-2-image-to-video:5.0s-580p-v3",
@@ -1103,7 +1135,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "wan/2-2-text-to-video",
@@ -1149,7 +1182,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "wan/2-2-text-to-video:5.0s-480p-v2",
@@ -1195,7 +1229,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "ideogram/v3-remix",
@@ -1246,7 +1281,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "ideogram/v3-remix:quality-v2",
@@ -1307,7 +1343,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "wan/2-2-text-to-video:5.0s-720p-v3",
@@ -1353,7 +1390,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "ideogram/v3-edit",
@@ -1414,7 +1452,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "ideogram/v3-remix:turbo-v3",
@@ -1465,7 +1504,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "ideogram/v3-edit:balanced-v2",
@@ -1516,7 +1556,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "ideogram/v3",
@@ -1571,7 +1612,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "ideogram/v3-edit:turbo-v3",
@@ -1622,7 +1664,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "ideogram/v3:turbo-v2",
@@ -1667,7 +1710,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "ideogram/v3:balanced-v3",
@@ -1712,7 +1756,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "kling/2-1-video-generation",
@@ -1752,7 +1797,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "kling/2-1-text-to-video",
@@ -1808,7 +1854,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "kling/2-1-text-to-video:master-10.0s-v2",
@@ -1864,7 +1911,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "kling/2-1-video-generation:standard-5.0s-v2",
@@ -1904,7 +1952,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "kling/2-1-video-generation:standard-10.0s-v3",
@@ -1944,7 +1993,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "kling/2-1-video-generation:pro-5.0s-v4",
@@ -1984,7 +2034,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "kling/2-1-image-to-video",
@@ -2046,7 +2097,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "kling/2-1-image-to-video:master-10.0s-v2",
@@ -2108,7 +2160,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "elevenlabs/tts-multilingual",
@@ -2126,7 +2179,8 @@
         "properties": {}
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "elevenlabs/tts-multilingual:default-v2",
@@ -2144,7 +2198,8 @@
         "properties": {}
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "recraft/crisp-upscale",
@@ -2183,7 +2238,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": true
     },
     {
       "model_id": "recraft/remove-background",
@@ -2222,7 +2278,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": true
     },
     {
       "model_id": "seedream/4.0-text-to-image",
@@ -2267,7 +2324,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "seedream/4.0-image-to-video",
@@ -2319,7 +2377,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "topaz/video-upscaler",
@@ -2337,7 +2396,8 @@
         "properties": {}
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "topaz/image-upscaler",
@@ -2376,7 +2436,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "openai/4o-image",
@@ -2421,7 +2482,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "flux/kontext-pro",
@@ -2466,7 +2528,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "flux/2-flex",
@@ -2511,7 +2574,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "flux/2-pro-text-to-image",
@@ -2556,7 +2620,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "flux/2-pro-image-to-image:1.0s-2k-v2",
@@ -2595,7 +2660,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "kling/2-6-text-to-video",
@@ -2641,7 +2707,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "kling/2-6-text-to-video:without-audio-10.0s-v2",
@@ -2687,7 +2754,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "kling/2-6-image-to-video:without-audio-10.0s-v2",
@@ -2739,7 +2807,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "seedream/4.5-text-to-image",
@@ -2784,7 +2853,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "wan/2-6-text-to-video",
@@ -2830,7 +2900,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "wan/2-6-image-to-video",
@@ -2882,7 +2953,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "wan/2-5-text-to-video",
@@ -2928,7 +3000,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "wan/2-5-image-to-video:default-10.0s-720p-v2",
@@ -2980,7 +3053,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "veo3.1/text-to-video-quality",
@@ -3036,7 +3110,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "veo3.1/image-to-video-fast",
@@ -3088,7 +3163,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "hailuo/2.3-image-to-video",
@@ -3140,7 +3216,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "hailuo/02-text-to-video",
@@ -3186,7 +3263,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "hailuo/02-image-to-video",
@@ -3238,7 +3316,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "suno/music-generation",
@@ -3256,7 +3335,8 @@
         "properties": {}
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "grok-imagine/text-to-image",
@@ -3301,7 +3381,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "nano-banana",
@@ -3346,7 +3427,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "qwen/z-image:default-v2",
@@ -3391,7 +3473,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     },
     {
       "model_id": "bytedance-seedream",
@@ -3436,7 +3519,8 @@
         }
       },
       "enabled": true,
-      "source": "kie_pricing_raw.txt"
+      "source": "kie_pricing_raw.txt",
+      "is_free_tier": false
     }
   ]
 }
