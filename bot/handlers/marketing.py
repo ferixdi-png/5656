@@ -260,6 +260,100 @@ def _build_models_keyboard(cat_key: str, models: list) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+@router.callback_query(F.data.startswith("mcat_page:"))
+async def cb_category_page(callback: CallbackQuery, state: FSMContext):
+    """
+    Handle pagination for model lists.
+    
+    Format: mcat_page:cat_key:page_num
+    """
+    parts = callback.data.split(":")
+    if len(parts) < 3:
+        await callback.answer("Неверный формат", show_alert=True)
+        return
+    
+    cat_key = parts[1]
+    try:
+        page = int(parts[2])
+    except ValueError:
+        page = 0
+    
+    # Get category models
+    tree = build_ui_tree()
+    models = tree.get(cat_key, [])
+    
+    if not models:
+        await callback.answer("Модели не найдены", show_alert=True)
+        return
+    
+    # Pagination: 10 per page
+    page_size = 10
+    start_idx = page * page_size
+    end_idx = start_idx + page_size
+    page_models = models[start_idx:end_idx]
+    
+    if not page_models:
+        await callback.answer("Нет моделей на этой странице", show_alert=True)
+        return
+    
+    # Build keyboard with pagination
+    rows = []
+    for model in page_models:
+        model_id = model.get("model_id", "")
+        name = model.get("name") or model_id
+        
+        price = model.get("price")
+        if price:
+            kie_cost_rub = calculate_kie_cost(model, {}, None)
+            user_price = calculate_user_price(kie_cost_rub)
+            price_text = f" • {format_price_rub(user_price)}"
+        else:
+            price_text = ""
+        
+        button_text = f"{name}{price_text}"
+        rows.append([
+            InlineKeyboardButton(
+                text=button_text,
+                callback_data=f"mmodel:{model_id}"
+            )
+        ])
+    
+    # Navigation buttons
+    nav_row = []
+    if page > 0:
+        nav_row.append(InlineKeyboardButton(
+            text="◀️ Назад",
+            callback_data=f"mcat_page:{cat_key}:{page-1}"
+        ))
+    if end_idx < len(models):
+        nav_row.append(InlineKeyboardButton(
+            text="Вперёд ▶️",
+            callback_data=f"mcat_page:{cat_key}:{page+1}"
+        ))
+    
+    if nav_row:
+        rows.append(nav_row)
+    
+    rows.append([
+        InlineKeyboardButton(text="🏠 Главное меню", callback_data="marketing:main")
+    ])
+    
+    # Update message
+    cat_info = get_category_info(cat_key)
+    emoji = cat_info.get("emoji", "")
+    title = cat_info.get("title", "")
+    
+    text = (
+        f"{emoji} <b>{title}</b>\n\n"
+        f"Страница {page + 1}/{(len(models) + page_size - 1) // page_size}\n"
+        f"Всего моделей: {len(models)}"
+    )
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
+    await callback.message.edit_text(text, reply_markup=keyboard)
+    await callback.answer()
+
+
 @router.callback_query(F.data.startswith("mmodel:"))
 async def cb_model_details(callback: CallbackQuery, state: FSMContext):
     """Show model details and start generation flow."""
