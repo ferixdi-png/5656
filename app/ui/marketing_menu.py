@@ -18,52 +18,52 @@ import os
 MARKETING_CATEGORIES = {
     "video_creatives": {
         "emoji": "🎥",
-        "title": "Видео-креативы",
-        "desc": "Reels, Shorts, TikTok",
-        "kie_categories": ["t2v", "i2v", "v2v"],
-        "tags": ["reels", "shorts", "tiktok", "video"]
+        "title": "Видео",
+        "desc": "Генерация видео: Reels, Shorts, TikTok",
+        "kie_categories": ["video"],
+        "tags": ["reels", "shorts", "tiktok", "video", "видео"]
     },
     "visuals": {
         "emoji": "🖼️",
-        "title": "Визуалы",
-        "desc": "Баннеры, посты, обложки",
-        "kie_categories": ["t2i", "i2i"],
-        "tags": ["banner", "post", "cover", "image"]
+        "title": "Изображения",
+        "desc": "Создание картинок: баннеры, посты, иллюстрации",
+        "kie_categories": ["image"],
+        "tags": ["banner", "post", "cover", "image", "картинка"]
     },
-    "texts": {
-        "emoji": "✍️",
-        "title": "Тексты",
-        "desc": "Посты, описания, сценарии",
-        "kie_categories": ["other"],  # text models
-        "tags": ["text", "copy", "script"]
-    },
-    "avatars_ugc": {
+    "avatars": {
         "emoji": "🧑‍🎤",
-        "title": "Аватары/UGC",
-        "desc": "Персонажи, говорящие головы",
-        "kie_categories": ["lip_sync", "i2i"],
-        "tags": ["avatar", "character", "lipsync"]
+        "title": "Аватары",
+        "desc": "Персонажи и говорящие головы",
+        "kie_categories": ["avatar"],
+        "tags": ["avatar", "character", "lipsync", "аватар"]
     },
     "audio": {
         "emoji": "🔊",
-        "title": "Озвучка/аудио",
-        "desc": "TTS, музыка, эффекты",
-        "kie_categories": ["tts", "music", "sfx", "stt"],
-        "tags": ["audio", "voice", "music"]
+        "title": "Аудио",
+        "desc": "Озвучка, распознавание речи",
+        "kie_categories": ["audio"],
+        "tags": ["audio", "voice", "speech", "аудио"]
     },
-    "tools": {
-        "emoji": "🧰",
-        "title": "Улучшалки",
-        "desc": "Апскейл, фон, рестайл",
-        "kie_categories": ["upscale", "bg_remove", "watermark_remove"],
-        "tags": ["upscale", "background", "enhance"]
+    "music": {
+        "emoji": "🎵",
+        "title": "Музыка",
+        "desc": "Генерация музыки и звуковых эффектов",
+        "kie_categories": ["music"],
+        "tags": ["music", "melody", "sound", "музыка"]
     },
-    "experimental": {
-        "emoji": "🧪",
-        "title": "Экспериментальные",
-        "desc": "Новые и редкие модели",
-        "kie_categories": ["audio_isolation"],
-        "tags": ["experimental", "beta"]
+    "enhance": {
+        "emoji": "✨",
+        "title": "Улучшение",
+        "desc": "Апскейл, удаление фона и водяных знаков",
+        "kie_categories": ["enhance"],
+        "tags": ["upscale", "background", "enhance", "качество"]
+    },
+    "other": {
+        "emoji": "🔮",
+        "title": "Другие",
+        "desc": "Дополнительные инструменты",
+        "kie_categories": ["other"],
+        "tags": ["other", "tools"]
     }
 }
 
@@ -86,22 +86,21 @@ def load_registry() -> List[Dict]:
 
 
 def map_model_to_marketing_category(model: Dict) -> str:
-    """Map KIE model to marketing category."""
-    category = model.get("category", "")
-    model_id = model.get("model_id", "")
+    """Map KIE model to marketing category based on SOURCE_OF_TRUTH category."""
+    category = model.get("category", "other")
     
-    # Check each marketing category
-    for mk_cat, mk_data in MARKETING_CATEGORIES.items():
-        if category in mk_data["kie_categories"]:
-            return mk_cat
-        
-        # Check by tags
-        for tag in mk_data.get("tags", []):
-            if tag in model_id.lower():
-                return mk_cat
+    # Direct mapping from SOURCE_OF_TRUTH categories
+    category_map = {
+        "video": "video_creatives",
+        "image": "visuals",
+        "avatar": "avatars",
+        "audio": "audio",
+        "music": "music",
+        "enhance": "enhance",
+        "other": "other"
+    }
     
-    # Default to experimental
-    return "experimental"
+    return category_map.get(category, "other")
 
 
 def build_ui_tree() -> Dict[str, List[Dict]]:

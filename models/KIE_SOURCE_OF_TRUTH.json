@@ -116,7 +116,20 @@
         }
       ],
       "source_url": "https://docs.kie.ai/market/seedream/seedream",
-      "old_registry_id": "seedream/seedream"
+      "old_registry_id": "seedream/seedream",
+      "tags": [
+        "bytedance",
+        "picture",
+        "seedream",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "A 2D flat art style campsite poster with the text “Kie AI Seedream 3.0 API”. ...",
+        "A 2D flat art style campsite poster with the text “Kie AI Seedream 3.0 API”. ...",
+        "A 2D flat art style campsite poster with the text “Kie AI Seedream 3.0 API”. ..."
+      ]
     },
     "bytedance/seedream-v4-text-to-image": {
       "model_id": "bytedance/seedream-v4-text-to-image",
@@ -228,7 +241,20 @@
         }
       ],
       "source_url": "https://docs.kie.ai/market/seedream/seedream-v4-text-to-image",
-      "old_registry_id": "seedream/seedream-v4-text-to-image"
+      "old_registry_id": "seedream/seedream-v4-text-to-image",
+      "tags": [
+        "bytedance",
+        "picture",
+        "seedream v4 text to image",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "Draw the following system of binary linear equations and the corresponding so...",
+        "Draw the following system of binary linear equations and the corresponding so...",
+        "Draw the following system of binary linear equations and the corresponding so..."
+      ]
     },
     "bytedance/seedream-v4-edit": {
       "model_id": "bytedance/seedream-v4-edit",
@@ -364,7 +390,20 @@
         }
       ],
       "source_url": "https://docs.kie.ai/market/seedream/seedream-v4-edit",
-      "old_registry_id": "seedream/seedream-v4-edit"
+      "old_registry_id": "seedream/seedream-v4-edit",
+      "tags": [
+        "bytedance",
+        "picture",
+        "seedream v4 edit",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "Refer to this logo and create a single visual showcase for an outdoor sports ...",
+        "Refer to this logo and create a single visual showcase for an outdoor sports ...",
+        "Refer to this logo and create a single visual showcase for an outdoor sports ..."
+      ]
     },
     "z-image": {
       "model_id": "z-image",
@@ -461,7 +500,18 @@
         }
       ],
       "source_url": "https://docs.kie.ai/market/z-image/z-image",
-      "old_registry_id": "z-image/z-image"
+      "old_registry_id": "z-image/z-image",
+      "tags": [
+        "picture",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "Generate a photorealistic image of a cafe terrace in the Marais district of P...",
+        "Generate a photorealistic image of a cafe terrace in the Marais district of P...",
+        "Generate a photorealistic image of a cafe terrace in the Marais district of P..."
+      ]
     },
     "google/imagen4-fast": {
       "model_id": "google/imagen4-fast",
@@ -572,7 +622,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/google/imagen4-fast"
+      "source_url": "https://docs.kie.ai/market/google/imagen4-fast",
+      "tags": [
+        "google",
+        "imagen4 fast",
+        "picture",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "Create a cinematic, photorealistic medium shot capturing the nostalgic warmth...",
+        "Create a cinematic, photorealistic medium shot capturing the nostalgic warmth...",
+        "Create a cinematic, photorealistic medium shot capturing the nostalgic warmth..."
+      ]
     },
     "google/imagen4-ultra": {
       "model_id": "google/imagen4-ultra",
@@ -683,7 +746,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/google/imagen4-ultra"
+      "source_url": "https://docs.kie.ai/market/google/imagen4-ultra",
+      "tags": [
+        "google",
+        "imagen4 ultra",
+        "picture",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "A lively comic scene where two colleagues are in an office. The first person ...",
+        "A lively comic scene where two colleagues are in an office. The first person ...",
+        "A lively comic scene where two colleagues are in an office. The first person ..."
+      ]
     },
     "google/imagen4": {
       "model_id": "google/imagen4",
@@ -802,7 +878,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/google/imagen4"
+      "source_url": "https://docs.kie.ai/market/google/imagen4",
+      "tags": [
+        "google",
+        "imagen4",
+        "picture",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "A lively comic scene where two colleagues are in an office. The first person ...",
+        "A lively comic scene where two colleagues are in an office. The first person ...",
+        "A lively comic scene where two colleagues are in an office. The first person ..."
+      ]
     },
     "google/nano-banana-edit": {
       "model_id": "google/nano-banana-edit",
@@ -929,7 +1018,16 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/google/nano-banana-edit"
+      "source_url": "https://docs.kie.ai/market/google/nano-banana-edit",
+      "tags": [
+        "google",
+        "nano banana edit"
+      ],
+      "ui_example_prompts": [
+        "turn this photo into a character figure. Behind it, place a box with the char...",
+        "turn this photo into a character figure. Behind it, place a box with the char...",
+        "turn this photo into a character figure. Behind it, place a box with the char..."
+      ]
     },
     "google/nano-banana": {
       "model_id": "google/nano-banana",
@@ -1032,7 +1130,16 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/google/nano-banana"
+      "source_url": "https://docs.kie.ai/market/google/nano-banana",
+      "tags": [
+        "google",
+        "nano banana"
+      ],
+      "ui_example_prompts": [
+        "A surreal painting of a giant banana floating in space, stars and galaxies in...",
+        "A surreal painting of a giant banana floating in space, stars and galaxies in...",
+        "A surreal painting of a giant banana floating in space, stars and galaxies in..."
+      ]
     },
     "nano-banana-pro": {
       "model_id": "nano-banana-pro",
@@ -1154,7 +1261,18 @@
         }
       ],
       "source_url": "https://docs.kie.ai/market/google/pro-image-to-image",
-      "old_registry_id": "google/pro-image-to-image"
+      "old_registry_id": "google/pro-image-to-image",
+      "tags": [
+        "picture",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "Comic poster: cool banana hero in shades leaps from sci-fi pad. Six panels: 1...",
+        "Comic poster: cool banana hero in shades leaps from sci-fi pad. Six panels: 1...",
+        "Comic poster: cool banana hero in shades leaps from sci-fi pad. Six panels: 1..."
+      ]
     },
     "flux-2/pro-image-to-image": {
       "model_id": "flux-2/pro-image-to-image",
@@ -1290,7 +1408,20 @@
         }
       ],
       "source_url": "https://docs.kie.ai/market/flux2/pro-image-to-image",
-      "old_registry_id": "flux2/pro-image-to-image"
+      "old_registry_id": "flux2/pro-image-to-image",
+      "tags": [
+        "flux-2",
+        "picture",
+        "pro image to image",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "The jar in image 1 is filled with capsules exactly same as image 2 with the e...",
+        "The jar in image 1 is filled with capsules exactly same as image 2 with the e...",
+        "The jar in image 1 is filled with capsules exactly same as image 2 with the e..."
+      ]
     },
     "flux-2/pro-text-to-image": {
       "model_id": "flux-2/pro-text-to-image",
@@ -1394,7 +1525,20 @@
         }
       ],
       "source_url": "https://docs.kie.ai/market/flux2/pro-text-to-image",
-      "old_registry_id": "flux2/pro-text-to-image"
+      "old_registry_id": "flux2/pro-text-to-image",
+      "tags": [
+        "flux-2",
+        "picture",
+        "pro text to image",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "Hyperrealistic supermarket blister pack on clean olive green surface. No shad...",
+        "Hyperrealistic supermarket blister pack on clean olive green surface. No shad...",
+        "Hyperrealistic supermarket blister pack on clean olive green surface. No shad..."
+      ]
     },
     "flux-2/flex-image-to-image": {
       "model_id": "flux-2/flex-image-to-image",
@@ -1530,7 +1674,20 @@
         }
       ],
       "source_url": "https://docs.kie.ai/market/flux2/flex-image-to-image",
-      "old_registry_id": "flux2/flex-image-to-image"
+      "old_registry_id": "flux2/flex-image-to-image",
+      "tags": [
+        "flex image to image",
+        "flux-2",
+        "picture",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "Replace the can in image 2 with the can from image 1",
+        "Replace the can in image 2 with the can from image 1",
+        "Replace the can in image 2 with the can from image 1"
+      ]
     },
     "flux-2/flex-text-to-image": {
       "model_id": "flux-2/flex-text-to-image",
@@ -1634,7 +1791,20 @@
         }
       ],
       "source_url": "https://docs.kie.ai/market/flux2/flex-text-to-image",
-      "old_registry_id": "flux2/flex-text-to-image"
+      "old_registry_id": "flux2/flex-text-to-image",
+      "tags": [
+        "flex text to image",
+        "flux-2",
+        "picture",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "A humanoid figure with a vintage television set for a head, featuring a green...",
+        "A humanoid figure with a vintage television set for a head, featuring a green...",
+        "A humanoid figure with a vintage television set for a head, featuring a green..."
+      ]
     },
     "grok-imagine/text-to-image": {
       "model_id": "grok-imagine/text-to-image",
@@ -1729,7 +1899,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/grok-imagine/text-to-image"
+      "source_url": "https://docs.kie.ai/market/grok-imagine/text-to-image",
+      "tags": [
+        "grok-imagine",
+        "picture",
+        "text to image",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "Cinematic portrait of a woman sitting by a vinyl record player, retro living ...",
+        "Cinematic portrait of a woman sitting by a vinyl record player, retro living ...",
+        "Cinematic portrait of a woman sitting by a vinyl record player, retro living ..."
+      ]
     },
     "grok-imagine/upscale": {
       "model_id": "grok-imagine/upscale",
@@ -1818,12 +2001,23 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/grok-imagine/upscale"
+      "source_url": "https://docs.kie.ai/market/grok-imagine/upscale",
+      "tags": [
+        "4k",
+        "8k",
+        "enhance",
+        "grok-imagine",
+        "upscale",
+        "апскейл",
+        "качество",
+        "увеличение",
+        "улучшение"
+      ]
     },
     "topaz/image-upscale": {
       "model_id": "topaz/image-upscale",
       "provider": "topaz",
-      "category": "image",
+      "category": "enhance",
       "slug": "market/topaz/image-upscale",
       "display_name": "Topaz - Image Upscale",
       "description": "English",
@@ -1913,12 +2107,24 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/topaz/image-upscale"
+      "source_url": "https://docs.kie.ai/market/topaz/image-upscale",
+      "tags": [
+        "4k",
+        "8k",
+        "image upscale",
+        "picture",
+        "topaz",
+        "upscale",
+        "изображение",
+        "картинка",
+        "качество",
+        "увеличение"
+      ]
     },
     "recraft/remove-background": {
       "model_id": "recraft/remove-background",
       "provider": "recraft",
-      "category": "other",
+      "category": "enhance",
       "slug": "market/recraft/remove-background",
       "display_name": "recraft/remove-background",
       "description": "English",
@@ -2000,7 +2206,11 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/recraft/remove-background"
+      "source_url": "https://docs.kie.ai/market/recraft/remove-background",
+      "tags": [
+        "recraft",
+        "remove background"
+      ]
     },
     "recraft/crisp-upscale": {
       "model_id": "recraft/crisp-upscale",
@@ -2087,7 +2297,19 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/recraft/crisp-upscale"
+      "source_url": "https://docs.kie.ai/market/recraft/crisp-upscale",
+      "tags": [
+        "4k",
+        "8k",
+        "crisp upscale",
+        "enhance",
+        "recraft",
+        "upscale",
+        "апскейл",
+        "качество",
+        "увеличение",
+        "улучшение"
+      ]
     },
     "ideogram/v3-reframe": {
       "model_id": "ideogram/v3-reframe",
@@ -2214,7 +2436,11 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/ideogram/v3-reframe"
+      "source_url": "https://docs.kie.ai/market/ideogram/v3-reframe",
+      "tags": [
+        "ideogram",
+        "v3 reframe"
+      ]
     },
     "ideogram/character-edit": {
       "model_id": "ideogram/character-edit",
@@ -2373,7 +2599,16 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/ideogram/character-edit"
+      "source_url": "https://docs.kie.ai/market/ideogram/character-edit",
+      "tags": [
+        "character edit",
+        "ideogram"
+      ],
+      "ui_example_prompts": [
+        "A fabulous look head tilted down, looking forward with a smile\n",
+        "A fabulous look head tilted down, looking forward with a smile\n",
+        "A fabulous look head tilted down, looking forward with a smile\n"
+      ]
     },
     "ideogram/character-remix": {
       "model_id": "ideogram/character-remix",
@@ -2564,7 +2799,16 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/ideogram/character-remix"
+      "source_url": "https://docs.kie.ai/market/ideogram/character-remix",
+      "tags": [
+        "character remix",
+        "ideogram"
+      ],
+      "ui_example_prompts": [
+        "A fisheye lens selfie photograph taken at night on an urban street. The image...",
+        "A fisheye lens selfie photograph taken at night on an urban street. The image...",
+        "A fisheye lens selfie photograph taken at night on an urban street. The image..."
+      ]
     },
     "ideogram/character": {
       "model_id": "ideogram/character",
@@ -2723,7 +2967,16 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/ideogram/character"
+      "source_url": "https://docs.kie.ai/market/ideogram/character",
+      "tags": [
+        "character",
+        "ideogram"
+      ],
+      "ui_example_prompts": [
+        "Place the woman from the uploaded portrait, wearing a casual white blouse, in...",
+        "Place the woman from the uploaded portrait, wearing a casual white blouse, in...",
+        "Place the woman from the uploaded portrait, wearing a casual white blouse, in..."
+      ]
     },
     "qwen/text-to-image": {
       "model_id": "qwen/text-to-image",
@@ -2866,7 +3119,18 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/qwen/text-to-image"
+      "source_url": "https://docs.kie.ai/market/qwen/text-to-image",
+      "tags": [
+        "picture",
+        "qwen",
+        "text to image",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "A futuristic cityscape at sunset with flying cars and neon lights"
+      ]
     },
     "qwen/image-to-image": {
       "model_id": "qwen/image-to-image",
@@ -3017,7 +3281,18 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/qwen/image-to-image"
+      "source_url": "https://docs.kie.ai/market/qwen/image-to-image",
+      "tags": [
+        "image to image",
+        "picture",
+        "qwen",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "Transform this image into a watercolor painting style"
+      ]
     },
     "qwen/image-edit": {
       "model_id": "qwen/image-edit",
@@ -3177,7 +3452,18 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/qwen/image-edit"
+      "source_url": "https://docs.kie.ai/market/qwen/image-edit",
+      "tags": [
+        "image edit",
+        "picture",
+        "qwen",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "Add colorful flowers in the foreground"
+      ]
     },
     "grok-imagine/text-to-video": {
       "model_id": "grok-imagine/text-to-video",
@@ -3280,7 +3566,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/grok-imagine/text-to-video"
+      "source_url": "https://docs.kie.ai/market/grok-imagine/text-to-video",
+      "tags": [
+        "clip",
+        "grok-imagine",
+        "movie",
+        "text to video",
+        "видео",
+        "ролик"
+      ],
+      "ui_example_prompts": [
+        "A couple of doors open to the right one by one randomly and stay open, to sho...",
+        "A couple of doors open to the right one by one randomly and stay open, to sho...",
+        "A couple of doors open to the right one by one randomly and stay open, to sho..."
+      ]
     },
     "grok-imagine/image-to-video": {
       "model_id": "grok-imagine/image-to-video",
@@ -3399,7 +3698,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/grok-imagine/image-to-video"
+      "source_url": "https://docs.kie.ai/market/grok-imagine/image-to-video",
+      "tags": [
+        "grok-imagine",
+        "image to video",
+        "picture",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "POV hand comes into frame handing the girl a cup of take away coffee, the gir...",
+        "POV hand comes into frame handing the girl a cup of take away coffee, the gir...",
+        "POV hand comes into frame handing the girl a cup of take away coffee, the gir..."
+      ]
     },
     "kling-2.6/text-to-video": {
       "model_id": "kling-2.6/text-to-video",
@@ -3511,7 +3823,20 @@
         }
       ],
       "source_url": "https://docs.kie.ai/market/kling/text-to-video",
-      "old_registry_id": "kling/text-to-video"
+      "old_registry_id": "kling/text-to-video",
+      "tags": [
+        "clip",
+        "kling-2.6",
+        "movie",
+        "text to video",
+        "видео",
+        "ролик"
+      ],
+      "ui_example_prompts": [
+        "Scene: A fashion live-streaming sales setting, with clothes hanging on racks ...",
+        "Scene: A fashion live-streaming sales setting, with clothes hanging on racks ...",
+        "Scene: A fashion live-streaming sales setting, with clothes hanging on racks ..."
+      ]
     },
     "kling-2.6/image-to-video": {
       "model_id": "kling-2.6/image-to-video",
@@ -3639,12 +3964,25 @@
         }
       ],
       "source_url": "https://docs.kie.ai/market/kling/image-to-video",
-      "old_registry_id": "kling/image-to-video"
+      "old_registry_id": "kling/image-to-video",
+      "tags": [
+        "image to video",
+        "kling-2.6",
+        "picture",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "In a bright rehearsal room, sunlight streams through the windows, and a stand...",
+        "In a bright rehearsal room, sunlight streams through the windows, and a stand...",
+        "In a bright rehearsal room, sunlight streams through the windows, and a stand..."
+      ]
     },
     "kling/ai-avatar-v1-pro": {
       "model_id": "kling/ai-avatar-v1-pro",
       "provider": "kling",
-      "category": "video",
+      "category": "avatar",
       "slug": "market/kling/ai-avatar-v1-pro",
       "display_name": "Kling - AI Avatar V1 Pro",
       "description": "English",
@@ -3742,12 +4080,24 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/kling/ai-avatar-v1-pro"
+      "source_url": "https://docs.kie.ai/market/kling/ai-avatar-v1-pro",
+      "tags": [
+        "ai avatar v1 pro",
+        "avatar",
+        "clip",
+        "kling",
+        "movie",
+        "portrait",
+        "аватар",
+        "видео",
+        "персонаж",
+        "ролик"
+      ]
     },
     "kling/v1-avatar-standard": {
       "model_id": "kling/v1-avatar-standard",
       "provider": "kling",
-      "category": "video",
+      "category": "avatar",
       "slug": "market/kling/v1-avatar-standard",
       "display_name": "Kling - V1 Avatar Standard",
       "description": "English",
@@ -3845,7 +4195,19 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/kling/v1-avatar-standard"
+      "source_url": "https://docs.kie.ai/market/kling/v1-avatar-standard",
+      "tags": [
+        "avatar",
+        "clip",
+        "kling",
+        "movie",
+        "portrait",
+        "v1 avatar standard",
+        "аватар",
+        "видео",
+        "персонаж",
+        "ролик"
+      ]
     },
     "kling/v2-1-master-image-to-video": {
       "model_id": "kling/v2-1-master-image-to-video",
@@ -3964,7 +4326,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/kling/v2-1-master-image-to-video"
+      "source_url": "https://docs.kie.ai/market/kling/v2-1-master-image-to-video",
+      "tags": [
+        "kling",
+        "picture",
+        "v2 1 master image to video",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "A team of paratroopers descends into enemy territory, as they pass through cl...",
+        "A team of paratroopers descends into enemy territory, as they pass through cl...",
+        "A team of paratroopers descends into enemy territory, as they pass through cl..."
+      ]
     },
     "kling/v2-1-master-text-to-video": {
       "model_id": "kling/v2-1-master-text-to-video",
@@ -4083,7 +4458,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/kling/v2-1-master-text-to-video"
+      "source_url": "https://docs.kie.ai/market/kling/v2-1-master-text-to-video",
+      "tags": [
+        "clip",
+        "kling",
+        "movie",
+        "v2 1 master text to video",
+        "видео",
+        "ролик"
+      ],
+      "ui_example_prompts": [
+        "First-person view from a soldier jumping from a transport plane — the camera ...",
+        "First-person view from a soldier jumping from a transport plane — the camera ...",
+        "First-person view from a soldier jumping from a transport plane — the camera ..."
+      ]
     },
     "kling/v2-1-pro": {
       "model_id": "kling/v2-1-pro",
@@ -4210,7 +4598,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/kling/v2-1-pro"
+      "source_url": "https://docs.kie.ai/market/kling/v2-1-pro",
+      "tags": [
+        "clip",
+        "kling",
+        "movie",
+        "v2 1 pro",
+        "видео",
+        "ролик"
+      ],
+      "ui_example_prompts": [
+        "POV shot of a gravity surfer diving between ancient ruins suspended midair, g...",
+        "POV shot of a gravity surfer diving between ancient ruins suspended midair, g...",
+        "POV shot of a gravity surfer diving between ancient ruins suspended midair, g..."
+      ]
     },
     "kling/v2-1-standard": {
       "model_id": "kling/v2-1-standard",
@@ -4329,7 +4730,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/kling/v2-1-standard"
+      "source_url": "https://docs.kie.ai/market/kling/v2-1-standard",
+      "tags": [
+        "clip",
+        "kling",
+        "movie",
+        "v2 1 standard",
+        "видео",
+        "ролик"
+      ],
+      "ui_example_prompts": [
+        "Begin with the uploaded image as the first frame. Gradually animate the scene...",
+        "Begin with the uploaded image as the first frame. Gradually animate the scene...",
+        "Begin with the uploaded image as the first frame. Gradually animate the scene..."
+      ]
     },
     "bytedance/v1-pro-fast-image-to-video": {
       "model_id": "bytedance/v1-pro-fast-image-to-video",
@@ -4440,7 +4854,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/bytedance/v1-pro-fast-image-to-video"
+      "source_url": "https://docs.kie.ai/market/bytedance/v1-pro-fast-image-to-video",
+      "tags": [
+        "bytedance",
+        "picture",
+        "v1 pro fast image to video",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "A cinematic close-up sequence of a single elegant ceramic coffee cup with sau...",
+        "A cinematic close-up sequence of a single elegant ceramic coffee cup with sau...",
+        "A cinematic close-up sequence of a single elegant ceramic coffee cup with sau..."
+      ]
     },
     "bytedance/v1-pro-image-to-video": {
       "model_id": "bytedance/v1-pro-image-to-video",
@@ -4575,7 +5002,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/bytedance/v1-pro-image-to-video"
+      "source_url": "https://docs.kie.ai/market/bytedance/v1-pro-image-to-video",
+      "tags": [
+        "bytedance",
+        "picture",
+        "v1 pro image to video",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "A golden retriever dashing through shallow surf at the beach, back angle came...",
+        "A golden retriever dashing through shallow surf at the beach, back angle came...",
+        "A golden retriever dashing through shallow surf at the beach, back angle came..."
+      ]
     },
     "bytedance/v1-pro-text-to-video": {
       "model_id": "bytedance/v1-pro-text-to-video",
@@ -4710,7 +5150,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/bytedance/v1-pro-text-to-video"
+      "source_url": "https://docs.kie.ai/market/bytedance/v1-pro-text-to-video",
+      "tags": [
+        "bytedance",
+        "clip",
+        "movie",
+        "v1 pro text to video",
+        "видео",
+        "ролик"
+      ],
+      "ui_example_prompts": [
+        "A boy with curly hair and a backpack rides a bike down a golden-lit rural roa...",
+        "A boy with curly hair and a backpack rides a bike down a golden-lit rural roa...",
+        "A boy with curly hair and a backpack rides a bike down a golden-lit rural roa..."
+      ]
     },
     "bytedance/v1-lite-image-to-video": {
       "model_id": "bytedance/v1-lite-image-to-video",
@@ -4853,7 +5306,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/bytedance/v1-lite-image-to-video"
+      "source_url": "https://docs.kie.ai/market/bytedance/v1-lite-image-to-video",
+      "tags": [
+        "bytedance",
+        "picture",
+        "v1 lite image to video",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "Multiple shots. A traveler crosses an endless desert toward a glowing archway...",
+        "Multiple shots. A traveler crosses an endless desert toward a glowing archway...",
+        "Multiple shots. A traveler crosses an endless desert toward a glowing archway..."
+      ]
     },
     "bytedance/v1-lite-text-to-video": {
       "model_id": "bytedance/v1-lite-text-to-video",
@@ -4980,7 +5446,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/bytedance/v1-lite-text-to-video"
+      "source_url": "https://docs.kie.ai/market/bytedance/v1-lite-text-to-video",
+      "tags": [
+        "bytedance",
+        "clip",
+        "movie",
+        "v1 lite text to video",
+        "видео",
+        "ролик"
+      ],
+      "ui_example_prompts": [
+        "Wide-angle shot: A serene sailing boat gently sways in the harbor at dawn, su...",
+        "Wide-angle shot: A serene sailing boat gently sways in the harbor at dawn, su...",
+        "Wide-angle shot: A serene sailing boat gently sways in the harbor at dawn, su..."
+      ]
     },
     "hailuo/2-3-image-to-video-pro": {
       "model_id": "hailuo/2-3-image-to-video-pro",
@@ -5091,7 +5570,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/hailuo/2-3-image-to-video-pro"
+      "source_url": "https://docs.kie.ai/market/hailuo/2-3-image-to-video-pro",
+      "tags": [
+        "2 3 image to video pro",
+        "hailuo",
+        "picture",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "A graceful geisha performs a traditional Japanese dance indoors. She wears a ...",
+        "A graceful geisha performs a traditional Japanese dance indoors. She wears a ...",
+        "A graceful geisha performs a traditional Japanese dance indoors. She wears a ..."
+      ]
     },
     "hailuo/2-3-image-to-video-standard": {
       "model_id": "hailuo/2-3-image-to-video-standard",
@@ -5202,7 +5694,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/hailuo/2-3-image-to-video-standard"
+      "source_url": "https://docs.kie.ai/market/hailuo/2-3-image-to-video-standard",
+      "tags": [
+        "2 3 image to video standard",
+        "hailuo",
+        "picture",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "Two armored medieval knights clash in an intense duel at sunset, cinematic li...",
+        "Two armored medieval knights clash in an intense duel at sunset, cinematic li...",
+        "Two armored medieval knights clash in an intense duel at sunset, cinematic li..."
+      ]
     },
     "hailuo/02-text-to-video-pro": {
       "model_id": "hailuo/02-text-to-video-pro",
@@ -5297,7 +5802,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/hailuo/02-text-to-video-pro"
+      "source_url": "https://docs.kie.ai/market/hailuo/02-text-to-video-pro",
+      "tags": [
+        "02 text to video pro",
+        "clip",
+        "hailuo",
+        "movie",
+        "видео",
+        "ролик"
+      ],
+      "ui_example_prompts": [
+        "High top angle wide mid close-up tracking shot, flying very fast two meters h...",
+        "High top angle wide mid close-up tracking shot, flying very fast two meters h...",
+        "High top angle wide mid close-up tracking shot, flying very fast two meters h..."
+      ]
     },
     "hailuo/02-text-to-video-standard": {
       "model_id": "hailuo/02-text-to-video-standard",
@@ -5400,7 +5918,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/hailuo/02-text-to-video-standard"
+      "source_url": "https://docs.kie.ai/market/hailuo/02-text-to-video-standard",
+      "tags": [
+        "02 text to video standard",
+        "clip",
+        "hailuo",
+        "movie",
+        "видео",
+        "ролик"
+      ],
+      "ui_example_prompts": [
+        "A llama and a raccoon battle it out in an intense table tennis match, inside ...",
+        "A llama and a raccoon battle it out in an intense table tennis match, inside ...",
+        "A llama and a raccoon battle it out in an intense table tennis match, inside ..."
+      ]
     },
     "hailuo/02-image-to-video-pro": {
       "model_id": "hailuo/02-image-to-video-pro",
@@ -5511,7 +6042,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/hailuo/02-image-to-video-pro"
+      "source_url": "https://docs.kie.ai/market/hailuo/02-image-to-video-pro",
+      "tags": [
+        "02 image to video pro",
+        "hailuo",
+        "picture",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "Cinematic wide shot: A colossal starship drifts silently above the rings of S...",
+        "Cinematic wide shot: A colossal starship drifts silently above the rings of S...",
+        "Cinematic wide shot: A colossal starship drifts silently above the rings of S..."
+      ]
     },
     "hailuo/02-image-to-video-standard": {
       "model_id": "hailuo/02-image-to-video-standard",
@@ -5638,7 +6182,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/hailuo/02-image-to-video-standard"
+      "source_url": "https://docs.kie.ai/market/hailuo/02-image-to-video-standard",
+      "tags": [
+        "02 image to video standard",
+        "hailuo",
+        "picture",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "Epic aerial shot: A lone samurai stands atop a jagged mountain peak as a stor...",
+        "Epic aerial shot: A lone samurai stands atop a jagged mountain peak as a stor...",
+        "Epic aerial shot: A lone samurai stands atop a jagged mountain peak as a stor..."
+      ]
     },
     "sora-2-image-to-video": {
       "model_id": "sora-2-image-to-video",
@@ -5799,7 +6356,18 @@
         }
       ],
       "source_url": "https://docs.kie.ai/market/sora2/sora-2-image-to-video",
-      "old_registry_id": "sora2/sora-2-image-to-video"
+      "old_registry_id": "sora2/sora-2-image-to-video",
+      "tags": [
+        "picture",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "A claymation conductor passionately leads a claymation orchestra, while the e...",
+        "A claymation conductor passionately leads a claymation orchestra, while the e...",
+        "A claymation conductor passionately leads a claymation orchestra, while the e..."
+      ]
     },
     "sora-2-text-to-video": {
       "model_id": "sora-2-text-to-video",
@@ -5936,7 +6504,18 @@
         }
       ],
       "source_url": "https://docs.kie.ai/market/sora2/sora-2-text-to-video",
-      "old_registry_id": "sora2/sora-2-text-to-video"
+      "old_registry_id": "sora2/sora-2-text-to-video",
+      "tags": [
+        "clip",
+        "movie",
+        "видео",
+        "ролик"
+      ],
+      "ui_example_prompts": [
+        "A professor stands at the front of a lively classroom, enthusiastically givin...",
+        "A professor stands at the front of a lively classroom, enthusiastically givin...",
+        "A professor stands at the front of a lively classroom, enthusiastically givin..."
+      ]
     },
     "sora-2-pro-image-to-video": {
       "model_id": "sora-2-pro-image-to-video",
@@ -6089,7 +6668,13 @@
         }
       ],
       "source_url": "https://docs.kie.ai/market/sora2/sora-2-pro-image-to-video",
-      "old_registry_id": "sora2/sora-2-pro-image-to-video"
+      "old_registry_id": "sora2/sora-2-pro-image-to-video",
+      "tags": [
+        "picture",
+        "изображение",
+        "картинка",
+        "фото"
+      ]
     },
     "sora-2-pro-text-to-video": {
       "model_id": "sora-2-pro-text-to-video",
@@ -6234,12 +6819,23 @@
         }
       ],
       "source_url": "https://docs.kie.ai/market/sora2/sora-2-pro-text-to-video",
-      "old_registry_id": "sora2/sora-2-pro-text-to-video"
+      "old_registry_id": "sora2/sora-2-pro-text-to-video",
+      "tags": [
+        "clip",
+        "movie",
+        "видео",
+        "ролик"
+      ],
+      "ui_example_prompts": [
+        "a happy dog running in the garden",
+        "a happy dog running in the garden",
+        "a happy dog running in the garden"
+      ]
     },
     "sora-watermark-remover": {
       "model_id": "sora-watermark-remover",
       "provider": "sora2",
-      "category": "other",
+      "category": "enhance",
       "slug": "market/sora2/sora-watermark-remover",
       "display_name": "Sora2 - Watermark Remover",
       "description": "English",
@@ -6323,7 +6919,8 @@
         }
       ],
       "source_url": "https://docs.kie.ai/market/sora2/sora-watermark-remover",
-      "old_registry_id": "sora2/sora-watermark-remover"
+      "old_registry_id": "sora2/sora-watermark-remover",
+      "tags": []
     },
     "sora-2-pro-storyboard/index": {
       "model_id": "sora-2-pro-storyboard/index",
@@ -6419,7 +7016,11 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/sora-2-pro-storyboard/index"
+      "source_url": "https://docs.kie.ai/market/sora-2-pro-storyboard/index",
+      "tags": [
+        "index",
+        "sora-2-pro-storyboard"
+      ]
     },
     "sora-2-characters": {
       "model_id": "sora-2-characters",
@@ -6540,7 +7141,8 @@
         }
       ],
       "source_url": "https://docs.kie.ai/market/sora2/sora-2-characters",
-      "old_registry_id": "sora2/sora-2-characters"
+      "old_registry_id": "sora2/sora-2-characters",
+      "tags": []
     },
     "wan/2-6-image-to-video": {
       "model_id": "wan/2-6-image-to-video",
@@ -6667,7 +7269,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/wan/2-6-image-to-video"
+      "source_url": "https://docs.kie.ai/market/wan/2-6-image-to-video",
+      "tags": [
+        "2 6 image to video",
+        "picture",
+        "wan",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "Anthopmopric fox singing a Christmas song at the rubbish dump in the rain.",
+        "Anthopmopric fox singing a Christmas song at the rubbish dump in the rain.",
+        "Anthopmopric fox singing a Christmas song at the rubbish dump in the rain."
+      ]
     },
     "wan/2-6-text-to-video": {
       "model_id": "wan/2-6-text-to-video",
@@ -6770,7 +7385,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/wan/2-6-text-to-video"
+      "source_url": "https://docs.kie.ai/market/wan/2-6-text-to-video",
+      "tags": [
+        "2 6 text to video",
+        "clip",
+        "movie",
+        "wan",
+        "видео",
+        "ролик"
+      ],
+      "ui_example_prompts": [
+        "In a hyperrealistic ASMR video, a hand uses a knitted knife to slowly slice a...",
+        "In a hyperrealistic ASMR video, a hand uses a knitted knife to slowly slice a...",
+        "In a hyperrealistic ASMR video, a hand uses a knitted knife to slowly slice a..."
+      ]
     },
     "wan/2-6-video-to-video": {
       "model_id": "wan/2-6-video-to-video",
@@ -6897,7 +7525,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/wan/2-6-video-to-video"
+      "source_url": "https://docs.kie.ai/market/wan/2-6-video-to-video",
+      "tags": [
+        "2 6 video to video",
+        "clip",
+        "movie",
+        "wan",
+        "видео",
+        "ролик"
+      ],
+      "ui_example_prompts": [
+        "The video drinks milk tea while doing some improvised dance moves to the music.",
+        "The video drinks milk tea while doing some improvised dance moves to the music.",
+        "The video drinks milk tea while doing some improvised dance moves to the music."
+      ]
     },
     "wan/2-2-a14b-image-to-video-turbo": {
       "model_id": "wan/2-2-a14b-image-to-video-turbo",
@@ -7032,7 +7673,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/wan/2-2-a14b-image-to-video-turbo"
+      "source_url": "https://docs.kie.ai/market/wan/2-2-a14b-image-to-video-turbo",
+      "tags": [
+        "2 2 a14b image to video turbo",
+        "picture",
+        "wan",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "Overcast lighting, medium lens, soft lighting, low contrast lighting, edge li...",
+        "Overcast lighting, medium lens, soft lighting, low contrast lighting, edge li...",
+        "Overcast lighting, medium lens, soft lighting, low contrast lighting, edge li..."
+      ]
     },
     "wan/2-2-a14b-text-to-video-turbo": {
       "model_id": "wan/2-2-a14b-text-to-video-turbo",
@@ -7159,7 +7813,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/wan/2-2-a14b-text-to-video-turbo"
+      "source_url": "https://docs.kie.ai/market/wan/2-2-a14b-text-to-video-turbo",
+      "tags": [
+        "2 2 a14b text to video turbo",
+        "clip",
+        "movie",
+        "wan",
+        "видео",
+        "ролик"
+      ],
+      "ui_example_prompts": [
+        "Drone shot, fast traversal, starting inside a cracked, frosty circular pipe. ...",
+        "Drone shot, fast traversal, starting inside a cracked, frosty circular pipe. ...",
+        "Drone shot, fast traversal, starting inside a cracked, frosty circular pipe. ..."
+      ]
     },
     "wan/2-2-animate-move": {
       "model_id": "wan/2-2-animate-move",
@@ -7262,7 +7929,15 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/wan/2-2-animate-move"
+      "source_url": "https://docs.kie.ai/market/wan/2-2-animate-move",
+      "tags": [
+        "2 2 animate move",
+        "clip",
+        "movie",
+        "wan",
+        "видео",
+        "ролик"
+      ]
     },
     "wan/2-2-animate-replace": {
       "model_id": "wan/2-2-animate-replace",
@@ -7365,7 +8040,15 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/wan/2-2-animate-replace"
+      "source_url": "https://docs.kie.ai/market/wan/2-2-animate-replace",
+      "tags": [
+        "2 2 animate replace",
+        "clip",
+        "movie",
+        "wan",
+        "видео",
+        "ролик"
+      ]
     },
     "wan/2-2-a14b-speech-to-video-turbo": {
       "model_id": "wan/2-2-a14b-speech-to-video-turbo",
@@ -7532,12 +8215,29 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/wan/2-2-a14b-speech-to-video-turbo"
+      "source_url": "https://docs.kie.ai/market/wan/2-2-a14b-speech-to-video-turbo",
+      "tags": [
+        "2 2 a14b speech to video turbo",
+        "clip",
+        "movie",
+        "tts",
+        "voice",
+        "wan",
+        "видео",
+        "озвучка",
+        "речь",
+        "ролик"
+      ],
+      "ui_example_prompts": [
+        "The lady is talking",
+        "The lady is talking",
+        "The lady is talking"
+      ]
     },
     "topaz/video-upscale": {
       "model_id": "topaz/video-upscale",
       "provider": "topaz",
-      "category": "video",
+      "category": "enhance",
       "slug": "market/topaz/video-upscale",
       "display_name": "Topaz - Video Upscale",
       "description": "English",
@@ -7627,12 +8327,24 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/topaz/video-upscale"
+      "source_url": "https://docs.kie.ai/market/topaz/video-upscale",
+      "tags": [
+        "4k",
+        "8k",
+        "clip",
+        "movie",
+        "topaz",
+        "upscale",
+        "video upscale",
+        "видео",
+        "качество",
+        "ролик"
+      ]
     },
     "infinitalk/from-audio": {
       "model_id": "infinitalk/from-audio",
       "provider": "infinitalk",
-      "category": "audio",
+      "category": "music",
       "slug": "market/infinitalk/from-audio",
       "display_name": "Infinitalk - From Audio",
       "description": "English",
@@ -7738,7 +8450,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/infinitalk/from-audio"
+      "source_url": "https://docs.kie.ai/market/infinitalk/from-audio",
+      "tags": [
+        "from audio",
+        "infinitalk",
+        "sound",
+        "аудио",
+        "звук",
+        "озвучка"
+      ],
+      "ui_example_prompts": [
+        "A young woman with long dark hair talking on a podcast.",
+        "A young woman with long dark hair talking on a podcast.",
+        "A young woman with long dark hair talking on a podcast."
+      ]
     },
     "elevenlabs/text-to-speech-turbo-2-5": {
       "model_id": "elevenlabs/text-to-speech-turbo-2-5",
@@ -7899,7 +8624,18 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/elevenlabs/text-to-speech-turbo-2-5"
+      "source_url": "https://docs.kie.ai/market/elevenlabs/text-to-speech-turbo-2-5",
+      "tags": [
+        "elevenlabs",
+        "sound",
+        "text to speech turbo 2 5",
+        "tts",
+        "voice",
+        "аудио",
+        "звук",
+        "озвучка",
+        "речь"
+      ]
     },
     "elevenlabs/speech-to-text": {
       "model_id": "elevenlabs/speech-to-text",
@@ -8010,7 +8746,18 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/elevenlabs/speech-to-text"
+      "source_url": "https://docs.kie.ai/market/elevenlabs/speech-to-text",
+      "tags": [
+        "elevenlabs",
+        "sound",
+        "speech to text",
+        "tts",
+        "voice",
+        "аудио",
+        "звук",
+        "озвучка",
+        "речь"
+      ]
     },
     "elevenlabs/sound-effect-v2": {
       "model_id": "elevenlabs/sound-effect-v2",
@@ -8121,12 +8868,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/elevenlabs/sound-effect-v2"
+      "source_url": "https://docs.kie.ai/market/elevenlabs/sound-effect-v2",
+      "tags": [
+        "elevenlabs",
+        "sound",
+        "sound effect v2",
+        "аудио",
+        "звук",
+        "озвучка"
+      ]
     },
     "elevenlabs/audio-isolation": {
       "model_id": "elevenlabs/audio-isolation",
       "provider": "elevenlabs",
-      "category": "audio",
+      "category": "music",
       "slug": "market/elevenlabs/audio-isolation",
       "display_name": "elevenlabs/audio-isolation",
       "description": "English",
@@ -8208,7 +8963,15 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/elevenlabs/audio-isolation"
+      "source_url": "https://docs.kie.ai/market/elevenlabs/audio-isolation",
+      "tags": [
+        "audio isolation",
+        "elevenlabs",
+        "sound",
+        "аудио",
+        "звук",
+        "озвучка"
+      ]
     },
     "kling/v2-5-turbo-image-to-video-pro": {
       "model_id": "kling/v2-5-turbo-image-to-video-pro",
@@ -8335,7 +9098,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/kling/v2-5-turbo-image-to-video-pro"
+      "source_url": "https://docs.kie.ai/market/kling/v2-5-turbo-image-to-video-pro",
+      "tags": [
+        "kling",
+        "picture",
+        "v2 5 turbo image to video pro",
+        "изображение",
+        "картинка",
+        "фото"
+      ],
+      "ui_example_prompts": [
+        "Astronaut instantly teleports through a glowing magical wooden door. Handheld...",
+        "Astronaut instantly teleports through a glowing magical wooden door. Handheld...",
+        "Astronaut instantly teleports through a glowing magical wooden door. Handheld..."
+      ]
     },
     "kling/v2-5-turbo-text-to-video-pro": {
       "model_id": "kling/v2-5-turbo-text-to-video-pro",
@@ -8454,7 +9230,20 @@
           }
         }
       ],
-      "source_url": "https://docs.kie.ai/market/kling/v2-5-turbo-text-to-video-pro"
+      "source_url": "https://docs.kie.ai/market/kling/v2-5-turbo-text-to-video-pro",
+      "tags": [
+        "clip",
+        "kling",
+        "movie",
+        "v2 5 turbo text to video pro",
+        "видео",
+        "ролик"
+      ],
+      "ui_example_prompts": [
+        "Real-time playback. Wide shot of a ruined city: collapsed towers, fires blazi...",
+        "Real-time playback. Wide shot of a ruined city: collapsed towers, fires blazi...",
+        "Real-time playback. Wide shot of a ruined city: collapsed towers, fires blazi..."
+      ]
     },
     "veo3_fast": {
       "model_id": "veo3_fast",
@@ -8649,7 +9438,13 @@
         }
       ],
       "source_url": "https://docs.kie.ai/veo3-api/generate-veo-3-video",
-      "old_registry_id": "veo3/fast"
+      "old_registry_id": "veo3/fast",
+      "tags": [
+        "clip",
+        "movie",
+        "видео",
+        "ролик"
+      ]
     },
     "V4": {
       "model_id": "V4",
@@ -8862,7 +9657,17 @@
         }
       ],
       "source_url": "https://docs.kie.ai/suno-api/generate-music",
-      "old_registry_id": "suno/v4"
+      "old_registry_id": "suno/v4",
+      "tags": [
+        "melody",
+        "music",
+        "song",
+        "sound",
+        "аудио",
+        "звук",
+        "музыка",
+        "озвучка"
+      ]
     }
   },
   "pending": [

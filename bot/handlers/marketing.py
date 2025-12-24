@@ -231,34 +231,23 @@ def _build_models_keyboard(cat_key: str, models: list) -> InlineKeyboardMarkup:
     """Build models selection keyboard with FREE badges and prices."""
     rows = []
     
-    # Load FREE tier models from registry
-    import json
-    try:
-        with open("models/kie_models_final_truth.json", 'r') as f:
-            registry = json.load(f)
-            free_tier_ids = set(registry.get('free_tier_models', []))
-    except Exception:
-        free_tier_ids = set()
-    
     for model in models[:10]:  # Limit to 10 for now
         model_id = model.get("model_id", "")
         name = model.get("display_name") or model.get("name") or model_id
         
-        # Check if FREE
-        is_free = model_id in free_tier_ids or model.get("is_free_tier", False)
+        # Check if FREE from SOURCE_OF_TRUTH pricing
+        pricing = model.get("pricing", {})
+        is_free = pricing.get("is_free", False)
         
         # Get price
-        pricing = model.get("pricing", {})
-        rub_price = pricing.get("rub_per_generation")
-        
         if is_free:
             button_text = f"🎁 {name} • БЕСПЛАТНО"
-        elif rub_price:
-            kie_cost_rub = calculate_kie_cost(model, {}, None)
-            user_price = calculate_user_price(kie_cost_rub)
-            button_text = f"{name} • {format_price_rub(user_price)}"
         else:
-            button_text = name
+            rub_price = pricing.get("rub_per_gen")
+            if rub_price:
+                button_text = f"{name} • {rub_price:.2f}₽"
+            else:
+                button_text = name
         
         rows.append([
             InlineKeyboardButton(
@@ -401,49 +390,49 @@ async def cb_model_details(callback: CallbackQuery, state: FSMContext):
         await callback.answer("Модель не найдена", show_alert=True)
         return
     
-    # Load FREE tier info
-    import json
-    try:
-        with open("models/kie_models_final_truth.json", 'r') as f:
-            registry = json.load(f)
-            free_tier_ids = set(registry.get('free_tier_models', []))
-    except Exception:
-        free_tier_ids = set()
-    
-    is_free = model_id in free_tier_ids or model.get("is_free_tier", False)
+    # Check if FREE from SOURCE_OF_TRUTH
+    pricing = model.get("pricing", {})
+    is_free = pricing.get("is_free", False)
     
     name = model.get("display_name") or model.get("name") or model_id
-    description = model.get("description", "Генерация AI контента")
+    description = model.get("description", "AI генерация контента")
     category = model.get("category", "unknown")
     
     # Get price
     if is_free:
-        price_text = "<b>БЕСПЛАТНО</b> 🎁"
+        price_text = "<b>🎁 БЕСПЛАТНО</b>"
     else:
-        pricing = model.get("pricing", {})
-        if pricing and pricing.get("rub_per_generation"):
-            kie_cost_rub = calculate_kie_cost(model, {}, None)
-            user_price = calculate_user_price(kie_cost_rub)
-            price_text = format_price_rub(user_price)
+        rub_price = pricing.get("rub_per_gen")
+        if rub_price:
+            price_text = f"<b>{rub_price:.2f} ₽</b>"
         else:
-            price_text = "Цена не определена"
+            price_text = "Цена уточняется"
     
-    # Get UX data from registry (v6.3.0 enrichment)
-    use_case = model.get("use_case") or "Универсальная AI-модель для генерации контента."
-    example = model.get("example") or "Введите параметры → получите результат"
+    # Extract UI example prompts (added in enrichment)
+    ui_prompts = model.get("ui_example_prompts", [])
+    examples_text = ""
+    if ui_prompts:
+        examples_text = "\n\n💡 <b>Примеры промптов:</b>\n"
+        for i, prompt in enumerate(ui_prompts[:2], 1):
+            examples_text += f"{i}. <i>{prompt}</i>\n"
     
     # Build rich model card
     text = f"<b>{name}</b>\n\n"
-    text += f"📝 {description}\n\n"
-    text += f"🎯 <b>Для чего подходит:</b>\n{use_case}\n\n"
-    text += f"💡 <b>Пример использования:</b>\n{example}\n\n"
-    text += f"💰 Стоимость: {price_text}\n"
+    
+    # Truncate long descriptions
+    if len(description) > 200:
+        description = description[:197] + "..."
+    text += f"📝 {description}"
+    
+    text += examples_text
+    
+    text += f"\n💰 <b>Стоимость:</b> {price_text}\n"
     text += f"📂 Категория: {category}"
     
-    # Add tags if available
-    tags = model.get("tags")
-    if tags and isinstance(tags, list):
-        tags_str = " • ".join(f"#{tag}" for tag in tags[:5])
+    # Add tags for search
+    tags = model.get("tags", [])
+    if tags:
+        tags_str = " ".join(f"#{tag}" for tag in tags[:5])
         text += f"\n\n🏷 {tags_str}"
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
