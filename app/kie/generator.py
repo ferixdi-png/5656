@@ -147,16 +147,26 @@ class KieGenerator:
             # Create task
             api_client = self._get_api_client()
             create_response = await api_client.create_task(payload)
-            task_id = create_response.get('taskId')
+            
+            # Debug: log response
+            logger.info(f"Create task response: {create_response}")
+            
+            # Extract taskId from response (can be at top level or in data object)
+            task_id = create_response.get('taskId') or create_response.get('data', {}).get('taskId')
             
             if not task_id:
+                # Check if response has error
+                error_code = create_response.get('code')
+                error_msg = create_response.get('msg', 'Unknown error')
+                
+                logger.error(f"No taskId in response. Full response: {create_response}")
                 return {
                     'success': False,
-                    'message': '❌ Не удалось создать задачу',
+                    'message': f'❌ Ошибка API: {error_msg}',
                     'result_urls': [],
                     'result_object': None,
-                    'error_code': 'NO_TASK_ID',
-                    'error_message': 'Task ID not returned',
+                    'error_code': f'API_ERROR_{error_code}' if error_code else 'NO_TASK_ID',
+                    'error_message': f'{error_msg}. Response: {create_response}',
                     'task_id': None
                 }
             

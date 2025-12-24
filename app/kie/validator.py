@@ -311,8 +311,8 @@ def validate_payload_before_create_task(
     
     Contract:
     - Payload MUST contain 'model' field
-    - Payload MUST match model schema
-    - All required fields MUST be present
+    - Payload MUST contain 'input' object
+    - All required fields MUST be present in 'input'
     - No invalid field types
     
     Raises:
@@ -326,21 +326,29 @@ def validate_payload_before_create_task(
             f"Payload model '{payload['model']}' does not match requested model '{model_id}'"
         )
     
+    # Check 'input' object exists
+    if 'input' not in payload:
+        raise ModelContractError("Payload must contain 'input' object")
+    
+    input_data = payload['input']
+    if not isinstance(input_data, dict):
+        raise ModelContractError("Payload 'input' must be a dictionary")
+    
     input_schema = model_schema.get('input_schema', {})
     required_fields = input_schema.get('required', [])
     properties = input_schema.get('properties', {})
     
-    # Check all required fields are in payload
+    # Check all required fields are in payload['input']
     for field_name in required_fields:
-        if field_name not in payload:
+        if field_name not in input_data:
             raise ModelContractError(
-                f"Required field '{field_name}' is missing from payload"
+                f"Required field '{field_name}' is missing from payload['input']"
             )
         
         # Validate type
         field_spec = properties.get(field_name, {})
         field_type = field_spec.get('type', 'string')
-        value = payload[field_name]
+        value = input_data[field_name]
         
         try:
             validate_input_type(value, field_type, field_name)

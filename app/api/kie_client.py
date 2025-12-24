@@ -21,9 +21,9 @@ class KieApiClient:
         self.api_key = api_key or os.getenv("KIE_API_KEY")
         if not self.api_key:
             raise ValueError("KIE_API_KEY environment variable is required")
-        self.base_url = (base_url or os.getenv("KIE_BASE_URL") or "").rstrip("/")
-        if not self.base_url:
-            raise ValueError("KIE_BASE_URL environment variable is required")
+        
+        # Default to official Kie.ai API URL if not provided
+        self.base_url = (base_url or os.getenv("KIE_BASE_URL") or "https://api.kie.ai").rstrip("/")
         self.timeout = timeout
 
     def _headers(self) -> Dict[str, str]:
@@ -33,7 +33,9 @@ class KieApiClient:
         }
 
     def _post(self, url: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        logger.info(f"POST {url} with payload: {payload}")
         response = requests.post(url, headers=self._headers(), json=payload, timeout=self.timeout)
+        logger.info(f"Response status: {response.status_code}, body: {response.text[:500]}")
         response.raise_for_status()
         return response.json()
 

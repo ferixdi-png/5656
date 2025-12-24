@@ -65,7 +65,8 @@ def build_payload(
     
     # Build payload based on schema
     payload = {
-        'model': model_id
+        'model': model_id,
+        'input': {}  # All fields go into 'input' object
     }
     
     # FALLBACK: If no properties defined, use intelligent defaults based on model category
@@ -77,13 +78,13 @@ def build_payload(
         
         # Try to find prompt/text in user_inputs
         prompt_value = user_inputs.get('prompt') or user_inputs.get('text')
-        url_value = user_inputs.get('url') or user_inputs.get('image_url') or user_inputs.get('video_url')
+        url_value = user_inputs.get('url') or user_inputs.get('image_url') or user_inputs.get('video_url') or user_inputs.get('audio_url')
         file_value = user_inputs.get('file') or user_inputs.get('file_id')
         
         # Text-to-X models: need prompt
         if category in ['t2i', 't2v', 'tts', 'music', 'sfx'] or 'text' in model_id.lower():
             if prompt_value:
-                payload['prompt'] = prompt_value
+                payload['input']['prompt'] = prompt_value
             else:
                 raise ValueError(f"Model {model_id} (category: {category}) requires 'prompt' or 'text' field")
         
@@ -92,26 +93,26 @@ def build_payload(
             if url_value:
                 # Determine correct field name based on category
                 if 'image' in category or category in ['i2v', 'i2i', 'upscale', 'bg_remove']:
-                    payload['image_url'] = url_value
+                    payload['input']['image_url'] = url_value
                 elif 'video' in category or category == 'v2v':
-                    payload['video_url'] = url_value
+                    payload['input']['video_url'] = url_value
                 else:
-                    payload['source_url'] = url_value
+                    payload['input']['source_url'] = url_value
             elif file_value:
-                payload['file_id'] = file_value
+                payload['input']['file_id'] = file_value
             else:
                 raise ValueError(f"Model {model_id} (category: {category}) requires 'url' or 'file' field")
             
             # Optional prompt for guided processing
             if prompt_value:
-                payload['prompt'] = prompt_value
+                payload['input']['prompt'] = prompt_value
         
         # Audio models
         elif category in ['stt', 'audio_isolation']:
             if url_value:
-                payload['audio_url'] = url_value
+                payload['input']['audio_url'] = url_value
             elif file_value:
-                payload['file_id'] = file_value
+                payload['input']['file_id'] = file_value
             else:
                 raise ValueError(f"Model {model_id} (category: {category}) requires audio file or URL")
         
@@ -120,7 +121,7 @@ def build_payload(
             logger.warning(f"Unknown category '{category}' for {model_id}, accepting all user inputs")
             for key, value in user_inputs.items():
                 if value is not None:
-                    payload[key] = value
+                    payload['input'][key] = value
         
         return payload
     
@@ -163,7 +164,7 @@ def build_payload(
                     value = value.lower() in ('true', '1', 'yes', 'on')
                 value = bool(value)
             
-            payload[field_name] = value
+            payload['input'][field_name] = value
     
     # Process optional fields
     for field_name in optional_fields:
@@ -188,7 +189,7 @@ def build_payload(
                     value = value.lower() in ('true', '1', 'yes', 'on')
                 value = bool(value)
             
-            payload[field_name] = value
+            payload['input'][field_name] = value
     
     validate_payload_before_create_task(model_id, payload, model_schema)
     return payload
