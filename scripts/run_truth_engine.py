@@ -37,8 +37,8 @@ def merge_with_manual_overrides(models: List[Dict[str, Any]]) -> List[Dict[str, 
     """
     Merge auto-discovered models with manual overrides.
     
-    Manual overrides from models/manual_overrides.json take precedence,
-    but we preserve calculated rub_per_use if not in override.
+    If manual_overrides.json has 100+ models, it becomes the source of truth.
+    Otherwise, discovered models are merged with overrides (overrides win).
     """
     override_file = OUTPUT_DIR / "manual_overrides.json"
     
@@ -49,6 +49,12 @@ def merge_with_manual_overrides(models: List[Dict[str, Any]]) -> List[Dict[str, 
     with override_file.open('r', encoding='utf-8') as f:
         overrides = json.load(f)
     
+    # If manual_overrides is comprehensive (100+ models), use it as base
+    if len(overrides) >= 100:
+        logger.info(f"Using manual_overrides.json as complete model base ({len(overrides)} models)")
+        return overrides
+    
+    # Otherwise: merge discovered + overrides
     # Build index
     models_by_id = {m['model_id']: m for m in models}
     
