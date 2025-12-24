@@ -10,22 +10,38 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def load_source_of_truth(file_path: str = "models/kie_source_of_truth.json") -> Dict[str, Any]:
+def load_source_of_truth(file_path: str = "models/kie_api_models.json") -> Dict[str, Any]:
     """
     Load source of truth file.
     
-    Priority: kie_source_of_truth.json (new format) > kie_models_source_of_truth.json (old)
+    Priority:
+    1. kie_api_models.json (v5 - from API docs)
+    2. kie_source_of_truth_v4.json (v4 - category-specific)
+    3. kie_source_of_truth.json (v3 - legacy)
+    4. kie_models_source_of_truth.json (v2 - very old)
     """
-    # Try new path first
+    # Try v5 (API docs) first
     if not os.path.exists(file_path):
-        # Fallback to old
-        old_path = "models/kie_models_source_of_truth.json"
-        if os.path.exists(old_path):
-            logger.warning(f"Using fallback: {old_path}")
-            file_path = old_path
+        # Try v4
+        v4_path = "models/kie_source_of_truth_v4.json"
+        if os.path.exists(v4_path):
+            logger.info(f"Using V4: {v4_path}")
+            file_path = v4_path
         else:
-            logger.error(f"Source of truth file not found: {file_path}")
-            return {}
+            # Try v3
+            v3_path = "models/kie_source_of_truth.json"
+            if os.path.exists(v3_path):
+                logger.warning(f"Using V3 (legacy): {v3_path}")
+                file_path = v3_path
+            else:
+                # Try v2 (very old)
+                v2_path = "models/kie_models_source_of_truth.json"
+                if os.path.exists(v2_path):
+                    logger.warning(f"Using V2 (very old): {v2_path}")
+                    file_path = v2_path
+                else:
+                    logger.error(f"No source of truth file found")
+                    return {}
     
     with open(file_path, 'r', encoding='utf-8') as f:
         return json.load(f)
@@ -87,8 +103,9 @@ def build_payload(
     if 'properties' in input_schema:
         # Nested format
         required_fields = input_schema.get('required', [])
-        optional_fields = input_schema.get('optional', [])
         properties = input_schema.get('properties', {})
+        # Calculate optional fields as difference
+        optional_fields = [k for k in properties.keys() if k not in required_fields]
     else:
         # Flat format - convert to nested
         properties = input_schema
