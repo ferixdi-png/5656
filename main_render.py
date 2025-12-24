@@ -83,7 +83,11 @@ def create_bot_application() -> Tuple[Dispatcher, Bot]:
     # Get admin IDs for exemption
     admin_ids = set()
     if config.admin_ids:
-        admin_ids = set(map(int, config.admin_ids.split(',')))
+        # Handle both string and list formats
+        if isinstance(config.admin_ids, str):
+            admin_ids = set(map(int, config.admin_ids.split(',')))
+        elif isinstance(config.admin_ids, list):
+            admin_ids = set(map(int, config.admin_ids))
     
     dp.update.middleware(UserRateLimitMiddleware(
         rate=20,  # 20 actions per minute

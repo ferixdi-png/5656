@@ -96,7 +96,8 @@ async def cb_admin_models(callback: CallbackQuery, state: FSMContext):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🎁 Список бесплатных", callback_data="admin:models:list_free")],
         [InlineKeyboardButton(text="➕ Сделать модель бесплатной", callback_data="admin:models:add_free")],
-        [InlineKeyboardButton(text="📊 Статистика моделей", callback_data="admin:models:stats")],
+        [InlineKeyboardButton(text="� Ресинк моделей из Kie API", callback_data="admin:models:resync")],
+        [InlineKeyboardButton(text="�📊 Статистика моделей", callback_data="admin:models:stats")],
         [InlineKeyboardButton(text="⚠️ Модели без schema", callback_data="admin:models:broken")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin:main")]
     ])
@@ -553,6 +554,72 @@ async def cb_admin_main(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
+@router.callback_query(F.data == "admin:models:resync")
+async def cb_admin_models_resync(callback: CallbackQuery):
+    """Resync models from Kie API."""
+    if not await is_admin(callback.from_user.id, _db_service):
+        await callback.answer("⛔️ Доступ запрещён", show_alert=True)
+        return
+    
+    await callback.answer("🔄 Запуск ресинка...", show_alert=True)
+    
+    # Показываем процесс
+    await callback.message.edit_text(
+        "🔄 <b>Ресинк моделей</b>\n\n"
+        "⏳ Загрузка моделей из Kie API...\n"
+        "Это может занять несколько минут."
+    )
+    
+    try:
+        import subprocess
+        import asyncio
+        
+        # Запускаем скрипт синхронизации
+        process = await asyncio.create_subprocess_exec(
+            "python3",
+            "scripts/build_registry_v3.py",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd="/workspaces/5656"
+        )
+        
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode == 0:
+            # Успех
+            output = stdout.decode('utf-8')
+            
+            # Парсим результаты (простой подсчёт строк с "• ")
+            models_count = output.count("• ")
+            
+            text = (
+                f"✅ <b>Ресинк завершён!</b>\n\n"
+                f"📊 Синхронизировано моделей: {models_count}\n\n"
+                f"<i>Source of truth обновлён</i>"
+            )
+        else:
+            # Ошибка
+            error = stderr.decode('utf-8')
+            text = (
+                f"❌ <b>Ошибка ресинка</b>\n\n"
+                f"<code>{error[:500]}</code>"
+            )
+    
+    except Exception as e:
+        logger.error(f"Resync error: {e}", exc_info=True)
+        text = (
+            f"❌ <b>Ошибка</b>\n\n"
+            f"{str(e)}"
+        )
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Назад к моделям", callback_data="admin:models")]
+    ])
+    
+    await callback.message.edit_text(text, reply_markup=keyboard)
+
+
 # Export
 __all__ = ["router", "set_services"]
+
 

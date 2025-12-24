@@ -77,3 +77,143 @@ class KieApiClient:
                     logger.error("Kie recordInfo failed after retries: %s", exc, exc_info=True)
                     return {"error": str(exc), "state": "fail"}
                 await asyncio.sleep(1 * (attempt + 1))  # Exponential backoff
+
+    async def poll_task_until_complete(
+        self,
+        task_id: str,
+        max_wait_seconds: int = 300,
+        poll_interval: float = 3.0
+    ) -> Dict[str, Any]:
+        """
+        Poll task status until it completes (success/fail) or timeout.
+        
+        Args:
+            task_id: Task ID from createTask
+            max_wait_seconds: Maximum time to wait (default: 5 min)
+            poll_interval: Seconds between polls (default: 3s)
+        
+        Returns:
+            Final task data with state, resultJson, etc.
+        """
+        start_time = asyncio.get_event_loop().time()
+        attempts = 0
+        
+        while True:
+            attempts += 1
+            elapsed = asyncio.get_event_loop().time() - start_time
+            
+            if elapsed > max_wait_seconds:
+                logger.error(f"Task {task_id} timeout after {elapsed:.1f}s")
+                return {
+                    "error": "timeout",
+                    "state": "fail",
+                    "task_id": task_id,
+                    "elapsed_seconds": elapsed
+                }
+            
+            # Get current status
+            record = await self.get_record_info(task_id)
+            
+            if "error" in record:
+                logger.error(f"Task {task_id} polling error: {record['error']}")
+                return record
+            
+            data = record.get("data", {})
+            state = data.get("state", "unknown")
+            
+            logger.debug(f"Poll #{attempts} for {task_id}: state={state}, elapsed={elapsed:.1f}s")
+            
+            # Terminal states
+            if state in ("success", "fail"):
+                logger.info(f"Task {task_id} completed: {state} (elapsed={elapsed:.1f}s)")
+                return data
+            
+            # Still processing
+            await asyncio.sleep(poll_interval)
+
+    async def generate(
+        self,
+        model_id: str,
+        input_params: Dict[str, Any],
+        callback_url: str | None = None,
+        max_wait: int = 300
+    ) -> Dict[str, Any]:
+        """
+        High-level generation method: create task + poll until complete.
+        
+        Args:
+            model_id: Kie model ID (e.g., "z-image")
+            input_params: Model input parameters
+            callback_url: Optional callback URL
+            max_wait: Maximum wait time in seconds
+        
+        Returns:
+            {
+                "state": "success" | "fail",
+                "task_id": str,
+                "result_urls": List[str] | None,  # For images/videos
+                "error": str | None,
+                "cost_time_ms": int,
+                "raw_response": Dict  # Full API response
+            }
+        """
+        # Create task
+        payload = {
+            "model": model_id,
+            "input": input_params
+        }
+        
+        if callback_url:
+            payload["callBackUrl"] = callback_url
+        
+        logger.info(f"Creating task for model: {model_id}")
+        create_resp = await self.create_task(payload)
+        
+        if "error" in create_resp or create_resp.get("code") != 200:
+            error_msg = create_resp.get("error") or create_resp.get("msg", "Unknown error")
+            logger.error(f"Failed to create task: {error_msg}")
+            return {
+                "state": "fail",
+                "error": error_msg,
+                "raw_response": create_resp
+            }
+        
+        task_id = create_resp.get("data", {}).get("taskId")
+        
+        if not task_id:
+            logger.error("No taskId in create response")
+            return {
+                "state": "fail",
+                "error": "No taskId returned",
+                "raw_response": create_resp
+            }
+        
+        logger.info(f"Task created: {task_id}, polling for completion...")
+        
+        # Poll until complete
+        final_data = await self.poll_task_until_complete(task_id, max_wait_seconds=max_wait)
+        
+        # Parse results
+        state = final_data.get("state", "fail")
+        result_json = final_data.get("resultJson", "{}")
+        cost_time = final_data.get("costTime", 0)
+        
+        result = {
+            "state": state,
+            "task_id": task_id,
+            "cost_time_ms": cost_time,
+            "raw_response": final_data
+        }
+        
+        if state == "success":
+            try:
+                import json
+                result_data = json.loads(result_json) if isinstance(result_json, str) else result_json
+                result["result_urls"] = result_data.get("resultUrls", [])
+            except Exception as e:
+                logger.warning(f"Failed to parse resultJson: {e}")
+                result["result_urls"] = []
+        else:
+            result["error"] = final_data.get("failMsg") or final_data.get("error", "Unknown error")
+        
+        return result

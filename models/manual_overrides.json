@@ -1,0 +1,79 @@
+[
+  {
+    "model_id": "z-image",
+    "display_name": "Z-Image (Qwen)",
+    "category": "text-to-image",
+    "enabled": true,
+    "verified": true,
+    "pricing": {"credits_per_run": 0.8, "usd_per_run": 0.004},
+    "input_schema": {
+      "type": "object",
+      "required": ["prompt", "aspect_ratio"],
+      "properties": {
+        "prompt": {"type": "string", "description": "Image description", "max_length": 1000},
+        "aspect_ratio": {"type": "string", "enum": ["1:1", "4:3", "3:4", "16:9", "9:16"], "default": "1:1"}
+      }
+    },
+    "description": "Fast and affordable text-to-image by Qwen"
+  },
+  {
+    "model_id": "recraft",
+    "display_name": "Recraft",
+    "category": "image-processing",
+    "pricing": {"usd_per_run": 0.0025}
+  },
+  {
+    "model_id": "midjourney",
+    "display_name": "Midjourney",
+    "category": "text-to-image",
+    "pricing": {"usd_per_run": 0.015}
+  },
+  {
+    "model_id": "ideogram-v3",
+    "display_name": "Ideogram v3",
+    "category": "text-to-image",
+    "pricing": {"usd_per_run": 0.0175}
+  },
+  {
+    "model_id": "ideogram-v3-remix",
+    "display_name": "Ideogram v3 Remix",
+    "category": "image-to-image",
+    "pricing": {"usd_per_run": 0.0175}
+  },
+  {
+    "model_id": "ideogram-v3-edit",
+    "display_name": "Ideogram v3 Edit",
+    "category": "image-to-image",
+    "pricing": {"usd_per_run": 0.0175}
+  },
+  {
+    "model_id": "grok-imagine",
+    "display_name": "Grok Imagine",
+    "category": "text-to-image",
+    "pricing": {"usd_per_run": 0.02}
+  },
+  {
+    "model_id": "imagen4",
+    "display_name": "Google Imagen 4",
+    "category": "text-to-image",
+    "pricing": {"usd_per_run": 0.02}
+  },
+  {
+    "model_id": "flux-2-pro",
+    "display_name": "FLUX 2 Pro",
+    "category": "text-to-image",
+    "pricing": {"usd_per_run": 0.025}
+  },
+  {
+    "model_id": "flux-2-flex",
+    "display_name": "FLUX 2 Flex",
+    "category": "text-to-image",
+    "pricing": {"usd_per_run": 0.07}
+  },
+  {
+    "model_id": "suno",
+    "display_name": "Suno",
+    "category": "audio",
+    "pricing": {"usd_per_run": 0.06}
+  }
+]

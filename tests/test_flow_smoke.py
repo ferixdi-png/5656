@@ -77,17 +77,28 @@ def callback(user, chat, message):
 
 def test_model_filtering():
     """Test that invalid models are filtered out."""
-    # Valid models: vendor/name format AND price AND no disabled_reason
-    assert _is_valid_model({"model_id": "flux/pro", "price": 15.0}) is True
+    # Valid models: vendor/name format AND pricing dict AND enabled
+    assert _is_valid_model({
+        "model_id": "flux/pro",
+        "pricing": {"rub_per_use": 15.0, "usd_per_use": 0.2, "credits_per_use": 2.0},
+        "enabled": True
+    }) is True
     
-    # Invalid: disabled_reason present (CRITICAL FIX: hide unconfirmed models)
-    assert _is_valid_model({"model_id": "kling/v1", "price": 100.0, "disabled_reason": "Test"}) is False
+    # Invalid: disabled
+    assert _is_valid_model({
+        "model_id": "kling/v1",
+        "pricing": {"rub_per_use": 100.0, "usd_per_use": 1.0, "credits_per_use": 10.0},
+        "enabled": False
+    }) is False
     
-    # Invalid: no price
-    assert _is_valid_model({"model_id": "flux/pro", "price": None}) is False
-    assert _is_valid_model({"model_id": "flux/pro"}) is False  # Missing price
+    # Invalid: no pricing
+    assert _is_valid_model({"model_id": "flux/pro", "enabled": True}) is False
     
-    # Invalid: wrong format (no / separator)
+    # Invalid: pricing is None
+    assert _is_valid_model({"model_id": "flux/pro", "pricing": None, "enabled": True}) is False
+    
+    # Invalid: empty pricing dict
+    assert _is_valid_model({"model_id": "flux/pro", "pricing": {}, "enabled": True}) is False
     assert _is_valid_model({"model_id": "ARCHITECTURE", "price": 10.0}) is False
     assert _is_valid_model({"model_id": "image_processor", "price": 10.0}) is False
     assert _is_valid_model({"model_id": "", "price": 10.0}) is False

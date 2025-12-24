@@ -25,6 +25,26 @@ router = Router(name="flow")
 
 
 CATEGORY_LABELS = {
+    # New format (verbose)
+    "text-to-image": "🎨 Text → Image",
+    "image-to-image": "✏️ Image → Image",
+    "text-to-video": "🎬 Text → Video",
+    "image-to-video": "🎬 Image → Video",
+    "video-to-video": "🎬 Video → Video",
+    "text-to-speech": "🎵 Text → Speech",
+    "speech-to-text": "🎵 Speech → Text",
+    "audio-generation": "🎵 Audio / Music",
+    "upscale": "✏️ Upscale / Enhance",
+    "ocr": "📝 OCR / Document",
+    "lip-sync": "🎬 Lip Sync",
+    "background-removal": "✏️ Background Remove",
+    "watermark-removal": "✏️ Watermark Remove",
+    "music-generation": "🎵 Music Generation",
+    "sound-effects": "🎵 Sound Effects",
+    "general": "⭐ General",
+    "other": "⭐ Other",
+    
+    # Old format (backward compatibility)
     "t2i": "🎨 Text → Image",
     "i2i": "✏️ Image → Image",
     "t2v": "🎬 Text → Video",
@@ -36,11 +56,8 @@ CATEGORY_LABELS = {
     "tts": "🎵 Text → Speech",
     "stt": "🎵 Speech → Text",
     "audio_isolation": "🎵 Audio Isolation",
-    "upscale": "✏️ Upscale",
     "bg_remove": "✏️ Background Remove",
     "watermark_remove": "✏️ Watermark Remove",
-    "general": "⭐ General",
-    "other": "⭐ Other",
 }
 
 WELCOME_BALANCE_RUB = float(os.getenv("WELCOME_BALANCE_RUB", "200"))
@@ -55,20 +72,31 @@ def _is_valid_model(model: Dict[str, Any]) -> bool:
     model_id = model.get("model_id", "")
     if not model_id:
         return False
-    # Skip uppercase technical entries
-    if model_id.isupper():
+    
+    # Check enabled flag
+    if not model.get("enabled", True):
         return False
-    # Skip processor entries
-    if model_id.endswith("_processor"):
+    
+    # Check pricing exists
+    pricing = model.get("pricing")
+    if not pricing or not isinstance(pricing, dict):
         return False
-    # CRITICAL FIX: Skip models with disabled_reason (unconfirmed pricing)
-    if model.get("disabled_reason"):
-        return False
-    # Include only models with confirmed price
-    if model.get("price") is None:
-        return False
-    # Prefer vendor/name format
-    return "/" in model_id
+    
+    # Skip models with zero price AND no explicit free flag
+    # (processors/technical entries have all zeros)
+    rub_price = pricing.get("rub_per_use", 0)
+    usd_price = pricing.get("usd_per_use", 0)
+    
+    if rub_price == 0 and usd_price == 0:
+        # Allow if it's a known cheap model (will be free)
+        # But skip if it's a technical entry
+        if model_id.isupper() or "_processor" in model_id.lower():
+            return False
+    
+    # Valid model must have either:
+    # - vendor/name format (google/veo, flux/dev, etc.) OR
+    # - simple name without uppercase/processor (z-image, grok-imagine, etc.)
+    return True
 
 
 def _models_by_category() -> Dict[str, List[Dict[str, Any]]]:
@@ -102,16 +130,29 @@ def _category_keyboard() -> InlineKeyboardMarkup:
 
 
 def _main_menu_keyboard() -> InlineKeyboardMarkup:
+    """
+    Main menu keyboard with category shortcuts.
+    
+    ARCHITECTURE:
+    - Quick access to most popular categories
+    - All models accessible via category browser
+    - Cheap/Free models highlighted
+    """
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🎬 Видео для Reels / TikTok", callback_data="cat:t2v")],
-            [InlineKeyboardButton(text="🎨 Картинка / баннер / пост", callback_data="cat:t2i")],
-            [InlineKeyboardButton(text="✏️ Улучшить / изменить / апскейл", callback_data="menu:edit")],
-            [InlineKeyboardButton(text="🎧 Аудио / озвучка", callback_data="menu:audio")],
-            [InlineKeyboardButton(text="⭐ Лучшие модели", callback_data="menu:top")],
-            [InlineKeyboardButton(text="🔎 Поиск модели", callback_data="menu:search")],
-            [InlineKeyboardButton(text="🕘 История", callback_data="menu:history")],
-            [InlineKeyboardButton(text="💳 Баланс", callback_data="menu:balance")],
+            # Popular categories (auto-detect from registry)
+            [InlineKeyboardButton(text="🎬 Видео (Reels/TikTok/Ads)", callback_data="cat:text-to-video")],
+            [InlineKeyboardButton(text="🖼️ Картинка (баннер/пост/креатив)", callback_data="cat:text-to-image")],
+            [InlineKeyboardButton(text="✨ Улучшить (апскейл/редакт)", callback_data="cat:upscale")],
+            [InlineKeyboardButton(text="🎙️ Аудио (озвучка/музыка)", callback_data="cat:text-to-speech")],
+            
+            # Browse all
+            [InlineKeyboardButton(text="🔎 Все модели (по категориям)", callback_data="menu:categories")],
+            [InlineKeyboardButton(text="⭐ Дешёвые / Бесплатные", callback_data="menu:free")],
+            
+            # User actions
+            [InlineKeyboardButton(text="🧾 История генераций", callback_data="menu:history")],
+            [InlineKeyboardButton(text="💳 Баланс и пополнение", callback_data="menu:balance")],
         ]
     )
 
@@ -383,12 +424,91 @@ async def generate_menu_cb(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "menu:all_categories")
 async def all_categories_cb(callback: CallbackQuery, state: FSMContext) -> None:
+    """Show all categories - DEPRECATED, use menu:categories instead."""
     await callback.answer()
     await state.clear()
     await callback.message.edit_text(
         "📂 Все категории\n\nВыберите категорию:",
         reply_markup=_category_keyboard(),
     )
+
+
+@router.callback_query(F.data == "menu:categories")
+async def categories_cb(callback: CallbackQuery, state: FSMContext) -> None:
+    """Show all models grouped by category."""
+    await callback.answer()
+    await state.clear()
+    await callback.message.edit_text(
+        "📂 Все модели по категориям\n\nВыберите категорию:",
+        reply_markup=_category_keyboard(),
+    )
+
+
+@router.callback_query(F.data == "menu:free")
+async def free_models_cb(callback: CallbackQuery, state: FSMContext) -> None:
+    """Show TOP-5 cheapest (free) models."""
+    await callback.answer()
+    await state.clear()
+    
+    try:
+        from app.pricing.free_models import get_free_models, get_model_price
+        
+        free_ids = get_free_models()
+        
+        if not free_ids:
+            await callback.message.edit_text(
+                "⚠️ Бесплатные модели временно недоступны",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="◀️ В меню", callback_data="main_menu")]
+                ])
+            )
+            return
+        
+        # Get full model info
+        all_models = _source_of_truth().get("models", [])
+        free_models = [m for m in all_models if m["model_id"] in free_ids]
+        
+        # Build message
+        lines = ["⭐ **Дешёвые / Бесплатные модели**\n"]
+        lines.append("Эти модели можно использовать бесплатно (TOP-5 самых дешёвых):\n")
+        
+        for i, model in enumerate(free_models, 1):
+            display_name = model.get("display_name", model["model_id"])
+            category = _category_label(model.get("category", "other"))
+            lines.append(f"{i}. **{display_name}** ({category})")
+        
+        lines.append("\n💡 Выберите модель ниже для генерации:")
+        
+        # Build keyboard
+        rows = []
+        for model in free_models:
+            display_name = model.get("display_name", model["model_id"])
+            # Truncate long names
+            if len(display_name) > 30:
+                display_name = display_name[:27] + "..."
+            rows.append([
+                InlineKeyboardButton(
+                    text=f"🆓 {display_name}",
+                    callback_data=f"model:{model['model_id']}"
+                )
+            ])
+        
+        rows.append([InlineKeyboardButton(text="◀️ В меню", callback_data="main_menu")])
+        
+        await callback.message.edit_text(
+            "\n".join(lines),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
+            parse_mode="Markdown"
+        )
+    
+    except Exception as e:
+        logger.error(f"Failed to show free models: {e}", exc_info=True)
+        await callback.message.edit_text(
+            "❌ Ошибка при загрузке бесплатных моделей",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="◀️ В меню", callback_data="main_menu")]
+            ])
+        )
 
 
 @router.callback_query(F.data == "menu:edit")

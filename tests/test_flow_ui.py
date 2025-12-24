@@ -11,16 +11,18 @@ def _flatten_buttons(markup):
 
 
 def test_main_menu_buttons():
+    """Test main menu has all required buttons."""
     markup = flow._main_menu_keyboard()
     buttons = _flatten_buttons(markup)
     callbacks = [cb for _, cb in buttons]
-    # Check canonical menu items
-    assert "cat:t2v" in callbacks  # Видео для Reels/TikTok
-    assert "cat:t2i" in callbacks  # Картинка/баннер/пост
-    assert "menu:edit" in callbacks  # Улучшить/изменить
-    assert "menu:audio" in callbacks  # Аудио/озвучка
-    assert "menu:top" in callbacks  # Лучшие модели
-    assert "menu:search" in callbacks  # Поиск
+    
+    # Check new menu items (updated format)
+    assert "cat:text-to-video" in callbacks  # Видео для Reels/TikTok
+    assert "cat:text-to-image" in callbacks  # Картинка/баннер/пост
+    assert "cat:upscale" in callbacks  # Улучшить
+    assert "cat:text-to-speech" in callbacks  # Аудио/озвучка
+    assert "menu:categories" in callbacks  # Все модели по категориям
+    assert "menu:free" in callbacks  # Дешёвые/Бесплатные
     assert "menu:history" in callbacks  # История
     assert "menu:balance" in callbacks  # Баланс
 
