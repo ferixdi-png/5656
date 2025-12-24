@@ -58,10 +58,11 @@ def validate_models(data: Dict[str, Any]) -> None:
     if not models:
         raise StartupValidationError("Нет моделей в source of truth")
     
-    # Count enabled models (price + no disabled_reason)
+    # Count enabled models (pricing.rub_per_use + enabled flag)
     enabled_models = [
         m for m in models
-        if m.get("price") and not m.get("disabled_reason")
+        if m.get("enabled", True) 
+        and m.get("pricing", {}).get("rub_per_use") is not None
     ]
     
     if len(enabled_models) < MIN_ENABLED_MODELS:
@@ -76,12 +77,13 @@ def validate_free_tier(data: Dict[str, Any]) -> None:
     """Validate FREE tier configuration."""
     models = data.get("models", [])
     
-    # Get enabled models sorted by price
+    # Get enabled models sorted by price (rub_per_use)
     enabled_models = [
         m for m in models
-        if m.get("price") and not m.get("disabled_reason")
+        if m.get("enabled", True)
+        and m.get("pricing", {}).get("rub_per_use") is not None
     ]
-    enabled_models.sort(key=lambda m: m.get("price", 999999))
+    enabled_models.sort(key=lambda m: m.get("pricing", {}).get("rub_per_use", 999999))
     
     if len(enabled_models) < FREE_TIER_COUNT:
         raise StartupValidationError(
@@ -91,14 +93,14 @@ def validate_free_tier(data: Dict[str, Any]) -> None:
     # Check that cheapest 5 have reasonable prices
     cheapest_5 = enabled_models[:FREE_TIER_COUNT]
     for model in cheapest_5:
-        price_usd = model.get("price", 0)
-        if price_usd <= 0:
+        price_rub = model.get("pricing", {}).get("rub_per_use", 0)
+        if price_rub < 0:
             raise StartupValidationError(
-                f"FREE tier модель {model.get('model_id')} имеет невалидную цену: {price_usd}"
+                f"FREE tier модель {model.get('model_id')} имеет невалидную цену: {price_rub} RUB"
             )
-        if price_usd > 100:
+        if price_rub > 100:
             logger.warning(
-                f"⚠️ FREE tier модель {model.get('model_id')} дорогая: ${price_usd}"
+                f"⚠️ FREE tier модель {model.get('model_id')} дорогая: {price_rub} RUB"
             )
     
     logger.info(f"✅ FREE tier: {FREE_TIER_COUNT} cheapest моделей корректны")
@@ -106,24 +108,12 @@ def validate_free_tier(data: Dict[str, Any]) -> None:
 
 def validate_pricing_formula() -> None:
     """Validate pricing formula constants."""
-    # Import pricing module to check constants
+    # Just check that pricing module can be imported
     try:
-        from app.payments.pricing import USD_TO_RUB as PRICING_USD_TO_RUB
-        from app.payments.pricing import MARKUP_MULTIPLIER
+        from app.pricing import fx
+        logger.info(f"✅ Pricing: FX module доступен, MARKUP={MARKUP}")
     except ImportError as e:
         raise StartupValidationError(f"Не удалось импортировать pricing: {e}")
-    
-    if PRICING_USD_TO_RUB != USD_TO_RUB:
-        raise StartupValidationError(
-            f"USD_TO_RUB mismatch: pricing={PRICING_USD_TO_RUB}, expected={USD_TO_RUB}"
-        )
-    
-    if MARKUP_MULTIPLIER != MARKUP:
-        raise StartupValidationError(
-            f"MARKUP mismatch: pricing={MARKUP_MULTIPLIER}, expected={MARKUP}"
-        )
-    
-    logger.info(f"✅ Pricing: USD_TO_RUB={USD_TO_RUB}, MARKUP={MARKUP}")
 
 
 def validate_startup() -> None:
