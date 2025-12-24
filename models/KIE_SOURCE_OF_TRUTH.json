@@ -423,7 +423,7 @@
         "usd_per_gen": 0.004,
         "rub_per_gen": 0.63,
         "credits_per_gen": 0.8,
-        "is_free": false,
+        "is_free": true,
         "source": "screenshot_user_provided"
       },
       "examples": [
@@ -2805,7 +2805,7 @@
       "pricing": {
         "usd_per_gen": 0.004,
         "rub_per_gen": 0.63,
-        "is_free": false,
+        "is_free": true,
         "source": "pricing_table_corrected"
       },
       "examples": [
@@ -2952,7 +2952,7 @@
       "pricing": {
         "usd_per_gen": 0.004,
         "rub_per_gen": 0.63,
-        "is_free": false,
+        "is_free": true,
         "source": "pricing_table_corrected"
       },
       "examples": [
@@ -3107,7 +3107,7 @@
       "pricing": {
         "usd_per_gen": 0.004,
         "rub_per_gen": 0.63,
-        "is_free": false,
+        "is_free": true,
         "source": "pricing_table_corrected"
       },
       "examples": [
@@ -7829,7 +7829,7 @@
         "usd_per_gen": 5.0,
         "rub_per_gen": 790.0,
         "credits_per_gen": 1000.0,
-        "is_free": true,
+        "is_free": false,
         "rank": 3,
         "source": "mapped_from_elevenlabs/text-to-speech"
       },
@@ -8175,7 +8175,7 @@
       "pricing": {
         "usd_per_gen": 5.0,
         "rub_per_gen": 790.0,
-        "is_free": true,
+        "is_free": false,
         "source": "pricing_table_corrected"
       },
       "examples": [

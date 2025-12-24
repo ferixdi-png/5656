@@ -14,119 +14,41 @@ from typing import Dict, List, Any
 
 logger = logging.getLogger(__name__)
 
-# Try v7 FIRST, fallback to v6.2
-SOURCE_OF_TRUTH_V7 = Path("models/kie_models_v7_source_of_truth.json")
-SOURCE_OF_TRUTH_V6 = Path("models/kie_models_final_truth.json")
+# PRIMARY SOURCE OF TRUTH
+SOURCE_OF_TRUTH = Path("models/KIE_SOURCE_OF_TRUTH.json")
 
 
 def get_free_models() -> List[str]:
     """
     Get list of model_ids that are free to use.
     
-    Returns TOP-5 cheapest models by credits/gen or RUB price.
+    Returns TOP-5 cheapest models by is_free=True flag.
     
     Returns:
         List of model_ids (tech IDs)
     """
-    # Try v7 first
-    if SOURCE_OF_TRUTH_V7.exists():
-        return _get_free_models_v7()
-    # Fallback to v6
-    elif SOURCE_OF_TRUTH_V6.exists():
-        return _get_free_models_v6()
-    else:
-        logger.error("No source of truth found (v7 or v6)")
+    if not SOURCE_OF_TRUTH.exists():
+        logger.error(f"Source of truth not found: {SOURCE_OF_TRUTH}")
         return []
-
-
-def _get_free_models_v7() -> List[str]:
-    """Get free models from v7 registry (dict format)"""
+    
     try:
-        with open(SOURCE_OF_TRUTH_V7, 'r', encoding='utf-8') as f:
+        with open(SOURCE_OF_TRUTH, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
         models_dict = data.get("models", {})
         
-        if not isinstance(models_dict, dict):
-            logger.warning("v7 registry has wrong format (not dict)")
-            return []
+        # Фильтруем модели с is_free=True
+        free_model_ids = [
+            model_id
+            for model_id, model in models_dict.items()
+            if model.get('pricing', {}).get('is_free', False)
+        ]
         
-        # Convert dict to list for sorting
-        models_list = []
-        for model_id, model_data in models_dict.items():
-            if model_data.get("enabled", True):
-                models_list.append({
-                    "model_id": model_id,
-                    **model_data
-                })
-        
-        if not models_list:
-            logger.warning("No enabled models in v7 registry")
-            return []
-        
-        # Sort by credits_per_gen (cheapest first)
-        sorted_models = sorted(
-            models_list,
-            key=lambda m: m.get("pricing", {}).get("credits_per_gen", float('inf'))
-        )
-        
-        # Take TOP-5
-        free_models = sorted_models[:5]
-        free_model_ids = [m["model_id"] for m in free_models]
-        
-        logger.info(f"🆓 Free models from v7 (TOP-5 cheapest): {free_model_ids}")
-        for m in free_models:
-            credits = m.get("pricing", {}).get("credits_per_gen", 0)
-            logger.info(f"  - {m['model_id']}: {credits} credits")
-        
+        logger.info(f"Loaded {len(free_model_ids)} free models from {SOURCE_OF_TRUTH}")
         return free_model_ids
-    
+        
     except Exception as e:
-        logger.error(f"Failed to load free models from v7: {e}", exc_info=True)
-        return []
-
-
-def _get_free_models_v6() -> List[str]:
-    """Get free models from v6 registry (list format) - LEGACY"""
-    try:
-        with open(SOURCE_OF_TRUTH_V6, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        
-        models = data.get("models", [])
-        
-        if not models:
-            logger.warning("No models in source of truth")
-            return []
-        
-        # Filter enabled models only
-        enabled_models = [m for m in models if m.get("enabled", True)]
-        
-        if not enabled_models:
-            logger.warning("No enabled models found")
-            return []
-        
-        # Sort by RUB price (cheapest first)
-        sorted_models = sorted(
-            enabled_models,
-            key=lambda m: m.get("pricing", {}).get("rub_per_use", float('inf'))
-        )
-        
-        # Take TOP-5
-        free_models = sorted_models[:5]
-        free_model_ids = [m["model_id"] for m in free_models]
-        
-        logger.info(f"Free models (TOP-5 cheapest): {free_model_ids}")
-        for m in free_models:
-            price = m.get("pricing", {}).get("rub_per_use", 0)
-            logger.info(f"  - {m['model_id']}: {price} RUB")
-        
-        return free_model_ids
-    
-    except FileNotFoundError:
-        logger.error(f"Source of truth not found: {SOURCE_OF_TRUTH}")
-        return []
-    except Exception as e:
-        logger.error(f"Failed to load free models: {e}", exc_info=True)
+        logger.error(f"Failed to load free models: {e}")
         return []
 
 
