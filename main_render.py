@@ -71,6 +71,11 @@ def create_bot_application() -> Tuple[Dispatcher, Bot]:
     # Create dispatcher
     dp = Dispatcher()
     
+    # Register rate limit middleware for Telegram API protection
+    from bot.middleware import RateLimitMiddleware
+    dp.update.middleware(RateLimitMiddleware(max_retries=3))
+    logger.info("Rate limit middleware registered (max_retries=3)")
+    
     # Register routers in order (admin first for access, marketing for new UX, then flow for compatibility)
     dp.include_router(admin_router)
     dp.include_router(marketing_router)

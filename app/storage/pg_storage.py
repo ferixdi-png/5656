@@ -108,8 +108,16 @@ class PGStorage:
             raise ConnectionError("PostgreSQL connection test failed")
             
         if HAS_ASYNCPG:
-            self._pool = await asyncpg.create_pool(self.dsn)
-            logger.info("PostgreSQL connection pool created")
+            # Create connection pool with production-ready sizing
+            # min_size=2: minimum connections always available
+            # max_size=10: maximum concurrent connections
+            self._pool = await asyncpg.create_pool(
+                self.dsn,
+                min_size=2,
+                max_size=10,
+                command_timeout=60.0
+            )
+            logger.info("PostgreSQL connection pool created (min=2, max=10)")
             return True
         elif HAS_PSYCOPG:
             self._connection = await psycopg.AsyncConnection.connect(self.dsn)
