@@ -15,17 +15,23 @@ def load_source_of_truth(file_path: str = "models/kie_api_models.json") -> Dict[
     Load source of truth file.
     
     Priority:
-    1. kie_models_v7_source_of_truth.json (v7 - DOCS.KIE.AI, specialized endpoints, TESTED)
-    2. kie_models_final_truth.json (v6.2 - merged: pricing + site scraper, 77 models)
-    3. kie_parsed_models.json (v6 - auto-parsed from kie_pricing_raw.txt)
-    4. kie_api_models.json (v5 - from API docs)
-    5. kie_source_of_truth_v4.json (v4 - category-specific)
-    6. kie_source_of_truth.json (v3 - legacy)
+    1. KIE_SOURCE_OF_TRUTH.json (MASTER - Copy page parsed, 100% coverage, TESTED)
+    2. kie_models_v7_source_of_truth.json (v7 - DOCS.KIE.AI, specialized endpoints, TESTED)
+    3. kie_models_final_truth.json (v6.2 - merged: pricing + site scraper, 77 models)
+    4. kie_parsed_models.json (v6 - auto-parsed from kie_pricing_raw.txt)
+    5. kie_api_models.json (v5 - from API docs)
+    6. kie_source_of_truth_v4.json (v4 - category-specific)
+    7. kie_source_of_truth.json (v3 - legacy)
     """
-    # Try v7 FIRST - BASED ON REAL DOCS.KIE.AI
-    v7_path = "models/kie_models_v7_source_of_truth.json"
-    if os.path.exists(v7_path):
-        logger.info(f"✅ Using V7 (DOCS.KIE.AI SOURCE OF TRUTH, tested): {v7_path}")
+    # Try MASTER FIRST - KIE_SOURCE_OF_TRUTH.json
+    master_path = "models/KIE_SOURCE_OF_TRUTH.json"
+    if os.path.exists(master_path):
+        logger.info(f"✅ Using MASTER (Copy page SOURCE OF TRUTH, 72 models, 100% tested): {master_path}")
+        file_path = master_path
+    # Try v7 - BASED ON REAL DOCS.KIE.AI
+    elif os.path.exists("models/kie_models_v7_source_of_truth.json"):
+        v7_path = "models/kie_models_v7_source_of_truth.json"
+        logger.warning(f"⚠️  Using V7 (fallback, prefer MASTER): {v7_path}")
         file_path = v7_path
     # Try v6.2 (merged) - OLD
     elif os.path.exists("models/kie_models_final_truth.json"):

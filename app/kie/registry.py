@@ -174,3 +174,11 @@ def get_model_by_id(model_id: str) -> Optional[Dict]:
 def get_cheapest_models(limit: int = 5) -> List[Dict]:
     """Получить N самых дешевых моделей"""
     return get_registry().get_cheapest_models(limit)
+
+
+def get_model_registry() -> Dict:
+    """
+    LEGACY: Загрузить все модели (для обратной совместимости)
+    Используйте load_all_models() вместо этого
+    """
+    return load_all_models()

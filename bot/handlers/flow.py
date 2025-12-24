@@ -77,6 +77,24 @@ def _source_of_truth() -> Dict[str, Any]:
     return load_source_of_truth()
 
 
+def _get_models_list() -> List[Dict[str, Any]]:
+    """
+    Получить список моделей из SOURCE_OF_TRUTH.
+    Поддерживает оба формата: dict и list.
+    """
+    sot = _source_of_truth()
+    models = sot.get("models", {})
+    
+    # Если dict - конвертируем в list
+    if isinstance(models, dict):
+        return list(models.values())
+    # Если уже list - возвращаем как есть
+    elif isinstance(models, list):
+        return models
+    else:
+        return []
+
+
 def _is_valid_model(model: Dict[str, Any]) -> bool:
     """Filter out technical/invalid models from registry."""
     model_id = model.get("model_id", "")
@@ -110,7 +128,7 @@ def _is_valid_model(model: Dict[str, Any]) -> bool:
 
 
 def _models_by_category() -> Dict[str, List[Dict[str, Any]]]:
-    models = [model for model in _source_of_truth().get("models", []) if _is_valid_model(model)]
+    models = [model for model in _get_models_list() if _is_valid_model(model)]
     grouped: Dict[str, List[Dict[str, Any]]] = {}
     for model in models:
         category = model.get("category", "other") or "other"
@@ -914,7 +932,7 @@ async def free_models_cb(callback: CallbackQuery, state: FSMContext) -> None:
             return
         
         # Get full model info
-        all_models = _source_of_truth().get("models", [])
+        all_models = _get_models_list()
         free_models = [m for m in all_models if m["model_id"] in free_ids]
         
         # Build message
@@ -1005,7 +1023,7 @@ async def top_menu_cb(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     await state.clear()
     # Top models - based on popularity/price
-    all_models = [m for m in _source_of_truth().get("models", []) if _is_valid_model(m)]
+    all_models = [m for m in _get_models_list() if _is_valid_model(m)]
     
     # Sort by: has price, then by category popularity
     popular_categories = ["t2i", "t2v", "i2i", "upscale"]
@@ -1053,7 +1071,7 @@ async def search_query_handler(message: Message, state: FSMContext) -> None:
     await state.clear()
     
     # Search models
-    all_models = [m for m in _source_of_truth().get("models", []) if _is_valid_model(m)]
+    all_models = [m for m in _get_models_list() if _is_valid_model(m)]
     matches = []
     for model in all_models:
         model_id = model.get("model_id", "").lower()
@@ -1176,7 +1194,7 @@ async def repeat_cb(callback: CallbackQuery, state: FSMContext) -> None:
     inputs = record.get('inputs', {})
     
     # Re-run generation with same inputs
-    model = next((m for m in _source_of_truth().get("models", []) if m.get("model_id") == model_id), None)
+    model = next((m for m in _get_models_list() if m.get("model_id") == model_id), None)
     if not model:
         await callback.message.edit_text("⚠️ Модель не найдена.")
         return
@@ -1309,7 +1327,7 @@ async def noop_cb(callback: CallbackQuery) -> None:
 async def model_cb(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     model_id = callback.data.split(":", 1)[1]
-    model = next((m for m in _source_of_truth().get("models", []) if m.get("model_id") == model_id), None)
+    model = next((m for m in _get_models_list() if m.get("model_id") == model_id), None)
     if not model:
         await callback.message.edit_text("⚠️ Модель не найдена.", reply_markup=_category_keyboard())
         return
@@ -1331,7 +1349,7 @@ async def model_cb(callback: CallbackQuery, state: FSMContext) -> None:
 async def generate_cb(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     model_id = callback.data.split(":", 1)[1]
-    model = next((m for m in _source_of_truth().get("models", []) if m.get("model_id") == model_id), None)
+    model = next((m for m in _get_models_list() if m.get("model_id") == model_id), None)
     if not model:
         await callback.message.edit_text("⚠️ Модель не найдена.", reply_markup=_category_keyboard())
         return
@@ -1386,7 +1404,7 @@ async def opt_skip_all_cb(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer("Используем значения по умолчанию")
     data = await state.get_data()
     flow_ctx = InputContext(**data.get("flow_ctx"))
-    model = next((m for m in _source_of_truth().get("models", []) if m.get("model_id") == flow_ctx.model_id), None)
+    model = next((m for m in _get_models_list() if m.get("model_id") == flow_ctx.model_id), None)
     await _show_confirmation(callback.message, state, model)
 
 
@@ -1582,7 +1600,7 @@ async def _save_input_and_continue(message: Message, state: FSMContext, value: A
             return
         
         # Otherwise, show confirmation
-        model = next((m for m in _source_of_truth().get("models", []) if m.get("model_id") == flow_ctx.model_id), None)
+        model = next((m for m in _get_models_list() if m.get("model_id") == flow_ctx.model_id), None)
         await _show_confirmation(message, state, model)
         return
 
@@ -1705,7 +1723,7 @@ async def confirm_cb(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     data = await state.get_data()
     flow_ctx = InputContext(**data.get("flow_ctx"))
-    model = next((m for m in _source_of_truth().get("models", []) if m.get("model_id") == flow_ctx.model_id), None)
+    model = next((m for m in _get_models_list() if m.get("model_id") == flow_ctx.model_id), None)
     if not model:
         await callback.message.edit_text("⚠️ Модель не найдена.")
         await state.clear()
@@ -1741,7 +1759,7 @@ async def confirm_cb(callback: CallbackQuery, state: FSMContext) -> None:
     from app.utils.html import escape_html
     
     # Initial progress message with model and inputs info
-    model_name = _source_of_truth().get("models", [])
+    model_name = _get_models_list()
     model_display = "Unknown"
     for m in model_name:
         if m.get("model_id") == flow_ctx.model_id:
