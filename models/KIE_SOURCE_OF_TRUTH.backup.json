@@ -13,7 +13,7 @@
       "slug": "market/seedream/seedream",
       "display_name": "Seedream3.0 - Text to Image",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -125,7 +125,7 @@
       "slug": "market/seedream/seedream-v4-text-to-image",
       "display_name": "Seedream4.0 - Text to Image",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -237,7 +237,7 @@
       "slug": "market/seedream/seedream-v4-edit",
       "display_name": "Seedream4.0 - Edit",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -373,7 +373,7 @@
       "slug": "market/z-image/z-image",
       "display_name": "z-image",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -470,7 +470,7 @@
       "slug": "market/google/imagen4-fast",
       "display_name": "Google - imagen4-fast",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -581,7 +581,7 @@
       "slug": "market/google/imagen4-ultra",
       "display_name": "Google - imagen4-ultra",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -692,7 +692,7 @@
       "slug": "market/google/imagen4",
       "display_name": "Google - imagen4",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -811,7 +811,7 @@
       "slug": "market/google/nano-banana-edit",
       "display_name": "Google - Nano Banana Edit",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -938,7 +938,7 @@
       "slug": "market/google/nano-banana",
       "display_name": "Google - Nano Banana",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -1041,7 +1041,7 @@
       "slug": "market/google/pro-image-to-image",
       "display_name": "Google - Nano Banana Pro",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -1163,7 +1163,7 @@
       "slug": "market/flux2/pro-image-to-image",
       "display_name": "Flux-2 - Pro Image to Image",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -1299,7 +1299,7 @@
       "slug": "market/flux2/pro-text-to-image",
       "display_name": "Flux-2 - Pro Text to Image",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -1403,7 +1403,7 @@
       "slug": "market/flux2/flex-image-to-image",
       "display_name": "Flux-2 - Image to Image",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -1539,7 +1539,7 @@
       "slug": "market/flux2/flex-text-to-image",
       "display_name": "Flux-2 - Text to Image",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -1643,7 +1643,7 @@
       "slug": "market/grok-imagine/text-to-image",
       "display_name": "Grok Imagine - Text to Image",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -1738,7 +1738,7 @@
       "slug": "market/grok-imagine/upscale",
       "display_name": "Grok Imagine - Image Upscale",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -1827,7 +1827,7 @@
       "slug": "market/topaz/image-upscale",
       "display_name": "Topaz - Image Upscale",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -1922,7 +1922,7 @@
       "slug": "market/recraft/remove-background",
       "display_name": "recraft/remove-background",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -2009,7 +2009,7 @@
       "slug": "market/recraft/crisp-upscale",
       "display_name": "Recraft - Image Upscale",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -2096,7 +2096,7 @@
       "slug": "market/ideogram/v3-reframe",
       "display_name": "Ideogram - v3-reframe",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -2223,7 +2223,7 @@
       "slug": "market/ideogram/character-edit",
       "display_name": "Ideogram - character-edit",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -2382,7 +2382,7 @@
       "slug": "market/ideogram/character-remix",
       "display_name": "Ideogram - character-remix",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -2573,7 +2573,7 @@
       "slug": "market/ideogram/character",
       "display_name": "Ideogram - character",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -3185,7 +3185,7 @@
       "slug": "market/grok-imagine/text-to-video",
       "display_name": "Grok Imagine - Text to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -3288,7 +3288,7 @@
       "slug": "market/grok-imagine/image-to-video",
       "display_name": "Grok Imagine - Image to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -3647,7 +3647,7 @@
       "slug": "market/kling/ai-avatar-v1-pro",
       "display_name": "Kling - AI Avatar V1 Pro",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -3750,7 +3750,7 @@
       "slug": "market/kling/v1-avatar-standard",
       "display_name": "Kling - V1 Avatar Standard",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -3853,7 +3853,7 @@
       "slug": "market/kling/v2-1-master-image-to-video",
       "display_name": "Kling - V2.1 Master Image to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -3972,7 +3972,7 @@
       "slug": "market/kling/v2-1-master-text-to-video",
       "display_name": "Kling - V2.1 Master Text to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -4091,7 +4091,7 @@
       "slug": "market/kling/v2-1-pro",
       "display_name": "Kling - V2.1 Pro",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -4218,7 +4218,7 @@
       "slug": "market/kling/v2-1-standard",
       "display_name": "Kling - V2.1 Standard",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -4337,7 +4337,7 @@
       "slug": "market/bytedance/v1-pro-fast-image-to-video",
       "display_name": "Bytedance - V1 Pro Fast Image to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -4448,7 +4448,7 @@
       "slug": "market/bytedance/v1-pro-image-to-video",
       "display_name": "Bytedance - V1 Pro Image to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -4583,7 +4583,7 @@
       "slug": "market/bytedance/v1-pro-text-to-video",
       "display_name": "Bytedance - V1 Pro Text to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -4718,7 +4718,7 @@
       "slug": "market/bytedance/v1-lite-image-to-video",
       "display_name": "Bytedance - V1 Lite Image to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -4861,7 +4861,7 @@
       "slug": "market/bytedance/v1-lite-text-to-video",
       "display_name": "Bytedance - V1 Lite Text to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -4988,7 +4988,7 @@
       "slug": "market/hailuo/2-3-image-to-video-pro",
       "display_name": "Hailuo - Image to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -5099,7 +5099,7 @@
       "slug": "market/hailuo/2-3-image-to-video-standard",
       "display_name": "Hailuo - Image to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -5210,7 +5210,7 @@
       "slug": "market/hailuo/02-text-to-video-pro",
       "display_name": "Hailuo Pro - Text to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -5305,7 +5305,7 @@
       "slug": "market/hailuo/02-text-to-video-standard",
       "display_name": "Hailuo Standard - Text to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -5408,7 +5408,7 @@
       "slug": "market/hailuo/02-image-to-video-pro",
       "display_name": "Hailuo Pro - Image to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -5519,7 +5519,7 @@
       "slug": "market/hailuo/02-image-to-video-standard",
       "display_name": "Hailuo Standard - Image to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -5646,7 +5646,7 @@
       "slug": "market/sora2/sora-2-image-to-video",
       "display_name": "Sora2 - Image to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -5807,7 +5807,7 @@
       "slug": "market/sora2/sora-2-text-to-video",
       "display_name": "Sora2 - Text to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -5944,7 +5944,7 @@
       "slug": "market/sora2/sora-2-pro-image-to-video",
       "display_name": "Sora2 - Pro Image to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -6097,7 +6097,7 @@
       "slug": "market/sora2/sora-2-pro-text-to-video",
       "display_name": "Sora2 - Pro Text to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -6242,7 +6242,7 @@
       "slug": "market/sora2/sora-watermark-remover",
       "display_name": "Sora2 - Watermark Remover",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -6331,7 +6331,7 @@
       "slug": "market/sora-2-pro-storyboard/index",
       "display_name": "sora-2-pro-storyboard",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {},
       "pricing": {
@@ -6351,7 +6351,7 @@
       "slug": "market/sora2/sora-2-characters",
       "display_name": "Sora2 - Characters",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -6472,7 +6472,7 @@
       "slug": "market/wan/2-6-image-to-video",
       "display_name": "Wan 2.6 - Image to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -6599,7 +6599,7 @@
       "slug": "market/wan/2-6-text-to-video",
       "display_name": "Wan 2.6 - Text to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -6702,7 +6702,7 @@
       "slug": "market/wan/2-6-video-to-video",
       "display_name": "Wan 2.6 - Video to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -6829,7 +6829,7 @@
       "slug": "market/wan/2-2-a14b-image-to-video-turbo",
       "display_name": "Wan - Image to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -6964,7 +6964,7 @@
       "slug": "market/wan/2-2-a14b-text-to-video-turbo",
       "display_name": "Wan - Text to Video",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -7091,7 +7091,7 @@
       "slug": "market/wan/2-2-animate-move",
       "display_name": "Wan - Animate Move",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -7194,7 +7194,7 @@
       "slug": "market/wan/2-2-animate-replace",
       "display_name": "Wan - Animate Replace",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -7297,7 +7297,7 @@
       "slug": "market/wan/2-2-a14b-speech-to-video-turbo",
       "display_name": "Wan - 2.2 A14B Speech to Video Turbo",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -7464,7 +7464,7 @@
       "slug": "market/topaz/video-upscale",
       "display_name": "Topaz - Video Upscale",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -7559,7 +7559,7 @@
       "slug": "market/infinitalk/from-audio",
       "display_name": "Infinitalk - From Audio",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -7670,7 +7670,7 @@
       "slug": "market/elevenlabs/text-to-speech-turbo-2-5",
       "display_name": "elevenlabs/text-to-speech-turbo-2-5",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -7831,7 +7831,7 @@
       "slug": "market/elevenlabs/speech-to-text",
       "display_name": "elevenlabs/speech-to-text",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -7942,7 +7942,7 @@
       "slug": "market/elevenlabs/sound-effect-v2",
       "display_name": "elevenlabs/sound-effect-v2",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -8053,7 +8053,7 @@
       "slug": "market/elevenlabs/audio-isolation",
       "display_name": "elevenlabs/audio-isolation",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -8140,7 +8140,7 @@
       "slug": "market/kling/v2-5-turbo-image-to-video-pro",
       "display_name": "Kling - V2.5 Turbo Image to Video Pro",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -8267,7 +8267,7 @@
       "slug": "market/kling/v2-5-turbo-text-to-video-pro",
       "display_name": "Kling - V2.5 Turbo Text to Video Pro",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/jobs/createTask",
       "method": "POST",
       "input_schema": {
         "model": {
@@ -8581,7 +8581,7 @@
       "slug": "suno-api/generate-music",
       "display_name": "Generate Music",
       "description": "English",
-      "endpoint": "/api/v1/jobs/createTask\\",
+      "endpoint": "/api/v1/generate",
       "method": "POST",
       "input_schema": {
         "prompt": {
