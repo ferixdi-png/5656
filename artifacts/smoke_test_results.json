@@ -1,76 +1,60 @@
 {
-  "timestamp": "2025-12-24T07:25:34.788190",
-  "budget": {
-    "safe_mode_enabled": true,
-    "max_cost_per_run": 5.0,
-    "max_total_budget": 50.0,
-    "max_models": 10,
-    "allowed_models": [
-      "z-image"
-    ]
-  },
-  "total_spent_rub": 0.0,
-  "total_runs": 3,
+  "timestamp": "2025-12-24T13:10:36.784674",
+  "dry_run": true,
+  "total_models": 5,
+  "successful": 5,
+  "failed": 0,
+  "total_cost": 5.92,
   "results": [
     {
-      "run": 1,
-      "model_id": "z-image",
-      "category": "text-to-image",
-      "input": {
-        "prompt": "A simple red apple on white background",
-        "aspect_ratio": "1:1"
-      },
-      "status": "success",
-      "task_id": "8c3ba09d40d805a7930062c4509c8292",
-      "result_urls": [
-        "https://tempfile.aiquickdraw.com/f/a0aaf4ac-ddf3-4f22-ade5-62d3b90e0a3e_0.png"
-      ],
+      "model_id": "recraft/crisp-upscale",
+      "display_name": "Recraft Crisp Upscale",
+      "price": 0.36,
+      "success": true,
+      "stage": "dry_run",
       "error": null,
-      "cost_time_ms": 12,
-      "duration_sec": 13.28219,
-      "expected_cost_rub": 0.63,
-      "is_free": true,
-      "timestamp": "2025-12-24T07:24:55.019326"
+      "request_id": null,
+      "duration": 0.000985860824584961
     },
     {
-      "run": 2,
-      "model_id": "z-image",
-      "category": "text-to-image",
-      "input": {
-        "prompt": "A cute cat sitting in a garden",
-        "aspect_ratio": "4:3"
-      },
-      "status": "success",
-      "task_id": "3685c03560307d1072eb602d021661ad",
-      "result_urls": [
-        "https://tempfile.aiquickdraw.com/f/a0aaf4bf-d210-4755-af46-72215cf04483_0.png"
-      ],
+      "model_id": "qwen/z-image",
+      "display_name": "Qwen Z-Image",
+      "price": 0.57,
+      "success": true,
+      "stage": "dry_run",
       "error": null,
-      "cost_time_ms": 11,
-      "duration_sec": 13.254699,
-      "expected_cost_rub": 0.63,
-      "is_free": true,
-      "timestamp": "2025-12-24T07:25:08.302204"
+      "request_id": null,
+      "duration": 0.0014595985412597656
     },
     {
-      "run": 3,
-      "model_id": "z-image",
-      "category": "text-to-image",
-      "input": {
-        "prompt": "Modern minimalist logo with letter K",
-        "aspect_ratio": "1:1"
-      },
-      "status": "success",
-      "task_id": "49c94c3f3da94b2368a7e9d9473a16d7",
-      "result_urls": [
-        "https://tempfile.aiquickdraw.com/f/a0aaf4d5-d7ed-4f35-ac92-97c258a320ee_0.png"
-      ],
+      "model_id": "recraft/remove-background",
+      "display_name": "Recraft Remove Background",
+      "price": 0.71,
+      "success": true,
+      "stage": "dry_run",
       "error": null,
-      "cost_time_ms": 11,
-      "duration_sec": 13.230512,
-      "expected_cost_rub": 0.63,
-      "is_free": true,
-      "timestamp": "2025-12-24T07:25:21.557499"
+      "request_id": null,
+      "duration": 0.0009398460388183594
+    },
+    {
+      "model_id": "midjourney/image-to-image:relaxed-v3",
+      "display_name": "Midjourney",
+      "price": 2.14,
+      "success": true,
+      "stage": "dry_run",
+      "error": null,
+      "request_id": null,
+      "duration": 0.0010793209075927734
+    },
+    {
+      "model_id": "midjourney/text-to-image:relaxed-v3",
+      "display_name": "Midjourney",
+      "price": 2.14,
+      "success": true,
+      "stage": "dry_run",
+      "error": null,
+      "request_id": null,
+      "duration": 0.00159454345703125
     }
   ]
 }

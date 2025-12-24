@@ -1,5 +1,5 @@
 {
-  "version": "6.3.0",
+  "version": "6.3.1",
   "source": "merged: kie_parsed_models.json + site_scraper",
   "total_models": 77,
   "free_tier_count": 5,
@@ -274,7 +274,7 @@
         "optional": [],
         "properties": {}
       },
-      "enabled": true,
+      "enabled": false,
       "source": "kie_pricing_raw.txt",
       "is_free_tier": false,
       "description": "AI генерация контента",
@@ -285,7 +285,8 @@
         "генерация",
         "контент"
       ],
-      "tech_model_id": "nano-banana-pro"
+      "tech_model_id": "nano-banana-pro",
+      "status": "pending_schema"
     },
     {
       "model_id": "nano-banana-pro:default-v2",
@@ -303,7 +304,7 @@
         "optional": [],
         "properties": {}
       },
-      "enabled": true,
+      "enabled": false,
       "source": "kie_pricing_raw.txt",
       "is_free_tier": false,
       "description": "AI генерация контента",
@@ -314,7 +315,8 @@
         "генерация",
         "контент"
       ],
-      "tech_model_id": "nano-banana-pro:default-v2"
+      "tech_model_id": "nano-banana-pro:default-v2",
+      "status": "pending_schema"
     },
     {
       "model_id": "qwen/z-image",
@@ -563,7 +565,7 @@
         "optional": [],
         "properties": {}
       },
-      "enabled": true,
+      "enabled": false,
       "source": "kie_pricing_raw.txt",
       "is_free_tier": false,
       "description": "AI генерация контента",
@@ -574,7 +576,8 @@
         "генерация",
         "контент"
       ],
-      "tech_model_id": "wan-2-2-animate:1-0s-720p"
+      "tech_model_id": "wan-2-2-animate:1-0s-720p",
+      "status": "pending_schema"
     },
     {
       "model_id": "wan-2-2-animate:1-0s-580p",
@@ -592,7 +595,7 @@
         "optional": [],
         "properties": {}
       },
-      "enabled": true,
+      "enabled": false,
       "source": "kie_pricing_raw.txt",
       "is_free_tier": false,
       "description": "AI генерация контента",
@@ -603,7 +606,8 @@
         "генерация",
         "контент"
       ],
-      "tech_model_id": "wan-2-2-animate:1-0s-580p"
+      "tech_model_id": "wan-2-2-animate:1-0s-580p",
+      "status": "pending_schema"
     },
     {
       "model_id": "wan-2-2-animate:1-0s-480p",
@@ -621,7 +625,7 @@
         "optional": [],
         "properties": {}
       },
-      "enabled": true,
+      "enabled": false,
       "source": "kie_pricing_raw.txt",
       "is_free_tier": false,
       "description": "AI генерация контента",
@@ -632,7 +636,8 @@
         "генерация",
         "контент"
       ],
-      "tech_model_id": "wan-2-2-animate:1-0s-480p"
+      "tech_model_id": "wan-2-2-animate:1-0s-480p",
+      "status": "pending_schema"
     },
     {
       "model_id": "midjourney/image-to-image",
@@ -2687,7 +2692,7 @@
         "optional": [],
         "properties": {}
       },
-      "enabled": true,
+      "enabled": false,
       "source": "kie_pricing_raw.txt",
       "is_free_tier": false,
       "description": "AI генерация контента",
@@ -2698,7 +2703,8 @@
         "генерация",
         "контент"
       ],
-      "tech_model_id": "elevenlabs/tts-multilingual"
+      "tech_model_id": "elevenlabs/tts-multilingual",
+      "status": "pending_schema"
     },
     {
       "model_id": "elevenlabs/tts-multilingual:default-v2",
@@ -2716,7 +2722,7 @@
         "optional": [],
         "properties": {}
       },
-      "enabled": true,
+      "enabled": false,
       "source": "kie_pricing_raw.txt",
       "is_free_tier": false,
       "description": "AI генерация контента",
@@ -2727,7 +2733,8 @@
         "генерация",
         "контент"
       ],
-      "tech_model_id": "elevenlabs/tts-multilingual:default-v2"
+      "tech_model_id": "elevenlabs/tts-multilingual:default-v2",
+      "status": "pending_schema"
     },
     {
       "model_id": "recraft/crisp-upscale",
@@ -2968,7 +2975,7 @@
         "optional": [],
         "properties": {}
       },
-      "enabled": true,
+      "enabled": false,
       "source": "kie_pricing_raw.txt",
       "is_free_tier": false,
       "description": "Увеличение разрешения изображений",
@@ -2980,7 +2987,8 @@
         "4K",
         "апскейл"
       ],
-      "tech_model_id": "topaz/video-upscaler"
+      "tech_model_id": "topaz/video-upscaler",
+      "status": "pending_schema"
     },
     {
       "model_id": "topaz/image-upscaler",
@@ -4133,7 +4141,7 @@
         "optional": [],
         "properties": {}
       },
-      "enabled": true,
+      "enabled": false,
       "source": "kie_pricing_raw.txt",
       "is_free_tier": false,
       "description": "AI генерация контента",
@@ -4144,7 +4152,8 @@
         "генерация",
         "контент"
       ],
-      "tech_model_id": "suno/music-generation"
+      "tech_model_id": "suno/music-generation",
+      "status": "pending_schema"
     },
     {
       "model_id": "grok-imagine/text-to-image",
@@ -4382,5 +4391,10 @@
     "use_cases_added": 0,
     "examples_added": 0,
     "tags_added": 0
+  },
+  "changelog": {
+    "v6.3.1": "Disabled 9 models with incomplete input_schema (pending fix)",
+    "v6.3.0": "Added UX enrichment + tech_model_id",
+    "v6.2.0": "Merged pricing + site scraper data"
   }
 }
