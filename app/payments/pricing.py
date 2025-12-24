@@ -155,9 +155,10 @@ def calculate_kie_cost(
     
     Priority:
     1. kie_response['cost'] or ['price'] if available (assumed in RUB)
-    2. model['price'] from registry (in USD) → convert to RUB
-    3. FALLBACK_PRICES_USD (in USD) → convert to RUB
-    4. Default 10.0 USD → convert to RUB
+    2. model['pricing']['rub_per_generation'] from registry v6.2 (direct RUB)
+    3. model['price'] from old registry (in USD) → convert to RUB
+    4. FALLBACK_PRICES_USD (in USD) → convert to RUB
+    5. Default 10.0 USD → convert to RUB
     
     Args:
         model: Model metadata from registry
@@ -177,27 +178,40 @@ def calculate_kie_cost(
                 logger.info(f"Using Kie.ai response cost for {model_id}: {cost_rub} RUB")
                 return cost_rub
     
-    # Priority 2: Model registry price (in USD → convert to RUB)
+    # Priority 2: New registry v6.2 format (direct RUB price)
+    pricing = model.get("pricing", {})
+    if isinstance(pricing, dict):
+        rub_price = pricing.get("rub_per_generation")
+        if rub_price is not None:
+            try:
+                cost_rub = float(rub_price)
+                if cost_rub > 0:
+                    logger.info(f"Using registry v6.2 price for {model_id}: {cost_rub} RUB")
+                    return cost_rub
+            except (TypeError, ValueError):
+                logger.warning(f"Invalid v6.2 price for {model_id}: {rub_price}")
+    
+    # Priority 3: Old registry format (in USD → convert to RUB)
     registry_price_usd = model.get("price")
     if registry_price_usd is not None:
         try:
             price_usd = float(registry_price_usd)
             if price_usd > 0:
                 cost_rub = price_usd * USD_TO_RUB
-                logger.info(f"Using registry price for {model_id}: ${price_usd} → {cost_rub} RUB")
+                logger.info(f"Using old registry price for {model_id}: ${price_usd} → {cost_rub} RUB")
                 return cost_rub
         except (TypeError, ValueError):
             logger.warning(f"Invalid registry price for {model_id}: {registry_price_usd}")
             pass
     
-    # Priority 3: Fallback table (in USD → convert to RUB)
+    # Priority 4: Fallback table (in USD → convert to RUB)
     if model_id in FALLBACK_PRICES_USD:
         price_usd = FALLBACK_PRICES_USD[model_id]
         cost_rub = price_usd * USD_TO_RUB
         logger.info(f"Using fallback price for {model_id}: ${price_usd} → {cost_rub} RUB")
         return cost_rub
     
-    # Priority 4: Default (in USD → convert to RUB)
+    # Priority 5: Default (in USD → convert to RUB)
     default_usd = 10.0
     cost_rub = default_usd * USD_TO_RUB
     logger.warning(f"No price info for {model_id}, using default ${default_usd} → {cost_rub} RUB")

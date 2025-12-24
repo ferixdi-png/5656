@@ -15,7 +15,7 @@ from typing import Dict, List, Any
 logger = logging.getLogger(__name__)
 
 SOURCE_OF_TRUTH = Path("models/kie_source_of_truth.json")
-SOURCE_OF_TRUTH_FALLBACK = Path("models/kie_models_source_of_truth.json")
+SOURCE_OF_TRUTH_FALLBACK = Path("models/kie_models_final_truth.json")
 
 
 def get_free_models() -> List[str]:

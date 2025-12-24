@@ -22,7 +22,7 @@ async def setup_free_tier():
         return False
     
     # Load registry
-    registry_path = "models/kie_models_source_of_truth.json"
+    registry_path = "models/kie_models_final_truth.json"
     if not os.path.exists(registry_path):
         logger.error(f"Registry not found: {registry_path}")
         return False
@@ -30,14 +30,22 @@ async def setup_free_tier():
     with open(registry_path, 'r') as f:
         sot = json.load(f)
     
-    # Find 5 cheapest models
-    models = [m for m in sot['models'] if m.get('is_pricing_known')]
-    models.sort(key=lambda m: m.get('price', 999999))
-    cheapest_5 = models[:5]
+    # Use pre-identified free_tier_models from v6.2
+    free_tier_ids = sot.get('free_tier_models', [])
     
-    logger.info(f"Found {len(cheapest_5)} cheapest models:")
+    if not free_tier_ids:
+        logger.error("No free_tier_models in registry v6.2")
+        return False
+    
+    logger.info(f"Found {len(free_tier_ids)} FREE tier models from registry:")
+    
+    # Get full model data
+    models_map = {m['model_id']: m for m in sot.get('models', [])}
+    cheapest_5 = [models_map[mid] for mid in free_tier_ids if mid in models_map]
+    
     for m in cheapest_5:
-        logger.info(f"  - {m['model_id']:40} {m.get('price', 0):6.2f} RUB")
+        price_rub = m.get('pricing', {}).get('rub_per_generation', 0)
+        logger.info(f"  - {m['model_id']:40} {price_rub:6.2f} RUB")
     
     # Initialize services
     from app.database.services import DatabaseService

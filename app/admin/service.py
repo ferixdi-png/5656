@@ -389,7 +389,7 @@ class AdminService:
         import json
         from pathlib import Path
         
-        source_file = Path("models/kie_models_source_of_truth.json")
+        source_file = Path("models/kie_models_final_truth.json")
         if not source_file.exists():
             raise FileNotFoundError("Source of truth not found")
         
@@ -420,7 +420,7 @@ class AdminService:
         import json
         from pathlib import Path
         
-        source_file = Path("models/kie_models_source_of_truth.json")
+        source_file = Path("models/kie_models_final_truth.json")
         if not source_file.exists():
             raise FileNotFoundError("Source of truth not found")
         
@@ -453,7 +453,7 @@ class AdminService:
         from pathlib import Path
         from app.payments.pricing import USD_TO_RUB, MARKUP
         
-        source_file = Path("models/kie_models_source_of_truth.json")
+        source_file = Path("models/kie_models_final_truth.json")
         if not source_file.exists():
             return {"error": "Source of truth not found"}
         

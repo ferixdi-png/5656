@@ -72,7 +72,7 @@ def load_registry() -> List[Dict]:
     """Load KIE models registry."""
     registry_path = os.path.join(
         os.path.dirname(__file__),
-        "../../models/kie_models_source_of_truth.json"
+        "../../models/kie_models_final_truth.json"
     )
     
     if not os.path.exists(registry_path):
@@ -106,12 +106,10 @@ def build_ui_tree() -> Dict[str, List[Dict]]:
     """
     Build UI tree from registry.
     
-    Includes ONLY enabled models (without disabled_reason).
+    Includes ONLY enabled models.
     Models without input_schema will use fallback (prompt-only).
     
-    MASTER PROMPT compliance:
-    - Sort models by price: cheapest first, then medium, then expensive
-    - Show only enabled models (23 from 89 with price)
+    Сортировка по цене: самые дешёвые первыми.
     """
     registry = load_registry()
     tree = {cat: [] for cat in MARKETING_CATEGORIES.keys()}
@@ -122,20 +120,21 @@ def build_ui_tree() -> Dict[str, List[Dict]]:
         if not model_id or model_id.endswith("_processor"):
             continue
         
-        # CRITICAL FIX: Skip disabled models (unconfirmed pricing)
-        if model.get("disabled_reason"):
+        # Skip disabled models
+        if not model.get("enabled", True):
             continue
         
-        # Skip models without price
-        if not model.get("price"):
+        # Get price from v6.2 format
+        pricing = model.get("pricing", {})
+        if not pricing or not pricing.get("rub_per_generation"):
             continue
         
         mk_cat = map_model_to_marketing_category(model)
         tree[mk_cat].append(model)
     
-    # MASTER PROMPT: Sort each category by price (cheapest first)
+    # Sort each category by price (cheapest first)
     for cat in tree:
-        tree[cat].sort(key=lambda m: m.get("price", 999999))
+        tree[cat].sort(key=lambda m: m.get("pricing", {}).get("rub_per_generation", 999999))
     
     return tree
 

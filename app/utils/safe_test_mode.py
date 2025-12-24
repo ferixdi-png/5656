@@ -23,7 +23,7 @@ MAX_TOTAL_TEST_BUDGET = float(os.getenv("MAX_TOTAL_TEST_BUDGET", "50.0"))
 # In safe mode, only test TOP-N cheapest models
 SAFE_MODE_MAX_MODELS = int(os.getenv("SAFE_MODE_MAX_MODELS", "10"))
 
-SOURCE_OF_TRUTH = Path("models/kie_models_source_of_truth.json")
+SOURCE_OF_TRUTH = Path("models/kie_models_final_truth.json")
 
 
 def is_safe_test_mode() -> bool:

@@ -241,31 +241,35 @@ async def main():
         # AUTO-SETUP: Configure 5 cheapest models as free tier (idempotent)
         try:
             import json
-            registry_path = "models/kie_source_of_truth.json"
+            registry_path = "models/kie_models_final_truth.json"
             with open(registry_path, 'r', encoding='utf-8') as f:
                 sot = json.load(f)
             
-            # Get enabled models with pricing
-            models = [m for m in sot.get('models', []) 
-                     if m.get('enabled', True) and m.get('pricing', {}).get('rub_per_use')]
+            # Use pre-identified free_tier_models from registry v6.2
+            free_tier_ids = sot.get('free_tier_models', [])
             
-            # Sort by RUB price
-            models.sort(key=lambda m: m.get('pricing', {}).get('rub_per_use', 999999))
-            cheapest_5 = models[:5]
-            
-            for model in cheapest_5:
-                model_id = model['model_id']
-                is_free = await free_manager.is_model_free(model_id)
+            if free_tier_ids:
+                # Get full model data
+                models_map = {m['model_id']: m for m in sot.get('models', [])}
                 
-                if not is_free:
-                    await free_manager.add_free_model(
-                        model_id=model_id,
-                        daily_limit=5,  # As per docs: 5/day
-                        hourly_limit=2  # As per docs: 2/hour
-                    )
-                    logger.info(f"✅ Auto-configured free: {model_id} (5/day, 2/hour)")
-            
-            logger.info("Free tier auto-setup complete")
+                for model_id in free_tier_ids:
+                    if model_id not in models_map:
+                        continue
+                    
+                    is_free = await free_manager.is_model_free(model_id)
+                    
+                    if not is_free:
+                        await free_manager.add_free_model(
+                            model_id=model_id,
+                            daily_limit=10,  # v6.2: increased from 5
+                            hourly_limit=3   # v6.2: increased from 2
+                        )
+                        price_rub = models_map[model_id].get('pricing', {}).get('rub_per_generation', 0)
+                        logger.info(f"✅ Auto-configured FREE: {model_id} ({price_rub:.2f}₽)")
+                
+                logger.info(f"Free tier auto-setup: {len(free_tier_ids)} models")
+            else:
+                logger.warning("No free_tier_models in registry v6.2")
         except Exception as e:
             logger.warning(f"Free tier auto-setup skipped: {e}")
         

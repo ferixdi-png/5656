@@ -215,28 +215,37 @@ async def cb_marketing_category(callback: CallbackQuery, state: FSMContext):
 
 
 def _build_models_keyboard(cat_key: str, models: list) -> InlineKeyboardMarkup:
-    """Build models selection keyboard with free badges."""
+    """Build models selection keyboard with FREE badges and prices."""
     rows = []
     
-    free_manager = _get_free_manager()
+    # Load FREE tier models from registry
+    import json
+    try:
+        with open("models/kie_models_final_truth.json", 'r') as f:
+            registry = json.load(f)
+            free_tier_ids = set(registry.get('free_tier_models', []))
+    except Exception:
+        free_tier_ids = set()
     
     for model in models[:10]:  # Limit to 10 for now
         model_id = model.get("model_id", "")
-        name = model.get("name") or model_id
+        name = model.get("display_name") or model.get("name") or model_id
         
-        # Check if free (synchronous approach - we'll enhance later)
-        # For now, just show price or badge
-        price = model.get("price")
-        if price:
-            # CORRECT FORMULA: price_usd × 78 (USD→RUB) × 2 (markup)
+        # Check if FREE
+        is_free = model_id in free_tier_ids or model.get("is_free_tier", False)
+        
+        # Get price
+        pricing = model.get("pricing", {})
+        rub_price = pricing.get("rub_per_generation")
+        
+        if is_free:
+            button_text = f"🎁 {name} • БЕСПЛАТНО"
+        elif rub_price:
             kie_cost_rub = calculate_kie_cost(model, {}, None)
             user_price = calculate_user_price(kie_cost_rub)
-            price_text = f" • {format_price_rub(user_price)}"
+            button_text = f"{name} • {format_price_rub(user_price)}"
         else:
-            price_text = ""
-        
-        # Add 🎁 badge placeholder (will be populated async in future)
-        button_text = f"{name}{price_text}"
+            button_text = name
         
         rows.append([
             InlineKeyboardButton(
@@ -297,20 +306,35 @@ async def cb_category_page(callback: CallbackQuery, state: FSMContext):
         return
     
     # Build keyboard with pagination
+    # Load FREE tier models from registry
+    import json
+    try:
+        with open("models/kie_models_final_truth.json", 'r') as f:
+            registry = json.load(f)
+            free_tier_ids = set(registry.get('free_tier_models', []))
+    except Exception:
+        free_tier_ids = set()
+    
     rows = []
     for model in page_models:
         model_id = model.get("model_id", "")
-        name = model.get("name") or model_id
+        name = model.get("display_name") or model.get("name") or model_id
         
-        price = model.get("price")
-        if price:
+        # Check if FREE
+        is_free = model_id in free_tier_ids or model.get("is_free_tier", False)
+        
+        # Get price
+        pricing = model.get("pricing", {})
+        
+        if is_free:
+            button_text = f"🎁 {name} • БЕСПЛАТНО"
+        elif pricing and pricing.get("rub_per_generation"):
             kie_cost_rub = calculate_kie_cost(model, {}, None)
             user_price = calculate_user_price(kie_cost_rub)
-            price_text = f" • {format_price_rub(user_price)}"
+            button_text = f"{name} • {format_price_rub(user_price)}"
         else:
-            price_text = ""
+            button_text = name
         
-        button_text = f"{name}{price_text}"
         rows.append([
             InlineKeyboardButton(
                 text=button_text,
@@ -364,19 +388,32 @@ async def cb_model_details(callback: CallbackQuery, state: FSMContext):
         await callback.answer("Модель не найдена", show_alert=True)
         return
     
-    name = model.get("name") or model_id
+    # Load FREE tier info
+    import json
+    try:
+        with open("models/kie_models_final_truth.json", 'r') as f:
+            registry = json.load(f)
+            free_tier_ids = set(registry.get('free_tier_models', []))
+    except Exception:
+        free_tier_ids = set()
+    
+    is_free = model_id in free_tier_ids or model.get("is_free_tier", False)
+    
+    name = model.get("display_name") or model.get("name") or model_id
     description = model.get("description", "Генерация AI контента")
     category = model.get("category", "unknown")
     
     # Get price
-    price = model.get("price")
-    if price:
-        # CORRECT FORMULA: price_usd × 78 (USD→RUB) × 2 (markup)
-        kie_cost_rub = calculate_kie_cost(model, {}, None)
-        user_price = calculate_user_price(kie_cost_rub)
-        price_text = format_price_rub(user_price)
+    if is_free:
+        price_text = "<b>БЕСПЛАТНО</b> 🎁"
     else:
-        price_text = "Цена не определена"
+        pricing = model.get("pricing", {})
+        if pricing and pricing.get("rub_per_generation"):
+            kie_cost_rub = calculate_kie_cost(model, {}, None)
+            user_price = calculate_user_price(kie_cost_rub)
+            price_text = format_price_rub(user_price)
+        else:
+            price_text = "Цена не определена"
     
     # MASTER PROMPT: Add "для чего подходит" and example
     # v3.0: Support both new task-oriented categories and legacy technical categories
