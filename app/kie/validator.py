@@ -109,8 +109,20 @@ def validate_model_inputs(
     """
     input_schema = model_schema.get('input_schema', {})
     
+    # Support BOTH flat and nested formats
+    if 'properties' in input_schema:
+        # Nested format
+        properties = input_schema.get('properties', {})
+        required_fields = input_schema.get('required', [])
+        optional_fields = input_schema.get('optional', [])
+    else:
+        # Flat format - convert
+        properties = input_schema
+        required_fields = [k for k, v in properties.items() if v.get('required', False)]
+        optional_fields = [k for k in properties.keys() if k not in required_fields]
+    
     # FALLBACK: If no properties defined in schema, validate based on category
-    if not input_schema or not input_schema.get('properties'):
+    if not properties:
         logger.info(f"Using fallback validation for {model_id} (no schema properties)")
         
         category = model_schema.get('category', '')
@@ -146,10 +158,7 @@ def validate_model_inputs(
         # Fallback validation passed
         return
     
-    required_fields = input_schema.get('required', [])
-    optional_fields = input_schema.get('optional', [])
-    properties = input_schema.get('properties', {})
-    
+    # Schema-based validation: check required fields
     all_fields = set(required_fields) | set(optional_fields)
     
     # Check required fields
@@ -163,8 +172,10 @@ def validate_model_inputs(
             # Common field mappings
             if field_name in ['prompt', 'text', 'input', 'message']:
                 value = user_inputs.get('text') or user_inputs.get('prompt') or user_inputs.get('input')
-            elif field_name in ['url', 'link', 'source_url']:
-                value = user_inputs.get('url') or user_inputs.get('link')
+            elif field_name in ['url', 'link', 'source_url', 'image_url', 'video_url', 'audio_url']:
+                value = (user_inputs.get('url') or user_inputs.get('link') or 
+                        user_inputs.get('image_url') or user_inputs.get('video_url') or 
+                        user_inputs.get('audio_url'))
             elif field_name in ['file', 'file_id', 'file_url']:
                 value = user_inputs.get('file') or user_inputs.get('file_id') or user_inputs.get('file_url')
             
@@ -185,8 +196,10 @@ def validate_model_inputs(
             # Try aliases
             if field_name in ['prompt', 'text', 'input', 'message']:
                 value = user_inputs.get('text') or user_inputs.get('prompt') or user_inputs.get('input')
-            elif field_name in ['url', 'link', 'source_url']:
-                value = user_inputs.get('url') or user_inputs.get('link')
+            elif field_name in ['url', 'link', 'source_url', 'image_url', 'video_url', 'audio_url']:
+                value = (user_inputs.get('url') or user_inputs.get('link') or 
+                        user_inputs.get('image_url') or user_inputs.get('video_url') or 
+                        user_inputs.get('audio_url'))
             elif field_name in ['file', 'file_id', 'file_url']:
                 value = user_inputs.get('file') or user_inputs.get('file_id') or user_inputs.get('file_url')
         
@@ -321,9 +334,11 @@ def validate_payload_before_create_task(
     if 'model' not in payload:
         raise ModelContractError("Payload must contain 'model' field")
     
-    if payload['model'] != model_id:
+    # Check model: must match either model_id OR api_endpoint
+    api_endpoint = model_schema.get('api_endpoint', model_id)
+    if payload['model'] != model_id and payload['model'] != api_endpoint:
         raise ModelContractError(
-            f"Payload model '{payload['model']}' does not match requested model '{model_id}'"
+            f"Payload model '{payload['model']}' does not match requested model '{model_id}' or api_endpoint '{api_endpoint}'"
         )
     
     # Check 'input' object exists
@@ -335,8 +350,16 @@ def validate_payload_before_create_task(
         raise ModelContractError("Payload 'input' must be a dictionary")
     
     input_schema = model_schema.get('input_schema', {})
-    required_fields = input_schema.get('required', [])
-    properties = input_schema.get('properties', {})
+    
+    # Support BOTH flat and nested formats
+    if 'properties' in input_schema:
+        # Nested format
+        required_fields = input_schema.get('required', [])
+        properties = input_schema.get('properties', {})
+    else:
+        # Flat format - convert
+        properties = input_schema
+        required_fields = [k for k, v in properties.items() if v.get('required', False)]
     
     # Check all required fields are in payload['input']
     for field_name in required_fields:

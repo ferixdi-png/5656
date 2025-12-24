@@ -1,6 +1,7 @@
 """
 Integration of payments with generation flow.
 Ensures charges are only committed on success.
+Handles FREE tier models (no charge).
 """
 import logging
 import time
@@ -10,6 +11,7 @@ from uuid import uuid4
 from app.payments.charges import ChargeManager, get_charge_manager
 from app.kie.generator import KieGenerator
 from app.utils.metrics import track_generation
+from app.pricing.free_models import is_free_model
 
 logger = logging.getLogger(__name__)
 
@@ -27,20 +29,33 @@ async def generate_with_payment(
 ) -> Dict[str, Any]:
     """
     Generate with payment safety guarantees:
-    - Charge only on success
-    - Auto-refund on fail/timeout
+    - FREE models: no charge
+    - Paid models: charge only on success, auto-refund on fail/timeout
     
     Args:
         model_id: Model identifier
         user_inputs: User inputs
         user_id: User identifier
-        amount: Charge amount
+        amount: Charge amount (ignored for FREE models)
         progress_callback: Progress callback
         timeout: Generation timeout
         
     Returns:
         Result dict with generation and payment info
     """
+    # Check if model is FREE (TOP-5 cheapest)
+    if is_free_model(model_id):
+        logger.info(f"🆓 Model {model_id} is FREE - skipping payment")
+        generator = KieGenerator()
+        gen_result = await generator.generate(model_id, user_inputs, progress_callback, timeout)
+        return {
+            **gen_result,
+            'charge_task_id': None,
+            'payment_status': 'free_tier',
+            'payment_message': '🆓 FREE модель - генерация бесплатна'
+        }
+    
+    # Paid model - proceed with charging
     charge_manager = charge_manager or get_charge_manager()
     generator = KieGenerator()
     charge_task_id = task_id or f"charge_{user_id}_{model_id}_{uuid4().hex[:8]}"

@@ -70,21 +70,35 @@ def build_payload(
     validate_model_inputs(model_id, model_schema, user_inputs)
 
     input_schema = model_schema.get('input_schema', {})
-    required_fields = input_schema.get('required', [])
-    optional_fields = input_schema.get('optional', [])
-    properties = input_schema.get('properties', {})
+    
+    # CRITICAL: Use api_endpoint for Kie.ai API (not model_id)
+    api_endpoint = model_schema.get('api_endpoint', model_id)
     
     # Build payload based on schema
     payload = {
-        'model': model_id,
+        'model': api_endpoint,  # Use api_endpoint, not model_id
         'input': {}  # All fields go into 'input' object
     }
     
-    # FALLBACK: If no properties defined, use intelligent defaults based on model category
+    # Parse input_schema: support BOTH flat and nested formats
+    # FLAT format (source_of_truth.json): {"field": {"type": "...", "required": true}}
+    # NESTED format (old): {"required": [...], "properties": {...}}
+    
+    if 'properties' in input_schema:
+        # Nested format
+        required_fields = input_schema.get('required', [])
+        optional_fields = input_schema.get('optional', [])
+        properties = input_schema.get('properties', {})
+    else:
+        # Flat format - convert to nested
+        properties = input_schema
+        required_fields = [k for k, v in properties.items() if v.get('required', False)]
+        optional_fields = [k for k in properties.keys() if k not in required_fields]
+    
+    # If no properties, use FALLBACK logic
     if not properties:
-        logger.info(f"Using fallback schema for {model_id} (no properties defined)")
-        
-        # Detect model type from category
+        logger.warning(f"No input_schema for {model_id}, using fallback")
+        # FALLBACK logic (keep for backward compatibility)
         category = model_schema.get('category', '')
         
         # Try to find prompt/text in user_inputs
@@ -93,11 +107,11 @@ def build_payload(
         file_value = user_inputs.get('file') or user_inputs.get('file_id')
         
         # Text-to-X models: need prompt
-        if category in ['t2i', 't2v', 'tts', 'music', 'sfx'] or 'text' in model_id.lower():
+        if category in ['t2i', 't2v', 'tts', 'music', 'sfx', 'text-to-image', 'text-to-video'] or 'text' in model_id.lower():
             if prompt_value:
                 payload['input']['prompt'] = prompt_value
             else:
-                raise ValueError(f"Model {model_id} (category: {category}) requires 'prompt' or 'text' field")
+                raise ValueError(f"Model {model_id} requires 'prompt' or 'text' field")
         
         # Image/Video input models: need url or file
         elif category in ['i2v', 'i2i', 'v2v', 'lip_sync', 'upscale', 'bg_remove', 'watermark_remove']:
