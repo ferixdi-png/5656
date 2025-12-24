@@ -1,7 +1,7 @@
 {
   "total_models": 72,
-  "success_count": 71,
-  "failed_count": 1,
+  "success_count": 72,
+  "failed_count": 0,
   "results": [
     {
       "model_id": "bytedance/seedream",
@@ -820,10 +820,18 @@
     },
     {
       "model_id": "sora-2-pro-storyboard/index",
-      "success": false,
-      "error": "Unexpected error: ValueError: Required field 'input' is missing",
-      "payload_keys": null,
-      "input_keys": null
+      "success": true,
+      "error": null,
+      "payload_keys": [
+        "model",
+        "input"
+      ],
+      "input_keys": [
+        "n_frames",
+        "image_urls",
+        "aspect_ratio",
+        "shots"
+      ]
     },
     {
       "model_id": "sora-2-characters",

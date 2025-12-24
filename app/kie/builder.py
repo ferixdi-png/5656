@@ -157,8 +157,13 @@ def build_payload(
         if 'input' in input_schema and isinstance(input_schema['input'], dict):
             input_field_spec = input_schema['input']
             
-            # Проверяем: это описание поля (с type/examples) или вложенный объект
-            if 'examples' in input_field_spec and isinstance(input_field_spec['examples'], list):
+            # ВАРИАНТ 1: input имеет properties (вложенная schema) — как у sora-2-pro-storyboard
+            if 'properties' in input_field_spec and isinstance(input_field_spec['properties'], dict):
+                input_schema = input_field_spec['properties']
+                logger.debug(f"Extracted input schema from properties for {model_id}: {list(input_schema.keys())}")
+            
+            # ВАРИАНТ 2: input имеет examples (большинство моделей)
+            elif 'examples' in input_field_spec and isinstance(input_field_spec['examples'], list):
                 # Это описание поля - examples показывают структуру user inputs
                 examples = input_field_spec['examples']
                 if examples and isinstance(examples[0], dict):
