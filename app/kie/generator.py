@@ -151,8 +151,40 @@ class KieGenerator:
             # Debug: log response
             logger.info(f"Create task response: {create_response}")
             
+            # Check if response is None or has error
+            if create_response is None:
+                logger.error("create_task returned None")
+                return {
+                    'success': False,
+                    'message': '❌ Ошибка API: не получен ответ от сервера',
+                    'result_urls': [],
+                    'result_object': None,
+                    'error_code': 'NO_RESPONSE',
+                    'error_message': 'API client returned None',
+                    'task_id': None
+                }
+            
+            # Check for error in response (from exception handling)
+            if 'error' in create_response:
+                error_msg = create_response.get('error', 'Unknown error')
+                logger.error(f"API error in create_task: {error_msg}")
+                return {
+                    'success': False,
+                    'message': f'❌ Ошибка API: {error_msg}',
+                    'result_urls': [],
+                    'result_object': None,
+                    'error_code': 'API_CONNECTION_ERROR',
+                    'error_message': error_msg,
+                    'task_id': None
+                }
+            
             # Extract taskId from response (can be at top level or in data object)
-            task_id = create_response.get('taskId') or create_response.get('data', {}).get('taskId')
+            task_id = create_response.get('taskId')
+            if not task_id and create_response.get('data'):
+                # data can be dict with taskId
+                data = create_response.get('data')
+                if isinstance(data, dict):
+                    task_id = data.get('taskId')
             
             if not task_id:
                 # Check if response has error
