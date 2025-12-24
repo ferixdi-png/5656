@@ -14,9 +14,15 @@ class ModelContractError(Exception):
     pass
 
 
-def validate_input_type(value: Any, expected_type: str, field_name: str) -> None:
+def validate_input_type(value: Any, expected_type: str, field_name: str, is_required: bool = True) -> None:
     """
     Validate input type matches expected type.
+    
+    Args:
+        value: Value to validate
+        expected_type: Expected type string
+        field_name: Field name for error messages
+        is_required: Whether this is a required field (affects empty string validation)
     
     Raises:
         ModelContractError: If type mismatch
@@ -46,12 +52,14 @@ def validate_input_type(value: Any, expected_type: str, field_name: str) -> None
             )
     
     elif expected_type in ['text', 'string', 'prompt', 'input', 'message']:
-        # Text type: must be non-empty string
+        # Text type: must be string, optionally non-empty
         if not isinstance(value, str):
             raise ModelContractError(
                 f"Field '{field_name}' requires text, got {type(value).__name__}"
             )
-        if not value.strip():
+        # ВАЖНО: Для опциональных полей разрешаем пустые строки
+        # (примеры из Kie.ai могут содержать пустые negative_prompt и т.д.)
+        if is_required and not value.strip():
             raise ModelContractError(
                 f"Field '{field_name}' requires non-empty text"
             )
@@ -117,8 +125,13 @@ def validate_model_inputs(
     if 'input' in input_schema and isinstance(input_schema['input'], dict):
         input_field_spec = input_schema['input']
         
-        # Проверяем: это описание поля (с type/examples) или вложенный объект
-        if 'examples' in input_field_spec and isinstance(input_field_spec['examples'], list):
+        # ВАРИАНТ 1: input имеет properties (вложенная schema) - например sora-2-pro-storyboard
+        if 'properties' in input_field_spec:
+            input_schema = input_field_spec['properties']
+            logger.debug(f"Extracted input schema from properties for {model_id}: {list(input_schema.keys())}")
+        
+        # ВАРИАНТ 2: input имеет examples (описание поля) - большинство моделей
+        elif 'examples' in input_field_spec and isinstance(input_field_spec['examples'], list):
             # Это описание поля - examples показывают структуру user inputs
             examples = input_field_spec['examples']
             if examples and isinstance(examples[0], dict):
@@ -149,9 +162,14 @@ def validate_model_inputs(
                         'required': False  # Консервативно - делаем все опциональными
                     }
                 
-                # Для prompt делаем required если он есть в примере
+                # ВАЖНО: Для prompt делаем required ТОЛЬКО если он НЕ пустой в примере
+                # Пустой prompt в примере = optional field
                 if 'prompt' in input_schema:
-                    input_schema['prompt']['required'] = True
+                    prompt_value = example_structure.get('prompt', '')
+                    if isinstance(prompt_value, str) and prompt_value.strip():
+                        # Только НЕ пустые промпты делаем required
+                        input_schema['prompt']['required'] = True
+                    # Иначе остается optional (False)
                 
                 logger.debug(f"Extracted input schema from examples for {model_id}: {list(input_schema.keys())}")
     
@@ -260,7 +278,9 @@ def validate_model_inputs(
         
         # Validate type
         if value is not None:
-            validate_input_type(value, field_type, field_name)
+            # Определяем: required или optional
+            is_required = field_name in required_fields
+            validate_input_type(value, field_type, field_name, is_required=is_required)
             
             # Check enum constraints
             if 'enum' in field_spec:
@@ -410,8 +430,12 @@ def validate_payload_before_create_task(
     if 'input' in input_schema and isinstance(input_schema['input'], dict):
         input_field_spec = input_schema['input']
         
-        # Проверяем: это описание поля (с type/examples) или вложенный объект
-        if 'examples' in input_field_spec and isinstance(input_field_spec['examples'], list):
+        # ВАРИАНТ 1: input имеет properties (вложенная schema)
+        if 'properties' in input_field_spec:
+            input_schema = input_field_spec['properties']
+        
+        # ВАРИАНТ 2: input имеет examples (описание поля)
+        elif 'examples' in input_field_spec and isinstance(input_field_spec['examples'], list):
             # Это описание поля - examples показывают структуру user inputs
             examples = input_field_spec['examples']
             if examples and isinstance(examples[0], dict):
@@ -440,9 +464,12 @@ def validate_payload_before_create_task(
                         'required': False  # Консервативно
                     }
                 
-                # Для prompt делаем required
+                # ВАЖНО: Для prompt делаем required ТОЛЬКО если он НЕ пустой в примере
                 if 'prompt' in input_schema:
-                    input_schema['prompt']['required'] = True
+                    prompt_value = example_structure.get('prompt', '')
+                    if isinstance(prompt_value, str) and prompt_value.strip():
+                        # Только НЕ пустые промпты делаем required
+                        input_schema['prompt']['required'] = True
     
     # Support BOTH flat and nested formats
     if 'properties' in input_schema:
@@ -471,7 +498,9 @@ def validate_payload_before_create_task(
         value = input_data[field_name]
         
         try:
-            validate_input_type(value, field_type, field_name)
+            # Required fields already checked above
+            is_required = field_name in required_fields
+            validate_input_type(value, field_type, field_name, is_required=is_required)
         except ModelContractError as e:
             raise ModelContractError(
                 f"Payload validation failed for field '{field_name}': {str(e)}"
