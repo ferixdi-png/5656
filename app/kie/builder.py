@@ -12,62 +12,22 @@ logger = logging.getLogger(__name__)
 
 def load_source_of_truth(file_path: str = "models/kie_api_models.json") -> Dict[str, Any]:
     """
-    Load source of truth file.
+    Load SOURCE OF TRUTH v1.2.0-FULL-MERGED.
     
-    Priority:
-    1. KIE_SOURCE_OF_TRUTH.json (MASTER - Copy page parsed, 100% coverage, TESTED)
-    2. kie_models_v7_source_of_truth.json (v7 - DOCS.KIE.AI, specialized endpoints, TESTED)
-    3. kie_models_final_truth.json (v6.2 - merged: pricing + site scraper, 77 models)
-    4. kie_parsed_models.json (v6 - auto-parsed from kie_pricing_raw.txt)
-    5. kie_api_models.json (v5 - from API docs)
-    6. kie_source_of_truth_v4.json (v4 - category-specific)
-    7. kie_source_of_truth.json (v3 - legacy)
+    Single source with 72 models, 100% coverage.
+    NO FALLBACKS.
     """
-    # Try MASTER FIRST - KIE_SOURCE_OF_TRUTH.json
     master_path = "models/KIE_SOURCE_OF_TRUTH.json"
-    if os.path.exists(master_path):
-        logger.info(f"✅ Using MASTER (Copy page SOURCE OF TRUTH, 72 models, 100% tested): {master_path}")
-        file_path = master_path
-    # Try v7 - BASED ON REAL DOCS.KIE.AI
-    elif os.path.exists("models/kie_models_v7_source_of_truth.json"):
-        v7_path = "models/kie_models_v7_source_of_truth.json"
-        logger.warning(f"⚠️  Using V7 (fallback, prefer MASTER): {v7_path}")
-        file_path = v7_path
-    # Try v6.2 (merged) - OLD
-    elif os.path.exists("models/kie_models_final_truth.json"):
-        v62_path = "models/kie_models_final_truth.json"
-        logger.warning(f"⚠️  Using V6.2 (OLD, wrong endpoints): {v62_path}")
-        file_path = v62_path
-    # Try v6 (auto-parsed)
-    elif os.path.exists("models/kie_parsed_models.json"):
-        v6_path = "models/kie_parsed_models.json"
-        logger.info(f"Using V6 (77 models): {v6_path}")
-        file_path = v6_path
-    # Try v5 (API docs)
-    elif not os.path.exists(file_path):
-        # Try v4
-        v4_path = "models/kie_source_of_truth_v4.json"
-        if os.path.exists(v4_path):
-            logger.info(f"Using V4: {v4_path}")
-            file_path = v4_path
-        else:
-            # Try v3
-            v3_path = "models/kie_source_of_truth.json"
-            if os.path.exists(v3_path):
-                logger.warning(f"Using V3 (legacy): {v3_path}")
-                file_path = v3_path
-            else:
-                # Try v2 (very old)
-                v2_path = "models/kie_models_source_of_truth.json"
-                if os.path.exists(v2_path):
-                    logger.warning(f"Using V2 (very old): {v2_path}")
-                    file_path = v2_path
-                else:
-                    logger.error(f"No source of truth file found")
-                    return {}
     
-    with open(file_path, 'r', encoding='utf-8') as f:
+    if not os.path.exists(master_path):
+        logger.error(f"CRITICAL: SOURCE_OF_TRUTH not found: {master_path}")
+        return {}
+    
+    logger.info(f"✅ Using SOURCE_OF_TRUTH v1.2.0 (72 models): {master_path}")
+    
+    with open(master_path, 'r', encoding='utf-8') as f:
         return json.load(f)
+
 
 
 def get_model_schema(model_id: str, source_of_truth: Optional[Dict] = None) -> Optional[Dict[str, Any]]:
