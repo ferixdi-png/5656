@@ -112,9 +112,14 @@ def build_payload(
         # V6: Old format with api_endpoint and input_schema
         input_schema = model_schema.get('input_schema', {})
         
+        # КРИТИЧНО: Проверяем формат schema
+        # ПРЯМОЙ формат (veo3_fast, V4): {prompt: {...}, imageUrls: {...}, customMode: {...}}
+        # Если НЕТ поля 'input', значит это ПРЯМОЙ формат
+        has_input_wrapper = 'input' in input_schema and isinstance(input_schema['input'], dict)
+        
         # ВАЖНО: Если schema имеет структуру {model: {...}, callBackUrl: {...}, input: {type: dict, examples: [...]}}
         # то реальные user fields находятся в examples первого примера для 'input' поля
-        if 'input' in input_schema and isinstance(input_schema['input'], dict):
+        if has_input_wrapper:
             input_field_spec = input_schema['input']
             
             # ВАРИАНТ 1: input имеет properties (вложенная schema) — как у sora-2-pro-storyboard
@@ -160,14 +165,26 @@ def build_payload(
                     
                     logger.debug(f"Extracted input schema from examples for {model_id}: {list(input_schema.keys())}")
         
+        # КРИТИЧНО: Определяем формат payload
+        # ПРЯМОЙ формат (veo3_fast, V4): параметры на верхнем уровне, БЕЗ input wrapper
+        # ОБЫЧНЫЙ формат: параметры в input wrapper
+        is_direct_format = not has_input_wrapper
+        
         # CRITICAL: Use api_endpoint for Kie.ai API (not model_id)
         api_endpoint = model_schema.get('api_endpoint', model_id)
         
-        # Build payload based on schema
-        payload = {
-            'model': api_endpoint,  # Use api_endpoint, not model_id
-            'input': {}  # All fields go into 'input' object
-        }
+        # Build payload based on schema format
+        if is_direct_format:
+            # ПРЯМОЙ формат: параметры на верхнем уровне
+            payload = {}
+            logger.info(f"Using DIRECT format for {model_id} (no input wrapper)")
+        else:
+            # ОБЫЧНЫЙ формат: параметры в input wrapper
+            payload = {
+                'model': api_endpoint,  # Use api_endpoint, not model_id
+                'input': {}  # All fields go into 'input' object
+            }
+            logger.info(f"Using WRAPPED format for {model_id} (input wrapper)")
     
     # Parse input_schema: support BOTH flat and nested formats
     # FLAT format (source_of_truth.json): {"field": {"type": "...", "required": true}}
@@ -176,22 +193,35 @@ def build_payload(
     # ВАЖНО: Системные поля добавляются автоматически, НЕ требуются от user
     SYSTEM_FIELDS = {'model', 'callBackUrl', 'callback', 'callback_url', 'webhookUrl', 'webhook_url'}
     
-    if 'properties' in input_schema:
+    # КРИТИЧНО: Для ПРЯМОГО формата (veo3_fast, V4) поля НЕ фильтруются
+    # т.к. они УЖЕ на верхнем уровне и являются обязательными
+    if is_direct_format:
+        # Для прямого формата берём ВСЕ поля из schema (включая системные)
+        properties = input_schema
+        required_fields = [k for k, v in properties.items() if v.get('required', False)]
+        optional_fields = [k for k in properties.keys() if k not in required_fields]
+        logger.debug(f"Direct format: {len(required_fields)} required, {len(optional_fields)} optional")
+    elif 'properties' in input_schema:
         # Nested format
         required_fields = input_schema.get('required', [])
         properties = input_schema.get('properties', {})
         # Calculate optional fields as difference
         optional_fields = [k for k in properties.keys() if k not in required_fields]
+        
+        # ФИЛЬТРУЕМ системные поля
+        required_fields = [f for f in required_fields if f not in SYSTEM_FIELDS]
+        optional_fields = [f for f in optional_fields if f not in SYSTEM_FIELDS]
+        properties = {k: v for k, v in properties.items() if k not in SYSTEM_FIELDS}
     else:
         # Flat format - convert to nested
         properties = input_schema
         required_fields = [k for k, v in properties.items() if v.get('required', False)]
         optional_fields = [k for k in properties.keys() if k not in required_fields]
-    
-    # ФИЛЬТРУЕМ системные поля (они добавляются автоматически в payload)
-    required_fields = [f for f in required_fields if f not in SYSTEM_FIELDS]
-    optional_fields = [f for f in optional_fields if f not in SYSTEM_FIELDS]
-    properties = {k: v for k, v in properties.items() if k not in SYSTEM_FIELDS}
+        
+        # ФИЛЬТРУЕМ системные поля
+        required_fields = [f for f in required_fields if f not in SYSTEM_FIELDS]
+        optional_fields = [f for f in optional_fields if f not in SYSTEM_FIELDS]
+        properties = {k: v for k, v in properties.items() if k not in SYSTEM_FIELDS}
     
     # If no properties, use FALLBACK logic
     if not properties:
@@ -268,9 +298,55 @@ def build_payload(
         
         # Validate and set value
         if value is None:
-            if field_name in required_fields:
+            # Для ПРЯМОГО формата: разрешаем skip системных полей (они добавятся позже)
+            if is_direct_format and field_name in {'model', 'callBackUrl'}:
+                continue  # Skip, будет добавлено автоматически
+            
+            # КРИТИЧНО: Smart defaults для veo3_fast и V4
+            # Эти модели имеют много required полей, но большинство имеют разумные defaults
+            elif is_direct_format and model_id == 'veo3_fast':
+                # veo3_fast defaults
+                defaults = {
+                    'imageUrls': [],
+                    'watermark': False,
+                    'aspectRatio': '16:9',
+                    'seeds': [1],
+                    'enableFallback': True,
+                    'enableTranslation': False,
+                    'generationType': 'prediction'
+                }
+                if field_name in defaults:
+                    value = defaults[field_name]
+                    logger.debug(f"Using default for veo3_fast.{field_name}: {value}")
+                elif field_name in required_fields:
+                    raise ValueError(f"Required field '{field_name}' is missing")
+            
+            elif is_direct_format and model_id == 'V4':
+                # V4 defaults
+                defaults = {
+                    'instrumental': False,
+                    'customMode': False,
+                    'style': '',
+                    'title': '',
+                    'negativeTags': '',
+                    'vocalGender': 'male',
+                    'styleWeight': 1.0,
+                    'weirdnessConstraint': 1.0,
+                    'audioWeight': 1.0,
+                    'personaId': ''
+                }
+                if field_name in defaults:
+                    value = defaults[field_name]
+                    logger.debug(f"Using default for V4.{field_name}: {value}")
+                elif field_name in required_fields:
+                    raise ValueError(f"Required field '{field_name}' is missing")
+            
+            # Other required fields: raise error
+            elif field_name in required_fields:
                 raise ValueError(f"Required field '{field_name}' is missing")
-        else:
+        
+        # Apply value to payload (if we have one after defaults/aliases)
+        if value is not None:
             # Type conversion if needed
             # ВАЖНО: Проверяем boolean FIRST, т.к. bool является подклассом int в Python
             if field_type == 'boolean' or field_type == 'bool':
@@ -281,18 +357,28 @@ def build_payload(
                     pass
                 else:
                     value = bool(value)
+            elif field_type in ['array', 'list']:
+                # Keep lists/arrays as-is
+                if not isinstance(value, list):
+                    value = [value]  # Wrap single value in list
             elif field_type == 'integer' or field_type == 'int':
-                try:
-                    value = int(value)
-                except (ValueError, TypeError):
-                    raise ValueError(f"Field '{field_name}' must be an integer")
+                if not isinstance(value, (list, dict)):  # Don't convert complex types
+                    try:
+                        value = int(value)
+                    except (ValueError, TypeError):
+                        raise ValueError(f"Field '{field_name}' must be an integer")
             elif field_type == 'number' or field_type == 'float':
-                try:
-                    value = float(value)
-                except (ValueError, TypeError):
-                    raise ValueError(f"Field '{field_name}' must be a number")
+                if not isinstance(value, (list, dict)):  # Don't convert complex types
+                    try:
+                        value = float(value)
+                    except (ValueError, TypeError):
+                        raise ValueError(f"Field '{field_name}' must be a number")
             
-            payload['input'][field_name] = value
+            # КРИТИЧНО: Для ПРЯМОГО формата поля на верхнем уровне
+            if is_direct_format:
+                payload[field_name] = value
+            else:
+                payload['input'][field_name] = value
     
     # Process optional fields
     for field_name in optional_fields:
@@ -322,7 +408,17 @@ def build_payload(
                 except (ValueError, TypeError):
                     continue
             
-            payload['input'][field_name] = value
+            # КРИТИЧНО: Для ПРЯМОГО формата поля на верхнем уровне
+            if is_direct_format:
+                payload[field_name] = value
+            else:
+                payload['input'][field_name] = value
+    
+    # КРИТИЧНО: Для ПРЯМОГО формата добавляем model field
+    if is_direct_format:
+        if 'model' not in payload:
+            payload['model'] = model_id
+            logger.debug(f"Added model field for direct format: {model_id}")
     
     validate_payload_before_create_task(model_id, payload, model_schema)
     return payload

@@ -186,8 +186,21 @@ def validate_model_inputs(
         optional_fields = [k for k in properties.keys() if k not in required_fields]
     
     # ФИЛЬТРУЕМ системные поля - они НЕ валидируются для user_inputs
-    required_fields = [f for f in required_fields if f not in SYSTEM_FIELDS]
-    optional_fields = [f for f in optional_fields if f not in SYSTEM_FIELDS]
+    # КРИТИЧНО: Для ПРЯМЫХ моделей (veo3_fast, V4) ТОЛЬКО prompt is required
+    # Все остальные поля будут заполнены builder'ом defaults
+    is_direct_model = model_id in ['veo3_fast', 'V4']
+    
+    if is_direct_model:
+        # Для ПРЯМЫХ моделей: только prompt required, остальное - optional
+        logger.info(f"Direct model {model_id}: treating all fields as optional except 'prompt'")
+        real_required = ['prompt']  # ТОЛЬКО prompt
+        all_other_fields = [f for f in list(properties.keys()) if f != 'prompt']
+        required_fields = real_required
+        optional_fields = all_other_fields
+    else:
+        # Обычные модели: фильтруем только системные поля
+        required_fields = [f for f in required_fields if f not in SYSTEM_FIELDS]
+        optional_fields = [f for f in optional_fields if f not in SYSTEM_FIELDS]
     properties = {k: v for k, v in properties.items() if k not in SYSTEM_FIELDS}
     
     # FALLBACK: If no properties defined in schema, validate based on category
@@ -395,8 +408,9 @@ def validate_payload_before_create_task(
     
     Contract:
     - Payload MUST contain 'model' field
-    - Payload MUST contain 'input' object
-    - All required fields MUST be present in 'input'
+    - WRAPPED format: Payload MUST contain 'input' object
+    - DIRECT format (veo3_fast, V4): Parameters on top level
+    - All required fields MUST be present
     - No invalid field types
     
     Raises:
@@ -412,13 +426,23 @@ def validate_payload_before_create_task(
             f"Payload model '{payload['model']}' does not match requested model '{model_id}' or api_endpoint '{api_endpoint}'"
         )
     
-    # Check 'input' object exists
-    if 'input' not in payload:
-        raise ModelContractError("Payload must contain 'input' object")
+    # КРИТИЧНО: Определяем формат payload
+    # DIRECT format: veo3_fast, V4 (параметры на верхнем уровне)
+    # WRAPPED format: остальные (параметры в input wrapper)
+    is_direct_format = model_id in ['veo3_fast', 'V4']
     
-    input_data = payload['input']
-    if not isinstance(input_data, dict):
-        raise ModelContractError("Payload 'input' must be a dictionary")
+    if is_direct_format:
+        # DIRECT format: параметры на верхнем уровне, 'input' НЕ требуется
+        logger.info(f"Validating DIRECT format for {model_id}")
+        input_data = payload  # Сам payload и есть "input"
+    else:
+        # WRAPPED format: требуем 'input' object
+        if 'input' not in payload:
+            raise ModelContractError("Payload must contain 'input' object")
+        
+        input_data = payload['input']
+        if not isinstance(input_data, dict):
+            raise ModelContractError("Payload 'input' must be a dictionary")
     
     # СИСТЕМНЫЕ ПОЛЯ - добавляются автоматически, НЕ должны быть в input
     SYSTEM_FIELDS = {'model', 'callBackUrl', 'callback', 'callback_url', 'webhookUrl', 'webhook_url'}
@@ -481,15 +505,24 @@ def validate_payload_before_create_task(
         properties = input_schema
         required_fields = [k for k, v in properties.items() if v.get('required', False)]
     
-    # ФИЛЬТРУЕМ системные поля - они НЕ должны быть в payload['input']
-    required_fields = [f for f in required_fields if f not in SYSTEM_FIELDS]
-    properties = {k: v for k, v in properties.items() if k not in SYSTEM_FIELDS}
+    # ФИЛЬТРУЕМ системные поля
+    # Для DIRECT format: НЕ фильтруем (поля на верхнем уровне)
+    # Для WRAPPED format: фильтруем (они НЕ в input)
+    if not is_direct_format:
+        required_fields = [f for f in required_fields if f not in SYSTEM_FIELDS]
+        properties = {k: v for k, v in properties.items() if k not in SYSTEM_FIELDS}
     
-    # Check all required fields are in payload['input']
+    # КРИТИЧНО: Для DIRECT моделей только 'prompt' is required
+    if is_direct_format and model_id in ['veo3_fast', 'V4']:
+        required_fields = ['prompt']  # Остальные поля builder заполнил defaults
+        logger.debug(f"Direct model {model_id}: only 'prompt' required in validation")
+    
+    # Check all required fields are present
     for field_name in required_fields:
         if field_name not in input_data:
+            location = "payload" if is_direct_format else "payload['input']"
             raise ModelContractError(
-                f"Required field '{field_name}' is missing from payload['input']"
+                f"Required field '{field_name}' is missing from {location}"
             )
         
         # Validate type

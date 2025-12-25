@@ -1,5 +1,5 @@
 {
-  "version": "1.2.1-SCHEMA-RESTORED",
+  "version": "1.2.5-OPTIONAL-FIELDS",
   "updated_at": "2025-12-25 02:50:00",
   "models": {
     "bytedance/seedream": {
@@ -344,9 +344,9 @@
         "curl --request POST \\\n  --url https://api.kie.ai/api/v1/jobs/createTask \\\n  --header 'Authorization: Bearer <token>' \\\n  --header 'Content-Type: application/json' \\\n  --data '\n{\n  \"model\": \"z-image\",\n  \"callBackUrl\": \"https://your-domain.com/api/callback\",\n  \"input\": {\n    \"prompt\": \"Generate a photorealistic image of a cafe terrace in the Marais district of Paris on a Wednesday morning in March 2025. It is a crisp, cool spring morning with clear skies. Locals are drinking coffee. In sharp focus"
       ],
       "pricing": {
-        "usd_per_gen": 0.004,
-        "rub_per_gen": 0.63,
-        "credits_per_gen": 0.8,
+        "usd_per_gen": 0,
+        "rub_per_gen": 0,
+        "credits_per_gen": 0,
         "is_free": true,
         "source": "screenshot_user_provided"
       },
@@ -368,7 +368,8 @@
         "picture",
         "изображение",
         "картинка",
-        "фото"
+        "фото",
+        "FREE"
       ],
       "ui_example_prompts": [
         "Generate a photorealistic image of a cafe terrace in the Marais district of P...",
@@ -2216,10 +2217,11 @@
       },
       "examples": [],
       "pricing": {
-        "usd_per_gen": 0.004,
-        "rub_per_gen": 0.63,
-        "credits_per_gen": 0.8,
-        "source": "pricing_table_corrected"
+        "usd_per_gen": 0,
+        "rub_per_gen": 0,
+        "credits_per_gen": 0,
+        "source": "pricing_table_corrected",
+        "is_free": true
       },
       "_metadata": {
         "source": "copy_page",
@@ -2241,7 +2243,8 @@
         "text to image",
         "изображение",
         "картинка",
-        "фото"
+        "фото",
+        "FREE"
       ],
       "ui_example_prompts": [
         "A futuristic cityscape at sunset with flying cars and neon lights"
@@ -2323,10 +2326,11 @@
       },
       "examples": [],
       "pricing": {
-        "usd_per_gen": 0.004,
-        "rub_per_gen": 0.63,
-        "credits_per_gen": 0.8,
-        "source": "pricing_table_corrected"
+        "usd_per_gen": 0,
+        "rub_per_gen": 0,
+        "credits_per_gen": 0,
+        "source": "pricing_table_corrected",
+        "is_free": true
       },
       "_metadata": {
         "source": "copy_page",
@@ -2348,7 +2352,8 @@
         "qwen",
         "изображение",
         "картинка",
-        "фото"
+        "фото",
+        "FREE"
       ],
       "ui_example_prompts": [
         "Transform this image into a watercolor painting style"
@@ -2434,10 +2439,11 @@
       },
       "examples": [],
       "pricing": {
-        "usd_per_gen": 0.004,
-        "rub_per_gen": 0.63,
-        "credits_per_gen": 0.8,
-        "source": "pricing_table_corrected"
+        "usd_per_gen": 0,
+        "rub_per_gen": 0,
+        "credits_per_gen": 0,
+        "source": "pricing_table_corrected",
+        "is_free": true
       },
       "_metadata": {
         "source": "copy_page",
@@ -2459,7 +2465,8 @@
         "qwen",
         "изображение",
         "картинка",
-        "фото"
+        "фото",
+        "FREE"
       ],
       "ui_example_prompts": [
         "Add colorful flowers in the foreground"
@@ -6642,7 +6649,7 @@
         },
         "imageUrls": {
           "type": "list",
-          "required": true,
+          "required": false,
           "examples": [
             [
               "http://example.com/image1.jpg",
@@ -6660,7 +6667,8 @@
               "http://example.com/image1.jpg",
               "http://example.com/image2.jpg"
             ]
-          ]
+          ],
+          "default": []
         },
         "model": {
           "type": "str",
@@ -6797,7 +6805,8 @@
             true,
             true,
             true
-          ]
+          ],
+          "default": false
         },
         "instrumental": {
           "type": "bool",
@@ -6946,5 +6955,6 @@
         "озвучка"
       ]
     }
-  }
+  },
+  "last_updated": "2025-12-25T03:18:00Z"
 }

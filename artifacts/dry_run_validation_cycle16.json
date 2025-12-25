@@ -1,0 +1,249 @@
+{
+  "test_type": "dry_run_payload_build",
+  "credits_spent": 0,
+  "total_models": 72,
+  "success_count": 18,
+  "failed_count": 54,
+  "success_rate": 25.0,
+  "results": {
+    "success": [
+      "grok-imagine/upscale",
+      "topaz/image-upscale",
+      "recraft/remove-background",
+      "recraft/crisp-upscale",
+      "ideogram/v3-reframe",
+      "qwen/text-to-image",
+      "qwen/image-to-image",
+      "qwen/image-edit",
+      "kling-2.6/text-to-video",
+      "kling-2.6/image-to-video",
+      "sora-watermark-remover",
+      "sora-2-pro-storyboard/index",
+      "wan/2-2-animate-move",
+      "wan/2-2-animate-replace",
+      "topaz/video-upscale",
+      "elevenlabs/text-to-speech-turbo-2-5",
+      "elevenlabs/speech-to-text",
+      "elevenlabs/audio-isolation"
+    ],
+    "failed": [
+      {
+        "model": "bytedance/seedream",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "bytedance/seedream-v4-text-to-image",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "bytedance/seedream-v4-edit",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "z-image",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "google/imagen4-fast",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "google/imagen4-ultra",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "google/imagen4",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "google/nano-banana-edit",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "google/nano-banana",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "nano-banana-pro",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "flux-2/pro-image-to-image",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "flux-2/pro-text-to-image",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "flux-2/flex-image-to-image",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "flux-2/flex-text-to-image",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "grok-imagine/text-to-image",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "ideogram/character-edit",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "ideogram/character-remix",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "ideogram/character",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "grok-imagine/text-to-video",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "grok-imagine/image-to-video",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "kling/ai-avatar-v1-pro",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "kling/v1-avatar-standard",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "kling/v2-1-master-image-to-video",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "kling/v2-1-master-text-to-video",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "kling/v2-1-pro",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "kling/v2-1-standard",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "bytedance/v1-pro-fast-image-to-video",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "bytedance/v1-pro-image-to-video",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "bytedance/v1-pro-text-to-video",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "bytedance/v1-lite-image-to-video",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "bytedance/v1-lite-text-to-video",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "hailuo/2-3-image-to-video-pro",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "hailuo/2-3-image-to-video-standard",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "hailuo/02-text-to-video-pro",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "hailuo/02-text-to-video-standard",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "hailuo/02-image-to-video-pro",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "hailuo/02-image-to-video-standard",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "sora-2-image-to-video",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "sora-2-text-to-video",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "sora-2-pro-image-to-video",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "sora-2-pro-text-to-video",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "sora-2-characters",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "wan/2-6-image-to-video",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "wan/2-6-text-to-video",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "wan/2-6-video-to-video",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "wan/2-2-a14b-image-to-video-turbo",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "wan/2-2-a14b-text-to-video-turbo",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "wan/2-2-a14b-speech-to-video-turbo",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "infinitalk/from-audio",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "elevenlabs/sound-effect-v2",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "kling/v2-5-turbo-image-to-video-pro",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "kling/v2-5-turbo-text-to-video-pro",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "veo3_fast",
+        "error": "'str' object has no attribute 'get'"
+      },
+      {
+        "model": "V4",
+        "error": "'str' object has no attribute 'get'"
+      }
+    ],
+    "total": 72
+  }
+}

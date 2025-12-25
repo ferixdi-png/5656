@@ -51,14 +51,21 @@ def dry_run_all_models():
             payload = build_payload(model_id, user_inputs)
             
             # Проверка структуры
-            if 'model' in payload and 'input' in payload:
+            # WRAPPED format: {model: ..., input: {...}}
+            # DIRECT format: {model: ..., prompt: ..., ...} (veo3_fast, V4)
+            has_model = 'model' in payload
+            is_wrapped = 'input' in payload and isinstance(payload['input'], dict)
+            is_direct = 'model' in payload and 'prompt' in payload and 'input' not in payload
+            
+            if has_model and (is_wrapped or is_direct):
+                format_type = "WRAPPED" if is_wrapped else "DIRECT"
                 print(f'✅')
                 results['success'].append(model_id)
             else:
-                print(f'⚠️  странная структура')
+                print(f'⚠️  странная структура: {list(payload.keys())[:5]}')
                 results['failed'].append({
                     'model': model_id,
-                    'error': 'Invalid payload structure'
+                    'error': f'Invalid payload structure: {list(payload.keys())}'
                 })
                 
         except Exception as e:
