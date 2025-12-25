@@ -1,6 +1,6 @@
 {
-  "version": "1.2.8-USE-CASES",
-  "updated_at": "2025-12-25 04:00:00",
+  "version": "1.2.9-DESCRIPTIONS",
+  "updated_at": "2025-12-25 09:00:00",
   "models": {
     "bytedance/seedream": {
       "endpoint": "/api/v1/jobs/createTask",
@@ -77,7 +77,7 @@
       "category": "image",
       "slug": "market/seedream/seedream",
       "display_name": "Seedream3.0 - Text to Image",
-      "description": "Создание и редактирование изображений с помощью Seedream3.0 - Text to Image",
+      "description": "Seedream 3.0 - передовая модель ByteDance для фотореалистичных изображений. Отлично для рекламы и соцсетей",
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/seedream/seedream",
       "old_registry_id": "seedream/seedream",
@@ -171,7 +171,7 @@
       "category": "image",
       "slug": "market/seedream/seedream-v4-text-to-image",
       "display_name": "Seedream4.0 - Text to Image",
-      "description": "Создание и редактирование изображений с помощью Seedream4.0 - Text to Image",
+      "description": "Seedream 4.0 - новейшая версия с улучшенным пониманием текста. Идеально для сложных композиций",
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/seedream/seedream-v4-text-to-image",
       "old_registry_id": "seedream/seedream-v4-text-to-image",
@@ -277,7 +277,7 @@
       "category": "image",
       "slug": "market/seedream/seedream-v4-edit",
       "display_name": "Seedream4.0 - Edit",
-      "description": "Создание и редактирование изображений с помощью Seedream4.0 - Edit",
+      "description": "Профессиональное редактирование изображений с Seedream 4.0. Точные правки, сохранение стиля",
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/seedream/seedream-v4-edit",
       "old_registry_id": "seedream/seedream-v4-edit",
@@ -363,7 +363,7 @@
       "category": "image",
       "slug": "market/z-image/z-image",
       "display_name": "z-image",
-      "description": "Создание и редактирование изображений с помощью z-image",
+      "description": "Бесплатная модель для создания изображений. Отлично для тестов и простых задач без затрат",
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/z-image/z-image",
       "old_registry_id": "z-image/z-image",
@@ -456,7 +456,7 @@
       "category": "image",
       "slug": "market/google/imagen4-fast",
       "display_name": "Google - imagen4-fast",
-      "description": "Создание и редактирование изображений с помощью Google - imagen4-fast",
+      "description": "Быстрая генерация фотореалистичных изображений от Google. Высокая скорость, отличное качество для постов и баннеров",
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/google/imagen4-fast",
       "tags": [
@@ -549,7 +549,7 @@
       "category": "image",
       "slug": "market/google/imagen4-ultra",
       "display_name": "Google - imagen4-ultra",
-      "description": "Создание и редактирование изображений с помощью Google - imagen4-ultra",
+      "description": "Максимальное качество изображений от Google. Идеально для профессиональных проектов, печати, рекламы",
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/google/imagen4-ultra",
       "tags": [
@@ -646,7 +646,7 @@
       "category": "image",
       "slug": "market/google/imagen4",
       "display_name": "Google - imagen4",
-      "description": "Создание и редактирование изображений с помощью Google - imagen4",
+      "description": "Универсальная модель Google Imagen 4 для создания изображений по описанию. Баланс скорости и качества",
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/google/imagen4",
       "tags": [
@@ -747,12 +747,15 @@
       "category": "other",
       "slug": "market/google/nano-banana-edit",
       "display_name": "Google - Nano Banana Edit",
-      "description": "AI модель Google - Nano Banana Edit для генерации контента",
+      "description": "Редактирование изображений с помощью Google Nano Banana. Быстрые правки и стилизация",
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/google/nano-banana-edit",
       "tags": [
         "google",
-        "nano banana edit"
+        "nano banana",
+        "редактирование",
+        "правки",
+        "изображение"
       ],
       "ui_example_prompts": [
         "turn this photo into a character figure. Behind it, place a box with the char...",
@@ -832,12 +835,15 @@
       "category": "other",
       "slug": "market/google/nano-banana",
       "display_name": "Google - Nano Banana",
-      "description": "AI модель Google - Nano Banana для генерации контента",
+      "description": "Компактная модель от Google для быстрой генерации простых изображений",
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/google/nano-banana",
       "tags": [
         "google",
-        "nano banana"
+        "nano banana",
+        "быстро",
+        "картинка",
+        "простой"
       ],
       "ui_example_prompts": [
         "A surreal painting of a giant banana floating in space, stars and galaxies in...",
@@ -1402,7 +1408,7 @@
       "category": "image",
       "slug": "market/grok-imagine/text-to-image",
       "display_name": "Grok Imagine - Text to Image",
-      "description": "Создание и редактирование изображений с помощью Grok Imagine - Text to Image",
+      "description": "Grok Imagine - мощная модель от xAI для креативных изображений. Понимает сложные запросы",
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/grok-imagine/text-to-image",
       "tags": [
@@ -1495,7 +1501,12 @@
         "увеличение",
         "улучшение"
       ],
-      "use_case": "Улучшение качества для печати, больших экранов, профессионального использования"
+      "use_case": "Улучшение качества для печати, больших экранов, профессионального использования",
+      "ui_example_prompts": [
+        "Загрузите изображение → увеличьте разрешение до 4K",
+        "Улучшите качество старых фото",
+        "Подготовьте изображение для печати"
+      ]
     },
     "topaz/image-upscale": {
       "endpoint": "/api/v1/jobs/createTask",
@@ -1576,7 +1587,12 @@
         "качество",
         "увеличение"
       ],
-      "use_case": "Улучшение качества для печати, больших экранов, профессионального использования"
+      "use_case": "Улучшение качества для печати, больших экранов, профессионального использования",
+      "ui_example_prompts": [
+        "Профессиональный апскейл до 8K",
+        "Восстановление деталей на размытых фото",
+        "Подготовка к печати большого формата"
+      ]
     },
     "recraft/remove-background": {
       "endpoint": "/api/v1/jobs/createTask",
@@ -1643,9 +1659,18 @@
       "source_url": "https://docs.kie.ai/market/recraft/remove-background",
       "tags": [
         "recraft",
-        "remove background"
+        "remove background",
+        "фон",
+        "удаление",
+        "прозрачный",
+        "png"
       ],
-      "use_case": "Улучшение качества для печати, больших экранов, профессионального использования"
+      "use_case": "Улучшение качества для печати, больших экранов, профессионального использования",
+      "ui_example_prompts": [
+        "Загрузите фото товара → получите PNG без фона",
+        "Подготовка фото для каталога",
+        "Создание прозрачных изображений"
+      ]
     },
     "recraft/crisp-upscale": {
       "endpoint": "/api/v1/jobs/createTask",
@@ -1722,7 +1747,12 @@
         "увеличение",
         "улучшение"
       ],
-      "use_case": "Улучшение качества для печати, больших экранов, профессионального использования"
+      "use_case": "Улучшение качества для печати, больших экранов, профессионального использования",
+      "ui_example_prompts": [
+        "Увеличение без потери четкости",
+        "Апскейл для баннеров и постеров",
+        "Улучшение качества для соцсетей"
+      ]
     },
     "ideogram/v3-reframe": {
       "endpoint": "/api/v1/jobs/createTask",
@@ -1804,14 +1834,22 @@
       "category": "other",
       "slug": "market/ideogram/v3-reframe",
       "display_name": "Ideogram - v3-reframe",
-      "description": "AI модель Ideogram - v3-reframe для генерации контента",
+      "description": "Изменение композиции и кадрирования изображений. Новые ракурсы и форматы",
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/ideogram/v3-reframe",
       "tags": [
         "ideogram",
-        "v3 reframe"
+        "v3 reframe",
+        "кадрирование",
+        "композиция",
+        "формат"
       ],
-      "use_case": "Универсальная AI модель для различных задач создания и обработки контента"
+      "use_case": "Универсальная AI модель для различных задач создания и обработки контента",
+      "ui_example_prompts": [
+        "Измените композицию: портрет → ландшафт",
+        "Новый кадрирование для Instagram",
+        "Адаптация под разные форматы"
+      ]
     },
     "ideogram/character-edit": {
       "endpoint": "/api/v1/jobs/createTask",
@@ -1917,7 +1955,10 @@
       "source_url": "https://docs.kie.ai/market/ideogram/character-edit",
       "tags": [
         "character edit",
-        "ideogram"
+        "ideogram",
+        "персонаж",
+        "редактирование",
+        "герой"
       ],
       "ui_example_prompts": [
         "A fabulous look head tilted down, looking forward with a smile\n",
@@ -2154,7 +2195,7 @@
       "category": "other",
       "slug": "market/ideogram/character",
       "display_name": "Ideogram - character",
-      "description": "AI модель Ideogram - character для генерации контента",
+      "description": "Генерация персонажей и героев. Детальная проработка лица, одежды, поз",
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/ideogram/character",
       "tags": [
@@ -2257,7 +2298,7 @@
       "category": "image",
       "slug": "market/qwen/text-to-image",
       "display_name": "Qwen - Text to Image",
-      "description": "Создание и редактирование изображений с помощью Qwen - Text to Image",
+      "description": "Бесплатная генерация изображений от Alibaba Qwen. Хорошее качество для соцсетей и блогов",
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/qwen/text-to-image",
       "tags": [
@@ -2367,7 +2408,7 @@
       "category": "image",
       "slug": "market/qwen/image-to-image",
       "display_name": "Qwen - Image to Image",
-      "description": "Создание и редактирование изображений с помощью Qwen - Image to Image",
+      "description": "Бесплатное редактирование и стилизация изображений. Изменение стиля, цветокоррекция",
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/qwen/image-to-image",
       "tags": [
@@ -2481,7 +2522,7 @@
       "category": "image",
       "slug": "market/qwen/image-edit",
       "display_name": "Qwen - image-edit",
-      "description": "Создание и редактирование изображений с помощью Qwen - image-edit",
+      "description": "Бесплатный редактор изображений Qwen. Точечные правки, удаление объектов, изменение деталей",
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/qwen/image-edit",
       "tags": [
@@ -2666,7 +2707,7 @@
       "category": "image",
       "slug": "market/grok-imagine/image-to-video",
       "display_name": "Grok Imagine - Image to Video",
-      "description": "Создание и редактирование изображений с помощью Grok Imagine - Image to Video",
+      "description": "Оживление статичных изображений в видео. Добавление движения и динамики",
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/grok-imagine/image-to-video",
       "tags": [
@@ -2949,18 +2990,18 @@
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/kling/ai-avatar-v1-pro",
       "tags": [
-        "ai avatar v1 pro",
-        "avatar",
-        "clip",
         "kling",
-        "movie",
-        "portrait",
+        "avatar",
         "аватар",
-        "видео",
-        "персонаж",
-        "ролик"
+        "анимация",
+        "персонаж"
       ],
-      "use_case": "Создание анимированных персонажей для видео, презентаций, маркетинга"
+      "use_case": "Создание анимированных персонажей для видео, презентаций, маркетинга",
+      "ui_example_prompts": [
+        "Создайте говорящий аватар из фото",
+        "Анимация лица с синхронизацией губ",
+        "Видео-презентер для озвучки"
+      ]
     },
     "kling/v1-avatar-standard": {
       "endpoint": "/api/v1/jobs/createTask",
@@ -3037,18 +3078,18 @@
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/kling/v1-avatar-standard",
       "tags": [
-        "avatar",
-        "clip",
         "kling",
-        "movie",
-        "portrait",
-        "v1 avatar standard",
+        "avatar",
         "аватар",
         "видео",
-        "персонаж",
-        "ролик"
+        "анимация"
       ],
-      "use_case": "Создание анимированных персонажей для видео, презентаций, маркетинга"
+      "use_case": "Создание анимированных персонажей для видео, презентаций, маркетинга",
+      "ui_example_prompts": [
+        "Простая анимация аватара",
+        "Говорящий персонаж для видео",
+        "Бюджетный вариант аватара"
+      ]
     },
     "kling/v2-1-master-image-to-video": {
       "endpoint": "/api/v1/jobs/createTask",
@@ -4030,7 +4071,7 @@
       "category": "video",
       "slug": "market/hailuo/2-3-image-to-video-pro",
       "display_name": "Hailuo 2.3 Pro - Image to Video",
-      "description": "Создание и редактирование изображений с помощью Hailuo 2.3 Pro - Image to Video",
+      "description": "Hailuo 2.3 Pro - премиум качество анимации изображений. Плавные движения, детали",
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/hailuo/2-3-image-to-video-pro",
       "tags": [
@@ -4123,7 +4164,7 @@
       "category": "video",
       "slug": "market/hailuo/2-3-image-to-video-standard",
       "display_name": "Hailuo 2.3 Standard - Image to Video",
-      "description": "Создание и редактирование изображений с помощью Hailuo 2.3 Standard - Image to Video",
+      "description": "Hailuo 2.3 Standard - доступная анимация изображений. Хорошее качество для соцсетей",
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/hailuo/2-3-image-to-video-standard",
       "tags": [
@@ -4834,7 +4875,12 @@
         "картинка",
         "фото"
       ],
-      "use_case": "Идеально для создания постов, баннеров, иллюстраций, концепт-артов, визуализации идей без навыков рисования"
+      "use_case": "Идеально для создания постов, баннеров, иллюстраций, концепт-артов, визуализации идей без навыков рисования",
+      "ui_example_prompts": [
+        "Оживите иллюстрацию в кинематографическое видео",
+        "Создайте динамичный клип из постера",
+        "Премиум анимация изображения"
+      ]
     },
     "sora-2-pro-text-to-video": {
       "endpoint": "/api/v1/jobs/createTask",
@@ -5015,7 +5061,12 @@
         "очистка",
         "водяной знак"
       ],
-      "use_case": "Улучшение качества для печати, больших экранов, профессионального использования"
+      "use_case": "Улучшение качества для печати, больших экранов, профессионального использования",
+      "ui_example_prompts": [
+        "Удалите водяной знак с изображения",
+        "Очистите фото от логотипов",
+        "Реставрация изображений"
+      ]
     },
     "sora-2-pro-storyboard/index": {
       "endpoint": "/api/v1/jobs/createTask",
@@ -5101,10 +5152,18 @@
       "method": "POST",
       "source_url": "https://docs.kie.ai/market/sora-2-pro-storyboard/index",
       "tags": [
-        "index",
-        "sora-2-pro-storyboard"
+        "sora",
+        "storyboard",
+        "сценарий",
+        "раскадровка",
+        "видео"
       ],
-      "use_case": "Универсальная AI модель для различных задач создания и обработки контента"
+      "use_case": "Универсальная AI модель для различных задач создания и обработки контента",
+      "ui_example_prompts": [
+        "Создайте раскадровку для видео",
+        "Сценарий в визуальный план",
+        "Профессиональный сториборд"
+      ]
     },
     "sora-2-characters": {
       "endpoint": "/api/v1/jobs/createTask",
