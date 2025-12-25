@@ -29,108 +29,82 @@ def test_recraft_upscale():
     # Note: Don't actually run - need real image URL
 
 def test_qwen_z_image():
-    """Test Qwen Z-Image - 0.57₽"""
+    """Test z-image - FREE (0₽)"""
     print("\n" + "="*80)
-    print("🧪 TEST: Qwen Z-Image (0.57₽)")
+    print("🧪 TEST: z-image (FREE)")
     print("="*80)
     
-    payload = build_payload("qwen/z-image", {
+    payload = build_payload("z-image", {
         "prompt": "A cute cat sitting on a windowsill"
     })
     
     print(f"📦 Payload: {payload}")
-    print("💰 Cost: 0.57₽")
+    print("💰 Cost: FREE")
 
 def test_recraft_remove_bg():
-    """Test Recraft Remove Background - 0.71₽"""
+    """Test Recraft Remove Background - 0.4₽"""
     print("\n" + "="*80)
-    print("🧪 TEST: Recraft Remove Background (0.71₽)")
+    print("🧪 TEST: Recraft Remove Background (0.4₽)")
     print("="*80)
     
     payload = build_payload("recraft/remove-background", {
-        "image": "https://example.com/test.jpg"
+        "image_url": "https://example.com/test.jpg"
     })
     
     print(f"📦 Payload: {payload}")
-    print("💰 Cost: 0.71₽")
+    print("💰 Cost: 0.4₽")
 
-def test_midjourney_fast():
-    """Test Midjourney Fast - 2.14₽"""
+def test_bytedance_seedream():
+    """Test Bytedance Seedream - 1.38₽"""
     print("\n" + "="*80)
-    print("🧪 TEST: Midjourney Text-to-Image Fast (2.14₽)")
+    print("🧪 TEST: Bytedance Seedream (1.38₽)")
     print("="*80)
     
-    payload = build_payload("midjourney/text-to-image", {
+    payload = build_payload("bytedance/seedream", {
         "prompt": "A magical forest with glowing mushrooms"
     })
     
     print(f"📦 Payload: {payload}")
-    print("💰 Cost: 2.14₽")
+    print("💰 Cost: 1.38₽")
 
-def test_ideogram_v3():
-    """Test Ideogram V3 - 2.49₽"""
+def test_qwen_text_to_image():
+    """Test Qwen Text-to-Image - FREE"""
     print("\n" + "="*80)
-    print("🧪 TEST: Ideogram V3 (2.49₽)")
+    print("🧪 TEST: Qwen Text-to-Image (FREE)")
     print("="*80)
     
-    payload = build_payload("ideogram/v3", {
+    payload = build_payload("qwen/text-to-image", {
         "prompt": "Modern minimalist logo for AI company"
     })
     
     print(f"📦 Payload: {payload}")
-    print("💰 Cost: 2.49₽")
+    print("💰 Cost: FREE")
 
-def test_grok_text_to_image():
-    """Test Grok Imagine Text-to-Image - 2.85₽"""
+def test_elevenlabs_audio_isolation():
+    """Test ElevenLabs Audio Isolation - 0.08₽"""
     print("\n" + "="*80)
-    print("🧪 TEST: Grok Imagine Text-to-Image (2.85₽)")
+    print("🧪 TEST: ElevenLabs Audio Isolation (0.08₽)")
     print("="*80)
     
-    payload = build_payload("grok-imagine/text-to-image", {
-        "prompt": "A futuristic city at sunset"
+    payload = build_payload("elevenlabs/audio-isolation", {
+        "audio_url": "https://example.com/audio.mp3"
     })
     
     print(f"📦 Payload: {payload}")
-    print("💰 Cost: 2.85₽")
+    print("💰 Cost: 0.08₽")
 
-def test_nano_banana():
-    """Test Nano Banana - 2.85₽"""
+def test_recraft_crisp_upscale():
+    """Test Recraft Crisp Upscale - 0.2₽"""
     print("\n" + "="*80)
-    print("🧪 TEST: Nano Banana (2.85₽)")
+    print("🧪 TEST: Recraft Crisp Upscale (0.2₽)")
     print("="*80)
     
-    payload = build_payload("nano-banana", {
-        "prompt": "A beautiful landscape with mountains"
+    payload = build_payload("recraft/crisp-upscale", {
+        "image_url": "https://example.com/test.jpg"
     })
     
     print(f"📦 Payload: {payload}")
-    print("💰 Cost: 2.85₽")
-
-def test_flux_pro():
-    """Test Flux 2 Pro - 3.56₽"""
-    print("\n" + "="*80)
-    print("🧪 TEST: Flux 2 Pro (3.56₽)")
-    print("="*80)
-    
-    payload = build_payload("flux/2-pro-text-to-image", {
-        "prompt": "Photorealistic portrait of a wise old wizard"
-    })
-    
-    print(f"📦 Payload: {payload}")
-    print("💰 Cost: 3.56₽")
-
-def test_seedream_4():
-    """Test Seedream 4.0 - 3.56₽"""
-    print("\n" + "="*80)
-    print("🧪 TEST: Seedream 4.0 (3.56₽)")
-    print("="*80)
-    
-    payload = build_payload("seedream/4.0-text-to-image", {
-        "prompt": "Anime style character portrait"
-    })
-    
-    print(f"📦 Payload: {payload}")
-    print("💰 Cost: 3.56₽")
+    print("💰 Cost: 0.2₽")
 
 def main():
     """Run all tests"""

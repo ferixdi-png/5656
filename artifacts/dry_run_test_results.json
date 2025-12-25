@@ -1,1145 +1,298 @@
 {
-  "total_models": 72,
-  "success_count": 72,
-  "failed_count": 0,
-  "results": [
-    {
-      "model_id": "bytedance/seedream",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_size",
-        "guidance_scale",
-        "enable_safety_checker"
-      ]
-    },
-    {
-      "model_id": "bytedance/seedream-v4-text-to-image",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_size",
-        "image_resolution",
-        "max_images"
-      ]
-    },
-    {
-      "model_id": "bytedance/seedream-v4-edit",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_urls",
-        "image_size",
-        "image_resolution",
-        "max_images"
-      ]
-    },
-    {
-      "model_id": "z-image",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "aspect_ratio"
-      ]
-    },
-    {
-      "model_id": "google/imagen4-fast",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "negative_prompt",
-        "aspect_ratio",
-        "num_images"
-      ]
-    },
-    {
-      "model_id": "google/imagen4-ultra",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "negative_prompt",
-        "aspect_ratio",
-        "seed"
-      ]
-    },
-    {
-      "model_id": "google/imagen4",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "negative_prompt",
-        "aspect_ratio",
-        "num_images",
-        "seed"
-      ]
-    },
-    {
-      "model_id": "google/nano-banana-edit",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_urls",
-        "output_format",
-        "image_size"
-      ]
-    },
-    {
-      "model_id": "google/nano-banana",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "output_format",
-        "image_size"
-      ]
-    },
-    {
-      "model_id": "nano-banana-pro",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_input",
-        "aspect_ratio",
-        "resolution",
-        "output_format"
-      ]
-    },
-    {
-      "model_id": "flux-2/pro-image-to-image",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "input_urls",
-        "aspect_ratio",
-        "resolution"
-      ]
-    },
-    {
-      "model_id": "flux-2/pro-text-to-image",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "aspect_ratio",
-        "resolution"
-      ]
-    },
-    {
-      "model_id": "flux-2/flex-image-to-image",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "input_urls",
-        "aspect_ratio",
-        "resolution"
-      ]
-    },
-    {
-      "model_id": "flux-2/flex-text-to-image",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "aspect_ratio",
-        "resolution"
-      ]
-    },
-    {
-      "model_id": "grok-imagine/text-to-image",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "aspect_ratio"
-      ]
-    },
-    {
-      "model_id": "grok-imagine/upscale",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "task_id"
-      ]
-    },
-    {
-      "model_id": "topaz/image-upscale",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "image_url",
-        "upscale_factor"
-      ]
-    },
-    {
-      "model_id": "recraft/remove-background",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "image"
-      ]
-    },
-    {
-      "model_id": "recraft/crisp-upscale",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "image"
-      ]
-    },
-    {
-      "model_id": "ideogram/v3-reframe",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "image_url",
-        "image_size",
-        "rendering_speed",
-        "style",
-        "num_images",
-        "seed"
-      ]
-    },
-    {
-      "model_id": "ideogram/character-edit",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "mask_url",
-        "reference_image_urls",
-        "rendering_speed",
-        "style",
-        "expand_prompt",
-        "num_images"
-      ]
-    },
-    {
-      "model_id": "ideogram/character-remix",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "reference_image_urls",
-        "rendering_speed",
-        "style",
-        "expand_prompt",
-        "image_size",
-        "num_images",
-        "strength",
-        "negative_prompt",
-        "image_urls",
-        "reference_mask_urls"
-      ]
-    },
-    {
-      "model_id": "ideogram/character",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "reference_image_urls",
-        "rendering_speed",
-        "style",
-        "expand_prompt",
-        "num_images",
-        "image_size",
-        "negative_prompt"
-      ]
-    },
-    {
-      "model_id": "qwen/text-to-image",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_size",
-        "num_inference_steps",
-        "guidance_scale",
-        "enable_safety_checker",
-        "output_format",
-        "negative_prompt",
-        "acceleration"
-      ]
-    },
-    {
-      "model_id": "qwen/image-to-image",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "strength",
-        "output_format",
-        "acceleration",
-        "negative_prompt",
-        "num_inference_steps",
-        "guidance_scale",
-        "enable_safety_checker"
-      ]
-    },
-    {
-      "model_id": "qwen/image-edit",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "acceleration",
-        "image_size",
-        "num_inference_steps",
-        "guidance_scale",
-        "sync_mode",
-        "enable_safety_checker",
-        "output_format",
-        "negative_prompt"
-      ]
-    },
-    {
-      "model_id": "grok-imagine/text-to-video",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "aspect_ratio",
-        "mode"
-      ]
-    },
-    {
-      "model_id": "grok-imagine/image-to-video",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_urls",
-        "mode"
-      ]
-    },
-    {
-      "model_id": "kling-2.6/text-to-video",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "sound",
-        "aspect_ratio",
-        "duration"
-      ]
-    },
-    {
-      "model_id": "kling-2.6/image-to-video",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_urls",
-        "sound",
-        "duration"
-      ]
-    },
-    {
-      "model_id": "kling/ai-avatar-v1-pro",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "audio_url"
-      ]
-    },
-    {
-      "model_id": "kling/v1-avatar-standard",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "audio_url"
-      ]
-    },
-    {
-      "model_id": "kling/v2-1-master-image-to-video",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "duration",
-        "negative_prompt",
-        "cfg_scale"
-      ]
-    },
-    {
-      "model_id": "kling/v2-1-master-text-to-video",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "duration",
-        "aspect_ratio",
-        "negative_prompt",
-        "cfg_scale"
-      ]
-    },
-    {
-      "model_id": "kling/v2-1-pro",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "duration",
-        "negative_prompt",
-        "cfg_scale",
-        "tail_image_url"
-      ]
-    },
-    {
-      "model_id": "kling/v2-1-standard",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "duration",
-        "negative_prompt",
-        "cfg_scale"
-      ]
-    },
-    {
-      "model_id": "bytedance/v1-pro-fast-image-to-video",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "resolution",
-        "duration"
-      ]
-    },
-    {
-      "model_id": "bytedance/v1-pro-image-to-video",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "resolution",
-        "duration",
-        "camera_fixed",
-        "seed",
-        "enable_safety_checker"
-      ]
-    },
-    {
-      "model_id": "bytedance/v1-pro-text-to-video",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "aspect_ratio",
-        "resolution",
-        "duration",
-        "camera_fixed",
-        "seed",
-        "enable_safety_checker"
-      ]
-    },
-    {
-      "model_id": "bytedance/v1-lite-image-to-video",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "resolution",
-        "duration",
-        "camera_fixed",
-        "seed",
-        "enable_safety_checker",
-        "end_image_url"
-      ]
-    },
-    {
-      "model_id": "bytedance/v1-lite-text-to-video",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "aspect_ratio",
-        "resolution",
-        "duration",
-        "camera_fixed",
-        "enable_safety_checker"
-      ]
-    },
-    {
-      "model_id": "hailuo/2-3-image-to-video-pro",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "duration",
-        "resolution"
-      ]
-    },
-    {
-      "model_id": "hailuo/2-3-image-to-video-standard",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "duration",
-        "resolution"
-      ]
-    },
-    {
-      "model_id": "hailuo/02-text-to-video-pro",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "prompt_optimizer"
-      ]
-    },
-    {
-      "model_id": "hailuo/02-text-to-video-standard",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "duration",
-        "prompt_optimizer"
-      ]
-    },
-    {
-      "model_id": "hailuo/02-image-to-video-pro",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "end_image_url",
-        "prompt_optimizer"
-      ]
-    },
-    {
-      "model_id": "hailuo/02-image-to-video-standard",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "end_image_url",
-        "duration",
-        "resolution",
-        "prompt_optimizer"
-      ]
-    },
-    {
-      "model_id": "sora-2-image-to-video",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_urls",
-        "aspect_ratio",
-        "n_frames",
-        "remove_watermark",
-        "character_id_list"
-      ]
-    },
-    {
-      "model_id": "sora-2-text-to-video",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "aspect_ratio",
-        "n_frames",
-        "remove_watermark",
-        "character_id_list"
-      ]
-    },
-    {
-      "model_id": "sora-2-pro-image-to-video",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_urls",
-        "aspect_ratio",
-        "n_frames",
-        "size",
-        "remove_watermark",
-        "character_id_list"
-      ]
-    },
-    {
-      "model_id": "sora-2-pro-text-to-video",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "aspect_ratio",
-        "n_frames",
-        "size",
-        "remove_watermark",
-        "character_id_list"
-      ]
-    },
-    {
-      "model_id": "sora-watermark-remover",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "video_url"
-      ]
-    },
-    {
-      "model_id": "sora-2-pro-storyboard/index",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "n_frames",
-        "image_urls",
-        "aspect_ratio",
-        "shots"
-      ]
-    },
-    {
-      "model_id": "sora-2-characters",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "character_file_url",
-        "character_prompt",
-        "safety_instruction"
-      ]
-    },
-    {
-      "model_id": "wan/2-6-image-to-video",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_urls",
-        "duration",
-        "resolution"
-      ]
-    },
-    {
-      "model_id": "wan/2-6-text-to-video",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "duration",
-        "resolution"
-      ]
-    },
-    {
-      "model_id": "wan/2-6-video-to-video",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "video_urls",
-        "duration",
-        "resolution"
-      ]
-    },
-    {
-      "model_id": "wan/2-2-a14b-image-to-video-turbo",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "resolution",
-        "aspect_ratio",
-        "enable_prompt_expansion",
-        "seed",
-        "acceleration"
-      ]
-    },
-    {
-      "model_id": "wan/2-2-a14b-text-to-video-turbo",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "resolution",
-        "aspect_ratio",
-        "enable_prompt_expansion",
-        "seed",
-        "acceleration"
-      ]
-    },
-    {
-      "model_id": "wan/2-2-animate-move",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "video_url",
-        "image_url",
-        "resolution"
-      ]
-    },
-    {
-      "model_id": "wan/2-2-animate-replace",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "video_url",
-        "image_url",
-        "resolution"
-      ]
-    },
-    {
-      "model_id": "wan/2-2-a14b-speech-to-video-turbo",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "audio_url",
-        "num_frames",
-        "frames_per_second",
-        "resolution",
-        "negative_prompt",
-        "num_inference_steps",
-        "guidance_scale",
-        "shift",
-        "enable_safety_checker"
-      ]
-    },
-    {
-      "model_id": "topaz/video-upscale",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "video_url",
-        "upscale_factor"
-      ]
-    },
-    {
-      "model_id": "infinitalk/from-audio",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "audio_url",
-        "resolution"
-      ]
-    },
-    {
-      "model_id": "elevenlabs/text-to-speech-turbo-2-5",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "text",
-        "voice",
-        "stability",
-        "similarity_boost",
-        "style",
-        "speed",
-        "timestamps",
-        "previous_text",
-        "next_text",
-        "language_code"
-      ]
-    },
-    {
-      "model_id": "elevenlabs/speech-to-text",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "audio_url",
-        "language_code",
-        "tag_audio_events",
-        "diarize"
-      ]
-    },
-    {
-      "model_id": "elevenlabs/sound-effect-v2",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "text",
-        "loop",
-        "prompt_influence",
-        "output_format"
-      ]
-    },
-    {
-      "model_id": "elevenlabs/audio-isolation",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "audio_url"
-      ]
-    },
-    {
-      "model_id": "kling/v2-5-turbo-image-to-video-pro",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "image_url",
-        "tail_image_url",
-        "duration",
-        "negative_prompt",
-        "cfg_scale"
-      ]
-    },
-    {
-      "model_id": "kling/v2-5-turbo-text-to-video-pro",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "duration",
-        "aspect_ratio",
-        "negative_prompt",
-        "cfg_scale"
-      ]
-    },
-    {
-      "model_id": "veo3_fast",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "imageUrls",
-        "watermark",
-        "aspectRatio",
-        "seeds",
-        "enableFallback",
-        "enableTranslation",
-        "generationType"
-      ]
-    },
-    {
-      "model_id": "V4",
-      "success": true,
-      "error": null,
-      "payload_keys": [
-        "model",
-        "input"
-      ],
-      "input_keys": [
-        "prompt",
-        "customMode",
-        "instrumental",
-        "style",
-        "title",
-        "negativeTags",
-        "vocalGender",
-        "styleWeight",
-        "weirdnessConstraint",
-        "audioWeight",
-        "personaId"
-      ]
+  "total": 72,
+  "success": 0,
+  "failed": 72,
+  "warnings": 0,
+  "success_models": [],
+  "failed_details": [
+    {
+      "model": "bytedance/seedream",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "bytedance/seedream-v4-text-to-image",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "bytedance/seedream-v4-edit",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "z-image",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "google/imagen4-fast",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "google/imagen4-ultra",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "google/imagen4",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "google/nano-banana-edit",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "google/nano-banana",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "nano-banana-pro",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "flux-2/pro-image-to-image",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "flux-2/pro-text-to-image",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "flux-2/flex-image-to-image",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "flux-2/flex-text-to-image",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "grok-imagine/text-to-image",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "grok-imagine/upscale",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "topaz/image-upscale",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "recraft/remove-background",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "recraft/crisp-upscale",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "ideogram/v3-reframe",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "ideogram/character-edit",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "ideogram/character-remix",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "ideogram/character",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "qwen/text-to-image",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "qwen/image-to-image",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "qwen/image-edit",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "grok-imagine/text-to-video",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "grok-imagine/image-to-video",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "kling-2.6/text-to-video",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "kling-2.6/image-to-video",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "kling/ai-avatar-v1-pro",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "kling/v1-avatar-standard",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "kling/v2-1-master-image-to-video",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "kling/v2-1-master-text-to-video",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "kling/v2-1-pro",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "kling/v2-1-standard",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "bytedance/v1-pro-fast-image-to-video",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "bytedance/v1-pro-image-to-video",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "bytedance/v1-pro-text-to-video",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "bytedance/v1-lite-image-to-video",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "bytedance/v1-lite-text-to-video",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "hailuo/2-3-image-to-video-pro",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "hailuo/2-3-image-to-video-standard",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "hailuo/02-text-to-video-pro",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "hailuo/02-text-to-video-standard",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "hailuo/02-image-to-video-pro",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "hailuo/02-image-to-video-standard",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "sora-2-image-to-video",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "sora-2-text-to-video",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "sora-2-pro-image-to-video",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "sora-2-pro-text-to-video",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "sora-watermark-remover",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "sora-2-pro-storyboard/index",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "sora-2-characters",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "wan/2-6-image-to-video",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "wan/2-6-text-to-video",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "wan/2-6-video-to-video",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "wan/2-2-a14b-image-to-video-turbo",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "wan/2-2-a14b-text-to-video-turbo",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "wan/2-2-animate-move",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "wan/2-2-animate-replace",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "wan/2-2-a14b-speech-to-video-turbo",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "topaz/video-upscale",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "infinitalk/from-audio",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "elevenlabs/text-to-speech-turbo-2-5",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "elevenlabs/speech-to-text",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "elevenlabs/sound-effect-v2",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "elevenlabs/audio-isolation",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "kling/v2-5-turbo-image-to-video-pro",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "kling/v2-5-turbo-text-to-video-pro",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "veo3_fast",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
+    },
+    {
+      "model": "V4",
+      "error": "build_payload failed: build_payload() got an unexpected keyword argument 'prompt'"
     }
-  ]
+  ],
+  "warnings_details": []
 }

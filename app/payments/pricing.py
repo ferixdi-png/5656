@@ -27,11 +27,22 @@ logger = logging.getLogger(__name__)
 
 # ФИКСИРОВАННЫЙ курс (НЕ ИЗМЕНЯТЬ!)
 # Используется для всех расчётов, независимо от реального курса ЦБ
-USD_TO_RUB = 79.0
+USD_TO_RUB = 78.0
 
 # ФИКСИРОВАННЫЙ множитель наценки (НЕ ИЗМЕНЯТЬ!)
 # Цена пользователю = Цена Kie.ai × 2
 MARKUP_MULTIPLIER = 2.0
+
+# Fallback prices for models without pricing in SOURCE_OF_TRUTH (in USD)
+# These are converted to RUB using USD_TO_RUB when needed
+FALLBACK_PRICES_USD = {
+    "flux/pro": 12.0,
+    "flux/dev": 5.0,
+    "flux-2/pro-text-to-image": 15.0,
+    "flux-2/flex-text-to-image": 8.0,
+    "google/veo-3": 20.0,
+    "kling/v1-standard": 10.0,
+}
 
 
 def calculate_kie_cost(
@@ -96,7 +107,14 @@ def calculate_kie_cost(
             logger.warning(f"Invalid registry price for {model_id}: {registry_price_usd}")
             pass
     
-    # Priority 4: Default (in USD → convert to RUB)
+    # Priority 4: Fallback table (in USD → convert to RUB)
+    if model_id in FALLBACK_PRICES_USD:
+        price_usd = FALLBACK_PRICES_USD[model_id]
+        cost_rub = price_usd * USD_TO_RUB
+        logger.info(f"Using fallback price for {model_id}: ${price_usd} → {cost_rub} RUB")
+        return cost_rub
+    
+    # Priority 5: Default (in USD → convert to RUB)
     default_usd = 10.0
     cost_rub = default_usd * USD_TO_RUB
     logger.warning(f"No price info for {model_id}, using default ${default_usd} → {cost_rub} RUB")
