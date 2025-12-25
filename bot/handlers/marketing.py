@@ -237,13 +237,15 @@ def _build_models_keyboard(cat_key: str, models: list) -> InlineKeyboardMarkup:
         
         # Check if FREE from SOURCE_OF_TRUTH pricing
         pricing = model.get("pricing", {})
-        is_free = pricing.get("is_free", False)
+        rub_price = pricing.get("rub_per_gen", 0)
+        
+        # FREE if rub_per_gen == 0
+        is_free = (rub_price == 0)
         
         # Get price
         if is_free:
             button_text = f"🎁 {name} • БЕСПЛАТНО"
         else:
-            rub_price = pricing.get("rub_per_gen")
             if rub_price:
                 button_text = f"{name} • {rub_price:.2f}₽"
             else:
@@ -392,7 +394,10 @@ async def cb_model_details(callback: CallbackQuery, state: FSMContext):
     
     # Check if FREE from SOURCE_OF_TRUTH
     pricing = model.get("pricing", {})
-    is_free = pricing.get("is_free", False)
+    rub_price = pricing.get("rub_per_gen", 0)
+    
+    # FREE if rub_per_gen == 0
+    is_free = (rub_price == 0)
     
     name = model.get("display_name") or model.get("name") or model_id
     description = model.get("description", "AI генерация контента")
