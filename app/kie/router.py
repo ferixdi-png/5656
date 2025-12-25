@@ -114,7 +114,8 @@ def build_category_payload(
     required_fields = input_schema.get('required', [])
     
     # Build payload based on category
-    payload = {}
+    # CRITICAL: Always include model field for V4 API
+    payload = {'model': model_id}
     
     # Add required fields
     for field in required_fields:
@@ -197,7 +198,9 @@ def is_v4_model(model_id: str) -> bool:
     """Check if model exists in v4 source of truth."""
     try:
         source_v4 = load_v4_source_of_truth()
-        return any(m.get('model_id') == model_id for m in source_v4.get('models', []))
+        models = source_v4.get('models', {})
+        # models is dict, not list
+        return model_id in models
     except Exception as e:
         logger.error(f"Failed to check v4 model: {e}")
         return False
@@ -207,7 +210,9 @@ def get_all_v4_models() -> list:
     """Get list of all available v4 models."""
     try:
         source_v4 = load_v4_source_of_truth()
-        return source_v4.get('models', [])
+        models = source_v4.get('models', {})
+        # models is dict - return list of model objects
+        return list(models.values())
     except Exception as e:
         logger.error(f"Failed to load v4 models: {e}")
         return []
