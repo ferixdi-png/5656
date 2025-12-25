@@ -101,20 +101,16 @@ def test_free_model_e2e(model_id: str):
     print('🚀 Creating task in Kie.ai API...')
     try:
         client = KieApiClient(api_key=api_key)
+        
         # createTask is async, need to handle properly
         import asyncio
         
-        async def create_task():
+        async def create_task_async():
             return await client.create_task(payload)
         
-        # Run async function
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # If loop is already running, use different approach
-            import nest_asyncio
-            nest_asyncio.apply()
-        
-        result = asyncio.run(create_task())
+        # Use asyncio.run() which creates new event loop
+        # This is safe in synchronous script context
+        result = asyncio.run(create_task_async())
         
         print(f'✅ Task created!')
         print(f'   Response: {result}')

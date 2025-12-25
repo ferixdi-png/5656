@@ -8701,7 +8701,7 @@
       "pricing": {
         "usd_per_gen": 3.0,
         "rub_per_gen": 474.0,
-        "is_free": true,
+        "is_free": false,
         "source": "pricing_table_corrected"
       },
       "examples": [
@@ -9706,5 +9706,8 @@
       "slug": "flux-kontext-api/generate-image",
       "category": "image"
     }
-  ]
+  ],
+  "timestamp": "2025-12-25 00:21:53",
+  "last_parser_run": "2024-12-25",
+  "parser_version": "2.0.0"
 }
