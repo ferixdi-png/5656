@@ -310,12 +310,17 @@ async def cb_category_page(callback: CallbackQuery, state: FSMContext):
         return
     
     # Build keyboard with pagination
-    # Load FREE tier models from registry
+    # Load FREE tier models from SOURCE_OF_TRUTH
     import json
     try:
-        with open("models/kie_models_final_truth.json", 'r') as f:
-            registry = json.load(f)
-            free_tier_ids = set(registry.get('free_tier_models', []))
+        with open("models/KIE_SOURCE_OF_TRUTH.json", 'r') as f:
+            sot = json.load(f)
+            # FREE models are those with rub_per_gen == 0
+            free_tier_ids = set()
+            for mid, mdata in sot.get('models', {}).items():
+                pricing = mdata.get('pricing', {})
+                if pricing.get('rub_per_gen') == 0:
+                    free_tier_ids.add(mid)
     except Exception:
         free_tier_ids = set()
     
@@ -324,8 +329,8 @@ async def cb_category_page(callback: CallbackQuery, state: FSMContext):
         model_id = model.get("model_id", "")
         name = model.get("display_name") or model.get("name") or model_id
         
-        # Check if FREE
-        is_free = model_id in free_tier_ids or model.get("is_free_tier", False)
+        # Check if FREE (rub_per_gen == 0 from SOT)
+        is_free = model_id in free_tier_ids
         
         # Get price
         pricing = model.get("pricing", {})

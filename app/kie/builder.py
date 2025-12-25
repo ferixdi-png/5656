@@ -56,6 +56,28 @@ def get_model_schema(model_id: str, source_of_truth: Optional[Dict] = None) -> O
     return None
 
 
+def get_model_config(model_id: str, source_of_truth: Optional[Dict] = None) -> Optional[Dict[str, Any]]:
+    """
+    Get full model configuration including metadata, pricing, and schema.
+    
+    Returns complete model data for UI display:
+    - model_id, provider, category
+    - display_name, description
+    - pricing (rub_per_gen, usd_per_gen)
+    - input_schema or parameters
+    - endpoint, method
+    - examples, tags, ui_example_prompts
+    
+    Args:
+        model_id: Model identifier
+        source_of_truth: Optional pre-loaded source of truth
+        
+    Returns:
+        Full model configuration dict or None if not found
+    """
+    return get_model_schema(model_id, source_of_truth)
+
+
 def build_payload(
     model_id: str,
     user_inputs: Dict[str, Any],
