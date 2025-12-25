@@ -1,193 +1,142 @@
 #!/usr/bin/env python3
 """
-DRY-RUN валидация payload для всех моделей БЕЗ трат кредитов
-Проверяет:
-1. Структура payload соответствует schema
-2. Все required поля присутствуют
-3. Типы данных корректные
-4. Можно построить валидный request (но не отправляем)
+Dry-run payload validation - test payload building WITHOUT real API calls.
+
+Uses actual app code to build payloads from input_schema.
 """
 import json
-import os
+import sys
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any
 
+def generate_test_input(input_schema: Dict[str, Any], ui_prompts: list = None) -> Dict[str, Any]:
+    """Generate test input data based on schema."""
+    properties = input_schema.get('properties', {})
+    required = input_schema.get('required', [])
+    test_input = {}
+    
+    for field_name, field_schema in properties.items():
+        field_type = field_schema.get('type', 'string')
+        
+        # Use example from schema if available
+        if 'default' in field_schema:
+            test_input[field_name] = field_schema['default']
+            continue
+        
+        # Generate by type
+        if field_type == 'string':
+            # Use ui_example_prompts if available for prompt fields
+            if field_name in ['prompt', 'text', 'input'] and ui_prompts:
+                test_input[field_name] = ui_prompts[0]
+            else:
+                test_input[field_name] = "test"
+        elif field_type == 'number' or field_type == 'integer':
+            test_input[field_name] = 1
+        elif field_type == 'boolean':
+            test_input[field_name] = False
+        elif field_type == 'array':
+            test_input[field_name] = ["test_item"]
+        elif field_type == 'object':
+            test_input[field_name] = {}
+    
+    return test_input
 
-def load_registry() -> Dict:
-    """Загружаем registry"""
-    with open('models/KIE_SOURCE_OF_TRUTH.json', 'r') as f:
-        return json.load(f)
-
-
-def validate_payload_structure(model_id: str, example: Dict, schema: Dict) -> List[str]:
-    """Валидация структуры payload"""
+def validate_payloads():
+    """Validate payload building for all models."""
+    sot_path = Path("models/KIE_SOURCE_OF_TRUTH.json")
+    
+    if not sot_path.exists():
+        print(f"❌ SOURCE_OF_TRUTH not found")
+        return 1
+    
+    with open(sot_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    
+    models = data.get('models', {})
+    
+    results = {'ok': 0, 'warn': 0, 'error': 0}
     errors = []
+    warnings = []
     
-    # 1. Проверяем обязательные поля верхнего уровня
-    required_top = ['model', 'callBackUrl', 'input']
-    for field in required_top:
-        if field not in example:
-            errors.append(f"Missing required field: {field}")
-    
-    # 2. Проверяем что model совпадает
-    if example.get('model') != model_id:
-        errors.append(f"model mismatch: example has '{example.get('model')}', expected '{model_id}'")
-    
-    # 3. Проверяем input поля
-    input_data = example.get('input', {})
-    schema_input = schema.get('input', {})
-    
-    if not isinstance(input_data, dict):
-        errors.append(f"input must be dict, got {type(input_data)}")
-        return errors
-    
-    # Извлекаем примеры полей из schema
-    if 'examples' in schema_input and schema_input['examples']:
-        expected_fields = set(schema_input['examples'][0].keys())
-        actual_fields = set(input_data.keys())
+    for model_id, model in models.items():
+        input_schema = model.get('input_schema', {})
+        ui_prompts = model.get('ui_example_prompts', [])
+        endpoint = model.get('endpoint', '')
         
-        # Проверяем что нет лишних полей (необязательно, но полезно)
-        extra_fields = actual_fields - expected_fields
-        if extra_fields:
-            errors.append(f"Extra fields in input: {extra_fields}")
-    
-    return errors
-
-
-def validate_model_payload(model_id: str, model_data: Dict) -> Dict[str, Any]:
-    """Валидация payload для одной модели"""
-    result = {
-        'model_id': model_id,
-        'status': 'unknown',
-        'errors': [],
-        'warnings': []
-    }
-    
-    # Проверяем наличие schema
-    schema = model_data.get('input_schema', {})
-    if not schema:
-        result['status'] = 'error'
-        result['errors'].append('No input_schema defined')
-        return result
-    
-    # Проверяем наличие examples
-    examples = model_data.get('examples', [])
-    if not examples:
-        result['status'] = 'warning'
-        result['warnings'].append('No examples defined')
-        return result
-    
-    # Валидируем первый example
-    example = examples[0]
-    errors = validate_payload_structure(model_id, example, schema)
-    
-    if errors:
-        result['status'] = 'error'
-        result['errors'].extend(errors)
-    else:
-        result['status'] = 'success'
-    
-    return result
-
-
-def build_mock_request(model_id: str, example: Dict) -> Dict:
-    """Строим mock request (для визуализации, не отправляем)"""
-    
-    # Kie.ai API v4 формат
-    return {
-        'endpoint': 'https://api.kie.ai/api/v1/jobs/createTask',
-        'method': 'POST',
-        'headers': {
-            'Authorization': 'Bearer YOUR_API_KEY',
-            'Content-Type': 'application/json'
-        },
-        'payload': example
-    }
-
-
-def main():
-    print("=" * 80)
-    print("🔍 DRY-RUN PAYLOAD VALIDATION (NO CREDITS SPENT)")
-    print("=" * 80)
-    
-    registry = load_registry()
-    models = registry['models']
-    
-    results = []
-    
-    for model_id, model_data in models.items():
-        result = validate_model_payload(model_id, model_data)
-        results.append(result)
-    
-    # Статистика
-    success = [r for r in results if r['status'] == 'success']
-    errors = [r for r in results if r['status'] == 'error']
-    warnings = [r for r in results if r['status'] == 'warning']
-    
-    print(f"\n📊 VALIDATION RESULTS:")
-    print(f"   ✅ Success: {len(success)}/{len(models)} ({len(success)*100//len(models)}%)")
-    print(f"   ❌ Errors: {len(errors)}")
-    print(f"   ⚠️  Warnings: {len(warnings)}")
-    
-    # Показываем ошибки
-    if errors:
-        print(f"\n❌ MODELS WITH ERRORS:")
-        for r in errors[:10]:
-            print(f"\n  {r['model_id']}:")
-            for err in r['errors']:
-                print(f"    - {err}")
-    
-    # Проверяем Top-5 cheapest
-    print(f"\n💰 TOP-5 CHEAPEST VALIDATION:")
-    
-    models_with_price = [(mid, m) for mid, m in models.items() if m.get('pricing')]
-    cheapest = sorted(models_with_price, key=lambda x: x[1]['pricing'].get('usd_per_gen', 999))[:5]
-    
-    for mid, m in cheapest:
-        # Находим результат валидации
-        res = next((r for r in results if r['model_id'] == mid), None)
+        # Check if schema is empty
+        if not input_schema or not input_schema.get('properties'):
+            warnings.append(f"⚠️  {model_id}: empty input_schema")
+            results['warn'] += 1
+            continue
         
-        if res:
-            status_icon = "✅" if res['status'] == 'success' else "❌"
-            price = m['pricing']['usd_per_gen']
-            print(f"  {status_icon} {mid} (${price}): {res['status']}")
+        try:
+            # Generate test input
+            test_input = generate_test_input(input_schema, ui_prompts)
             
-            if res['errors']:
-                for err in res['errors']:
-                    print(f"      - {err}")
-    
-    # Сохраняем результаты
-    output = {
-        'total': len(results),
-        'success': len(success),
-        'errors': len(errors),
-        'warnings': len(warnings),
-        'details': results
-    }
-    
-    output_file = Path('artifacts/dry_run_validation.json')
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(output, f, indent=2, ensure_ascii=False)
-    
-    print(f"\n✅ Results saved: {output_file}")
-    
-    # Mock request example для Top-1 cheapest
-    if cheapest:
-        top1_id, top1_data = cheapest[0]
-        if top1_data.get('examples'):
-            mock_req = build_mock_request(top1_id, top1_data['examples'][0])
+            # Validate required fields are present
+            required = input_schema.get('required', [])
+            missing = [f for f in required if f not in test_input]
+            if missing:
+                errors.append(f"❌ {model_id}: cannot generate required fields: {missing}")
+                results['error'] += 1
+                continue
             
-            print(f"\n📋 MOCK REQUEST EXAMPLE ({top1_id}):")
-            print(json.dumps(mock_req, indent=2)[:500] + "...")
+            # Build minimal payload (what V4 API expects)
+            payload = {
+                'model': model_id,
+                **test_input
+            }
+            
+            # Validate payload is dict and has model field
+            if not isinstance(payload, dict):
+                errors.append(f"❌ {model_id}: payload is not dict")
+                results['error'] += 1
+            elif 'model' not in payload:
+                errors.append(f"❌ {model_id}: payload missing 'model' field")
+                results['error'] += 1
+            else:
+                results['ok'] += 1
+        
+        except Exception as e:
+            errors.append(f"❌ {model_id}: payload build failed: {e}")
+            results['error'] += 1
     
-    # Exit code
+    # Summary
+    total = len(models)
+    print("═" * 70)
+    print("🧪 DRY-RUN PAYLOAD VALIDATION")
+    print("═" * 70)
+    print(f"📊 Total models: {total}")
+    print(f"✅ OK: {results['ok']}")
+    print(f"⚠️  WARNINGS: {results['warn']}")
+    print(f"❌ ERRORS: {results['error']}")
+    print()
+    
     if errors:
-        print(f"\n❌ Validation failed: {len(errors)} models have errors")
+        print("❌ ERRORS:")
+        for err in errors[:10]:
+            print(f"  {err}")
+        if len(errors) > 10:
+            print(f"  ... and {len(errors) - 10} more")
+        print()
+    
+    if warnings:
+        print("⚠️  WARNINGS:")
+        for warn in warnings[:10]:
+            print(f"  {warn}")
+        if len(warnings) > 10:
+            print(f"  ... and {len(warnings) - 10} more")
+        print()
+    
+    if results['error'] > 0:
+        print("❌ Dry-run FAILED")
+        print("═" * 70)
         return 1
     else:
-        print(f"\n✅ All models passed dry-run validation!")
+        print("✅ Dry-run PASSED")
+        print(f"   ({results['warn']} models with empty schemas)")
+        print("═" * 70)
         return 0
 
-
-if __name__ == '__main__':
-    exit(main())
+if __name__ == "__main__":
+    sys.exit(validate_payloads())

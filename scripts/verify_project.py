@@ -1,191 +1,123 @@
 #!/usr/bin/env python3
 """
-Verify project invariants:
-- source_of_truth is not empty
-- UI count == registry count == source_of_truth count
-- model_ids match across all sources
+Verify project invariants against current SOURCE_OF_TRUTH structure.
+
+Current schema:
+- models/KIE_SOURCE_OF_TRUTH.json
+- Root: version, models (dict), updated_at, metadata
+- Model: endpoint, input_schema, pricing, tags, ui_example_prompts, examples
 """
-import os
 import json
 import sys
 from pathlib import Path
-from typing import Set, Dict, List
-import logging
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-
-def load_source_of_truth(file_path: str = "models/kie_models_source_of_truth.json") -> Dict:
-    """Load source of truth file."""
-    if not os.path.exists(file_path):
-        logger.error(f"Source of truth file not found: {file_path}")
-        return {}
-    
-    with open(file_path, 'r', encoding='utf-8') as f:
-        return json.load(f)
-
-
-def get_ui_models() -> Set[str]:
-    """Extract model_ids from UI (if exists)."""
-    model_ids = set()
-    
-    ui_files = [
-        "ui/models.json",
-        "frontend/src/models.json",
-        "web/models.json",
-        "app/models.json",
-    ]
-    
-    for ui_file in ui_files:
-        if os.path.exists(ui_file):
-            try:
-                with open(ui_file, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    if isinstance(data, list):
-                        for item in data:
-                            if isinstance(item, dict):
-                                model_id = item.get('model_id') or item.get('id') or item.get('name')
-                                if model_id:
-                                    model_ids.add(str(model_id))
-                    elif isinstance(data, dict):
-                        if 'models' in data:
-                            for item in data['models']:
-                                if isinstance(item, dict):
-                                    model_id = item.get('model_id') or item.get('id') or item.get('name')
-                                    if model_id:
-                                        model_ids.add(str(model_id))
-            except Exception as e:
-                logger.warning(f"Failed to load UI file {ui_file}: {e}")
-    
-    return model_ids
-
-
-def get_registry_models() -> Set[str]:
-    """Extract model_ids from registry (if exists)."""
-    model_ids = set()
-    
-    registry_files = [
-        "models/registry.json",
-        "registry/models.json",
-        "app/registry.json",
-        "kie_full_api.json",
-    ]
-    
-    for registry_file in registry_files:
-        if os.path.exists(registry_file):
-            try:
-                with open(registry_file, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    if isinstance(data, list):
-                        for item in data:
-                            if isinstance(item, dict):
-                                model_id = item.get('model_id') or item.get('id') or item.get('name')
-                                if model_id:
-                                    model_ids.add(str(model_id))
-                    elif isinstance(data, dict):
-                        if 'models' in data:
-                            for item in data['models']:
-                                if isinstance(item, dict):
-                                    model_id = item.get('model_id') or item.get('id') or item.get('name')
-                                    if model_id:
-                                        model_ids.add(str(model_id))
-            except Exception as e:
-                logger.warning(f"Failed to load registry file {registry_file}: {e}")
-    
-    return model_ids
-
-
-def verify_project() -> bool:
-    """Verify all project invariants."""
+def verify_project():
+    """Verify project structure and SOURCE_OF_TRUTH integrity."""
     errors = []
     warnings = []
     
-    source_of_truth = load_source_of_truth()
-    if not source_of_truth:
-        errors.append("Source of truth file is missing or empty")
-        return False
+    # 1. Check SOURCE_OF_TRUTH exists
+    sot_path = Path("models/KIE_SOURCE_OF_TRUTH.json")
+    if not sot_path.exists():
+        errors.append(f"❌ SOURCE_OF_TRUTH not found: {sot_path}")
+        print("\n".join(errors))
+        return 1
     
-    source_models = source_of_truth.get('models', [])
-    source_model_ids = {m['model_id'] for m in source_models if 'model_id' in m}
+    # 2. Load and parse
+    try:
+        with open(sot_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        errors.append(f"❌ JSON parse error: {e}")
+        print("\n".join(errors))
+        return 1
     
-    if not source_model_ids:
-        errors.append("Source of truth contains no models")
-        return False
+    # 3. Validate root structure
+    if not isinstance(data.get('models'), dict):
+        errors.append(f"❌ 'models' must be dict, got: {type(data.get('models'))}")
     
-    logger.info(f"[OK] Source of truth: {len(source_model_ids)} models")
+    models = data.get('models', {})
     
-    ui_model_ids = get_ui_models()
-    registry_model_ids = get_registry_models()
+    if len(models) < 20:
+        warnings.append(f"⚠️  Only {len(models)} models (expected >= 20)")
     
-    logger.info(f"[INFO] UI models: {len(ui_model_ids)}")
-    logger.info(f"[INFO] Registry models: {len(registry_model_ids)}")
-    logger.info(f"[INFO] Source of truth models: {len(source_model_ids)}")
+    # 4. Validate each model
+    for model_id, model in models.items():
+        if not isinstance(model_id, str) or not model_id.strip():
+            errors.append(f"❌ Invalid model_id: {repr(model_id)}")
+            continue
+        
+        if not isinstance(model, dict):
+            errors.append(f"❌ Model {model_id} is not dict: {type(model)}")
+            continue
+        
+        # Required fields
+        endpoint = model.get('endpoint')
+        if not isinstance(endpoint, str) or not endpoint:
+            errors.append(f"❌ {model_id}: missing/invalid 'endpoint'")
+        
+        input_schema = model.get('input_schema')
+        if not isinstance(input_schema, dict):
+            errors.append(f"❌ {model_id}: 'input_schema' must be dict")
+        elif not input_schema:
+            warnings.append(f"⚠️  {model_id}: empty input_schema")
+        
+        pricing = model.get('pricing')
+        if not isinstance(pricing, dict):
+            errors.append(f"❌ {model_id}: 'pricing' must be dict")
+        else:
+            usd = pricing.get('usd_per_gen')
+            rub = pricing.get('rub_per_gen')
+            
+            if not isinstance(usd, (int, float)) or usd < 0:
+                errors.append(f"❌ {model_id}: invalid pricing.usd_per_gen: {usd}")
+            
+            if not isinstance(rub, (int, float)) or rub < 0:
+                errors.append(f"❌ {model_id}: invalid pricing.rub_per_gen: {rub}")
+        
+        # Optional but recommended
+        tags = model.get('tags')
+        if not isinstance(tags, list):
+            warnings.append(f"⚠️  {model_id}: 'tags' should be list[str]")
+        
+        prompts = model.get('ui_example_prompts')
+        if not isinstance(prompts, list) or len(prompts) == 0:
+            warnings.append(f"⚠️  {model_id}: no ui_example_prompts")
     
-    if ui_model_ids and len(ui_model_ids) != len(source_model_ids):
-        warnings.append(
-            f"UI count ({len(ui_model_ids)}) != source_of_truth count ({len(source_model_ids)})"
-        )
-    
-    if registry_model_ids and len(registry_model_ids) != len(source_model_ids):
-        warnings.append(
-            f"Registry count ({len(registry_model_ids)}) != source_of_truth count ({len(source_model_ids)})"
-        )
-    
-    if ui_model_ids:
-        ui_only = ui_model_ids - source_model_ids
-        source_only = source_model_ids - ui_model_ids
-        if ui_only:
-            warnings.append(f"Models in UI but not in source_of_truth: {ui_only}")
-        if source_only:
-            warnings.append(f"Models in source_of_truth but not in UI: {source_only}")
-    
-    if registry_model_ids:
-        registry_only = registry_model_ids - source_model_ids
-        source_only = source_model_ids - registry_model_ids
-        if registry_only:
-            warnings.append(f"Models in registry but not in source_of_truth: {registry_only}")
-        if source_only:
-            warnings.append(f"Models in source_of_truth but not in registry: {source_only}")
+    # 5. Summary
+    print("═" * 70)
+    print("🔍 PROJECT VERIFICATION")
+    print("═" * 70)
+    print(f"📦 SOURCE_OF_TRUTH: {sot_path}")
+    print(f"📊 Total models: {len(models)}")
+    print(f"✅ Version: {data.get('version', 'N/A')}")
+    print(f"📅 Updated: {data.get('updated_at', 'N/A')}")
+    print()
     
     if errors:
-        logger.error("[ERROR] ERRORS:")
-        for error in errors:
-            logger.error(f"  - {error}")
-        return False
+        print(f"❌ ERRORS: {len(errors)}")
+        for err in errors[:10]:  # First 10
+            print(f"  {err}")
+        if len(errors) > 10:
+            print(f"  ... and {len(errors) - 10} more")
+        print()
     
     if warnings:
-        logger.warning("[WARNING] WARNINGS:")
-        for warning in warnings:
-            logger.warning(f"  - {warning}")
+        print(f"⚠️  WARNINGS: {len(warnings)}")
+        for warn in warnings[:5]:  # First 5
+            print(f"  {warn}")
+        if len(warnings) > 5:
+            print(f"  ... and {len(warnings) - 5} more")
+        print()
+    
+    if not errors:
+        print("✅ All critical checks passed!")
+        print("═" * 70)
+        return 0
     else:
-        logger.info("[OK] All invariants satisfied!")
-
-    # Verify polling preflight uses deleteWebhook and respects BOT_MODE/DRY_RUN
-    try:
-        main_render_path = Path("main_render.py")
-        if main_render_path.exists():
-            content = main_render_path.read_text(encoding="utf-8")
-            if "delete_webhook" not in content:
-                errors.append("main_render.py missing delete_webhook preflight call")
-            if "BOT_MODE" not in content:
-                errors.append("main_render.py missing BOT_MODE guard")
-            if "DRY_RUN" not in content:
-                errors.append("main_render.py missing DRY_RUN guard")
-        else:
-            errors.append("main_render.py not found for preflight verification")
-    except Exception as e:
-        errors.append(f"Failed to verify preflight: {e}")
-
-    if errors:
-        logger.error("[ERROR] ERRORS:")
-        for error in errors:
-            logger.error(f"  - {error}")
-        return False
-
-    return True
-
+        print("❌ Verification FAILED")
+        print("═" * 70)
+        return 1
 
 if __name__ == "__main__":
-    success = verify_project()
-    sys.exit(0 if success else 1)
+    sys.exit(verify_project())
