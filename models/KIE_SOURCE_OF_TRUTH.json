@@ -62,7 +62,7 @@
       ],
       "pricing": {
         "usd_per_gen": 10.0,
-        "rub_per_gen": 1580.0,
+        "rub_per_gen": 790.0,
         "credits_per_gen": 2000.0,
         "source": "pricing_table_corrected"
       },
@@ -155,7 +155,7 @@
       ],
       "pricing": {
         "usd_per_gen": 12.0,
-        "rub_per_gen": 1896.0,
+        "rub_per_gen": 948.0,
         "credits_per_gen": 2400.0,
         "source": "pricing_table_corrected"
       },
@@ -260,7 +260,7 @@
       ],
       "pricing": {
         "usd_per_gen": 15.0,
-        "rub_per_gen": 2370.0,
+        "rub_per_gen": 1185.0,
         "credits_per_gen": 3000.0,
         "source": "pricing_table_corrected"
       },
@@ -437,7 +437,7 @@
       ],
       "pricing": {
         "usd_per_gen": 10.0,
-        "rub_per_gen": 1580.0,
+        "rub_per_gen": 790.0,
         "credits_per_gen": 2000.0,
         "source": "pricing_table_corrected"
       },
@@ -529,7 +529,7 @@
       ],
       "pricing": {
         "usd_per_gen": 20.0,
-        "rub_per_gen": 3160.0,
+        "rub_per_gen": 1580.0,
         "credits_per_gen": 4000.0,
         "source": "pricing_table_corrected"
       },
@@ -625,7 +625,7 @@
       ],
       "pricing": {
         "usd_per_gen": 15.0,
-        "rub_per_gen": 2370.0,
+        "rub_per_gen": 1185.0,
         "credits_per_gen": 3000.0,
         "source": "pricing_table_corrected"
       },
@@ -725,7 +725,7 @@
       ],
       "pricing": {
         "usd_per_gen": 10.0,
-        "rub_per_gen": 1580.0,
+        "rub_per_gen": 790.0,
         "credits_per_gen": 2000.0,
         "source": "pricing_table_corrected"
       },
@@ -809,7 +809,7 @@
       ],
       "pricing": {
         "usd_per_gen": 8.0,
-        "rub_per_gen": 1264.0,
+        "rub_per_gen": 632.0,
         "credits_per_gen": 1600.0,
         "source": "pricing_table_corrected"
       },
@@ -901,7 +901,7 @@
       ],
       "pricing": {
         "usd_per_gen": 12.0,
-        "rub_per_gen": 1896.0,
+        "rub_per_gen": 948.0,
         "credits_per_gen": 2400.0,
         "is_free": false,
         "rank": 16,
@@ -1005,7 +1005,7 @@
       ],
       "pricing": {
         "usd_per_gen": 18.0,
-        "rub_per_gen": 2844.0,
+        "rub_per_gen": 1422.0,
         "credits_per_gen": 3600.0,
         "source": "pricing_table_corrected"
       },
@@ -1094,7 +1094,7 @@
       ],
       "pricing": {
         "usd_per_gen": 15.0,
-        "rub_per_gen": 2370.0,
+        "rub_per_gen": 1185.0,
         "credits_per_gen": 3000.0,
         "source": "pricing_table_corrected"
       },
@@ -1199,7 +1199,7 @@
       ],
       "pricing": {
         "usd_per_gen": 12.0,
-        "rub_per_gen": 1896.0,
+        "rub_per_gen": 948.0,
         "credits_per_gen": 2400.0,
         "source": "pricing_table_corrected"
       },
@@ -1288,7 +1288,7 @@
       ],
       "pricing": {
         "usd_per_gen": 10.0,
-        "rub_per_gen": 1580.0,
+        "rub_per_gen": 790.0,
         "credits_per_gen": 2000.0,
         "source": "pricing_table_corrected"
       },
@@ -1373,7 +1373,7 @@
       ],
       "pricing": {
         "usd_per_gen": 12.0,
-        "rub_per_gen": 1896.0,
+        "rub_per_gen": 948.0,
         "credits_per_gen": 2400.0,
         "source": "pricing_table_corrected"
       },
@@ -1450,7 +1450,7 @@
       "examples": [],
       "pricing": {
         "usd_per_gen": 15.0,
-        "rub_per_gen": 2370.0,
+        "rub_per_gen": 1185.0,
         "credits_per_gen": 3000.0,
         "is_free": false,
         "rank": 31,
@@ -1530,7 +1530,7 @@
       "examples": [],
       "pricing": {
         "usd_per_gen": 15.0,
-        "rub_per_gen": 2370.0,
+        "rub_per_gen": 1185.0,
         "credits_per_gen": 3000.0,
         "source": "pricing_table_corrected"
       },
@@ -1606,7 +1606,7 @@
       "examples": [],
       "pricing": {
         "usd_per_gen": 8.0,
-        "rub_per_gen": 1264.0,
+        "rub_per_gen": 632.0,
         "credits_per_gen": 1600.0,
         "source": "pricing_table_corrected"
       },
@@ -1674,7 +1674,7 @@
       "examples": [],
       "pricing": {
         "usd_per_gen": 12.0,
-        "rub_per_gen": 1896.0,
+        "rub_per_gen": 948.0,
         "credits_per_gen": 2400.0,
         "source": "pricing_table_corrected"
       },
@@ -1770,7 +1770,7 @@
       "examples": [],
       "pricing": {
         "usd_per_gen": 18.0,
-        "rub_per_gen": 2844.0,
+        "rub_per_gen": 1422.0,
         "credits_per_gen": 3600.0,
         "source": "pricing_table_corrected"
       },
@@ -1877,7 +1877,7 @@
       ],
       "pricing": {
         "usd_per_gen": 18.0,
-        "rub_per_gen": 2844.0,
+        "rub_per_gen": 1422.0,
         "credits_per_gen": 3600.0,
         "source": "pricing_table_corrected"
       },
@@ -2005,7 +2005,7 @@
       ],
       "pricing": {
         "usd_per_gen": 18.0,
-        "rub_per_gen": 2844.0,
+        "rub_per_gen": 1422.0,
         "credits_per_gen": 3600.0,
         "source": "pricing_table_corrected"
       },
@@ -2117,7 +2117,7 @@
       ],
       "pricing": {
         "usd_per_gen": 15.0,
-        "rub_per_gen": 2370.0,
+        "rub_per_gen": 1185.0,
         "credits_per_gen": 3000.0,
         "source": "pricing_table_corrected"
       },
@@ -2528,7 +2528,7 @@
       ],
       "pricing": {
         "usd_per_gen": 100.0,
-        "rub_per_gen": 15800.0,
+        "rub_per_gen": 7900.0,
         "credits_per_gen": 20000.0,
         "source": "pricing_table_corrected"
       },
@@ -2624,7 +2624,7 @@
       ],
       "pricing": {
         "usd_per_gen": 90.0,
-        "rub_per_gen": 14220.0,
+        "rub_per_gen": 7110.0,
         "credits_per_gen": 18000.0,
         "source": "pricing_table_corrected"
       },
@@ -2713,7 +2713,7 @@
       "examples": [],
       "pricing": {
         "usd_per_gen": 110.0,
-        "rub_per_gen": 17380.0,
+        "rub_per_gen": 8690.0,
         "credits_per_gen": 22000.0,
         "source": "pricing_table_corrected"
       },
@@ -2811,7 +2811,7 @@
       "examples": [],
       "pricing": {
         "usd_per_gen": 100.0,
-        "rub_per_gen": 15800.0,
+        "rub_per_gen": 7900.0,
         "credits_per_gen": 20000.0,
         "source": "pricing_table_corrected"
       },
@@ -2900,7 +2900,7 @@
       ],
       "pricing": {
         "usd_per_gen": 20.0,
-        "rub_per_gen": 3160.0,
+        "rub_per_gen": 1580.0,
         "credits_per_gen": 4000.0,
         "source": "pricing_table_corrected"
       },
@@ -2987,7 +2987,7 @@
       ],
       "pricing": {
         "usd_per_gen": 20.0,
-        "rub_per_gen": 3160.0,
+        "rub_per_gen": 1580.0,
         "credits_per_gen": 4000.0,
         "source": "pricing_table_corrected"
       },
@@ -3082,7 +3082,7 @@
       ],
       "pricing": {
         "usd_per_gen": 90.0,
-        "rub_per_gen": 14220.0,
+        "rub_per_gen": 7110.0,
         "credits_per_gen": 18000.0,
         "source": "pricing_table_corrected"
       },
@@ -3178,7 +3178,7 @@
       ],
       "pricing": {
         "usd_per_gen": 100.0,
-        "rub_per_gen": 15800.0,
+        "rub_per_gen": 7900.0,
         "credits_per_gen": 20000.0,
         "source": "pricing_table_corrected"
       },
@@ -3278,7 +3278,7 @@
       ],
       "pricing": {
         "usd_per_gen": 100.0,
-        "rub_per_gen": 15800.0,
+        "rub_per_gen": 7900.0,
         "credits_per_gen": 20000.0,
         "source": "pricing_table_corrected"
       },
@@ -3374,7 +3374,7 @@
       ],
       "pricing": {
         "usd_per_gen": 100.0,
-        "rub_per_gen": 15800.0,
+        "rub_per_gen": 7900.0,
         "credits_per_gen": 20000.0,
         "source": "pricing_table_corrected"
       },
@@ -3466,7 +3466,7 @@
       ],
       "pricing": {
         "usd_per_gen": 95.0,
-        "rub_per_gen": 15010.0,
+        "rub_per_gen": 7505.0,
         "credits_per_gen": 19000.0,
         "source": "pricing_table_corrected"
       },
@@ -3570,7 +3570,7 @@
       ],
       "pricing": {
         "usd_per_gen": 100.0,
-        "rub_per_gen": 15800.0,
+        "rub_per_gen": 7900.0,
         "credits_per_gen": 20000.0,
         "source": "pricing_table_corrected"
       },
@@ -3674,7 +3674,7 @@
       ],
       "pricing": {
         "usd_per_gen": 110.0,
-        "rub_per_gen": 17380.0,
+        "rub_per_gen": 8690.0,
         "credits_per_gen": 22000.0,
         "source": "pricing_table_corrected"
       },
@@ -3782,7 +3782,7 @@
       ],
       "pricing": {
         "usd_per_gen": 60.0,
-        "rub_per_gen": 9480.0,
+        "rub_per_gen": 4740.0,
         "credits_per_gen": 12000.0,
         "source": "pricing_table_corrected"
       },
@@ -3882,7 +3882,7 @@
       ],
       "pricing": {
         "usd_per_gen": 70.0,
-        "rub_per_gen": 11060.0,
+        "rub_per_gen": 5530.0,
         "credits_per_gen": 14000.0,
         "source": "pricing_table_corrected"
       },
@@ -3974,7 +3974,7 @@
       ],
       "pricing": {
         "usd_per_gen": 110.0,
-        "rub_per_gen": 17380.0,
+        "rub_per_gen": 8690.0,
         "credits_per_gen": 22000.0,
         "source": "pricing_table_corrected"
       },
@@ -4066,7 +4066,7 @@
       ],
       "pricing": {
         "usd_per_gen": 85.0,
-        "rub_per_gen": 13430.0,
+        "rub_per_gen": 6715.0,
         "credits_per_gen": 17000.0,
         "source": "pricing_table_corrected"
       },
@@ -4150,7 +4150,7 @@
       ],
       "pricing": {
         "usd_per_gen": 120.0,
-        "rub_per_gen": 18960.0,
+        "rub_per_gen": 9480.0,
         "credits_per_gen": 24000.0,
         "source": "pricing_table_corrected"
       },
@@ -4238,7 +4238,7 @@
       ],
       "pricing": {
         "usd_per_gen": 90.0,
-        "rub_per_gen": 14220.0,
+        "rub_per_gen": 7110.0,
         "credits_per_gen": 18000.0,
         "source": "pricing_table_corrected"
       },
@@ -4330,7 +4330,7 @@
       ],
       "pricing": {
         "usd_per_gen": 110.0,
-        "rub_per_gen": 17380.0,
+        "rub_per_gen": 8690.0,
         "credits_per_gen": 22000.0,
         "source": "pricing_table_corrected"
       },
@@ -4430,7 +4430,7 @@
       ],
       "pricing": {
         "usd_per_gen": 85.0,
-        "rub_per_gen": 13430.0,
+        "rub_per_gen": 6715.0,
         "credits_per_gen": 17000.0,
         "source": "pricing_table_corrected"
       },
@@ -4546,7 +4546,7 @@
       ],
       "pricing": {
         "usd_per_gen": 100.0,
-        "rub_per_gen": 15800.0,
+        "rub_per_gen": 7900.0,
         "credits_per_gen": 20000.0,
         "is_free": false,
         "source": "estimated"
@@ -4649,7 +4649,7 @@
       ],
       "pricing": {
         "usd_per_gen": 100.0,
-        "rub_per_gen": 15800.0,
+        "rub_per_gen": 7900.0,
         "credits_per_gen": 20000.0,
         "is_free": false,
         "source": "estimated"
@@ -4760,7 +4760,7 @@
       ],
       "pricing": {
         "usd_per_gen": 150.0,
-        "rub_per_gen": 23700.0,
+        "rub_per_gen": 11850.0,
         "credits_per_gen": 30000.0,
         "is_free": false,
         "source": "estimated"
@@ -4862,7 +4862,7 @@
       ],
       "pricing": {
         "usd_per_gen": 150.0,
-        "rub_per_gen": 23700.0,
+        "rub_per_gen": 11850.0,
         "credits_per_gen": 30000.0,
         "is_free": false,
         "source": "estimated"
@@ -4938,7 +4938,7 @@
       "examples": [],
       "pricing": {
         "usd_per_gen": 20.0,
-        "rub_per_gen": 3160.0,
+        "rub_per_gen": 1580.0,
         "credits_per_gen": 4000.0,
         "is_free": false,
         "source": "estimated"
@@ -5024,7 +5024,7 @@
       "examples": [],
       "pricing": {
         "usd_per_gen": 100.0,
-        "rub_per_gen": 15800.0,
+        "rub_per_gen": 7900.0,
         "credits_per_gen": 20000.0,
         "is_free": false,
         "source": "estimated"
@@ -5111,7 +5111,7 @@
       ],
       "pricing": {
         "usd_per_gen": 100.0,
-        "rub_per_gen": 15800.0,
+        "rub_per_gen": 7900.0,
         "credits_per_gen": 20000.0,
         "is_free": false,
         "source": "estimated"
@@ -5200,7 +5200,7 @@
       ],
       "pricing": {
         "usd_per_gen": 90.0,
-        "rub_per_gen": 14220.0,
+        "rub_per_gen": 7110.0,
         "credits_per_gen": 18000.0,
         "source": "pricing_table_corrected"
       },
@@ -5288,7 +5288,7 @@
       ],
       "pricing": {
         "usd_per_gen": 100.0,
-        "rub_per_gen": 15800.0,
+        "rub_per_gen": 7900.0,
         "credits_per_gen": 20000.0,
         "source": "pricing_table_corrected"
       },
@@ -5388,7 +5388,7 @@
       ],
       "pricing": {
         "usd_per_gen": 95.0,
-        "rub_per_gen": 15010.0,
+        "rub_per_gen": 7505.0,
         "credits_per_gen": 19000.0,
         "source": "pricing_table_corrected"
       },
@@ -5492,7 +5492,7 @@
       ],
       "pricing": {
         "usd_per_gen": 90.0,
-        "rub_per_gen": 14220.0,
+        "rub_per_gen": 7110.0,
         "credits_per_gen": 18000.0,
         "source": "pricing_table_corrected"
       },
@@ -5592,7 +5592,7 @@
       ],
       "pricing": {
         "usd_per_gen": 100.0,
-        "rub_per_gen": 15800.0,
+        "rub_per_gen": 7900.0,
         "credits_per_gen": 20000.0,
         "source": "pricing_table_corrected"
       },
@@ -5677,7 +5677,7 @@
       "examples": [],
       "pricing": {
         "usd_per_gen": 100.0,
-        "rub_per_gen": 15800.0,
+        "rub_per_gen": 7900.0,
         "credits_per_gen": 20000.0,
         "source": "pricing_table_corrected"
       },
@@ -5757,7 +5757,7 @@
       "examples": [],
       "pricing": {
         "usd_per_gen": 15.0,
-        "rub_per_gen": 2370.0,
+        "rub_per_gen": 1185.0,
         "credits_per_gen": 3000.0,
         "source": "pricing_table_corrected"
       },
@@ -5872,7 +5872,7 @@
       ],
       "pricing": {
         "usd_per_gen": 100.0,
-        "rub_per_gen": 15800.0,
+        "rub_per_gen": 7900.0,
         "credits_per_gen": 20000.0,
         "source": "pricing_table_corrected"
       },
@@ -5957,7 +5957,7 @@
       "examples": [],
       "pricing": {
         "usd_per_gen": 50.0,
-        "rub_per_gen": 7900.0,
+        "rub_per_gen": 3950.0,
         "credits_per_gen": 10000.0,
         "source": "pricing_table_corrected"
       },
@@ -6048,7 +6048,7 @@
       ],
       "pricing": {
         "usd_per_gen": 20.0,
-        "rub_per_gen": 3160.0,
+        "rub_per_gen": 1580.0,
         "credits_per_gen": 4000.0,
         "source": "pricing_table_corrected"
       },
@@ -6161,7 +6161,7 @@
       "examples": [],
       "pricing": {
         "usd_per_gen": 5.0,
-        "rub_per_gen": 790.0,
+        "rub_per_gen": 395.0,
         "credits_per_gen": 1000.0,
         "is_free": false,
         "rank": 3,
@@ -6249,7 +6249,7 @@
       "examples": [],
       "pricing": {
         "usd_per_gen": 3.0,
-        "rub_per_gen": 474.0,
+        "rub_per_gen": 237.0,
         "credits_per_gen": 600.0,
         "source": "pricing_table_corrected"
       },
@@ -6339,7 +6339,7 @@
       ],
       "pricing": {
         "usd_per_gen": 8.0,
-        "rub_per_gen": 1264.0,
+        "rub_per_gen": 632.0,
         "credits_per_gen": 1600.0,
         "source": "pricing_table_corrected"
       },
@@ -6411,7 +6411,7 @@
       "examples": [],
       "pricing": {
         "usd_per_gen": 5.0,
-        "rub_per_gen": 790.0,
+        "rub_per_gen": 395.0,
         "credits_per_gen": 1000.0,
         "source": "pricing_table_corrected"
       },
@@ -6506,7 +6506,7 @@
       ],
       "pricing": {
         "usd_per_gen": 90.0,
-        "rub_per_gen": 14220.0,
+        "rub_per_gen": 7110.0,
         "credits_per_gen": 18000.0,
         "source": "pricing_table_corrected"
       },
@@ -6602,7 +6602,7 @@
       ],
       "pricing": {
         "usd_per_gen": 100.0,
-        "rub_per_gen": 15800.0,
+        "rub_per_gen": 7900.0,
         "credits_per_gen": 20000.0,
         "source": "pricing_table_corrected"
       },
@@ -6758,7 +6758,7 @@
       ],
       "pricing": {
         "usd_per_gen": 40.0,
-        "rub_per_gen": 6320.0,
+        "rub_per_gen": 3160.0,
         "credits_per_gen": 8000.0,
         "is_free": false,
         "source": "estimated"
@@ -6925,7 +6925,7 @@
       ],
       "pricing": {
         "usd_per_gen": 30.0,
-        "rub_per_gen": 4740.0,
+        "rub_per_gen": 2370.0,
         "credits_per_gen": 6000.0,
         "is_free": false,
         "source": "estimated"
@@ -6964,6 +6964,13 @@
       "qwen/text-to-image",
       "z-image"
     ],
-    "free_tier_count": 4
+    "free_tier_count": 4,
+    "pricing": {
+      "usd_to_rub_rate": 79.0,
+      "markup_multiplier": 2.0,
+      "formula": "user_price_rub = (usd_per_gen × USD_TO_RUB) × MARKUP",
+      "note": "rub_per_gen in SOT is Kie.ai cost WITHOUT markup",
+      "updated_at": "2025-12-25"
+    }
   }
 }

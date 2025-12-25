@@ -1,25 +1,36 @@
 """
-Pricing calculator: USER_PRICE_RUB = PRICE_USD × USD_TO_RUB × 2
+Pricing calculator: USER_PRICE_RUB = (PRICE_USD × 79) × 2
 
-ФОРМУЛА ЦЕНООБРАЗОВАНИЯ:
-  1. Цены в source_of_truth.json в USD
-  2. Конвертация в RUB: kie_cost_rub = price_usd × USD_TO_RUB
-  3. Наценка пользователю: user_price_rub = kie_cost_rub × 2
+ФОРМУЛА ЦЕНООБРАЗОВАНИЯ (ЗАФИКСИРОВАНА НАВСЕГДА):
+  1. Kie.ai цены в USD (1 кредит = $0.005)
+  2. Курс конвертации: 79 RUB/USD (ФИКСИРОВАННЫЙ, НЕ МЕНЯЕТСЯ)
+  3. Цена Kie.ai в RUB: kie_cost_rub = price_usd × 79
+  4. Наценка пользователю: user_price_rub = kie_cost_rub × 2
   
-  Итого: user_price_rub = price_usd × USD_TO_RUB × MARKUP_MULTIPLIER
+  Итого: user_price_rub = price_usd × 79 × 2
 
-ЗАКОН ПРОЕКТА: цена для пользователя всегда в 2 раза выше стоимости Kie.ai.
-Это правило НЕ конфигурируется и применяется ко всем моделям.
+ПРИМЕР:
+  1 кредит Kie.ai = $0.005 USD
+  Цена Kie.ai = 0.005 × 79 = 0.395 RUB
+  Цена пользователю = 0.395 × 2 = 0.79 RUB за 1 кредит
+
+ЗАКОН ПРОЕКТА: 
+  - Курс 79 RUB/USD ФИКСИРОВАН и НЕ ИЗМЕНЯЕТСЯ
+  - Наценка ×2 ФИКСИРОВАНА и НЕ ИЗМЕНЯЕТСЯ
+  - Цены в SOURCE_OF_TRUTH хранятся БЕЗ наценки (Kie.ai cost)
+  - Наценка применяется только в calculate_user_price()
 """
 import logging
 from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
-# Exchange rate (MUST match scripts/audit_pricing.py)
-USD_TO_RUB = 78.0
+# ФИКСИРОВАННЫЙ курс (НЕ ИЗМЕНЯТЬ!)
+# Используется для всех расчётов, независимо от реального курса ЦБ
+USD_TO_RUB = 79.0
 
-# Markup коэффициент (НЕ ИЗМЕНЯТЬ)
+# ФИКСИРОВАННЫЙ множитель наценки (НЕ ИЗМЕНЯТЬ!)
+# Цена пользователю = Цена Kie.ai × 2
 MARKUP_MULTIPLIER = 2.0
 
 
