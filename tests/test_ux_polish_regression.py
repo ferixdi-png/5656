@@ -138,9 +138,7 @@ class TestButtonLabels:
         
         # Check that buttons have text beyond emoji
         for text in texts:
-            # Remove emojis and check remaining text
-            text_only = ''.join(char for char in text if ord(char) < 127).strip()
-            # Should have some descriptive text
+            # Should have descriptive text (emoji + text)
             assert len(text) > 1  # At least emoji + space or text
 
 

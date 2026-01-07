@@ -82,7 +82,7 @@ def test_url_validation():
     
     for url in invalid_urls:
         is_valid = url.startswith("http://") or url.startswith("https://")
-        assert not is_valid or url == "example.com"  # Allow the last case to fail
+        assert not is_valid
 
 
 def test_file_type_validation():
