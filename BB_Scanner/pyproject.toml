@@ -1,0 +1,14 @@
+[project]
+name = "betboom-live-scanner"
+version = "1.0.0"
+description = "BetBoom Live Table Tennis Scanner"
+requires-python = ">=3.12"
+dependencies = [
+    "playwright>=1.40.0",
+    "winotify>=0.19",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+

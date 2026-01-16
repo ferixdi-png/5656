@@ -1,0 +1,343 @@
+# KIE PRICING (RUB) — курс 78.57, далее x2 => 1 USD = 157.14 ₽
+
+Seedance 1.5 Pro (per video):
+  - 12s 720p WITH audio: 66.00 ₽
+  - 12s 720p NO audio: 33.00 ₽
+  - 8s 720p WITH audio: 44.00 ₽
+  - 8s 720p NO audio: 22.00 ₽
+  - 4s 720p WITH audio: 22.00 ₽
+  - 4s 720p NO audio: 11.00 ₽
+  - 12s 480p WITH audio: 29.86 ₽
+  - 12s 480p NO audio: 14.93 ₽
+  - 8s 480p WITH audio: 22.00 ₽
+  - 8s 480p NO audio: 11.00 ₽
+  - 4s 480p WITH audio: 11.00 ₽
+  - 4s 480p NO audio: 5.50 ₽
+
+wan 2.6 (per video):
+  - video-to-video 15s 1080p: 247.50 ₽
+  - video-to-video 10s 1080p: 164.60 ₽
+  - video-to-video 5s 1080p: 82.11 ₽
+  - video-to-video 15s 720p: 165.00 ₽
+  - video-to-video 10s 720p: 110.00 ₽
+  - video-to-video 5s 720p: 55.00 ₽
+  - image-to-video 15s 1080p: 247.50 ₽
+  - image-to-video 10s 1080p: 164.60 ₽
+  - image-to-video 5s 1080p: 82.11 ₽
+  - image-to-video 15s 720p: 165.00 ₽
+  - image-to-video 10s 720p: 110.00 ₽
+  - image-to-video 5s 720p: 55.00 ₽
+  - text-to-video 15s 1080p: 247.50 ₽
+  - text-to-video 10s 1080p: 164.60 ₽
+  - text-to-video 5s 1080p: 82.11 ₽
+  - text-to-video 15s 720p: 165.00 ₽
+  - text-to-video 10s 720p: 110.00 ₽
+  - text-to-video 5s 720p: 55.00 ₽
+
+Bytedance seedream 4.5 (per image):
+  - image-edit Basic/High: 5.11 ₽
+  - text-to-image Basic/High: 5.11 ₽
+
+kling 2.6:
+  - text-to-video WITH audio: 172.85 ₽
+  - text-to-video WITHOUT audio 10s: 86.43 ₽
+  - text-to-video WITHOUT audio 5s: 43.21 ₽
+  - text-to-video WITH audio (второй слот в дампе): 86.43 ₽
+  - image-to-video WITHOUT audio 10s: 86.43 ₽
+  - image-to-video WITH audio: 172.85 ₽
+  - image-to-video WITH audio 5s: 86.43 ₽
+  - image-to-video WITHOUT audio 5s: 43.21 ₽
+
+Qwen z-image (per image):
+  - text-to-image: 0.63 ₽
+
+Black Forest Labs Flux 2 Flex (per image):
+  - text-to-image 2K: 18.86 ₽
+  - image-to-image 2K: 18.86 ₽
+  - text-to-image 1K: 11.00 ₽
+  - image-to-image 1K: 11.00 ₽
+
+Black Forest Labs flux-2 pro (per image):
+  - text-to-image 2K: 5.50 ₽
+  - image-to-image 2K: 5.50 ₽
+  - text-to-image 1K: 3.93 ₽
+  - image-to-image 1K: 3.93 ₽
+
+Google nano banana pro (per image):
+  - 1/2K: 14.14 ₽
+  - 4K: 18.86 ₽
+
+Bytedance seedance-v1-pro-fast (per video):
+  - image-to-video Fast 10s 1080p: 56.57 ₽
+  - image-to-video Fast 10s 720p: 28.29 ₽
+  - image-to-video Fast 5s 1080p: 28.29 ₽
+  - image-to-video Fast 5s 720p: 12.57 ₽
+
+grok-imagine:
+  - image-to-image (per 2 images): 3.14 ₽
+  - text-to-image (per 6 images): 3.14 ₽
+  - upscale 360p→720p (per upscale): 7.86 ₽
+  - image-to-video 6s (per video): 15.71 ₽
+  - text-to-video 6s (per video): 15.71 ₽
+
+hailuo 2.3 (per video):
+  - image-to-video Pro 10s 768p: 70.71 ₽
+  - image-to-video Pro 6s 1080p: 62.86 ₽
+  - image-to-video Pro 6s 768p: 35.36 ₽
+  - image-to-video Standard 6s 768p: 23.57 ₽
+  - image-to-video Standard 10s 768p: 39.29 ₽
+  - image-to-video Standard 6s 1080p: 39.29 ₽
+
+Google veo 3.1 (per video):
+  - reference-to-video Fast: 47.14 ₽
+  - text-to-video Fast: 47.14 ₽
+  - image-to-video Fast: 47.14 ₽
+  - text-to-video Quality: 196.43 ₽
+  - image-to-video Quality: 196.43 ₽
+
+OpenAI 4o image (per image):
+  - text-to-image: 4.71 ₽
+
+Black Forest Labs flux1-kontext (per image):
+  - text-to-image Pro: 3.93 ₽
+  - text-to-image Max: 7.86 ₽
+
+Open AI sora 2-watermark-remover:
+  - per removal: 7.86 ₽
+
+Open AI sora 2 pro (per video):
+  - image-to-video Pro High 10s: 259.28 ₽
+  - image-to-video Pro High 15s: 494.99 ₽
+  - text-to-video Pro High 10s: 259.28 ₽
+  - text-to-video Pro High 15s: 494.99 ₽
+  - image-to-video Pro Standard 10s: 117.85 ₽
+  - image-to-video Pro Standard 15s: 212.14 ₽
+  - text-to-video Pro Standard 10s: 117.85 ₽
+  - text-to-video Pro Standard 15s: 212.14 ₽
+  - storyboard Pro 10s: 117.85 ₽
+  - storyboard Pro 15–25s: 212.14 ₽
+
+Open AI sora 2 (per video):
+  - image-to-video Standard 15s: 19.64 ₽
+  - text-to-video Standard 15s: 19.64 ₽
+  - image-to-video Standard 10s: 15.71 ₽
+  - text-to-video Standard 10s: 15.71 ₽
+
+kling 2.5 turbo (per video):
+  - text-to-video Turbo Pro 10s: 66.00 ₽
+  - text-to-video Turbo Pro 5s: 33.00 ₽
+  - image-to-video Turbo Pro 10s: 66.00 ₽
+  - image-to-video Turbo Pro 5s: 33.00 ₽
+
+wan 2.5 (per video):
+  - text-to-video default 10s 720p: 94.28 ₽
+  - text-to-video default 5s 1080p: 78.57 ₽
+  - text-to-video default 10s 1080p: 157.14 ₽
+  - image-to-video default 10s 1080p: 157.14 ₽
+  - text-to-video default 5s 720p: 47.14 ₽
+  - image-to-video default 10s 720p: 94.28 ₽
+  - image-to-video default 5s 1080p: 78.57 ₽
+  - image-to-video default 5s 720p: 47.14 ₽
+
+wan 2.2 Animate:
+  - Replace 1s 720p (per generation): 9.82 ₽
+  - Replace 1s 580p (per generation): 7.46 ₽
+  - Replace 1s 480p (per generation): 4.71 ₽
+  - Move 1s 720p (per generation): 9.82 ₽
+  - Move 1s 580p (per generation): 7.46 ₽
+  - Move 1s 480p (per generation): 4.71 ₽
+
+wan 2.2 (per video):
+  - image-to-video 5s 480p: 31.43 ₽
+  - image-to-video 5s 580p: 47.14 ₽
+  - image-to-video 5s 720p: 62.86 ₽
+  - text-to-video 5s 480p: 31.43 ₽
+  - text-to-video 5s 580p: 47.14 ₽
+  - text-to-video 5s 720p: 62.86 ₽
+
+hailuo 02 (per video):
+  - text-to-video Standard 10s 768p: 39.29 ₽
+  - text-to-video Standard 6s 768p: 23.57 ₽
+  - text-to-video Pro 6s 1080p: 44.78 ₽
+  - image-to-video Standard 10s 768p: 39.29 ₽
+  - image-to-video Standard 10s 512p: 15.71 ₽
+  - image-to-video Standard 6s 512p: 9.43 ₽
+  - image-to-video Pro 6s 1080p: 44.78 ₽
+
+Topaz Video Upscaler:
+  - per second (upscale factor 1x/2x/4x): 9.43 ₽
+
+Kling AI Avtar (lip sync, per second):
+  - Standard up to 15s 720p: 6.29 ₽
+  - Pro up to 15s 1080p: 12.57 ₽
+
+Bytedance seedream 4.0:
+  - text-to-image (per image): 3.93 ₽
+  - image-to-image (в дампе modality=video, unit=per image): 3.93 ₽
+
+MeiGen-AI InfiniteTalk (lip sync, per second):
+  - up to 15s 480p: 2.36 ₽
+  - up to 15s 720p: 9.43 ₽
+
+Recraft:
+  - Remove Background (per image): 0.79 ₽
+  - Crisp Upscale (per image): 0.39 ₽
+
+ideogram v3-remix (per image):
+  - TURBO: 2.75 ₽
+  - BALANCED: 5.50 ₽
+  - QUALITY: 7.86 ₽
+
+ideogram v3-edit (per image):
+  - TURBO: 2.75 ₽
+  - BALANCED: 5.50 ₽
+  - QUALITY: 7.86 ₽
+
+Ideogram V3 Reframe (per image):
+  - Turbo: 2.75 ₽
+  - Balanced: 5.50 ₽
+  - Quality: 7.86 ₽
+
+Elevenlabs:
+  - Audio Isolation (per second): 0.16 ₽
+  - Sound Effect V2 (per second): 0.19 ₽
+  - Speech to Text (per minute): 2.75 ₽
+  - Text to Speech turbo 2.5 (per 1000 chars): 4.71 ₽
+  - Text to Speech multilingual v2 (per 1000 chars): 9.43 ₽
+
+Wan 2.2 A14B Turbo API Speech to Video (per second):
+  - 480p: 9.43 ₽
+  - 580p: 14.14 ₽
+  - 720p: 18.86 ₽
+
+ByteDance Seedream (per image):
+  - text-to-image: 2.75 ₽
+
+Qwen Image (per image):
+  - text-to-image: 3.14 ₽
+  - image-to-image: 3.14 ₽
+
+google imagen4:
+  - text-to-image Fast (per request): 3.14 ₽
+  - text-to-image Ultra (per image): 9.43 ₽
+  - text-to-image default (per request): 6.29 ₽
+
+Google nano banana:
+  - nano banana edit image-to-image (per image): 3.14 ₽
+  - nano banana text-to-image (per image): 3.14 ₽
+
+Runway:
+  - Runway Aleph (per video): 86.43 ₽
+  - text-to-video 5s 720p (per video): 9.43 ₽
+  - text-to-video 10s 720p (per video): 23.57 ₽
+  - text-to-video 5s 1080p (per video): 23.57 ₽
+  - image-to-video 5s 720p (per video): 9.43 ₽
+  - image-to-video 10s 720p (per video): 23.57 ₽
+  - image-to-video 5s 1080p (per video): 23.57 ₽
+
+Suno (per request):
+  - Replace Music Section: 3.93 ₽
+  - Multi-Stem Separation: 39.29 ₽
+  - Vocal Separation: 7.86 ₽
+  - convert-to-wav-format: 0.31 ₽
+  - Generate Lyrics: 0.31 ₽
+  - upload-and-cover-audio: 9.43 ₽
+  - create-music-video: 1.57 ₽
+  - upload-and-extend-audio: 9.43 ₽
+  - add-instrumental: 9.43 ₽
+  - Generate Music: 9.43 ₽
+  - Extend Music: 9.43 ₽
+  - add-vocals: 9.43 ₽
+
+Qwen image-edit:
+  - image-to-image (per megapixel): 4.71 ₽
+
+ideogram character (per image):
+  - TURBO: 9.43 ₽
+  - BALANCED: 14.14 ₽
+  - QUALITY: 18.86 ₽
+
+ideogram character-remix (per image):
+  - TURBO: 9.43 ₽
+  - BALANCED: 14.14 ₽
+  - QUALITY: 18.86 ₽
+
+ideogram character-edit (per image):
+  - TURBO: 9.43 ₽
+  - BALANCED: 14.14 ₽
+  - QUALITY: 18.86 ₽
+
+Bytedance Seedance 1.0 (в дампе есть строки с unit=per second и per video — оставлять как есть):
+  # image-to-video (per video)
+  - image-to-video Pro Fast 5s 1080p (per video): 28.29 ₽
+  - image-to-video Pro Fast 10s 1080p (per video): 56.57 ₽
+  - image-to-video Pro Fast 5s 720p (per video): 12.57 ₽
+  - image-to-video Pro Fast 10s 720p (per video): 28.29 ₽
+  - image-to-video Lite 10s 480p (per video): 15.71 ₽
+  - image-to-video Lite 10s 720p (per video): 35.36 ₽
+  - image-to-video Lite 10s 1080p (per video): 78.57 ₽
+  - image-to-video Lite 5s 1080p (per video): 39.29 ₽
+  - image-to-video Lite 5s 480p (per video): 7.86 ₽
+  - image-to-video Lite 5s 720p (per video): 17.68 ₽
+  # text-to-video (per second — как в дампе)
+  - text-to-video Pro 10s 720p (per second): 47.14 ₽
+  - text-to-video Pro 10s 1080p (per second): 110.00 ₽
+  - text-to-video Pro 10s 480p (per second): 22.00 ₽
+  - text-to-video Lite 5s 720p (per second): 23.57 ₽
+  - text-to-video Lite 5s 1080p (per second): 55.00 ₽
+  - text-to-video Lite 5s 480p (per second): 11.00 ₽
+  # image-to-video (per second — как в дампе)
+  - image-to-video Pro 10s 480p (per second): 22.00 ₽
+  - image-to-video Pro 10s 720p (per second): 47.14 ₽
+  - image-to-video Pro 10s 1080p (per second): 110.00 ₽
+  - image-to-video Pro 5s 1080p (per second): 55.00 ₽
+  - image-to-video Pro 5s 480p (per second): 11.00 ₽
+  - image-to-video Pro 5s 720p (per second): 23.57 ₽
+
+Kling 2.1 (per video):
+  - video-generation Standard 5s: 19.64 ₽
+  - video-generation Standard 10s: 39.29 ₽
+  - video-generation Pro 5s: 39.29 ₽
+  - video-generation Pro 10s: 78.57 ₽
+  - text-to-video Master 5s: 125.71 ₽
+  - text-to-video Master 10s: 251.42 ₽
+  - image-to-video Master 5s: 125.71 ₽
+  - image-to-video Master 10s: 251.42 ₽
+
+ideogram v3 (per image):
+  - TURBO: 2.75 ₽
+  - BALANCED: 5.50 ₽
+  - QUALITY: 7.86 ₽
+
+Topaz Image Upscaler (per image):
+  - 2K: 7.86 ₽
+  - 4K: 15.71 ₽
+  - 8K: 31.43 ₽
+
+Gemini:
+  - Gemini 3 pro (в дампе цена “-”, пересчитать невозможно без USD): —
+  - Gemini 2.5 flash Input (per 1M tokens): 14.14 ₽
+  - Gemini 2.5 flash Output (per 1M tokens): 117.85 ₽
+  - Gemini 2.5 Pro Input (per 1M tokens): 59.71 ₽
+  - Gemini 2.5 Pro Output (per 1M tokens): 471.42 ₽
+  - Gemini 3 Pro Input (per 1M tokens): 78.57 ₽
+  - Gemini 3 Pro Output (per 1M tokens): 549.99 ₽
+
+kling 2.6 motion control (per second):
+  - video-to-video 1080p: 7.07 ₽
+  - video-to-video 720p: 4.71 ₽
+
+gpt image 1.5 (per image):
+  - text-to-image high: 17.29 ₽
+  - text-to-image medium: 3.14 ₽
+  - image-to-image high: 17.29 ₽
+  - image-to-image medium: 3.14 ₽
+
+Midjourney (per request):
+  - text-to-image fast: 6.29 ₽
+  - text-to-image turbo: 12.57 ₽
+  - text-to-image relaxed: 2.36 ₽
+  - image-to-image fast: 6.29 ₽
+  - image-to-image turbo: 12.57 ₽
+  - image-to-image relaxed: 2.36 ₽
+  - image-to-video: 47.14 ₽

@@ -1,0 +1,10 @@
+playwright>=1.40.0
+winotify>=0.19
+pyperclip>=1.8.2
+
+
+
+
+
+
+

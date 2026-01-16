@@ -1,0 +1,4158 @@
+{
+  "version": "1.0",
+  "source": "docs/*_INTEGRATION.md",
+  "build_timestamp": "2026-01-13T09:19:18.835634+00:00",
+  "models_count": 75,
+  "models": {
+    "flux-2/pro-text-to-image": {
+      "model_id": "flux-2/pro-text-to-image",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание изображения"
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": true,
+          "description": "Соотношение сторон изображения"
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": true,
+          "description": "Разрешение выходного изображения"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "flux-2/pro-text-to-image",
+      "description": "Документация по интеграции модели flux-2/pro-text-to-image согласно официальной документации KIE AI API."
+    },
+    "bytedance/v1-lite-text-to-video": {
+      "model_id": "bytedance/v1-lite-text-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт для генерации видео",
+          "max_length": 10000
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": false,
+          "description": "Соотношение сторон сгенерированного видео",
+          "options": [
+            "16:9"
+          ]
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение видео - 480p для быстрой генерации, 720p для более высокого качества",
+          "options": [
+            "720p"
+          ]
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность видео в секундах",
+          "options": [
+            "5"
+          ]
+        },
+        "camera_fixed": {
+          "name": "camera_fixed",
+          "type": "boolean",
+          "required": false,
+          "description": "Фиксировать ли позицию камеры",
+          "options": [
+            "false"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Случайное зерно для управления генерацией видео. Используйте -1 для случайного."
+        },
+        "enable_safety_checker": {
+          "name": "enable_safety_checker",
+          "type": "boolean",
+          "required": false,
+          "description": "Safety checker всегда включен в Playground. Может быть отключен только установкой false через API.",
+          "options": [
+            "true"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "bytedance/v1-lite-text-to-video",
+      "description": "Документация по интеграции модели bytedance/v1-lite-text-to-video согласно официальной документации KIE AI API."
+    },
+    "hailuo/02-image-to-video-pro": {
+      "model_id": "hailuo/02-image-to-video-pro",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт, описывающий желаемую анимацию видео",
+          "max_length": 1500
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "Входное изображение для анимации"
+        },
+        "end_image_url": {
+          "name": "end_image_url",
+          "type": "string",
+          "required": false,
+          "description": "Опциональный URL изображения для использования в качестве последнего кадра видео",
+          "options": [
+            ""
+          ]
+        },
+        "prompt_optimizer": {
+          "name": "prompt_optimizer",
+          "type": "boolean",
+          "required": false,
+          "description": "Использовать ли оптимизатор промпта модели",
+          "options": [
+            "true"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "hailuo/02-image-to-video-pro",
+      "description": "Документация по интеграции модели hailuo/02-image-to-video-pro согласно официальной документации KIE AI API."
+    },
+    "ideogram/character": {
+      "model_id": "ideogram/character",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Промпт для генерации персонажа",
+          "max_length": 5000
+        },
+        "reference_image_urls": {
+          "name": "reference_image_urls",
+          "type": "string",
+          "required": true,
+          "description": "Набор изображений для использования в качестве референсов персонажа"
+        },
+        "rendering_speed": {
+          "name": "rendering_speed",
+          "type": "string",
+          "required": false,
+          "description": "Скорость рендеринга",
+          "options": [
+            "BALANCED"
+          ]
+        },
+        "style": {
+          "name": "style",
+          "type": "string",
+          "required": false,
+          "description": "Тип стиля для генерации",
+          "options": [
+            "AUTO"
+          ]
+        },
+        "expand_prompt": {
+          "name": "expand_prompt",
+          "type": "boolean",
+          "required": false,
+          "description": "Определяет, должен ли использоваться MagicPrompt",
+          "options": [
+            "true"
+          ]
+        },
+        "num_images": {
+          "name": "num_images",
+          "type": "string",
+          "required": false,
+          "description": "Количество изображений для генерации",
+          "options": [
+            "1"
+          ]
+        },
+        "image_size": {
+          "name": "image_size",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение сгенерированного изображения",
+          "options": [
+            "square_hd"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Зерно для генератора случайных чисел"
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Описание того, что исключить из изображения",
+          "options": [
+            ""
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "ideogram/character",
+      "description": "Документация по интеграции модели ideogram/character согласно официальной документации KIE AI API."
+    },
+    "sora-2-image-to-video": {
+      "model_id": "sora-2-image-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание движения видео",
+          "max_length": 10000
+        },
+        "image_urls": {
+          "name": "image_urls",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для использования в качестве первого кадра"
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": false,
+          "description": "Соотношение сторон видео",
+          "options": [
+            "landscape"
+          ]
+        },
+        "n_frames": {
+          "name": "n_frames",
+          "type": "string",
+          "required": false,
+          "description": "Количество кадров для генерации",
+          "options": [
+            "10"
+          ]
+        },
+        "remove_watermark": {
+          "name": "remove_watermark",
+          "type": "boolean",
+          "required": false,
+          "description": "Удаление водяных знаков из сгенерированного видео",
+          "options": [
+            "true"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "sora-2-image-to-video",
+      "description": "Документация по интеграции модели sora-2-image-to-video согласно официальной документации KIE AI API.\n\nВАЖНО: Отличается от sora-2-pro-image-to-video:\n- НЕТ параметра size (в pro версии есть параметр size с значениями \"standard\" | \"high\")\n- Только: prompt, image_urls, aspect_ratio, n_frames, remove_watermark"
+    },
+    "kling-2.6/text-to-video": {
+      "model_id": "kling-2.6/text-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание видео",
+          "max_length": 1000
+        },
+        "sound": {
+          "name": "sound",
+          "type": "boolean",
+          "required": true,
+          "description": "Включить звук в видео"
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": true,
+          "description": "Соотношение сторон видео"
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": true,
+          "description": "Длительность видео в секундах"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "kling-2.6/text-to-video",
+      "description": "Документация по интеграции модели kling-2.6/text-to-video согласно официальной документации KIE AI API."
+    },
+    "qwen/text-to-image": {
+      "model_id": "qwen/text-to-image",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Промпт для генерации изображения",
+          "max_length": 5000
+        },
+        "image_size": {
+          "name": "image_size",
+          "type": "string",
+          "required": false,
+          "description": "Размер сгенерированного изображения",
+          "options": [
+            "square_hd"
+          ]
+        },
+        "num_inference_steps": {
+          "name": "num_inference_steps",
+          "type": "number",
+          "required": false,
+          "description": "Количество шагов вывода для выполнения",
+          "options": [
+            "30"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Одинаковое зерно и одинаковый промпт для одной версии модели будут выдавать одно и то же изображение каждый раз"
+        },
+        "guidance_scale": {
+          "name": "guidance_scale",
+          "type": "number",
+          "required": false,
+          "description": "Масштаб CFG (Classifier Free Guidance) - мера того, насколько близко модель должна следовать вашему промпту",
+          "options": [
+            "2.5"
+          ]
+        },
+        "enable_safety_checker": {
+          "name": "enable_safety_checker",
+          "type": "boolean",
+          "required": false,
+          "description": "Проверщик безопасности всегда включен в Playground. Может быть отключен только установкой false через API",
+          "options": [
+            "true"
+          ]
+        },
+        "output_format": {
+          "name": "output_format",
+          "type": "string",
+          "required": false,
+          "description": "Формат сгенерированного изображения",
+          "options": [
+            "png"
+          ]
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Негативный промпт для генерации",
+          "options": [
+            " "
+          ]
+        },
+        "acceleration": {
+          "name": "acceleration",
+          "type": "string",
+          "required": false,
+          "description": "Уровень ускорения для генерации изображения. 'regular' балансирует скорость и качество. 'high' рекомендуется для изображений без текста",
+          "options": [
+            "none"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "qwen/text-to-image",
+      "description": "Документация по интеграции модели qwen/text-to-image согласно официальной документации KIE AI API."
+    },
+    "hailuo/02-text-to-video-standard": {
+      "model_id": "hailuo/02-text-to-video-standard",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание для генерации видео",
+          "max_length": 1500
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность видео в секундах. 10 секундные видео не поддерживаются для 1080p разрешения",
+          "options": [
+            "6"
+          ]
+        },
+        "prompt_optimizer": {
+          "name": "prompt_optimizer",
+          "type": "boolean",
+          "required": false,
+          "description": "Использовать ли оптимизатор промпта модели",
+          "options": [
+            "true"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "hailuo/02-text-to-video-standard",
+      "description": "Документация по интеграции модели hailuo/02-text-to-video-standard согласно официальной документации KIE AI API."
+    },
+    "qwen/image-edit": {
+      "model_id": "qwen/image-edit",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Промпт для генерации изображения",
+          "max_length": 2000
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для редактирования"
+        },
+        "acceleration": {
+          "name": "acceleration",
+          "type": "string",
+          "required": false,
+          "description": "Уровень ускорения для генерации изображения",
+          "options": [
+            "none"
+          ]
+        },
+        "image_size": {
+          "name": "image_size",
+          "type": "string",
+          "required": false,
+          "description": "Размер сгенерированного изображения",
+          "options": [
+            "landscape_4_3"
+          ]
+        },
+        "num_inference_steps": {
+          "name": "num_inference_steps",
+          "type": "number",
+          "required": false,
+          "description": "Количество шагов вывода для выполнения",
+          "options": [
+            "25"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Одинаковое зерно и одинаковый промпт для одной версии модели будут выдавать одно и то же изображение каждый раз"
+        },
+        "guidance_scale": {
+          "name": "guidance_scale",
+          "type": "number",
+          "required": false,
+          "description": "Масштаб CFG (Classifier Free Guidance)",
+          "options": [
+            "4"
+          ]
+        },
+        "sync_mode": {
+          "name": "sync_mode",
+          "type": "boolean",
+          "required": false,
+          "description": "Если установлено в true, функция будет ждать генерации и загрузки изображения перед возвратом ответа",
+          "options": [
+            "false"
+          ]
+        },
+        "num_images": {
+          "name": "num_images",
+          "type": "string",
+          "required": false,
+          "description": "Количество изображений для генерации"
+        },
+        "enable_safety_checker": {
+          "name": "enable_safety_checker",
+          "type": "boolean",
+          "required": false,
+          "description": "Если установлено в true, проверщик безопасности будет включен",
+          "options": [
+            "true"
+          ]
+        },
+        "output_format": {
+          "name": "output_format",
+          "type": "string",
+          "required": false,
+          "description": "Формат сгенерированного изображения",
+          "options": [
+            "png"
+          ]
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Негативный промпт для генерации",
+          "options": [
+            "blurry",
+            "ugly"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "qwen/image-edit",
+      "description": "Документация по интеграции модели qwen/image-edit согласно официальной документации KIE AI API."
+    },
+    "nano-banana-pro": {
+      "model_id": "nano-banana-pro",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание изображения для генерации",
+          "max_length": 10000
+        },
+        "image_input": {
+          "name": "image_input",
+          "type": "string",
+          "required": false,
+          "description": "Входные изображения для трансформации или использования в качестве референса",
+          "options": [
+            "[]"
+          ]
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": false,
+          "description": "Соотношение сторон сгенерированного изображения",
+          "options": [
+            "1:1"
+          ]
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение сгенерированного изображения",
+          "options": [
+            "1K"
+          ]
+        },
+        "output_format": {
+          "name": "output_format",
+          "type": "string",
+          "required": false,
+          "description": "Формат выходного изображения",
+          "options": [
+            "png"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "nano-banana-pro",
+      "description": "Документация по интеграции модели nano-banana-pro согласно официальной документации KIE AI API."
+    },
+    "wan/2-2-a14b-image-to-video-turbo": {
+      "model_id": "wan/2-2-a14b-image-to-video-turbo",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL входного изображения. Если входное изображение не соответствует выбранному соотношению сторон, оно изменяется и обрезается по центру"
+        },
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт для генерации видео",
+          "max_length": 5000
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение сгенерированного видео (480p, 580p или 720p)",
+          "options": [
+            "720p"
+          ]
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": false,
+          "description": "Соотношение сторон сгенерированного видео. Если 'auto', соотношение сторон будет определено автоматически на основе входного изображения",
+          "options": [
+            "auto"
+          ]
+        },
+        "enable_prompt_expansion": {
+          "name": "enable_prompt_expansion",
+          "type": "boolean",
+          "required": false,
+          "description": "Включить ли расширение промпта. Это будет использовать большую языковую модель для расширения промпта с дополнительными деталями, сохраняя исходный смысл",
+          "options": [
+            "false"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Случайный seed для воспроизводимости. Если None, выбирается случайный seed",
+          "options": [
+            "0"
+          ]
+        },
+        "acceleration": {
+          "name": "acceleration",
+          "type": "string",
+          "required": false,
+          "description": "Уровень ускорения для использования. Чем больше ускорение, тем быстрее генерация, но с более низким качеством. Рекомендуемое значение - 'none'",
+          "options": [
+            "none"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "wan/2-2-a14b-image-to-video-turbo",
+      "description": "Документация по интеграции модели wan/2-2-a14b-image-to-video-turbo согласно официальной документации KIE AI API."
+    },
+    "hailuo/02-text-to-video-pro": {
+      "model_id": "hailuo/02-text-to-video-pro",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт для генерации видео",
+          "max_length": 1500
+        },
+        "prompt_optimizer": {
+          "name": "prompt_optimizer",
+          "type": "boolean",
+          "required": false,
+          "description": "Использовать ли оптимизатор промпта модели",
+          "options": [
+            "true"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "hailuo/02-text-to-video-pro",
+      "description": "Документация по интеграции модели hailuo/02-text-to-video-pro согласно официальной документации KIE AI API."
+    },
+    "elevenlabs/text-to-speech-multilingual-v2": {
+      "model_id": "elevenlabs/text-to-speech-multilingual-v2",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "text": {
+          "name": "text",
+          "type": "string",
+          "required": true,
+          "description": "Текст для преобразования в речь",
+          "max_length": 5000
+        },
+        "voice": {
+          "name": "voice",
+          "type": "string",
+          "required": false,
+          "description": "Голос для генерации речи",
+          "options": [
+            "Rachel"
+          ]
+        },
+        "stability": {
+          "name": "stability",
+          "type": "number",
+          "required": false,
+          "description": "Стабильность голоса (0-1)",
+          "options": [
+            "0.5"
+          ],
+          "min_value": 0.0,
+          "max_value": 1.0
+        },
+        "similarity_boost": {
+          "name": "similarity_boost",
+          "type": "number",
+          "required": false,
+          "description": "Усиление схожести (0-1)",
+          "options": [
+            "0.75"
+          ],
+          "min_value": 0.0,
+          "max_value": 1.0
+        },
+        "style": {
+          "name": "style",
+          "type": "number",
+          "required": false,
+          "description": "Преувеличение стиля (0-1)",
+          "options": [
+            "0"
+          ],
+          "min_value": 0.0,
+          "max_value": 1.0
+        },
+        "speed": {
+          "name": "speed",
+          "type": "number",
+          "required": false,
+          "description": "Скорость речи (0.7-1.2)",
+          "options": [
+            "1"
+          ],
+          "min_value": 0.7,
+          "max_value": 1.2
+        },
+        "timestamps": {
+          "name": "timestamps",
+          "type": "boolean",
+          "required": false,
+          "description": "Возвращать ли временные метки для каждого слова",
+          "options": [
+            "false"
+          ]
+        },
+        "previous_text": {
+          "name": "previous_text",
+          "type": "string",
+          "required": false,
+          "description": "Текст, который был до текущего запроса (для непрерывности)",
+          "options": [
+            ""
+          ]
+        },
+        "next_text": {
+          "name": "next_text",
+          "type": "string",
+          "required": false,
+          "description": "Текст, который будет после текущего запроса (для непрерывности)",
+          "options": [
+            ""
+          ]
+        },
+        "language_code": {
+          "name": "language_code",
+          "type": "string",
+          "required": false,
+          "description": "Код языка (ISO 639-1) для принудительного использования языка",
+          "options": [
+            ""
+          ],
+          "min_value": 639.0,
+          "max_value": 1.0
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "elevenlabs/text-to-speech-multilingual-v2",
+      "description": "Документация по интеграции модели elevenlabs/text-to-speech-multilingual-v2 согласно официальной документации KIE AI API."
+    },
+    "grok-imagine/upscale": {
+      "model_id": "grok-imagine/upscale",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "task_id": {
+          "name": "task_id",
+          "type": "string",
+          "required": true,
+          "description": "Task ID от предыдущей генерации KIE AI",
+          "max_length": 100
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "grok-imagine/upscale",
+      "description": "Документация по интеграции модели grok-imagine/upscale согласно официальной документации KIE AI API.\n\nВАЖНО: Эта модель работает только с task_id от предыдущих генераций KIE AI, а не с прямыми URL изображений!"
+    },
+    "hailuo/2-3-image-to-video-pro": {
+      "model_id": "hailuo/2-3-image-to-video-pro",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание анимации видео",
+          "max_length": 5000
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "Входное изображение для анимации"
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность видео в секундах",
+          "options": [
+            "6"
+          ]
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение сгенерированного видео",
+          "options": [
+            "768P"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "hailuo/2-3-image-to-video-pro",
+      "description": "Документация по интеграции модели hailuo/2-3-image-to-video-pro согласно официальной документации KIE AI API."
+    },
+    "recraft/remove-background": {
+      "model_id": "recraft/remove-background",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "image": {
+          "name": "image",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для удаления фона"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "recraft/remove-background",
+      "description": "Документация по интеграции модели recraft/remove-background согласно официальной документации KIE AI API."
+    },
+    "flux-2/pro-image-to-image": {
+      "model_id": "flux-2/pro-image-to-image",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "input_urls": {
+          "name": "input_urls",
+          "type": "string",
+          "required": true,
+          "description": "Массив URL входных изображений"
+        },
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание изображения"
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": true,
+          "description": "Соотношение сторон изображения"
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": true,
+          "description": "Разрешение выходного изображения"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "flux-2/pro-image-to-image",
+      "description": "Документация по интеграции модели flux-2/pro-image-to-image согласно официальной документации KIE AI API."
+    },
+    "wan/2-6-text-to-video": {
+      "model_id": "wan/2-6-text-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание видео"
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность видео в секундах",
+          "options": [
+            "5"
+          ]
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение видео",
+          "options": [
+            "1080p"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "wan/2-6-text-to-video",
+      "description": "Документация по интеграции модели wan/2-6-text-to-video согласно официальной документации KIE AI API."
+    },
+    "qwen/image-to-image": {
+      "model_id": "qwen/image-to-image",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Промпт для генерации изображения",
+          "max_length": 5000
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "Референсное изображение для направления генерации"
+        },
+        "strength": {
+          "name": "strength",
+          "type": "number",
+          "required": false,
+          "description": "Сила шумоподавления. 1.0 = полностью переделать; 0.0 = сохранить оригинал",
+          "options": [
+            "0.8"
+          ]
+        },
+        "output_format": {
+          "name": "output_format",
+          "type": "string",
+          "required": false,
+          "description": "Формат сгенерированного изображения",
+          "options": [
+            "png"
+          ]
+        },
+        "acceleration": {
+          "name": "acceleration",
+          "type": "string",
+          "required": false,
+          "description": "Уровень ускорения для генерации изображения. 'regular' балансирует скорость и качество. 'high' рекомендуется для изображений без текста",
+          "options": [
+            "none"
+          ]
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Негативный промпт для генерации",
+          "options": [
+            "blurry",
+            "ugly"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Одинаковое зерно и одинаковый промпт для одной версии модели будут выдавать одно и то же изображение каждый раз"
+        },
+        "num_inference_steps": {
+          "name": "num_inference_steps",
+          "type": "number",
+          "required": false,
+          "description": "Количество шагов вывода для выполнения",
+          "options": [
+            "30"
+          ]
+        },
+        "guidance_scale": {
+          "name": "guidance_scale",
+          "type": "number",
+          "required": false,
+          "description": "Масштаб CFG (Classifier Free Guidance) - мера того, насколько близко модель должна следовать вашему промпту",
+          "options": [
+            "2.5"
+          ]
+        },
+        "enable_safety_checker": {
+          "name": "enable_safety_checker",
+          "type": "boolean",
+          "required": false,
+          "description": "Проверщик безопасности всегда включен в Playground. Может быть отключен только установкой false через API",
+          "options": [
+            "true"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "qwen/image-to-image",
+      "description": "Документация по интеграции модели qwen/image-to-image согласно официальной документации KIE AI API."
+    },
+    "bytedance/seedream-v4-edit": {
+      "model_id": "bytedance/seedream-v4-edit",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт для редактирования изображения",
+          "max_length": 5000
+        },
+        "image_urls": {
+          "name": "image_urls",
+          "type": "string",
+          "required": true,
+          "description": "Массив URL входных изображений для редактирования"
+        },
+        "image_size": {
+          "name": "image_size",
+          "type": "string",
+          "required": false,
+          "description": "Размер изображения (соотношение сторон)",
+          "options": [
+            "square_hd"
+          ]
+        },
+        "image_resolution": {
+          "name": "image_resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение изображения (пиксельный масштаб)",
+          "options": [
+            "1K"
+          ]
+        },
+        "max_images": {
+          "name": "max_images",
+          "type": "number",
+          "required": false,
+          "description": "Максимальное количество изображений (1-6)",
+          "options": [
+            "1"
+          ],
+          "min_value": 1.0,
+          "max_value": 6.0
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Случайное seed для контроля стохастичности"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "bytedance/seedream-v4-edit",
+      "description": "Документация по интеграции модели bytedance/seedream-v4-edit согласно официальной документации KIE AI API."
+    },
+    "bytedance/v1-pro-text-to-video": {
+      "model_id": "bytedance/v1-pro-text-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт для генерации видео",
+          "max_length": 10000
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": false,
+          "description": "Соотношение сторон сгенерированного видео",
+          "options": [
+            "16:9"
+          ]
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение видео - 480p для быстрой генерации, 720p для баланса, 1080p для более высокого качества",
+          "options": [
+            "720p"
+          ]
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность видео в секундах",
+          "options": [
+            "5"
+          ]
+        },
+        "camera_fixed": {
+          "name": "camera_fixed",
+          "type": "boolean",
+          "required": false,
+          "description": "Фиксировать ли позицию камеры",
+          "options": [
+            "false"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Случайное зерно для управления генерацией видео. Используйте -1 для случайного.",
+          "options": [
+            "-1"
+          ]
+        },
+        "enable_safety_checker": {
+          "name": "enable_safety_checker",
+          "type": "boolean",
+          "required": false,
+          "description": "Safety checker всегда включен в Playground. Может быть отключен только установкой false через API.",
+          "options": [
+            "true"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "bytedance/v1-pro-text-to-video",
+      "description": "Документация по интеграции модели bytedance/v1-pro-text-to-video согласно официальной документации KIE AI API."
+    },
+    "seedream/4.5-edit": {
+      "model_id": "seedream/4.5-edit",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание редактирования",
+          "max_length": 3000
+        },
+        "image_urls": {
+          "name": "image_urls",
+          "type": "string",
+          "required": true,
+          "description": "Массив URL изображений"
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": true,
+          "description": "Соотношение сторон изображения"
+        },
+        "quality": {
+          "name": "quality",
+          "type": "string",
+          "required": true,
+          "description": "Качество изображения"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "seedream/4.5-edit",
+      "description": "Документация по интеграции модели seedream/4.5-edit согласно официальной документации KIE AI API."
+    },
+    "bytedance/v1-pro-fast-image-to-video": {
+      "model_id": "bytedance/v1-pro-fast-image-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт для генерации видео",
+          "max_length": 10000
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для генерации видео"
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение видео - 720p для баланса, 1080p для более высокого качества",
+          "options": [
+            "720p"
+          ]
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность видео в секундах",
+          "options": [
+            "5"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "bytedance/v1-pro-fast-image-to-video",
+      "description": "Документация по интеграции модели bytedance/v1-pro-fast-image-to-video согласно официальной документации KIE AI API."
+    },
+    "hailuo/02-image-to-video-standard": {
+      "model_id": "hailuo/02-image-to-video-standard",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт, описывающий видео для генерации",
+          "max_length": 1500
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для использования в качестве первого кадра видео"
+        },
+        "end_image_url": {
+          "name": "end_image_url",
+          "type": "string",
+          "required": false,
+          "description": "Опциональный URL изображения для использования в качестве последнего кадра видео",
+          "options": [
+            "https://file.aiquickdraw.com/custom-page/akr/section-images/1758521423357w8586uq8.png"
+          ]
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность видео в секундах. 10 секундные видео не поддерживаются для 1080p разрешения",
+          "options": [
+            "10"
+          ]
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение сгенерированного видео",
+          "options": [
+            "768P"
+          ]
+        },
+        "prompt_optimizer": {
+          "name": "prompt_optimizer",
+          "type": "boolean",
+          "required": false,
+          "description": "Использовать ли оптимизатор промпта модели",
+          "options": [
+            "true"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "hailuo/02-image-to-video-standard",
+      "description": "Документация по интеграции модели hailuo/02-image-to-video-standard согласно официальной документации KIE AI API."
+    },
+    "bytedance/seedream-v4-text-to-image": {
+      "model_id": "bytedance/seedream-v4-text-to-image",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт для генерации изображения",
+          "max_length": 5000
+        },
+        "image_size": {
+          "name": "image_size",
+          "type": "string",
+          "required": false,
+          "description": "Размер изображения (соотношение сторон)",
+          "options": [
+            "square_hd"
+          ]
+        },
+        "image_resolution": {
+          "name": "image_resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение изображения (пиксельный масштаб)",
+          "options": [
+            "1K"
+          ]
+        },
+        "max_images": {
+          "name": "max_images",
+          "type": "number",
+          "required": false,
+          "description": "Максимальное количество изображений (1-6)",
+          "options": [
+            "1"
+          ],
+          "min_value": 1.0,
+          "max_value": 6.0
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Случайное seed для контроля стохастичности"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "bytedance/seedream-v4-text-to-image",
+      "description": "Документация по интеграции модели bytedance/seedream-v4-text-to-image согласно официальной документации KIE AI API."
+    },
+    "wan/2-5-text-to-video": {
+      "model_id": "wan/2-5-text-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт для генерации видео. Поддерживает китайский и английский языки",
+          "max_length": 800
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность видео в секундах",
+          "options": [
+            "5"
+          ]
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": false,
+          "description": "Соотношение сторон видео",
+          "options": [
+            "16:9"
+          ]
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Уровень разрешения видео",
+          "options": [
+            "1080p"
+          ]
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Негативный промпт для описания контента, которого следует избегать",
+          "options": [
+            ""
+          ]
+        },
+        "enable_prompt_expansion": {
+          "name": "enable_prompt_expansion",
+          "type": "boolean",
+          "required": false,
+          "description": "Включить ли переписывание промпта с помощью LLM. Улучшает результаты для коротких промптов, но увеличивает время обработки",
+          "options": [
+            "true"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Случайное зерно для воспроизводимости"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "wan/2-5-text-to-video",
+      "description": "Документация по интеграции модели wan/2-5-text-to-video согласно официальной документации KIE AI API."
+    },
+    "sora-2-pro-text-to-video": {
+      "model_id": "sora-2-pro-text-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание движения видео",
+          "max_length": 10000
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": false,
+          "description": "Соотношение сторон видео",
+          "options": [
+            "landscape"
+          ]
+        },
+        "n_frames": {
+          "name": "n_frames",
+          "type": "string",
+          "required": false,
+          "description": "Количество кадров для генерации",
+          "options": [
+            "10"
+          ]
+        },
+        "size": {
+          "name": "size",
+          "type": "string",
+          "required": false,
+          "description": "Качество или размер сгенерированного видео",
+          "options": [
+            "high"
+          ]
+        },
+        "remove_watermark": {
+          "name": "remove_watermark",
+          "type": "boolean",
+          "required": false,
+          "description": "Удаление водяных знаков из сгенерированного видео",
+          "options": [
+            "true"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "sora-2-pro-text-to-video",
+      "description": "Документация по интеграции модели sora-2-pro-text-to-video согласно официальной документации KIE AI API."
+    },
+    "ideogram/character-edit": {
+      "model_id": "ideogram/character-edit",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Промпт для заполнения замаскированной части изображения",
+          "max_length": 5000
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для генерации"
+        },
+        "mask_url": {
+          "name": "mask_url",
+          "type": "string",
+          "required": true,
+          "description": "URL маски для inpainting"
+        },
+        "reference_image_urls": {
+          "name": "reference_image_urls",
+          "type": "string",
+          "required": true,
+          "description": "Набор изображений для использования в качестве референсов персонажа"
+        },
+        "rendering_speed": {
+          "name": "rendering_speed",
+          "type": "string",
+          "required": false,
+          "description": "Скорость рендеринга",
+          "options": [
+            "BALANCED"
+          ]
+        },
+        "style": {
+          "name": "style",
+          "type": "string",
+          "required": false,
+          "description": "Тип стиля для генерации",
+          "options": [
+            "AUTO"
+          ]
+        },
+        "expand_prompt": {
+          "name": "expand_prompt",
+          "type": "boolean",
+          "required": false,
+          "description": "Определяет, должен ли использоваться MagicPrompt",
+          "options": [
+            "true"
+          ]
+        },
+        "num_images": {
+          "name": "num_images",
+          "type": "string",
+          "required": false,
+          "description": "Количество изображений для генерации",
+          "options": [
+            "1"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Зерно для генератора случайных чисел"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "ideogram/character-edit",
+      "description": "Документация по интеграции модели ideogram/character-edit согласно официальной документации KIE AI API."
+    },
+    "infinitalk/from-audio": {
+      "model_id": "infinitalk/from-audio",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL входного изображения"
+        },
+        "audio_url": {
+          "name": "audio_url",
+          "type": "string",
+          "required": true,
+          "description": "URL аудио файла"
+        },
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт для генерации видео",
+          "max_length": 5000
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение видео",
+          "options": [
+            "480p"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Случайное seed для воспроизводимости"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "infinitalk/from-audio",
+      "description": "Документация по интеграции модели infinitalk/from-audio согласно официальной документации KIE AI API."
+    },
+    "sora-2-pro-storyboard": {
+      "model_id": "sora-2-pro-storyboard",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "n_frames": {
+          "name": "n_frames",
+          "type": "string",
+          "required": true,
+          "description": "Общая длительность видео"
+        },
+        "image_urls": {
+          "name": "image_urls",
+          "type": "string",
+          "required": false,
+          "description": "Массив URL изображений для использования в качестве входных данных"
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": false,
+          "description": "Соотношение сторон изображения",
+          "options": [
+            "landscape"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "sora-2-pro-storyboard",
+      "description": "Документация по интеграции модели sora-2-pro-storyboard согласно официальной документации KIE AI API."
+    },
+    "topaz/image-upscale": {
+      "model_id": "topaz/image-upscale",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для увеличения"
+        },
+        "upscale_factor": {
+          "name": "upscale_factor",
+          "type": "string",
+          "required": true,
+          "description": "Коэффициент увеличения"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "topaz/image-upscale",
+      "description": "Документация по интеграции модели topaz/image-upscale согласно официальной документации KIE AI API."
+    },
+    "elevenlabs/sound-effect-v2": {
+      "model_id": "elevenlabs/sound-effect-v2",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "text": {
+          "name": "text",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание звукового эффекта для генерации",
+          "max_length": 5000
+        },
+        "loop": {
+          "name": "loop",
+          "type": "boolean",
+          "required": false,
+          "description": "Создавать ли звуковой эффект, который плавно зацикливается",
+          "options": [
+            "false"
+          ]
+        },
+        "duration_seconds": {
+          "name": "duration_seconds",
+          "type": "number",
+          "required": false,
+          "description": "Длительность в секундах (0.5-22). Если не указано, оптимальная длительность определяется из промпта",
+          "min_value": 0.5,
+          "max_value": 22.0
+        },
+        "prompt_influence": {
+          "name": "prompt_influence",
+          "type": "number",
+          "required": false,
+          "description": "Насколько точно следовать промпту (0-1). Более высокие значения означают меньше вариаций",
+          "options": [
+            "0.3"
+          ],
+          "min_value": 0.0,
+          "max_value": 1.0
+        },
+        "output_format": {
+          "name": "output_format",
+          "type": "string",
+          "required": false,
+          "description": "Формат выходного аудио. Форматируется как codec_sample_rate_bitrate",
+          "options": [
+            "mp3_44100_128"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "elevenlabs/sound-effect-v2",
+      "description": "Документация по интеграции модели elevenlabs/sound-effect-v2 согласно официальной документации KIE AI API."
+    },
+    "grok-imagine/text-to-video": {
+      "model_id": "grok-imagine/text-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание движения видео",
+          "max_length": 5000
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": false,
+          "description": "Соотношение сторон видео",
+          "options": [
+            "2:3"
+          ]
+        },
+        "mode": {
+          "name": "mode",
+          "type": "string",
+          "required": false,
+          "description": "Режим генерации",
+          "options": [
+            "normal"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "grok-imagine/text-to-video",
+      "description": "Документация по интеграции модели grok-imagine/text-to-video согласно официальной документации KIE AI API."
+    },
+    "ideogram/v3-remix": {
+      "model_id": "ideogram/v3-remix",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Промпт для ремикса изображения",
+          "max_length": 5000
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для ремикса"
+        },
+        "rendering_speed": {
+          "name": "rendering_speed",
+          "type": "string",
+          "required": false,
+          "description": "Скорость рендеринга",
+          "options": [
+            "BALANCED"
+          ]
+        },
+        "style": {
+          "name": "style",
+          "type": "string",
+          "required": false,
+          "description": "Тип стиля для генерации. Не может использоваться вместе с style_codes",
+          "options": [
+            "AUTO"
+          ]
+        },
+        "expand_prompt": {
+          "name": "expand_prompt",
+          "type": "boolean",
+          "required": false,
+          "description": "Определяет, должен ли использоваться MagicPrompt при генерации запроса",
+          "options": [
+            "true"
+          ]
+        },
+        "image_size": {
+          "name": "image_size",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение сгенерированного изображения",
+          "options": [
+            "square_hd"
+          ]
+        },
+        "num_images": {
+          "name": "num_images",
+          "type": "string",
+          "required": false,
+          "description": "Radio description",
+          "options": [
+            "1"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Seed для генератора случайных чисел"
+        },
+        "strength": {
+          "name": "strength",
+          "type": "number",
+          "required": false,
+          "description": "Сила входного изображения в ремиксе",
+          "options": [
+            "0.8"
+          ]
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Описание того, что следует исключить из изображения. Описания в prompt имеют приоритет над описаниями в negative_prompt",
+          "options": [
+            ""
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "ideogram/v3-remix",
+      "description": "Документация по интеграции модели ideogram/v3-remix согласно официальной документации KIE AI API."
+    },
+    "wan/2-5-image-to-video": {
+      "model_id": "wan/2-5-image-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание желаемого движения видео",
+          "max_length": 800
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для использования в качестве первого кадра"
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность видео в секундах",
+          "options": [
+            "5"
+          ]
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение видео",
+          "options": [
+            "1080p"
+          ]
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Негативный промпт для описания контента, которого следует избегать",
+          "options": [
+            ""
+          ]
+        },
+        "enable_prompt_expansion": {
+          "name": "enable_prompt_expansion",
+          "type": "boolean",
+          "required": false,
+          "description": "Включить ли переписывание промпта с помощью LLM",
+          "options": [
+            "true"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Случайное зерно для воспроизводимости"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "wan/2-5-image-to-video",
+      "description": "Документация по интеграции модели wan/2-5-image-to-video согласно официальной документации KIE AI API."
+    },
+    "kling/v1-avatar-standard": {
+      "model_id": "kling/v1-avatar-standard",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для аватара"
+        },
+        "audio_url": {
+          "name": "audio_url",
+          "type": "string",
+          "required": true,
+          "description": "URL аудио файла"
+        },
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Промпт для генерации видео",
+          "max_length": 5000
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "kling/v1-avatar-standard",
+      "description": "Документация по интеграции модели kling/v1-avatar-standard согласно официальной документации KIE AI API."
+    },
+    "elevenlabs/audio-isolation": {
+      "model_id": "elevenlabs/audio-isolation",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "audio_url": {
+          "name": "audio_url",
+          "type": "string",
+          "required": true,
+          "description": "URL аудио файла для изоляции голоса"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "elevenlabs/audio-isolation",
+      "description": "Документация по интеграции модели elevenlabs/audio-isolation согласно официальной документации KIE AI API."
+    },
+    "ideogram/v3-reframe": {
+      "model_id": "ideogram/v3-reframe",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для рефрейминга"
+        },
+        "image_size": {
+          "name": "image_size",
+          "type": "string",
+          "required": true,
+          "description": "Разрешение для рефреймленного выходного изображения"
+        },
+        "rendering_speed": {
+          "name": "rendering_speed",
+          "type": "string",
+          "required": false,
+          "description": "Скорость рендеринга",
+          "options": [
+            "BALANCED"
+          ]
+        },
+        "style": {
+          "name": "style",
+          "type": "string",
+          "required": false,
+          "description": "Тип стиля для генерации. Нельзя использовать вместе с style_codes",
+          "options": [
+            "AUTO"
+          ]
+        },
+        "num_images": {
+          "name": "num_images",
+          "type": "string",
+          "required": false,
+          "description": "Количество изображений",
+          "options": [
+            "1"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Seed для генератора случайных чисел",
+          "options": [
+            "0"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "ideogram/v3-reframe",
+      "description": "Документация по интеграции модели ideogram/v3-reframe согласно официальной документации KIE AI API."
+    },
+    "kling-2.6/image-to-video": {
+      "model_id": "kling-2.6/image-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание видео",
+          "max_length": 1000
+        },
+        "image_urls": {
+          "name": "image_urls",
+          "type": "string",
+          "required": true,
+          "description": "Массив URL изображений"
+        },
+        "sound": {
+          "name": "sound",
+          "type": "boolean",
+          "required": true,
+          "description": "Включить звук в видео"
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": true,
+          "description": "Длительность видео в секундах"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "kling-2.6/image-to-video",
+      "description": "Документация по интеграции модели kling-2.6/image-to-video согласно официальной документации KIE AI API."
+    },
+    "ideogram/v3-edit": {
+      "model_id": "ideogram/v3-edit",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Промпт для заполнения замаскированной части изображения",
+          "max_length": 5000
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для генерации изображения. Должен соответствовать размерам маски"
+        },
+        "mask_url": {
+          "name": "mask_url",
+          "type": "string",
+          "required": true,
+          "description": "URL маски для инпейнтинга изображения. Должен соответствовать размерам входного изображения"
+        },
+        "rendering_speed": {
+          "name": "rendering_speed",
+          "type": "string",
+          "required": false,
+          "description": "Скорость рендеринга",
+          "options": [
+            "BALANCED"
+          ]
+        },
+        "expand_prompt": {
+          "name": "expand_prompt",
+          "type": "boolean",
+          "required": false,
+          "description": "Определяет, должен ли использоваться MagicPrompt при генерации запроса",
+          "options": [
+            "true"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Seed для генератора случайных чисел"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "ideogram/v3-edit",
+      "description": "Документация по интеграции модели ideogram/v3-edit согласно официальной документации KIE AI API."
+    },
+    "kling/v2-1-standard": {
+      "model_id": "kling/v2-1-standard",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт, описывающий желаемое видео",
+          "max_length": 5000
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для использования в видео"
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность сгенерированного видео в секундах",
+          "options": [
+            "5"
+          ]
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Описание элементов, которых следует избегать в сгенерированном видео",
+          "options": [
+            "blur",
+            "distort",
+            "and low quality"
+          ]
+        },
+        "cfg_scale": {
+          "name": "cfg_scale",
+          "type": "number",
+          "required": false,
+          "description": "CFG (Classifier Free Guidance) scale - мера того, насколько близко модель должна следовать вашему промпту",
+          "options": [
+            "0.5"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "kling/v2-1-standard",
+      "description": "Документация по интеграции модели kling/v2-1-standard согласно официальной документации KIE AI API."
+    },
+    "elevenlabs/speech-to-text": {
+      "model_id": "elevenlabs/speech-to-text",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "audio_url": {
+          "name": "audio_url",
+          "type": "string",
+          "required": true,
+          "description": "URL аудио файла для транскрипции"
+        },
+        "language_code": {
+          "name": "language_code",
+          "type": "string",
+          "required": false,
+          "description": "Код языка аудио",
+          "options": [
+            ""
+          ]
+        },
+        "tag_audio_events": {
+          "name": "tag_audio_events",
+          "type": "boolean",
+          "required": false,
+          "description": "Тегировать ли аудио события (смех, аплодисменты и т.д.)",
+          "options": [
+            "true"
+          ]
+        },
+        "diarize": {
+          "name": "diarize",
+          "type": "boolean",
+          "required": false,
+          "description": "Аннотировать ли, кто говорит",
+          "options": [
+            "true"
+          ]
+        }
+      },
+      "output_media_type": "text_object",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "elevenlabs/speech-to-text",
+      "description": "Документация по интеграции модели elevenlabs/speech-to-text согласно официальной документации KIE AI API."
+    },
+    "bytedance/v1-pro-image-to-video": {
+      "model_id": "bytedance/v1-pro-image-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт для генерации видео",
+          "max_length": 10000
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для генерации видео"
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение видео - 480p для быстрой генерации, 720p для баланса, 1080p для более высокого качества",
+          "options": [
+            "720p"
+          ]
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность видео в секундах",
+          "options": [
+            "5"
+          ]
+        },
+        "camera_fixed": {
+          "name": "camera_fixed",
+          "type": "boolean",
+          "required": false,
+          "description": "Фиксировать ли позицию камеры",
+          "options": [
+            "false"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Случайное зерно для управления генерацией видео. Используйте -1 для случайного.",
+          "options": [
+            "-1"
+          ]
+        },
+        "enable_safety_checker": {
+          "name": "enable_safety_checker",
+          "type": "boolean",
+          "required": false,
+          "description": "Safety checker всегда включен в Playground. Может быть отключен только установкой false через API.",
+          "options": [
+            "true"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "bytedance/v1-pro-image-to-video",
+      "description": "Документация по интеграции модели bytedance/v1-pro-image-to-video согласно официальной документации KIE AI API."
+    },
+    "google/imagen4-ultra": {
+      "model_id": "google/imagen4-ultra",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт, описывающий то, что вы хотите увидеть",
+          "max_length": 5000
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Описание того, что следует избегать в сгенерированных изображениях",
+          "options": [
+            ""
+          ]
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": false,
+          "description": "Соотношение сторон сгенерированного изображения",
+          "options": [
+            "1:1"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "string",
+          "required": false,
+          "description": "Случайный seed для воспроизводимой генерации",
+          "options": [
+            ""
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "google/imagen4-ultra",
+      "description": "Документация по интеграции модели google/imagen4-ultra согласно официальной документации KIE AI API."
+    },
+    "ideogram/v3-text-to-image": {
+      "model_id": "ideogram/v3-text-to-image",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Описание изображения для генерации",
+          "max_length": 5000
+        },
+        "rendering_speed": {
+          "name": "rendering_speed",
+          "type": "string",
+          "required": false,
+          "description": "Скорость рендеринга",
+          "options": [
+            "BALANCED"
+          ]
+        },
+        "style": {
+          "name": "style",
+          "type": "string",
+          "required": false,
+          "description": "Тип стиля для генерации. Не может использоваться вместе с style_codes",
+          "options": [
+            "AUTO"
+          ]
+        },
+        "expand_prompt": {
+          "name": "expand_prompt",
+          "type": "boolean",
+          "required": false,
+          "description": "Определяет, должен ли использоваться MagicPrompt при генерации запроса",
+          "options": [
+            "true"
+          ]
+        },
+        "image_size": {
+          "name": "image_size",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение сгенерированного изображения",
+          "options": [
+            "square_hd"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Seed для генератора случайных чисел"
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Описание того, что следует исключить из изображения. Описания в prompt имеют приоритет над описаниями в negative_prompt",
+          "options": [
+            ""
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "ideogram/v3-text-to-image",
+      "description": "Документация по интеграции модели ideogram/v3-text-to-image согласно официальной документации KIE AI API."
+    },
+    "kling/ai-avatar-v1-pro": {
+      "model_id": "kling/ai-avatar-v1-pro",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для аватара"
+        },
+        "audio_url": {
+          "name": "audio_url",
+          "type": "string",
+          "required": true,
+          "description": "URL аудио файла"
+        },
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Промпт для генерации видео",
+          "max_length": 5000
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "kling/ai-avatar-v1-pro",
+      "description": "Документация по интеграции модели kling/ai-avatar-v1-pro согласно официальной документации KIE AI API."
+    },
+    "google/nano-banana": {
+      "model_id": "google/nano-banana",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Промпт для генерации изображения",
+          "max_length": 5000
+        },
+        "output_format": {
+          "name": "output_format",
+          "type": "string",
+          "required": false,
+          "description": "Формат выходных изображений",
+          "options": [
+            "png"
+          ]
+        },
+        "image_size": {
+          "name": "image_size",
+          "type": "string",
+          "required": false,
+          "description": "Размер изображения",
+          "options": [
+            "1:1"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "google/nano-banana",
+      "description": "Документация по интеграции модели google/nano-banana согласно официальной документации KIE AI API."
+    },
+    "wan/2-6-video-to-video": {
+      "model_id": "wan/2-6-video-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание видео"
+        },
+        "video_urls": {
+          "name": "video_urls",
+          "type": "string",
+          "required": true,
+          "description": "Массив URL видео"
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность видео в секундах",
+          "options": [
+            "5"
+          ]
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение видео",
+          "options": [
+            "1080p"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "wan/2-6-video-to-video",
+      "description": "Документация по интеграции модели wan/2-6-video-to-video согласно официальной документации KIE AI API."
+    },
+    "sora-watermark-remover": {
+      "model_id": "sora-watermark-remover",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "video_url": {
+          "name": "video_url",
+          "type": "string",
+          "required": true,
+          "description": "Публично доступная ссылка на видео Sora 2",
+          "max_length": 500,
+          "options": [
+            "sora.chatgpt.com"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "sora-watermark-remover",
+      "description": "Документация по интеграции модели sora-watermark-remover согласно официальной документации KIE AI API."
+    },
+    "grok-imagine/text-to-image": {
+      "model_id": "grok-imagine/text-to-image",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание изображения",
+          "max_length": 5000
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": false,
+          "description": "Соотношение сторон изображения",
+          "options": [
+            "3:2"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "grok-imagine/text-to-image",
+      "description": "Документация по интеграции модели grok-imagine/text-to-image согласно официальной документации KIE AI API."
+    },
+    "kling/v2-1-master-text-to-video": {
+      "model_id": "kling/v2-1-master-text-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт, описывающий видео для генерации",
+          "max_length": 5000
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность сгенерированного видео в секундах",
+          "options": [
+            "5"
+          ]
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": false,
+          "description": "Соотношение сторон сгенерированного видео",
+          "options": [
+            "16:9"
+          ]
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Элементы, которых следует избегать в сгенерированном видео",
+          "options": [
+            "blur",
+            "distort",
+            "and low quality"
+          ]
+        },
+        "cfg_scale": {
+          "name": "cfg_scale",
+          "type": "number",
+          "required": false,
+          "description": "CFG (Classifier Free Guidance) scale - мера того, насколько близко модель должна следовать вашему промпту",
+          "options": [
+            "0.5"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "kling/v2-1-master-text-to-video",
+      "description": "Документация по интеграции модели kling/v2-1-master-text-to-video согласно официальной документации KIE AI API."
+    },
+    "sora-2-text-to-video": {
+      "model_id": "sora-2-text-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание движения видео",
+          "max_length": 10000
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": false,
+          "description": "Соотношение сторон видео",
+          "options": [
+            "landscape"
+          ]
+        },
+        "n_frames": {
+          "name": "n_frames",
+          "type": "string",
+          "required": false,
+          "description": "Количество кадров для генерации",
+          "options": [
+            "10"
+          ]
+        },
+        "remove_watermark": {
+          "name": "remove_watermark",
+          "type": "boolean",
+          "required": false,
+          "description": "Удаление водяных знаков из сгенерированного видео",
+          "options": [
+            "true"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "sora-2-text-to-video",
+      "description": "Документация по интеграции модели sora-2-text-to-video согласно официальной документации KIE AI API.\n\nВАЖНО: Отличается от sora-2-pro-text-to-video:\n- НЕТ параметра size (в pro версии есть параметр size с значениями \"standard\" | \"high\")\n- Только: prompt, aspect_ratio, n_frames, remove_watermark"
+    },
+    "kling/v2-5-turbo-text-to-video-pro": {
+      "model_id": "kling/v2-5-turbo-text-to-video-pro",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание видео",
+          "max_length": 2500
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность видео в секундах",
+          "options": [
+            "5"
+          ]
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": false,
+          "description": "Соотношение сторон видео",
+          "options": [
+            "16:9"
+          ]
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Что избегать в видео",
+          "options": [
+            "blur",
+            "distort",
+            "and low quality"
+          ]
+        },
+        "cfg_scale": {
+          "name": "cfg_scale",
+          "type": "number",
+          "required": false,
+          "description": "CFG scale (насколько близко следовать промпту)",
+          "options": [
+            "0.5"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "kling/v2-5-turbo-text-to-video-pro",
+      "description": "Документация по интеграции модели kling/v2-5-turbo-text-to-video-pro согласно официальной документации KIE AI API."
+    },
+    "wan/2-2-animate-move": {
+      "model_id": "wan/2-2-animate-move",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "video_url": {
+          "name": "video_url",
+          "type": "string",
+          "required": true,
+          "description": "URL входного видео"
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL входного изображения"
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение сгенерированного видео",
+          "options": [
+            "480p"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "wan/2-2-animate-move",
+      "description": "Документация по интеграции модели wan/2-2-animate-move согласно официальной документации KIE AI API."
+    },
+    "bytedance/v1-lite-image-to-video": {
+      "model_id": "bytedance/v1-lite-image-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт для генерации видео",
+          "max_length": 10000
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для генерации видео"
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение видео - 480p для быстрой генерации, 720p для более высокого качества",
+          "options": [
+            "720p"
+          ]
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность видео в секундах",
+          "options": [
+            "5"
+          ]
+        },
+        "camera_fixed": {
+          "name": "camera_fixed",
+          "type": "boolean",
+          "required": false,
+          "description": "Фиксировать ли позицию камеры",
+          "options": [
+            "false"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Случайное зерно для управления генерацией видео. Используйте -1 для случайного.",
+          "options": [
+            "-1"
+          ]
+        },
+        "enable_safety_checker": {
+          "name": "enable_safety_checker",
+          "type": "boolean",
+          "required": false,
+          "description": "Safety checker всегда включен в Playground. Может быть отключен только установкой false через API.",
+          "options": [
+            "true"
+          ]
+        },
+        "end_image_url": {
+          "name": "end_image_url",
+          "type": "string",
+          "required": false,
+          "description": "URL изображения, которым заканчивается видео. По умолчанию None.",
+          "options": [
+            ""
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "bytedance/v1-lite-image-to-video",
+      "description": "Документация по интеграции модели bytedance/v1-lite-image-to-video согласно официальной документации KIE AI API."
+    },
+    "grok-imagine/image-to-video": {
+      "model_id": "grok-imagine/image-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "image_urls": {
+          "name": "image_urls",
+          "type": "string",
+          "required": false,
+          "description": "Массив URL внешних изображений",
+          "options": [
+            "[]"
+          ]
+        },
+        "task_id": {
+          "name": "task_id",
+          "type": "string",
+          "required": false,
+          "description": "ID задачи с изображением от Grok"
+        },
+        "index": {
+          "name": "index",
+          "type": "number",
+          "required": false,
+          "description": "Индекс изображения (0-5, 0-based)",
+          "options": [
+            "0"
+          ],
+          "min_value": 0.0,
+          "max_value": 5.0
+        },
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": false,
+          "description": "Текстовое описание движения видео"
+        },
+        "mode": {
+          "name": "mode",
+          "type": "string",
+          "required": false,
+          "description": "Режим генерации",
+          "options": [
+            "normal"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "grok-imagine/image-to-video",
+      "description": "Документация по интеграции модели grok-imagine/image-to-video согласно официальной документации KIE AI API."
+    },
+    "kling/v2-1-master-image-to-video": {
+      "model_id": "kling/v2-1-master-image-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт, описывающий видео для генерации",
+          "max_length": 5000
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для использования в видео"
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность сгенерированного видео в секундах",
+          "options": [
+            "5"
+          ]
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Negative prompt для исключения определенных элементов из видео",
+          "options": [
+            "blur",
+            "distort",
+            "and low quality"
+          ]
+        },
+        "cfg_scale": {
+          "name": "cfg_scale",
+          "type": "number",
+          "required": false,
+          "description": "CFG (Classifier Free Guidance) scale - мера того, насколько близко модель должна следовать вашему промпту",
+          "options": [
+            "0.5"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "kling/v2-1-master-image-to-video",
+      "description": "Документация по интеграции модели kling/v2-1-master-image-to-video согласно официальной документации KIE AI API."
+    },
+    "hailuo/2-3-image-to-video-standard": {
+      "model_id": "hailuo/2-3-image-to-video-standard",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание анимации видео",
+          "max_length": 5000
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "Входное изображение для анимации"
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность видео в секундах",
+          "options": [
+            "6"
+          ]
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение сгенерированного видео",
+          "options": [
+            "768P"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "hailuo/2-3-image-to-video-standard",
+      "description": "Документация по интеграции модели hailuo/2-3-image-to-video-standard согласно официальной документации KIE AI API.\n\nВАЖНО: Параметры идентичны hailuo/2-3-image-to-video-pro, но это другая модель (Standard версия)!"
+    },
+    "wan/2-2-animate-replace": {
+      "model_id": "wan/2-2-animate-replace",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "video_url": {
+          "name": "video_url",
+          "type": "string",
+          "required": true,
+          "description": "URL входного видео"
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL входного изображения"
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение сгенерированного видео",
+          "options": [
+            "480p"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "wan/2-2-animate-replace",
+      "description": "Документация по интеграции модели wan/2-2-animate-replace согласно официальной документации KIE AI API."
+    },
+    "kling/v2-1-pro": {
+      "model_id": "kling/v2-1-pro",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт, описывающий видео для генерации",
+          "max_length": 5000
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для использования в видео"
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность сгенерированного видео в секундах",
+          "options": [
+            "5"
+          ]
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Термины, которых следует избегать в сгенерированном видео",
+          "options": [
+            "blur",
+            "distort",
+            "and low quality"
+          ]
+        },
+        "cfg_scale": {
+          "name": "cfg_scale",
+          "type": "number",
+          "required": false,
+          "description": "CFG (Classifier Free Guidance) scale - мера того, насколько близко модель должна следовать вашему промпту",
+          "options": [
+            "0.5"
+          ]
+        },
+        "tail_image_url": {
+          "name": "tail_image_url",
+          "type": "string",
+          "required": false,
+          "description": "URL изображения для использования в конце видео",
+          "options": [
+            ""
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "kling/v2-1-pro",
+      "description": "Документация по интеграции модели kling/v2-1-pro согласно официальной документации KIE AI API."
+    },
+    "google/nano-banana-edit": {
+      "model_id": "google/nano-banana-edit",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Промпт для редактирования изображения",
+          "max_length": 5000
+        },
+        "image_urls": {
+          "name": "image_urls",
+          "type": "string",
+          "required": true,
+          "description": "Список URL входных изображений для редактирования"
+        },
+        "output_format": {
+          "name": "output_format",
+          "type": "string",
+          "required": false,
+          "description": "Формат выходных изображений",
+          "options": [
+            "png"
+          ]
+        },
+        "image_size": {
+          "name": "image_size",
+          "type": "string",
+          "required": false,
+          "description": "Размер изображения",
+          "options": [
+            "1:1"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "google/nano-banana-edit",
+      "description": "Документация по интеграции модели google/nano-banana-edit согласно официальной документации KIE AI API."
+    },
+    "seedream/4.5-text-to-image": {
+      "model_id": "seedream/4.5-text-to-image",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание изображения",
+          "max_length": 3000
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": true,
+          "description": "Соотношение сторон изображения"
+        },
+        "quality": {
+          "name": "quality",
+          "type": "string",
+          "required": true,
+          "description": "Качество изображения"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "seedream/4.5-text-to-image",
+      "description": "Документация по интеграции модели seedream/4.5-text-to-image согласно официальной документации KIE AI API."
+    },
+    "flux-2/flex-text-to-image": {
+      "model_id": "flux-2/flex-text-to-image",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание изображения"
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": true,
+          "description": "Соотношение сторон изображения"
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": true,
+          "description": "Разрешение выходного изображения"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "flux-2/flex-text-to-image",
+      "description": "Документация по интеграции модели flux-2/flex-text-to-image согласно официальной документации KIE AI API."
+    },
+    "bytedance/seedream": {
+      "model_id": "bytedance/seedream",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт для генерации изображения",
+          "max_length": 5000
+        },
+        "image_size": {
+          "name": "image_size",
+          "type": "string",
+          "required": false,
+          "description": "Размер изображения",
+          "options": [
+            "square_hd"
+          ]
+        },
+        "guidance_scale": {
+          "name": "guidance_scale",
+          "type": "number",
+          "required": false,
+          "description": "Контролирует, насколько тесно выходное изображение соответствует входному промпту. Более высокие значения означают более сильную корреляцию с промптом",
+          "options": [
+            "2.5"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Случайное зерно для управления стохастичностью генерации изображения"
+        },
+        "enable_safety_checker": {
+          "name": "enable_safety_checker",
+          "type": "boolean",
+          "required": false,
+          "description": "Если установлено в true, будет включен проверщик безопасности",
+          "options": [
+            "true"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "bytedance/seedream",
+      "description": "Документация по интеграции модели bytedance/seedream (Seedream 3.0) согласно официальной документации KIE AI API."
+    },
+    "wan/2-6-image-to-video": {
+      "model_id": "wan/2-6-image-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание видео"
+        },
+        "image_urls": {
+          "name": "image_urls",
+          "type": "string",
+          "required": true,
+          "description": "Массив URL изображений"
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность видео в секундах",
+          "options": [
+            "5"
+          ]
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение видео",
+          "options": [
+            "1080p"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "wan/2-6-image-to-video",
+      "description": "Документация по интеграции модели wan/2-6-image-to-video согласно официальной документации KIE AI API."
+    },
+    "flux-2/flex-image-to-image": {
+      "model_id": "flux-2/flex-image-to-image",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "input_urls": {
+          "name": "input_urls",
+          "type": "string",
+          "required": true,
+          "description": "Массив URL входных изображений"
+        },
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание изображения"
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": true,
+          "description": "Соотношение сторон изображения"
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": true,
+          "description": "Разрешение выходного изображения"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "flux-2/flex-image-to-image",
+      "description": "Документация по интеграции модели flux-2/flex-image-to-image согласно официальной документации KIE AI API."
+    },
+    "sora-2-pro-image-to-video": {
+      "model_id": "sora-2-pro-image-to-video",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание движения видео",
+          "max_length": 10000
+        },
+        "image_urls": {
+          "name": "image_urls",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для использования в качестве первого кадра"
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": false,
+          "description": "Соотношение сторон видео",
+          "options": [
+            "landscape"
+          ]
+        },
+        "n_frames": {
+          "name": "n_frames",
+          "type": "string",
+          "required": false,
+          "description": "Количество кадров для генерации",
+          "options": [
+            "10"
+          ]
+        },
+        "size": {
+          "name": "size",
+          "type": "string",
+          "required": false,
+          "description": "Качество или размер сгенерированного видео",
+          "options": [
+            "standard"
+          ]
+        },
+        "remove_watermark": {
+          "name": "remove_watermark",
+          "type": "boolean",
+          "required": false,
+          "description": "Удаление водяных знаков из сгенерированного видео",
+          "options": [
+            "true"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "sora-2-pro-image-to-video",
+      "description": "Документация по интеграции модели sora-2-pro-image-to-video согласно официальной документации KIE AI API.\n\nВАЖНО: Параметры похожи на sora-2-pro-text-to-video, но:\n- image_urls обязательный (в text-to-video его нет)\n- size default \"standard\" (в text-to-video default \"high\"!)"
+    },
+    "google/imagen4": {
+      "model_id": "google/imagen4",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт, описывающий то, что вы хотите увидеть",
+          "max_length": 5000
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Описание того, что следует избегать в сгенерированных изображениях",
+          "options": [
+            ""
+          ]
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": false,
+          "description": "Соотношение сторон сгенерированного изображения",
+          "options": [
+            "1:1"
+          ]
+        },
+        "num_images": {
+          "name": "num_images",
+          "type": "string",
+          "required": false,
+          "description": "Select description",
+          "options": [
+            "1"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "string",
+          "required": false,
+          "description": "Случайный seed для воспроизводимой генерации",
+          "options": [
+            ""
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "google/imagen4",
+      "description": "Документация по интеграции модели google/imagen4 согласно официальной документации KIE AI API."
+    },
+    "kling/v2-5-turbo-image-to-video-pro": {
+      "model_id": "kling/v2-5-turbo-image-to-video-pro",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание для генерации видео",
+          "max_length": 2500
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для использования в видео"
+        },
+        "tail_image_url": {
+          "name": "tail_image_url",
+          "type": "string",
+          "required": false,
+          "description": "URL изображения для последнего кадра видео",
+          "options": [
+            ""
+          ]
+        },
+        "duration": {
+          "name": "duration",
+          "type": "string",
+          "required": false,
+          "description": "Длительность видео в секундах",
+          "options": [
+            "5"
+          ]
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Элементы, которых следует избегать в видео",
+          "options": [
+            "blur",
+            "distort",
+            "and low quality"
+          ]
+        },
+        "cfg_scale": {
+          "name": "cfg_scale",
+          "type": "number",
+          "required": false,
+          "description": "CFG scale (насколько близко следовать промпту)",
+          "options": [
+            "0.5"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "kling/v2-5-turbo-image-to-video-pro",
+      "description": "Документация по интеграции модели kling/v2-5-turbo-image-to-video-pro согласно официальной документации KIE AI API."
+    },
+    "z-image": {
+      "model_id": "z-image",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовое описание изображения",
+          "max_length": 1000
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": true,
+          "description": "Соотношение сторон изображения"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "z-image",
+      "description": "Документация по интеграции модели z-image согласно официальной документации KIE AI API."
+    },
+    "google/imagen4-fast": {
+      "model_id": "google/imagen4-fast",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт, описывающий то, что вы хотите увидеть",
+          "max_length": 5000
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Описание того, что следует избегать в сгенерированных изображениях",
+          "options": [
+            ""
+          ]
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": false,
+          "description": "Соотношение сторон сгенерированного изображения",
+          "options": [
+            "16:9"
+          ]
+        },
+        "num_images": {
+          "name": "num_images",
+          "type": "string",
+          "required": false,
+          "description": "Select description",
+          "options": [
+            "1"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Случайный seed для воспроизводимой генерации"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "google/imagen4-fast",
+      "description": "Документация по интеграции модели google/imagen4-fast согласно официальной документации KIE AI API."
+    },
+    "wan/2-2-a14b-text-to-video-turbo": {
+      "model_id": "wan/2-2-a14b-text-to-video-turbo",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт для генерации видео",
+          "max_length": 5000
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение сгенерированного видео (480p, 580p или 720p)",
+          "options": [
+            "720p"
+          ]
+        },
+        "aspect_ratio": {
+          "name": "aspect_ratio",
+          "type": "string",
+          "required": false,
+          "description": "Соотношение сторон сгенерированного видео (16:9 или 9:16)",
+          "options": [
+            "16:9"
+          ]
+        },
+        "enable_prompt_expansion": {
+          "name": "enable_prompt_expansion",
+          "type": "boolean",
+          "required": false,
+          "description": "Включить ли расширение промпта. Это будет использовать большую языковую модель для расширения промпта с дополнительными деталями, сохраняя исходный смысл",
+          "options": [
+            "false"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Случайный seed для воспроизводимости. Если None, выбирается случайный seed",
+          "options": [
+            "0"
+          ]
+        },
+        "acceleration": {
+          "name": "acceleration",
+          "type": "string",
+          "required": false,
+          "description": "Уровень ускорения для использования. Чем больше ускорение, тем быстрее генерация, но с более низким качеством. Рекомендуемое значение - 'none'",
+          "options": [
+            "none"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "wan/2-2-a14b-text-to-video-turbo",
+      "description": "Документация по интеграции модели wan/2-2-a14b-text-to-video-turbo согласно официальной документации KIE AI API."
+    },
+    "recraft/crisp-upscale": {
+      "model_id": "recraft/crisp-upscale",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "image": {
+          "name": "image",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для апскейла"
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "recraft/crisp-upscale",
+      "description": "Документация по интеграции модели recraft/crisp-upscale согласно официальной документации KIE AI API."
+    },
+    "ideogram/character-remix": {
+      "model_id": "ideogram/character-remix",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Промпт для ремикса изображения",
+          "max_length": 5000
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL изображения для ремикса"
+        },
+        "reference_image_urls": {
+          "name": "reference_image_urls",
+          "type": "string",
+          "required": true,
+          "description": "Набор изображений для использования в качестве референсов персонажа"
+        },
+        "rendering_speed": {
+          "name": "rendering_speed",
+          "type": "string",
+          "required": false,
+          "description": "Скорость рендеринга",
+          "options": [
+            "BALANCED"
+          ]
+        },
+        "style": {
+          "name": "style",
+          "type": "string",
+          "required": false,
+          "description": "Тип стиля для генерации",
+          "options": [
+            "AUTO"
+          ]
+        },
+        "expand_prompt": {
+          "name": "expand_prompt",
+          "type": "boolean",
+          "required": false,
+          "description": "Определяет, должен ли использоваться MagicPrompt",
+          "options": [
+            "true"
+          ]
+        },
+        "image_size": {
+          "name": "image_size",
+          "type": "string",
+          "required": false,
+          "description": "Размер сгенерированного изображения",
+          "options": [
+            "square_hd"
+          ]
+        },
+        "num_images": {
+          "name": "num_images",
+          "type": "string",
+          "required": false,
+          "description": "Количество изображений для генерации",
+          "options": [
+            "1"
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Зерно для генератора случайных чисел"
+        },
+        "strength": {
+          "name": "strength",
+          "type": "number",
+          "required": false,
+          "description": "Сила входного изображения в ремиксе",
+          "options": [
+            "0.8"
+          ]
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Описание того, что исключить из изображения",
+          "options": [
+            ""
+          ]
+        },
+        "image_urls": {
+          "name": "image_urls",
+          "type": "string",
+          "required": false,
+          "description": "Набор изображений для использования в качестве референсов стиля",
+          "options": [
+            "[]"
+          ]
+        },
+        "reference_mask_urls": {
+          "name": "reference_mask_urls",
+          "type": "string",
+          "required": false,
+          "description": "Набор масок для применения к референсам персонажа",
+          "options": [
+            ""
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "ideogram/character-remix",
+      "description": "Документация по интеграции модели ideogram/character-remix согласно официальной документации KIE AI API."
+    },
+    "wan/2-2-a14b-speech-to-video-turbo": {
+      "model_id": "wan/2-2-a14b-speech-to-video-turbo",
+      "create_endpoint": "POST https://api.kie.ai/api/v1/jobs/createTask",
+      "record_endpoint": "GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId={taskId}",
+      "input_schema": {
+        "prompt": {
+          "name": "prompt",
+          "type": "string",
+          "required": true,
+          "description": "Текстовый промпт для генерации видео",
+          "max_length": 5000
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "string",
+          "required": true,
+          "description": "URL входного изображения"
+        },
+        "audio_url": {
+          "name": "audio_url",
+          "type": "string",
+          "required": true,
+          "description": "URL аудио файла"
+        },
+        "num_frames": {
+          "name": "num_frames",
+          "type": "number",
+          "required": false,
+          "description": "Количество кадров для генерации (40-120, кратно 4)",
+          "options": [
+            "80"
+          ],
+          "min_value": 40.0,
+          "max_value": 120.0
+        },
+        "frames_per_second": {
+          "name": "frames_per_second",
+          "type": "number",
+          "required": false,
+          "description": "Кадров в секунду (4-60)",
+          "options": [
+            "16"
+          ],
+          "min_value": 4.0,
+          "max_value": 60.0
+        },
+        "resolution": {
+          "name": "resolution",
+          "type": "string",
+          "required": false,
+          "description": "Разрешение видео (480p, 580p, 720p)",
+          "options": [
+            "480p"
+          ]
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "string",
+          "required": false,
+          "description": "Негативный промпт для генерации видео",
+          "options": [
+            ""
+          ]
+        },
+        "seed": {
+          "name": "seed",
+          "type": "number",
+          "required": false,
+          "description": "Случайное зерно для воспроизводимости"
+        },
+        "num_inference_steps": {
+          "name": "num_inference_steps",
+          "type": "number",
+          "required": false,
+          "description": "Количество шагов вывода (2-40)",
+          "options": [
+            "27"
+          ],
+          "min_value": 2.0,
+          "max_value": 40.0
+        },
+        "guidance_scale": {
+          "name": "guidance_scale",
+          "type": "number",
+          "required": false,
+          "description": "Масштаб классификатора без учителя (1-10)",
+          "options": [
+            "3.5"
+          ],
+          "min_value": 1.0,
+          "max_value": 10.0
+        },
+        "shift": {
+          "name": "shift",
+          "type": "number",
+          "required": false,
+          "description": "Значение сдвига для видео (1-10)",
+          "options": [
+            "5"
+          ],
+          "min_value": 1.0,
+          "max_value": 10.0
+        },
+        "enable_safety_checker": {
+          "name": "enable_safety_checker",
+          "type": "boolean",
+          "required": false,
+          "description": "Проверять ли входные данные на безопасность",
+          "options": [
+            "true"
+          ]
+        }
+      },
+      "output_media_type": "media_urls",
+      "states": [
+        "waiting",
+        "success",
+        "fail"
+      ],
+      "title_ru": "wan/2-2-a14b-speech-to-video-turbo",
+      "description": "Документация по интеграции модели wan/2-2-a14b-speech-to-video-turbo согласно официальной документации KIE AI API."
+    }
+  },
+  "checksum": "f65936e4bb2a83c1539ceef5740fe6b17895bb57a83aebc16af54ee1da80fc18"
+}

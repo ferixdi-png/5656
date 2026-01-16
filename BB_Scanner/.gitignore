@@ -1,0 +1,30 @@
+# Runtime files
+.runtime/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# App data
+app_data/
+*.csv
+*.sqlite
+*.log
+
+# Build artifacts
+dist/
+build/
+*.spec
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+

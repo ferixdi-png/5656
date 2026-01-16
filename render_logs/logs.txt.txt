@@ -1,0 +1,87 @@
+2026-01-15T08:29:41.511636313Z 2026-01-15 08:29:41,511 - database - WARNING - [-] - ⚠️ DNS RESOLUTION FAILED (попытка 2/5): hostname=dpg-d50f1hvgi27c73ajfos0-a, error=could not translate host name "dpg-d50f1hvgi27c73ajfos0-a" to address: Name or service not known
+2026-01-15T08:29:41.511659893Z 
+2026-01-15T08:29:41.511675184Z 2026-01-15 08:29:41,511 - database - INFO - [-] - 💡 HINT: Проверьте DATABASE_URL в Render Dashboard → Environment (возможно hostname изменился или БД недоступна)
+2026-01-15T08:29:41.511777006Z 2026-01-15 08:29:41,511 - database - INFO - [-] - ⏳ Повтор через 2.0с...
+2026-01-15T08:29:42.05108555Z 2026-01-15 08:29:42,050 - database - WARNING - [-] - ⚠️ DNS RESOLUTION FAILED (попытка 2/5): hostname=dpg-d50f1hvgi27c73ajfos0-a, error=could not translate host name "dpg-d50f1hvgi27c73ajfos0-a" to address: Name or service not known
+2026-01-15T08:29:42.051128641Z 
+2026-01-15T08:29:42.051147132Z 2026-01-15 08:29:42,050 - database - INFO - [-] - 💡 HINT: Проверьте DATABASE_URL в Render Dashboard → Environment (возможно hostname изменился или БД недоступна)
+2026-01-15T08:29:42.051232304Z 2026-01-15 08:29:42,051 - database - INFO - [-] - ⏳ Повтор через 2.0с...
+2026-01-15T08:29:43.514921045Z 2026-01-15 08:29:43,514 - database - WARNING - [-] - ⚠️ DNS RESOLUTION FAILED (попытка 3/5): hostname=dpg-d50f1hvgi27c73ajfos0-a, error=could not translate host name "dpg-d50f1hvgi27c73ajfos0-a" to address: Name or service not known
+2026-01-15T08:29:43.514950286Z 
+2026-01-15T08:29:43.515427909Z 2026-01-15 08:29:43,514 - database - INFO - [-] - 💡 HINT: Проверьте DATABASE_URL в Render Dashboard → Environment (возможно hostname изменился или БД недоступна)
+2026-01-15T08:29:43.515443889Z 2026-01-15 08:29:43,514 - database - INFO - [-] - ⏳ Повтор через 5.0с...
+2026-01-15T08:29:44.053178049Z 2026-01-15 08:29:44,052 - database - WARNING - [-] - ⚠️ DNS RESOLUTION FAILED (попытка 3/5): hostname=dpg-d50f1hvgi27c73ajfos0-a, error=could not translate host name "dpg-d50f1hvgi27c73ajfos0-a" to address: Name or service not known
+2026-01-15T08:29:44.05320089Z 
+2026-01-15T08:29:44.05321144Z 2026-01-15 08:29:44,053 - database - INFO - [-] - 💡 HINT: Проверьте DATABASE_URL в Render Dashboard → Environment (возможно hostname изменился или БД недоступна)
+2026-01-15T08:29:44.053294132Z 2026-01-15 08:29:44,053 - database - INFO - [-] - ⏳ Повтор через 5.0с...
+2026-01-15T08:29:44.537193966Z 2026-01-15 08:29:44,531 - database - WARNING - [-] - ⚠️ DNS RESOLUTION FAILED (попытка 4/5): hostname=dpg-d50f1hvgi27c73ajfos0-a, error=could not translate host name "dpg-d50f1hvgi27c73ajfos0-a" to address: Name or service not known
+2026-01-15T08:29:44.537214036Z 
+2026-01-15T08:29:44.537218336Z 2026-01-15 08:29:44,531 - database - INFO - [-] - 💡 HINT: Проверьте DATABASE_URL в Render Dashboard → Environment (возможно hostname изменился или БД недоступна)
+2026-01-15T08:29:44.537222086Z 2026-01-15 08:29:44,532 - database - INFO - [-] - ⏳ Повтор через 10.0с...
+2026-01-15T08:29:48.101101195Z 2026-01-15 08:29:48,100 - database - ERROR - [-] - ❌ CRITICAL DNS ERROR после 5 попыток: hostname=dpg-d50f1hvgi27c73ajfos0-a не резолвится!
+2026-01-15T08:29:48.101248019Z 2026-01-15 08:29:48,101 - database - ERROR - [-] - 🔧 ACTION REQUIRED: 1) Проверьте DATABASE_URL в Render Environment Variables
+2026-01-15T08:29:48.1012616Z 2) Убедитесь что PostgreSQL database существует в Render Dashboard
+2026-01-15T08:29:48.10127618Z 3) Если hostname изменился - обновите DATABASE_URL
+2026-01-15T08:29:48.10128148Z 4) Проверьте что database не suspended/deleted
+2026-01-15T08:29:48.51697059Z 2026-01-15 08:29:48,516 - database - WARNING - [-] - ⚠️ DNS RESOLUTION FAILED (попытка 4/5): hostname=dpg-d50f1hvgi27c73ajfos0-a, error=could not translate host name "dpg-d50f1hvgi27c73ajfos0-a" to address: Name or service not known
+2026-01-15T08:29:48.516995651Z 
+2026-01-15T08:29:48.517006731Z 2026-01-15 08:29:48,516 - database - INFO - [-] - 💡 HINT: Проверьте DATABASE_URL в Render Dashboard → Environment (возможно hostname изменился или БД недоступна)
+2026-01-15T08:29:48.517076313Z 2026-01-15 08:29:48,516 - database - INFO - [-] - ⏳ Повтор через 10.0с...
+2026-01-15T08:29:48.536764457Z 2026-01-15 08:29:48,536 - database - ERROR - [-] - ❌ CRITICAL DNS ERROR после 5 попыток: hostname=dpg-d50f1hvgi27c73ajfos0-a не резолвится!
+2026-01-15T08:29:48.536838348Z 2026-01-15 08:29:48,536 - database - ERROR - [-] - 🔧 ACTION REQUIRED: 1) Проверьте DATABASE_URL в Render Environment Variables
+2026-01-15T08:29:48.536845759Z 2) Убедитесь что PostgreSQL database существует в Render Dashboard
+2026-01-15T08:29:48.536848739Z 3) Если hostname изменился - обновите DATABASE_URL
+2026-01-15T08:29:48.536851249Z 4) Проверьте что database не suspended/deleted
+2026-01-15T08:29:49.055411979Z 2026-01-15 08:29:49,055 - database - WARNING - [-] - ⚠️ DNS RESOLUTION FAILED (попытка 4/5): hostname=dpg-d50f1hvgi27c73ajfos0-a, error=could not translate host name "dpg-d50f1hvgi27c73ajfos0-a" to address: Name or service not known
+2026-01-15T08:29:49.05543212Z 
+2026-01-15T08:29:49.05544247Z 2026-01-15 08:29:49,055 - database - INFO - [-] - 💡 HINT: Проверьте DATABASE_URL в Render Dashboard → Environment (возможно hostname изменился или БД недоступна)
+2026-01-15T08:29:49.055532912Z 2026-01-15 08:29:49,055 - database - INFO - [-] - ⏳ Повтор через 10.0с...
+2026-01-15T08:29:51.053647682Z 2026-01-15 08:29:51,053 - app.locking.single_instance - WARNING - [-] - ============================================================
+2026-01-15T08:29:51.053733204Z 2026-01-15 08:29:51,053 - app.locking.single_instance - WARNING - [-] - [LOCK] PostgreSQL advisory lock NOT acquired after 60s
+2026-01-15T08:29:51.053812286Z 2026-01-15 08:29:51,053 - app.locking.single_instance - WARNING - [-] - [LOCK] This is normal during Render deploy overlap
+2026-01-15T08:29:51.053890898Z 2026-01-15 08:29:51,053 - app.locking.single_instance - INFO - [-] - [LOCK] ⏸️  PASSIVE MODE: Webhook will return 200 but no processing
+2026-01-15T08:29:51.05396876Z 2026-01-15 08:29:51,053 - app.locking.single_instance - INFO - [-] - [LOCK] Background retry task will attempt to acquire lock periodically
+2026-01-15T08:29:51.054034602Z 2026-01-15 08:29:51,053 - app.locking.single_instance - INFO - [-] - ============================================================
+2026-01-15T08:29:51.49862852Z 2026-01-15 08:29:51,498 - app.locking.single_instance - WARNING - [-] - ============================================================
+2026-01-15T08:29:51.498741253Z 2026-01-15 08:29:51,498 - app.locking.single_instance - WARNING - [-] - [LOCK] PostgreSQL advisory lock NOT acquired after 60s
+2026-01-15T08:29:51.498750923Z 2026-01-15 08:29:51,498 - app.locking.single_instance - WARNING - [-] - [LOCK] This is normal during Render deploy overlap
+2026-01-15T08:29:51.498856366Z 2026-01-15 08:29:51,498 - app.locking.single_instance - INFO - [-] - [LOCK] ⏸️  PASSIVE MODE: Webhook will return 200 but no processing
+2026-01-15T08:29:51.498922328Z 2026-01-15 08:29:51,498 - app.locking.single_instance - INFO - [-] - [LOCK] Background retry task will attempt to acquire lock periodically
+2026-01-15T08:29:51.499103483Z 2026-01-15 08:29:51,498 - app.locking.single_instance - INFO - [-] - ============================================================
+2026-01-15T08:29:54.538463987Z 2026-01-15 08:29:54,538 - database - ERROR - [-] - ❌ CRITICAL DNS ERROR после 5 попыток: hostname=dpg-d50f1hvgi27c73ajfos0-a не резолвится!
+2026-01-15T08:29:54.538554219Z 2026-01-15 08:29:54,538 - database - ERROR - [-] - 🔧 ACTION REQUIRED: 1) Проверьте DATABASE_URL в Render Environment Variables
+2026-01-15T08:29:54.538561169Z 2) Убедитесь что PostgreSQL database существует в Render Dashboard
+2026-01-15T08:29:54.538564669Z 3) Если hostname изменился - обновите DATABASE_URL
+2026-01-15T08:29:54.53856854Z 4) Проверьте что database не suspended/deleted
+2026-01-15T08:29:56.539069754Z 2026-01-15 08:29:56,538 - database - INFO - [-] - 🔧 Настройка пула БД: maxconn=15, hostname=dpg-d50f1hvgi27c73ajfos0-a
+2026-01-15T08:29:56.541012158Z 2026-01-15 08:29:56,540 - database - WARNING - [-] - ⚠️ DNS RESOLUTION FAILED (попытка 1/5): hostname=dpg-d50f1hvgi27c73ajfos0-a, error=could not translate host name "dpg-d50f1hvgi27c73ajfos0-a" to address: Name or service not known
+2026-01-15T08:29:56.541027799Z 
+2026-01-15T08:29:56.54107881Z 2026-01-15 08:29:56,540 - database - INFO - [-] - 💡 HINT: Проверьте DATABASE_URL в Render Dashboard → Environment (возможно hostname изменился или БД недоступна)
+2026-01-15T08:29:56.541203143Z 2026-01-15 08:29:56,541 - database - INFO - [-] - ⏳ Повтор через 1.0с...
+2026-01-15T08:29:57.543667117Z 2026-01-15 08:29:57,543 - database - WARNING - [-] - ⚠️ DNS RESOLUTION FAILED (попытка 2/5): hostname=dpg-d50f1hvgi27c73ajfos0-a, error=could not translate host name "dpg-d50f1hvgi27c73ajfos0-a" to address: Name or service not known
+2026-01-15T08:29:57.543700368Z 
+2026-01-15T08:29:57.543882382Z 2026-01-15 08:29:57,543 - database - INFO - [-] - 💡 HINT: Проверьте DATABASE_URL в Render Dashboard → Environment (возможно hostname изменился или БД недоступна)
+2026-01-15T08:29:57.543889613Z 2026-01-15 08:29:57,543 - database - INFO - [-] - ⏳ Повтор через 2.0с...
+2026-01-15T08:29:58.519099224Z 2026-01-15 08:29:58,518 - database - ERROR - [-] - ❌ CRITICAL DNS ERROR после 5 попыток: hostname=dpg-d50f1hvgi27c73ajfos0-a не резолвится!
+2026-01-15T08:29:58.519210657Z 2026-01-15 08:29:58,518 - database - ERROR - [-] - 🔧 ACTION REQUIRED: 1) Проверьте DATABASE_URL в Render Environment Variables
+2026-01-15T08:29:58.519216947Z 2) Убедитесь что PostgreSQL database существует в Render Dashboard
+2026-01-15T08:29:58.519219737Z 3) Если hostname изменился - обновите DATABASE_URL
+2026-01-15T08:29:58.519222217Z 4) Проверьте что database не suspended/deleted
+2026-01-15T08:29:59.05778783Z 2026-01-15 08:29:59,057 - database - ERROR - [-] - ❌ CRITICAL DNS ERROR после 5 попыток: hostname=dpg-d50f1hvgi27c73ajfos0-a не резолвится!
+2026-01-15T08:29:59.058011116Z 2026-01-15 08:29:59,057 - database - ERROR - [-] - 🔧 ACTION REQUIRED: 1) Проверьте DATABASE_URL в Render Environment Variables
+2026-01-15T08:29:59.058017586Z 2) Убедитесь что PostgreSQL database существует в Render Dashboard
+2026-01-15T08:29:59.058021266Z 3) Если hostname изменился - обновите DATABASE_URL
+2026-01-15T08:29:59.058024426Z 4) Проверьте что database не suspended/deleted
+2026-01-15T08:29:59.519652044Z 2026-01-15 08:29:59,519 - database - INFO - [-] - 🔧 Настройка пула БД: maxconn=15, hostname=dpg-d50f1hvgi27c73ajfos0-a
+2026-01-15T08:29:59.521391272Z 2026-01-15 08:29:59,521 - database - WARNING - [-] - ⚠️ DNS RESOLUTION FAILED (попытка 1/5): hostname=dpg-d50f1hvgi27c73ajfos0-a, error=could not translate host name "dpg-d50f1hvgi27c73ajfos0-a" to address: Name or service not known
+2026-01-15T08:29:59.521403253Z 
+2026-01-15T08:29:59.521445914Z 2026-01-15 08:29:59,521 - database - INFO - [-] - 💡 HINT: Проверьте DATABASE_URL в Render Dashboard → Environment (возможно hostname изменился или БД недоступна)
+2026-01-15T08:29:59.521523026Z 2026-01-15 08:29:59,521 - database - INFO - [-] - ⏳ Повтор через 1.0с...
+2026-01-15T08:29:59.548250204Z 2026-01-15 08:29:59,547 - database - WARNING - [-] - ⚠️ DNS RESOLUTION FAILED (попытка 3/5): hostname=dpg-d50f1hvgi27c73ajfos0-a, error=could not translate host name "dpg-d50f1hvgi27c73ajfos0-a" to address: Name or service not known
+2026-01-15T08:29:59.548291645Z 
+2026-01-15T08:29:59.55135257Z 2026-01-15 08:29:59,548 - database - INFO - [-] - 💡 HINT: Проверьте DATABASE_URL в Render Dashboard → Environment (возможно hostname изменился или БД недоступна)
+2026-01-15T08:29:59.55136621Z 2026-01-15 08:29:59,548 - database - INFO - [-] - ⏳ Повтор через 5.0с...
+2026-01-15T08:30:00.530467568Z 2026-01-15 08:30:00,525 - database - WARNING - [-] - ⚠️ DNS RESOLUTION FAILED (попытка 2/5): hostname=dpg-d50f1hvgi27c73ajfos0-a, error=could not translate host name "dpg-d50f1hvgi27c73ajfos0-a" to address: Name or service not known
+2026-01-15T08:30:00.530486189Z 
+2026-01-15T08:30:00.530490099Z 2026-01-15 08:30:00,525 - database - INFO - [-] - 💡 HINT: Проверьте DATABASE_URL в Render Dashboard → Environment (возможно hostname изменился или БД недоступна)
+2026-01-15T08:30:00.530493579Z 2026-01-15 08:30:00,526 - database - INFO - [-] - ⏳ Повтор через 2.0с...

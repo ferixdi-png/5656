@@ -1,0 +1,1183 @@
+{
+  "version": "1.0",
+  "source": "repository_docs_only",
+  "models": [
+    {
+      "model_id": "image_processor",
+      "category": "general",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "url",
+      "description": ""
+    },
+    {
+      "model_id": "url_processor",
+      "category": "general",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "url",
+      "description": ""
+    },
+    {
+      "model_id": "text_processor",
+      "category": "general",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "url",
+      "description": ""
+    },
+    {
+      "model_id": "AI_INTEGRATION_IMPROVEMENTS",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "ARCHITECTURE",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "FLOWS",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "KLING_V2_1_STANDARD_INTEGRATION",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "MODELS_AND_PRICING_RU",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "OFFICIAL_API_DOCUMENTATION_INDEX",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "PLAN",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "RENDER",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "RISK_REGISTER",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "STATE",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "STRICT_INTEGRATION_RULES",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "all_models_test_results",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "bytedance/seedance",
+      "category": "i2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "bytedance/seedream",
+      "category": "t2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "bytedance/seedream-v4-edit",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "bytedance/seedream-v4-text-to-image",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "bytedance/v1-lite-image-to-video",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "bytedance/v1-lite-text-to-video",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "bytedance/v1-pro-fast-image-to-video",
+      "category": "i2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "bytedance/v1-pro-image-to-video",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "bytedance/v1-pro-text-to-video",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "cheap_models_test_results",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "elevenlabs/audio-isolation",
+      "category": "audio_isolation",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "elevenlabs/sound-effect",
+      "category": "sfx",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "elevenlabs/sound-effect-v2",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "elevenlabs/speech-to-text",
+      "category": "stt",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "elevenlabs/text-to-speech",
+      "category": "tts",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "elevenlabs/text-to-speech-multilingual-v2",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "flux-2/flex-image-to-image",
+      "category": "i2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "flux-2/flex-text-to-image",
+      "category": "t2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "flux-2/pro-image-to-image",
+      "category": "i2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "flux-2/pro-text-to-image",
+      "category": "t2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "flux/kontext",
+      "category": "t2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "generation_test_results_20251217_170008",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "generation_test_results_20251217_170332",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "google/imagen4",
+      "category": "t2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "google/imagen4-fast",
+      "category": "t2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "google/imagen4-ultra",
+      "category": "t2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "google/nano-banana",
+      "category": "t2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "google/nano-banana-edit",
+      "category": "i2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "google/nano-banana-pro",
+      "category": "t2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "google/veo-3",
+      "category": "t2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "google/veo-3.1",
+      "category": "t2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "grok-imagine/image-to-video",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "grok-imagine/text-to-image",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "grok-imagine/text-to-video",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "grok/imagine",
+      "category": "i2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "hailuo/02-image-to-video-pro",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "hailuo/02-image-to-video-standard",
+      "category": "i2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "hailuo/02-text-to-video-pro",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "hailuo/02-text-to-video-standard",
+      "category": "t2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "hailuo/2-3-image-to-video-pro",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "hailuo/2-3-image-to-video-standard",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "hailuo/2.3",
+      "category": "i2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "ideogram/character",
+      "category": "t2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "ideogram/character-edit",
+      "category": "i2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "ideogram/character-remix",
+      "category": "i2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "ideogram/v3-edit",
+      "category": "i2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "ideogram/v3-reframe",
+      "category": "i2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "ideogram/v3-remix",
+      "category": "i2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "ideogram/v3-text-to-image",
+      "category": "t2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "infinitalk/from-audio",
+      "category": "lip_sync",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "kling-2.6/image-to-video",
+      "category": "i2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "kling-2.6/text-to-video",
+      "category": "t2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "kling/ai-avatar-v1-pro",
+      "category": "lip_sync",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "kling/v1-avatar-standard",
+      "category": "lip_sync",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "kling/v2-1-master-image-to-video",
+      "category": "i2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "kling/v2-1-master-text-to-video",
+      "category": "t2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "kling/v2-1-pro",
+      "category": "t2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "kling/v2-1-standard",
+      "category": "t2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "kling/v2-5-turbo-image-to-video-pro",
+      "category": "i2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "kling/v2-5-turbo-text-to-video-pro",
+      "category": "t2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "midjourney/api",
+      "category": "t2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "nano-banana-pro",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "openai/4o-image",
+      "category": "t2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "qwen/image-edit",
+      "category": "i2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "qwen/image-to-image",
+      "category": "i2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "qwen/text-to-image",
+      "category": "t2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "recraft/crisp-upscale",
+      "category": "upscale",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "recraft/remove-background",
+      "category": "bg_remove",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "runway/gen-4",
+      "category": "i2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "seedream/4.5-edit",
+      "category": "i2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "seedream/4.5-text-to-image",
+      "category": "t2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "sora-2-image-to-video",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "sora-2-pro-image-to-video",
+      "category": "i2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "sora-2-pro-storyboard",
+      "category": "t2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "sora-2-pro-text-to-video",
+      "category": "t2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "sora-2-text-to-video",
+      "category": "t2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "sora-watermark-remover",
+      "category": "watermark_remove",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "source",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "suno/v5",
+      "category": "music",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "topaz/image-upscale",
+      "category": "upscale",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "topaz/video-upscale",
+      "category": "upscale",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "wan/2-2-a14b-image-to-video-turbo",
+      "category": "i2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "wan/2-2-a14b-speech-to-video-turbo",
+      "category": "t2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "wan/2-2-a14b-text-to-video-turbo",
+      "category": "t2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "wan/2-2-animate-move",
+      "category": "t2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "wan/2-2-animate-replace",
+      "category": "other",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "wan/2-5-image-to-video",
+      "category": "i2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "wan/2-5-text-to-video",
+      "category": "t2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "wan/2-6-image-to-video",
+      "category": "i2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "wan/2-6-text-to-video",
+      "category": "t2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "wan/2-6-video-to-video",
+      "category": "v2v",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    },
+    {
+      "model_id": "z-image",
+      "category": "t2i",
+      "input_schema": {
+        "required": [],
+        "optional": [],
+        "properties": {}
+      },
+      "output_type": "json",
+      "description": ""
+    }
+  ]
+}

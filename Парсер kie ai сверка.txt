@@ -1,0 +1,74 @@
+ROLE: Autonomous senior engineer. Repo: https://github.com/ferixdi-png/TRT. Goal: make KIE registry/pricing/specs 100% correct and stable, with a verifiable pipeline. Do NOT break production flows. No “big refactors”. Work in small commits with tests and reports.
+
+CONTEXT / SOURCE OF TRUTH:
+- Existing registry/spec files in repo are the only runtime truth for the bot.
+- KIE.ai website/docs are the upstream truth, but must be applied via an OFFLINE sync tool (check/update), never at runtime.
+- Pricing rule is FIXED: our RUB price = (KIE credits/USD source) * 2 markup (x2) and converted to RUB using the project’s existing conversion logic. Do not invent new pricing formulas.
+- New models must NOT be auto-added. Only “detect and report new”, add only when explicitly requested by flag.
+- Existing models must keep working; do not change their model_id unless explicitly confirmed by upstream and gated.
+
+PRIMARY BUG TO FIX FIRST (from Render logs):
+1) Fix callback telemetry crash:
+   - AttributeError: CallbackQuery has no attribute update_id in bot/handlers/flow.py -> use event.update.update_id OR data["event_update"].update_id (aiogram v3 patterns) / extract update_id from Update wrapper.
+2) Fix telemetry contract mismatch:
+   - TypeError: log_callback_rejected() got unexpected keyword argument 'reason_detail' -> align function signature/calls so logging never throws.
+
+KIE REGISTRY TASK (main):
+Implement a deterministic “KIE Source-of-Truth Verifier” pipeline that re-checks every model (all existing models) across:
+- model id
+- model type/category (image/video/audio/enhance/avatar/music/etc)
+- API endpoint (createTask/recordInfo)
+- input schema (fields, required vs optional, types, enums/options, defaults, constraints)
+- pricing credits (by resolution/duration/etc where applicable)
+- mapping to our UI prompts: which inputs are user-facing vs defaulted automatically.
+
+HARD REQUIREMENTS:
+A) Create scripts/kie_sync.py (or app/tools/...) with two modes:
+   - CHECK (default): fetch/parse upstream docs pages and compare with our current spec_registry; output a single markdown report with diffs and confidence notes. NO writes.
+   - UPDATE (explicit flag --write): updates only allowed fields on UNLOCKED models; never updates locked models; never adds new models without --add-model.
+B) Create a lock mechanism:
+   - Each model in our registry can be locked: locked=true or override=true.
+   - Locked models are “report-only”. Any upstream mismatch must be reported but not applied.
+C) Implement “10x verification” for correctness:
+   - Run parsing multiple passes with normalization and stable hashing to ensure deterministic output.
+   - For every model, compute a canonical “schema fingerprint” from parsed upstream + our local spec. If mismatch -> report.
+   - Add a regression test that ensures running CHECK twice yields identical fingerprints (deterministic).
+D) Do NOT rely on hidden JSON endpoints that may not exist. Parse from the docs HTML/text if needed. If upstream cannot be reached in CI, allow “cached snapshots” stored in repo under fixtures/kie_docs/ with a command to refresh them manually.
+E) Add an explicit allowlist of what UPDATE may change:
+   - safe: description, enums, defaults, min/max constraints, pricing tables, docs_url
+   - unsafe (never auto-change): model_id, output media type, required fields set, field type changes (string->array etc) unless --force-model is passed
+F) Add a consolidated report: KIE_SYNC_REPORT.md with:
+   - summary counts (models checked, exact match, diffs, locked diffs, parse failures)
+   - per-model section with: local vs upstream pricing, local vs upstream required fields, defaults, enums
+   - new-models detected list (do not add)
+G) Integrate to existing files:
+   - spec registry is in app/kie/spec_registry.py and related files.
+   - model enforcement is in app/kie/model_enforcer.py (use it to validate inputs).
+   - menus are in app/helpers/models_menu_registry.py (ensure categories match).
+H) Add “fail-fast validation” at startup in DRY_RUN:
+   - validate local registry internally consistent (no missing required fields, defaults valid, enums include default, etc).
+
+UX / MENU IMPROVEMENT (secondary but required):
+- Update /start text + main menu copy to feel premium (“best Syntx-style KIE.ai integrator”), remove any “Старт с 200₽” text entirely.
+- Keep Russian UI, concise, premium, with clear value props per button. No cringe.
+- Ensure every button has a one-liner description in the message above it (or in section text).
+- Do not change callback_data formats unless necessary.
+
+DELIVERABLES / DoD:
+1) Render logs show no exceptions on any callback clicks; exception middleware still catches truly unexpected cases.
+2) Running `python -m scripts.kie_sync --mode=check` produces KIE_SYNC_REPORT.md and exits 0.
+3) Determinism test passes: two consecutive CHECK runs produce identical fingerprints.
+4) No existing model breaks: add a smoke test that simulates selecting a category and a model and validating required inputs are prompted/defaulted (no actual external API calls).
+5) All changes are committed in small commits with clear messages.
+6) If any upstream doc is ambiguous, keep local as-is, mark “needs manual confirmation” in report; never guess.
+
+WORK PLAN (must follow):
+- Step 1: Fix the two telemetry crashes from logs. Add minimal tests. Deploy-safe.
+- Step 2: Implement kie_sync CHECK with caching + deterministic fingerprints + report.
+- Step 3: Implement locks + UPDATE safeguards.
+- Step 4: Add local registry validators + smoke tests.
+- Step 5: Improve menu copy (/start + main menu) removing “Старт с 200₽”.
+
+Do it now. No questions. If you must assume, write assumptions into KIE_SYNC_REPORT.md only (not in chat). 
+
+Before pushing, run verify_project.py and the new kie_sync tests locally; only push if green.

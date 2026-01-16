@@ -1,0 +1,24 @@
+[tool.ruff]
+line-length = 100
+extend-exclude = [
+  "COMPLETE_FIXES.py",
+  "FIXED_HANDLERS_COMPLETE.py",
+  "TOP_5_CRITICAL_FIXES.py",
+  "auto_fix_*.py",
+  "cursor_auto_fix*.py",
+  "validate_*.py",
+  "verify_all_models_inputs.py",
+  "check_all_models*.py",
+  "check_all_buttons*.py",
+  "final_*",
+  "archive",
+  "artifacts",
+  "node_modules",
+]
+
+[tool.ruff.lint]
+select = ["E", "F"]
+ignore = ["E501", "E722"]
+
+[tool.ruff.format]
+line-ending = "lf"

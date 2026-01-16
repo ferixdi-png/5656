@@ -1,0 +1,52 @@
+═══════════════════════════════════════════════════════
+  РЕШЕНИЕ: Python установлен, но не доступен
+═══════════════════════════════════════════════════════
+
+ПРОБЛЕМА:
+─────────
+Python установлен, но команды python/py не работают
+в текущем окне командной строки.
+
+РЕШЕНИЕ (выберите один вариант):
+──────────────────────────────────
+
+✅ ВАРИАНТ 1: ПЕРЕЗАГРУЗИТЬ КОМПЬЮТЕР
+   Самый простой способ - после перезагрузки всё заработает.
+   
+   1. Перезагрузите Windows
+   2. Откройте папку BB_Scanner
+   3. Запустите build_exe.bat
+   
+✅ ВАРИАНТ 2: ДОБАВИТЬ PYTHON В PATH ВРУЧНУЮ
+   
+   1. Нажмите Win + R
+   2. Введите: sysdm.cpl
+   3. Вкладка "Дополнительно" → "Переменные среды"
+   4. В "Системные переменные" найдите "Path" → "Изменить"
+   5. Нажмите "Создать" и добавьте:
+      C:\Users\User\AppData\Local\Programs\Python\Python314
+      C:\Users\User\AppData\Local\Programs\Python\Python314\Scripts
+   6. Нажмите OK везде
+   7. Закройте все окна командной строки
+   8. Откройте НОВОЕ окно cmd
+   9. Запустите build_exe.bat
+
+✅ ВАРИАНТ 3: ИСПОЛЬЗОВАТЬ ПОЛНЫЙ ПУТЬ
+   
+   Откройте командную строку и выполните:
+   
+   cd C:\Users\User\Desktop\BB_Scanner
+   
+   C:\Users\User\AppData\Local\Programs\Python\Python314\python.exe -m pip install pyinstaller playwright winotify pyperclip
+   C:\Users\User\AppData\Local\Programs\Python\Python314\python.exe -m playwright install chromium
+   C:\Users\User\AppData\Local\Programs\Python\Python314\python.exe -m PyInstaller --onefile --windowed --name="BB_Scanner" --add-data "app;app" --hidden-import=playwright --hidden-import=winotify --hidden-import=pyperclip --collect-all playwright run_scanner.py
+
+═══════════════════════════════════════════════════════
+
+САМЫЙ ПРОСТОЙ СПОСОБ - ПЕРЕЗАГРУЗИТЬ КОМПЬЮТЕР!
+
+
+
+
+
+

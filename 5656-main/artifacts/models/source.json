@@ -1,0 +1,19 @@
+{
+  "used_source": "static_fallback",
+  "count": 72,
+  "timestamp": "2025-12-19T17:43:34.178652",
+  "sample_ids": [
+    "z-image",
+    "nano-banana-pro",
+    "seedream/4.5-text-to-image",
+    "seedream/4.5-edit",
+    "sora-2-pro-image-to-video",
+    "sora-watermark-remover",
+    "sora-2-text-to-video",
+    "kling-2.6/image-to-video",
+    "kling-2.6/text-to-video",
+    "flux-2/pro-image-to-image"
+  ],
+  "api_available": false,
+  "api_url": "https://api.kie.ai"
+}

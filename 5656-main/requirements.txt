@@ -1,0 +1,37 @@
+# Telegram Runtime (aiogram 3.7.0+)
+aiogram>=3.7.0,<4
+aiohttp>=3.8.0
+aiofiles>=23.0.0
+
+# Legacy tests support (python-telegram-bot for PTB compatibility tests only)
+python-telegram-bot==20.8
+
+# HTTP Client
+requests>=2.31.0
+httpx>=0.24.0
+GitPython>=3.1.40
+
+# Retry logic
+tenacity>=8.2.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# YAML parsing (required for models/kie_models.yaml)
+PyYAML>=6.0
+
+# Type hints
+typing-extensions>=4.5.0
+
+# PostgreSQL database (REQUIRED for production with Render PostgreSQL)
+psycopg2-binary>=2.9.0
+asyncpg>=0.29.0
+
+# Testing (dev dependencies)
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+ruff>=0.4.8
+
+# File locking
+filelock>=3.13.0
+

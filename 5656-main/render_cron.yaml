@@ -1,0 +1,16 @@
+# Пример конфигурации для автоматической очистки БД на Render
+# Добавьте это в ваш render.yaml или создайте отдельный сервис
+
+services:
+  - type: cron
+    name: cleanup-database
+    schedule: "0 3 * * *"  # Каждый день в 3:00 UTC
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # Использует DATABASE_URL из основного сервиса
+      - key: LOG_RETENTION_DAYS
+        value: 30
+    buildCommand: pip install -r requirements.txt
+    startCommand: python cleanup_database.py
+
+

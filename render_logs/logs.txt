@@ -1,0 +1,26 @@
+﻿# РРќРЎРўР РЈРљР¦РРЇ: РљР°Рє СЃРѕС…СЂР°РЅРёС‚СЊ Р»РѕРіРё РёР· Render
+
+## РЁР°Рі 1: РљРѕРїРёСЂСѓР№ Р»РѕРіРё РёР· Render Dashboard
+1. РћС‚РєСЂРѕР№: https://dashboard.render.com
+2. РўРІРѕР№ Web Service в†’ Logs
+3. РЎРєСЂРѕР»Р»СЊ РґРѕ РЅСѓР¶РЅРѕРіРѕ РјРѕРјРµРЅС‚Р°
+4. Ctrl+A (РІС‹РґРµР»РёС‚СЊ РІСЃС‘) в†’ Ctrl+C (РєРѕРїРёСЂРѕРІР°С‚СЊ)
+
+## РЁР°Рі 2: РЎРѕС…СЂР°РЅРё РІ СЌС‚РѕС‚ С„Р°Р№Р»
+1. РћС‚РєСЂРѕР№: C:\Users\User\Desktop\render_logs\logs.txt
+2. РЈРґР°Р»Рё СЌС‚Рѕ СЃРѕРґРµСЂР¶РёРјРѕРµ
+3. Ctrl+V (РІСЃС‚Р°РІРёС‚СЊ Р»РѕРіРё РёР· Render)
+4. Ctrl+S (СЃРѕС…СЂР°РЅРёС‚СЊ)
+
+## РЁР°Рі 3: AI СЃРґРµР»Р°РµС‚ РІСЃС‘ СЃР°Рј!
+AI Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё:
+- РџСЂРѕС‡РёС‚Р°РµС‚ Р»РѕРіРё
+- РџСЂРѕР°РЅР°Р»РёР·РёСЂСѓРµС‚ РѕС€РёР±РєРё
+- РџСЂРёРјРµРЅРёС‚ С„РёРєСЃС‹
+- Р—Р°РєРѕРјРјРёС‚РёС‚ Рё Р·Р°РїСѓС€РёС‚
+
+## Р“РћРўРћР’Рћ! рџЋ‰
+
+РџРѕСЃР»РµРґРЅРµРµ РѕР±РЅРѕРІР»РµРЅРёРµ: 2026-01-15 11:31:08
+2026-01-15T08:29:41.511636313Z 2026-01-15 08:29:41,511 - database - WARNING - [-] - вљ пёЏ DNS RESOLUTION FAILED (РїРѕРїС‹С‚РєР° 2/5): hostname=dpg-d50f1hvgi27c73ajfos0-a, error=could not translate host name "dpg-d50f1hvgi27c73ajfos0-a" to address: Name or service not known
+2026-01-15T08:30:41.787367824Z 2026-01-15 08:30:41,786 - database - WARNING - [-] - вљ пёЏ DNS RESOLUTION FAILED (РїРѕРїС‹С‚РєР° 4/5): hostname=dpg-d50f1hvgi27c73ajfos0-a, error=could not translate host name "dpg-d50f1hvgi27c73ajfos0-a" to address: Name or service not known

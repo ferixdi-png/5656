@@ -1,0 +1,1111 @@
+version: '1.0'
+source: KIE AI Models Pricing Table
+last_updated: '2025-12-21'
+models:
+- id: flux-2/flex-image-to-image
+  title_ru: Flux 2 Flex Image to Image
+  type: i2i
+  modes:
+  - unit: image
+    credits: 14.0
+    official_usd: 0.07
+    notes: 1.0s-1K
+  - unit: image
+    credits: 24.0
+    official_usd: 0.12
+    notes: 1.0s-2K
+- id: flux-2/flex-text-to-image
+  title_ru: Flux 2 Flex Text to Image
+  type: t2i
+  modes:
+  - unit: image
+    credits: 14.0
+    official_usd: 0.07
+    notes: 1.0s-1K
+  - unit: image
+    credits: 24.0
+    official_usd: 0.12
+    notes: 1.0s-2K
+- id: flux-2/pro-image-to-image
+  title_ru: Flux 2 Pro Image to Image
+  type: i2i
+  modes:
+  - unit: image
+    credits: 5.0
+    official_usd: 0.025
+    notes: 1.0s-1K
+  - unit: image
+    credits: 7.0
+    official_usd: 0.035
+    notes: 1.0s-2K
+- id: flux-2/pro-text-to-image
+  title_ru: Flux 2 Pro Text to Image
+  type: t2i
+  modes:
+  - unit: image
+    credits: 5.0
+    official_usd: 0.025
+    notes: 1.0s-1K
+  - unit: image
+    credits: 7.0
+    official_usd: 0.035
+    notes: 1.0s-2K
+- id: flux/kontext
+  title_ru: Flux Kontext
+  type: t2i
+  modes:
+  - unit: image
+    credits: 4.0
+    official_usd: 0.02
+    notes: Pro
+  - unit: image
+    credits: 8.0
+    official_usd: 0.04
+    notes: Max
+- id: bytedance/seedance
+  title_ru: Seedance 1.0 Image to Video
+  type: i2v
+  modes:
+  - unit: video
+    credits: 10.0
+    official_usd: 0.05
+    notes: Lite-5.0s-480p
+  - unit: video
+    credits: 22.5
+    official_usd: 0.1125
+    notes: Lite-5.0s-720p
+  - unit: video
+    credits: 50.0
+    official_usd: 0.25
+    notes: Lite-5.0s-1080p
+  - unit: video
+    credits: 20.0
+    official_usd: 0.1
+    notes: Lite-10.0s-480p
+  - unit: video
+    credits: 45.0
+    official_usd: 0.225
+    notes: Lite-10.0s-720p
+  - unit: video
+    credits: 100.0
+    official_usd: 0.5
+    notes: Lite-10.0s-1080p
+  - unit: video
+    credits: 14.0
+    official_usd: 0.07
+    notes: Pro-5.0s-480p
+  - unit: video
+    credits: 30.0
+    official_usd: 0.15
+    notes: Pro-5.0s-720p
+  - unit: video
+    credits: 70.0
+    official_usd: 0.35
+    notes: Pro-5.0s-1080p
+  - unit: video
+    credits: 28.0
+    official_usd: 0.14
+    notes: Pro-10.0s-480p
+  - unit: video
+    credits: 60.0
+    official_usd: 0.3
+    notes: Pro-10.0s-720p
+  - unit: video
+    credits: 140.0
+    official_usd: 0.7
+    notes: Pro-10.0s-1080p
+  - unit: video
+    credits: 14.0
+    official_usd: 0.07
+    notes: Lite-5.0s-480p
+  - unit: video
+    credits: 30.0
+    official_usd: 0.15
+    notes: Lite-5.0s-720p
+  - unit: video
+    credits: 70.0
+    official_usd: 0.35
+    notes: Lite-5.0s-1080p
+  - unit: video
+    credits: 28.0
+    official_usd: 0.14
+    notes: Pro-10.0s-480p
+  - unit: video
+    credits: 60.0
+    official_usd: 0.3
+    notes: Pro-10.0s-720p
+  - unit: video
+    credits: 140.0
+    official_usd: 0.7
+    notes: Pro-10.0s-1080p
+  - unit: video
+    credits: 16.0
+    official_usd: 0.08
+    notes: Pro Fast-5.0s-720p
+  - unit: video
+    credits: 36.0
+    official_usd: 0.18
+    notes: Pro Fast-10.0s-720p
+  - unit: video
+    credits: 36.0
+    official_usd: 0.18
+    notes: Pro Fast-5.0s-1080p
+  - unit: video
+    credits: 72.0
+    official_usd: 0.36
+    notes: Pro Fast-10.0s-1080p
+- id: bytedance/v1-pro-fast-image-to-video
+  title_ru: Seedance V1 Pro Fast Image to Video
+  type: i2v
+  modes:
+  - unit: video
+    credits: 16.0
+    official_usd: 0.08
+    notes: Fast-5.0s-720p
+  - unit: video
+    credits: 36.0
+    official_usd: 0.18
+    notes: Fast-10.0s-720p
+  - unit: video
+    credits: 36.0
+    official_usd: 0.18
+    notes: Fast-5.0s-1080p
+  - unit: video
+    credits: 72.0
+    official_usd: 0.36
+    notes: Fast-10.0s-1080p
+- id: bytedance/seedream
+  title_ru: Seedream 3.0 Text to Image
+  type: t2i
+  modes:
+  - unit: image
+    credits: 3.5
+    official_usd: 0.0175
+  - unit: image
+    credits: 5.0
+    official_usd: 0.025
+  - unit: image
+    credits: 5.0
+    official_usd: 0.025
+- id: seedream/4.5-text-to-image
+  title_ru: Seedream 4.5 Text to Image
+  type: t2i
+  modes:
+  - unit: image
+    credits: 6.5
+    official_usd: 0.0325
+    notes: Basic
+  - unit: image
+    credits: 6.5
+    official_usd: 0.0325
+    notes: High
+- id: seedream/4.5-edit
+  title_ru: Seedream 4.5 Image Edit
+  type: i2i
+  modes:
+  - unit: image
+    credits: 6.5
+    official_usd: 0.0325
+    notes: Basic
+  - unit: image
+    credits: 6.5
+    official_usd: 0.0325
+    notes: High
+- id: elevenlabs/audio-isolation
+  title_ru: Elevenlabs Audio Isolation
+  type: audio_isolation
+  modes:
+  - unit: image
+    credits: 0.2
+    official_usd: 0.001
+- id: elevenlabs/sound-effect
+  title_ru: Elevenlabs Sound Effect V2
+  type: sfx
+  modes:
+  - unit: image
+    credits: 0.24
+    official_usd: 0.0012
+- id: elevenlabs/speech-to-text
+  title_ru: Elevenlabs Speech to Text
+  type: stt
+  modes:
+  - unit: image
+    credits: 3.5
+    official_usd: 0.0175
+- id: elevenlabs/text-to-speech
+  title_ru: Elevenlabs Text to Speech Multilingual v2
+  type: tts
+  modes:
+  - unit: image
+    credits: 12.0
+    official_usd: 0.06
+  - unit: image
+    credits: 6.0
+    official_usd: 0.03
+    notes: turbo
+- id: google/imagen4
+  title_ru: Google Imagen 4
+  type: t2i
+  modes:
+  - unit: image
+    credits: 12.0
+    official_usd: 0.06
+    notes: Ultra
+- id: google/imagen4-fast
+  title_ru: Google Imagen 4 Fast
+  type: t2i
+  modes:
+  - unit: image
+    credits: 4.0
+    official_usd: 0.02
+- id: google/imagen4-ultra
+  title_ru: Google Imagen 4
+  type: t2i
+  modes:
+  - unit: image
+    credits: 8.0
+    official_usd: 0.04
+- id: google/nano-banana
+  title_ru: Google Nano Banana Text to Image
+  type: t2i
+  modes:
+  - unit: image
+    credits: 4.0
+    official_usd: 0.02
+- id: google/nano-banana-edit
+  title_ru: Google Nano Banana Edit
+  type: i2i
+  modes:
+  - unit: image
+    credits: 4.0
+    official_usd: 0.02
+- id: google/nano-banana-pro
+  title_ru: Google Nano Banana Pro
+  type: t2i
+  modes:
+  - unit: image
+    credits: 18.0
+    official_usd: 0.09
+    notes: 1.0s-1K
+  - unit: image
+    credits: 18.0
+    official_usd: 0.09
+    notes: 1.0s-2K
+  - unit: image
+    credits: 24.0
+    official_usd: 0.12
+    notes: 1.0s-4K
+- id: google/veo-3
+  title_ru: Google Veo 3 Text to Video
+  type: t2v
+  modes:
+  - unit: video
+    credits: 60.0
+    official_usd: 0.3
+    notes: Fast
+  - unit: video
+    credits: 250.0
+    official_usd: 1.25
+    notes: Quality
+  - unit: video
+    credits: 60.0
+    official_usd: 0.3
+    notes: Fast
+  - unit: video
+    credits: 250.0
+    official_usd: 1.25
+    notes: Quality
+  - unit: video
+    credits: 60.0
+    official_usd: 0.3
+    notes: Fast
+- id: google/veo-3.1
+  title_ru: Google Veo 3.1 Text to Video
+  type: t2v
+  modes:
+  - unit: video
+    credits: 60.0
+    official_usd: 0.3
+    notes: Fast
+  - unit: video
+    credits: 250.0
+    official_usd: 1.25
+    notes: Quality
+  - unit: video
+    credits: 60.0
+    official_usd: 0.3
+    notes: Fast
+  - unit: video
+    credits: 250.0
+    official_usd: 1.25
+    notes: Quality
+  - unit: video
+    credits: 60.0
+    official_usd: 0.3
+    notes: Fast
+- id: grok/imagine
+  title_ru: Grok Imagine Image to Video
+  type: i2v
+  modes:
+  - unit: video
+    credits: 20.0
+    official_usd: 0.1
+    notes: 6.0s
+  - unit: video
+    credits: 20.0
+    official_usd: 0.1
+    notes: 6.0s
+  - unit: video
+    credits: 4.0
+    official_usd: 0.02
+  - unit: video
+    credits: 10.0
+    official_usd: 0.05
+    notes: 360p→720p
+- id: hailuo/02-image-to-video-standard
+  title_ru: Hailuo 02 Image to Video
+  type: i2v
+  modes:
+  - unit: video
+    credits: 57.0
+    official_usd: 0.285
+    notes: Pro-6.0s-1080p
+  - unit: video
+    credits: 12.0
+    official_usd: 0.06
+    notes: Standard-6.0s-512p
+  - unit: video
+    credits: 20.0
+    official_usd: 0.1
+    notes: Standard-10.0s-512p
+  - unit: video
+    credits: 50.0
+    official_usd: 0.25
+    notes: Standard-10.0s-768p
+- id: hailuo/02-text-to-video-standard
+  title_ru: Hailuo 02 Text to Video
+  type: t2v
+  modes:
+  - unit: video
+    credits: 57.0
+    official_usd: 0.285
+    notes: Pro-6.0s-1080p
+  - unit: video
+    credits: 30.0
+    official_usd: 0.15
+    notes: Standard-6.0s-768p
+  - unit: video
+    credits: 50.0
+    official_usd: 0.25
+    notes: Standard-10.0s-768p
+- id: hailuo/2.3
+  title_ru: Hailuo 2.3 Image to Video
+  type: i2v
+  modes:
+  - unit: video
+    credits: 30.0
+    official_usd: 0.15
+    notes: Standard-6.0s-768p
+  - unit: video
+    credits: 50.0
+    official_usd: 0.25
+    notes: Standard-10.0s-768p
+  - unit: video
+    credits: 50.0
+    official_usd: 0.25
+    notes: Standard-6.0s-1080p
+  - unit: video
+    credits: 45.0
+    official_usd: 0.225
+    notes: Pro-6.0s-768p
+  - unit: video
+    credits: 90.0
+    official_usd: 0.45
+    notes: Pro-10.0s-768p
+  - unit: video
+    credits: 80.0
+    official_usd: 0.4
+    notes: Pro-6.0s-1080p
+- id: ideogram/v3-text-to-image
+  title_ru: Ideogram V3 Text to Image
+  type: t2i
+  modes:
+  - unit: image
+    credits: 3.5
+    official_usd: 0.0175
+    notes: TURBO
+  - unit: image
+    credits: 7.0
+    official_usd: 0.035
+    notes: BALANCED
+  - unit: image
+    credits: 10.0
+    official_usd: 0.05
+    notes: QUALITY
+- id: ideogram/v3-reframe
+  title_ru: Ideogram V3 Reframe
+  type: i2i
+  modes:
+  - unit: image
+    credits: 3.5
+    official_usd: 0.0175
+    notes: Turbo
+  - unit: image
+    credits: 7.0
+    official_usd: 0.035
+    notes: Balanced
+  - unit: image
+    credits: 10.0
+    official_usd: 0.05
+    notes: Quality
+- id: ideogram/v3-edit
+  title_ru: Ideogram V3 Edit
+  type: i2i
+  modes:
+  - unit: image
+    credits: 3.5
+    official_usd: 0.0175
+    notes: TURBO
+  - unit: image
+    credits: 7.0
+    official_usd: 0.035
+    notes: BALANCED
+  - unit: image
+    credits: 10.0
+    official_usd: 0.05
+    notes: QUALITY
+- id: ideogram/v3-remix
+  title_ru: Ideogram V3 Remix
+  type: i2i
+  modes:
+  - unit: image
+    credits: 3.5
+    official_usd: 0.0175
+    notes: TURBO
+  - unit: image
+    credits: 7.0
+    official_usd: 0.035
+    notes: BALANCED
+  - unit: image
+    credits: 10.0
+    official_usd: 0.05
+    notes: QUALITY
+- id: ideogram/character
+  title_ru: Ideogram Character
+  type: t2i
+  modes:
+  - unit: image
+    credits: 12.0
+    official_usd: 0.06
+    notes: TURBO
+  - unit: image
+    credits: 18.0
+    official_usd: 0.09
+    notes: BALANCED
+  - unit: image
+    credits: 24.0
+    official_usd: 0.12
+    notes: QUALITY
+- id: ideogram/character-edit
+  title_ru: Ideogram Character Edit
+  type: i2i
+  modes:
+  - unit: image
+    credits: 12.0
+    official_usd: 0.06
+    notes: TURBO
+  - unit: image
+    credits: 18.0
+    official_usd: 0.09
+    notes: BALANCED
+  - unit: image
+    credits: 24.0
+    official_usd: 0.12
+    notes: QUALITY
+- id: ideogram/character-remix
+  title_ru: Ideogram Character Remix
+  type: i2i
+  modes:
+  - unit: image
+    credits: 12.0
+    official_usd: 0.06
+    notes: TURBO
+  - unit: image
+    credits: 18.0
+    official_usd: 0.09
+    notes: BALANCED
+  - unit: image
+    credits: 24.0
+    official_usd: 0.12
+    notes: QUALITY
+- id: kling/v2-1-master-image-to-video
+  title_ru: Kling 2.1 Image to Video
+  type: i2v
+  modes:
+  - unit: video
+    credits: 160.0
+    official_usd: 0.8
+    notes: Master-5.0s
+  - unit: video
+    credits: 320.0
+    official_usd: 1.6
+    notes: Master-10.0s
+- id: kling/v2-1-standard
+  title_ru: Kling 2.1 Video Generation
+  type: t2v
+  modes:
+  - unit: video
+    credits: 25.0
+    official_usd: 0.125
+    notes: Standard-5.0s
+  - unit: video
+    credits: 50.0
+    official_usd: 0.25
+    notes: Standard-10.0s
+- id: kling/v2-1-pro
+  title_ru: Kling 2.1 Video Generation
+  type: t2v
+  modes:
+  - unit: video
+    credits: 50.0
+    official_usd: 0.25
+    notes: Pro-5.0s
+  - unit: video
+    credits: 100.0
+    official_usd: 0.5
+    notes: Pro-10.0s
+- id: kling/v2-1-master-text-to-video
+  title_ru: Kling 2.1 Text to Video
+  type: t2v
+  modes:
+  - unit: video
+    credits: 160.0
+    official_usd: 0.8
+    notes: Master-5.0s
+  - unit: video
+    credits: 320.0
+    official_usd: 1.6
+    notes: Master-10.0s
+- id: kling/v2-5-turbo-image-to-video-pro
+  title_ru: Kling 2.5 Turbo Image to Video
+  type: i2v
+  modes:
+  - unit: video
+    credits: 42.0
+    official_usd: 0.21
+    notes: Turbo Pro-5.0s
+  - unit: video
+    credits: 84.0
+    official_usd: 0.42
+    notes: Turbo Pro-10.0s
+- id: kling/v2-5-turbo-text-to-video-pro
+  title_ru: Kling 2.5 Turbo Text to Video
+  type: t2v
+  modes:
+  - unit: video
+    credits: 42.0
+    official_usd: 0.21
+    notes: Turbo Pro-5.0s
+  - unit: video
+    credits: 84.0
+    official_usd: 0.42
+    notes: Turbo Pro-10.0s
+- id: kling-2.6/image-to-video
+  title_ru: Kling 2.6 Image to Video
+  type: i2v
+  modes:
+  - unit: video
+    credits: 55.0
+    official_usd: 0.275
+    notes: without audio-5.0s
+  - unit: video
+    credits: 110.0
+    official_usd: 0.55
+    notes: with audio-5.0s
+  - unit: video
+    credits: 110.0
+    official_usd: 0.55
+    notes: without audio-10.0s
+  - unit: video
+    credits: 220.0
+    official_usd: 1.1
+    notes: with audio-10.0s
+- id: kling-2.6/text-to-video
+  title_ru: Kling 2.6 Text to Video
+  type: t2v
+  modes:
+  - unit: video
+    credits: 55.0
+    official_usd: 0.275
+    notes: without audio-5.0s
+  - unit: video
+    credits: 110.0
+    official_usd: 0.55
+    notes: with audio-5.0s
+  - unit: video
+    credits: 110.0
+    official_usd: 0.55
+    notes: without audio-10.0s
+  - unit: video
+    credits: 220.0
+    official_usd: 1.1
+    notes: with audio-10.0s
+- id: kling/v1-avatar-standard
+  title_ru: Kling AI Avatar Lip Sync
+  type: lip_sync
+  modes:
+  - unit: image
+    credits: 8.0
+    official_usd: 0.04
+    notes: Standard-up to 15 secondss-720p
+- id: kling/ai-avatar-v1-pro
+  title_ru: Kling AI Avatar Lip Sync
+  type: lip_sync
+  modes:
+  - unit: image
+    credits: 16.0
+    official_usd: 0.08
+    notes: Pro-up to 15 secondss-1080p
+- id: infinitalk/from-audio
+  title_ru: MeiGen-AI InfiniteTalk Lip Sync
+  type: lip_sync
+  modes:
+  - unit: image
+    credits: 3.0
+    official_usd: 0.015
+    notes: up to 15 secondss-480p
+  - unit: image
+    credits: 12.0
+    official_usd: 0.06
+    notes: up to 15 secondss-720p
+- id: midjourney/api
+  title_ru: Midjourney Text to Image
+  type: t2i
+  modes:
+  - unit: image
+    credits: 3.0
+    official_usd: 0.015
+    notes: relaxed
+  - unit: image
+    credits: 8.0
+    official_usd: 0.04
+    notes: fast
+  - unit: image
+    credits: 16.0
+    official_usd: 0.08
+    notes: turbo
+  - unit: image
+    credits: 3.0
+    official_usd: 0.015
+    notes: relaxed
+  - unit: image
+    credits: 8.0
+    official_usd: 0.04
+    notes: fast
+  - unit: image
+    credits: 16.0
+    official_usd: 0.08
+    notes: turbo
+  - unit: image
+    credits: 60.0
+    official_usd: 0.3
+- id: sora-2-text-to-video
+  title_ru: OpenAI Sora 2 Text to Video
+  type: t2v
+  modes:
+  - unit: video
+    credits: 20.0
+    official_usd: 0.1
+    notes: Standard-10.0s
+  - unit: video
+    credits: 25.0
+    official_usd: 0.125
+    notes: Standard-15.0s
+- id: sora-2-pro-image-to-video
+  title_ru: OpenAI Sora 2 Image to Video
+  type: i2v
+  modes:
+  - unit: video
+    credits: 20.0
+    official_usd: 0.1
+    notes: Standard-10.0s
+  - unit: video
+    credits: 25.0
+    official_usd: 0.125
+    notes: Standard-15.0s
+  - unit: video
+    credits: 150.0
+    official_usd: 0.75
+    notes: Pro Standard-10.0s
+  - unit: video
+    credits: 270.0
+    official_usd: 1.35
+    notes: Pro Standard-15.0s
+  - unit: video
+    credits: 330.0
+    official_usd: 1.65
+    notes: Pro High-10.0s
+  - unit: video
+    credits: 630.0
+    official_usd: 3.15
+    notes: Pro High-15.0s
+- id: sora-2-pro-storyboard
+  title_ru: OpenAI Sora 2 Pro Storyboard
+  type: t2i
+  modes:
+  - unit: image
+    credits: 150.0
+    official_usd: 0.75
+    notes: Pro-10.0s
+  - unit: image
+    credits: 270.0
+    official_usd: 1.35
+    notes: Pro-15-25s
+- id: sora-2-pro-text-to-video
+  title_ru: OpenAI Sora 2 Pro Text to Video
+  type: t2v
+  modes:
+  - unit: video
+    credits: 150.0
+    official_usd: 0.75
+    notes: Pro Standard-10.0s
+  - unit: video
+    credits: 270.0
+    official_usd: 1.35
+    notes: Pro Standard-15.0s
+  - unit: video
+    credits: 330.0
+    official_usd: 1.65
+    notes: Pro High-10.0s
+  - unit: video
+    credits: 630.0
+    official_usd: 3.15
+    notes: Pro High-15.0s
+- id: sora-watermark-remover
+  title_ru: OpenAI Sora 2 Watermark Remover
+  type: watermark_remove
+  modes:
+  - unit: removal
+    credits: 10.0
+    official_usd: 0.05
+- id: openai/4o-image
+  title_ru: OpenAI 4o Image Text to Image
+  type: t2i
+  modes:
+  - unit: image
+    credits: 6.0
+    official_usd: 0.03
+- id: qwen/image-to-image
+  title_ru: Qwen Image Image to Image
+  type: i2i
+  modes:
+  - unit: image
+    credits: 4.0
+    official_usd: 0.02
+- id: qwen/text-to-image
+  title_ru: Qwen Image Text to Image
+  type: t2i
+  modes:
+  - unit: image
+    credits: 4.0
+    official_usd: 0.02
+- id: qwen/image-edit
+  title_ru: Qwen Image Edit
+  type: i2i
+  modes:
+  - unit: image
+    credits: 5.0
+    official_usd: 0.03
+- id: z-image
+  title_ru: Qwen Z-Image Text to Image
+  type: t2i
+  modes:
+  - unit: image
+    credits: 0.8
+    official_usd: 0.004
+    notes: 1.0s
+- id: recraft/crisp-upscale
+  title_ru: Recraft Crisp Upscale
+  type: upscale
+  modes:
+  - unit: upscale
+    credits: 0.5
+    official_usd: 0.0025
+- id: recraft/remove-background
+  title_ru: Recraft Remove Background
+  type: bg_remove
+  modes:
+  - unit: image
+    credits: 1.0
+    official_usd: 0.005
+- id: runway/gen-4
+  title_ru: Runway Image to Video
+  type: i2v
+  modes:
+  - unit: video
+    credits: 12.0
+    official_usd: 0.06
+    notes: 5.0s-720p
+  - unit: video
+    credits: 30.0
+    official_usd: 0.15
+    notes: 10.0s-720p
+  - unit: video
+    credits: 30.0
+    official_usd: 0.15
+    notes: 5.0s-1080p
+  - unit: video
+    credits: 12.0
+    official_usd: 0.06
+    notes: 5.0s-720p
+  - unit: video
+    credits: 30.0
+    official_usd: 0.15
+    notes: 10.0s-720p
+  - unit: video
+    credits: 30.0
+    official_usd: 0.15
+    notes: 5.0s-1080p
+- id: suno/v5
+  title_ru: Suno Generate Music
+  type: music
+  modes:
+  - unit: image
+    credits: 12.0
+    official_usd: 0.06
+  - unit: image
+    credits: 12.0
+    official_usd: 0.06
+  - unit: image
+    credits: 12.0
+    official_usd: 0.06
+  - unit: image
+    credits: 12.0
+    official_usd: 0.06
+  - unit: image
+    credits: 12.0
+    official_usd: 0.06
+  - unit: image
+    credits: 2.0
+    official_usd: 0.01
+  - unit: image
+    credits: 12.0
+    official_usd: 0.06
+  - unit: image
+    credits: 0.4
+    official_usd: 0.002
+  - unit: image
+    credits: 0.4
+    official_usd: 0.002
+- id: topaz/image-upscale
+  title_ru: Topaz Image Upscaler
+  type: upscale
+  modes:
+  - unit: upscale
+    credits: 10.0
+    official_usd: 0.05
+    notes: ≤2K
+  - unit: upscale
+    credits: 20.0
+    official_usd: 0.01
+    notes: 4K
+  - unit: upscale
+    credits: 40.0
+    official_usd: 0.02
+    notes: 8K
+- id: topaz/video-upscale
+  title_ru: Topaz Video Upscaler
+  type: upscale
+  modes:
+  - unit: upscale
+    credits: 12.0
+    official_usd: 0.06
+    notes: upscale factor 1x/2x/4xs
+- id: wan/2-2-a14b-text-to-video-turbo
+  title_ru: Wan 2.2 Text to Video
+  type: t2v
+  modes:
+  - unit: video
+    credits: 80.0
+    official_usd: 0.4
+    notes: 5.0s-720p
+  - unit: video
+    credits: 60.0
+    official_usd: 0.3
+    notes: 5.0s-580p
+  - unit: video
+    credits: 40.0
+    official_usd: 0.2
+    notes: 5.0s-480p
+- id: wan/2-2-a14b-image-to-video-turbo
+  title_ru: Wan 2.2 Image to Video
+  type: i2v
+  modes:
+  - unit: video
+    credits: 80.0
+    official_usd: 0.4
+    notes: 5.0s-720p
+  - unit: video
+    credits: 60.0
+    official_usd: 0.3
+    notes: 5.0s-580p
+  - unit: video
+    credits: 40.0
+    official_usd: 0.2
+    notes: 5.0s-480p
+- id: wan/2-2-a14b-speech-to-video-turbo
+  title_ru: Wan 2.2 A14B Turbo API Speech to Video
+  type: t2v
+  modes:
+  - unit: video
+    credits: 24.0
+    official_usd: 0.12
+    notes: 720p
+  - unit: video
+    credits: 18.0
+    official_usd: 0.09
+    notes: 580p
+  - unit: video
+    credits: 12.0
+    official_usd: 0.06
+    notes: 480p
+- id: wan/2-2-animate-move
+  title_ru: Wan 2.2 Animate Speech to Video
+  type: t2v
+  modes:
+  - unit: video
+    credits: 24.0
+    official_usd: 0.12
+    notes: Turbo-1.0s-720p
+  - unit: video
+    credits: 18.0
+    official_usd: 0.09
+    notes: Turbo-1.0s-580p
+  - unit: video
+    credits: 12.0
+    official_usd: 0.06
+    notes: Turbo-1.0s-480p
+- id: wan/2-5-image-to-video
+  title_ru: Wan 2.5 Image to Video
+  type: i2v
+  modes:
+  - unit: video
+    credits: 60.0
+    official_usd: 0.3
+    notes: default-5.0s-720p
+  - unit: video
+    credits: 120.0
+    official_usd: 0.6
+    notes: default-10.0s-720p
+  - unit: video
+    credits: 100.0
+    official_usd: 0.5
+    notes: default-5.0s-1080p
+  - unit: video
+    credits: 200.0
+    official_usd: 1.0
+    notes: default-10.0s-1080p
+- id: wan/2-5-text-to-video
+  title_ru: Wan 2.5 Text to Video
+  type: t2v
+  modes:
+  - unit: video
+    credits: 60.0
+    official_usd: 0.3
+    notes: default-5.0s-720p
+  - unit: video
+    credits: 120.0
+    official_usd: 0.6
+    notes: default-10.0s-720p
+  - unit: video
+    credits: 100.0
+    official_usd: 0.5
+    notes: default-5.0s-1080p
+  - unit: video
+    credits: 200.0
+    official_usd: 1.0
+    notes: default-10.0s-1080p
+- id: wan/2-6-text-to-video
+  title_ru: Wan 2.6 Text to Video
+  type: t2v
+  modes:
+  - unit: video
+    credits: 70.0
+    official_usd: 0.35
+    notes: 5.0s-720p
+  - unit: video
+    credits: 140.0
+    official_usd: 0.7
+    notes: 10.0s-720p
+  - unit: video
+    credits: 210.0
+    official_usd: 1.05
+    notes: 15.0s-720p
+  - unit: video
+    credits: 104.5
+    official_usd: 0.5225
+    notes: 5.0s-1080p
+  - unit: video
+    credits: 209.5
+    official_usd: 1.0475
+    notes: 10.0s-1080p
+  - unit: video
+    credits: 315.0
+    official_usd: 1.575
+    notes: 15.0s-1080p
+- id: wan/2-6-image-to-video
+  title_ru: Wan 2.6 Image to Video
+  type: i2v
+  modes:
+  - unit: video
+    credits: 70.0
+    official_usd: 0.35
+    notes: 5.0s-720p
+  - unit: video
+    credits: 140.0
+    official_usd: 0.7
+    notes: 10.0s-720p
+  - unit: video
+    credits: 210.0
+    official_usd: 1.05
+    notes: 15.0s-720p
+  - unit: video
+    credits: 104.5
+    official_usd: 0.5225
+    notes: 5.0s-1080p
+  - unit: video
+    credits: 209.5
+    official_usd: 1.0475
+    notes: 10.0s-1080p
+  - unit: video
+    credits: 315.0
+    official_usd: 1.575
+    notes: 15.0s-1080p
+- id: wan/2-6-video-to-video
+  title_ru: Wan 2.6 Video to Video
+  type: v2v
+  modes:
+  - unit: video
+    credits: 70.0
+    official_usd: 0.35
+    notes: 5.0s-720p
+  - unit: video
+    credits: 140.0
+    official_usd: 0.7
+    notes: 10.0s-720p
+  - unit: video
+    credits: 210.0
+    official_usd: 1.05
+    notes: 15.0s-720p
+  - unit: video
+    credits: 104.5
+    official_usd: 0.5225
+    notes: 5.0s-1080p
+  - unit: video
+    credits: 209.5
+    official_usd: 1.0475
+    notes: 10.0s-1080p
+  - unit: video
+    credits: 315.0
+    official_usd: 1.575
+    notes: 15.0s-1080p

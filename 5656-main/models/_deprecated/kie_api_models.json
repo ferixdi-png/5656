@@ -1,0 +1,3119 @@
+{
+  "version": "6.0.0",
+  "source": "kie_models.yaml",
+  "generated_at": "2026-01-11",
+  "api_endpoint": "/api/v1/jobs/createTask",
+  "polling_endpoint": "/api/v1/jobs/recordInfo",
+  "models": [
+    {
+      "model_id": "z-image",
+      "display_name": "Z Image",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "aspect_ratio"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 1000
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "1:1",
+              "4:3",
+              "3:4",
+              "16:9",
+              "9:16"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "nano-banana-pro",
+      "display_name": "Nano Banana Pro",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "image_input",
+          "prompt"
+        ],
+        "properties": {
+          "image_input": {
+            "type": "array"
+          },
+          "prompt": {
+            "type": "string",
+            "max_length": 10000
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "1:1",
+              "2:3",
+              "3:2",
+              "3:4",
+              "4:3",
+              "4:5",
+              "5:4",
+              "9:16",
+              "16:9",
+              "21:9",
+              "auto"
+            ]
+          },
+          "resolution": {
+            "type": "enum",
+            "enum": [
+              "1K",
+              "2K",
+              "4K"
+            ]
+          },
+          "output_format": {
+            "type": "enum",
+            "enum": [
+              "png",
+              "jpg"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "seedream/4.5-text-to-image",
+      "display_name": "Seedream 4.5 Text To Image",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "aspect_ratio",
+          "quality"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 3000
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "1:1",
+              "4:3",
+              "3:4",
+              "16:9",
+              "9:16",
+              "2:3",
+              "3:2",
+              "21:9"
+            ]
+          },
+          "quality": {
+            "type": "enum",
+            "enum": [
+              "basic",
+              "high"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "seedream/4.5-edit",
+      "display_name": "Seedream 4.5 Edit",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_urls",
+          "aspect_ratio",
+          "quality"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 3000
+          },
+          "image_urls": {
+            "type": "array"
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "1:1",
+              "4:3",
+              "3:4",
+              "16:9",
+              "9:16",
+              "2:3",
+              "3:2",
+              "21:9"
+            ]
+          },
+          "quality": {
+            "type": "enum",
+            "enum": [
+              "basic",
+              "high"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "sora-2-pro-image-to-video",
+      "display_name": "Sora 2 Pro Image To Video",
+      "category": "image-to-video",
+      "modality": "image-to-video",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "image_urls",
+          "prompt"
+        ],
+        "properties": {
+          "image_urls": {
+            "type": "array"
+          },
+          "prompt": {
+            "type": "string",
+            "max_length": 10000
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "portrait",
+              "landscape"
+            ]
+          },
+          "n_frames": {
+            "type": "enum",
+            "enum": [
+              "10",
+              "15"
+            ]
+          },
+          "size": {
+            "type": "enum",
+            "enum": [
+              "standard",
+              "high"
+            ]
+          },
+          "remove_watermark": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "sora-watermark-remover",
+      "display_name": "Sora Watermark Remover",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "video_url"
+        ],
+        "properties": {
+          "video_url": {
+            "type": "string",
+            "max_length": 500
+          }
+        }
+      }
+    },
+    {
+      "model_id": "sora-2-text-to-video",
+      "display_name": "Sora 2 Text To Video",
+      "category": "text-to-video",
+      "modality": "text-to-video",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "aspect_ratio"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 10000
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "portrait",
+              "landscape"
+            ]
+          },
+          "n_frames": {
+            "type": "enum",
+            "enum": [
+              "10",
+              "15"
+            ]
+          },
+          "remove_watermark": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "kling-2.6/image-to-video",
+      "display_name": "Kling 2.6 Image To Video",
+      "category": "image-to-video",
+      "modality": "image-to-video",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input",
+          "sound",
+          "duration"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 1000
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "sound": {
+            "type": "boolean"
+          },
+          "duration": {
+            "type": "enum",
+            "enum": [
+              "5",
+              "10"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "kling-2.6/text-to-video",
+      "display_name": "Kling 2.6 Text To Video",
+      "category": "text-to-video",
+      "modality": "text-to-video",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "sound",
+          "aspect_ratio",
+          "duration"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 1000
+          },
+          "sound": {
+            "type": "boolean"
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "1:1",
+              "16:9",
+              "9:16"
+            ]
+          },
+          "duration": {
+            "type": "enum",
+            "enum": [
+              "5",
+              "10"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "flux-2/pro-image-to-image",
+      "display_name": "Flux 2 Pro Image To Image",
+      "category": "image-to-image",
+      "modality": "image-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input",
+          "aspect_ratio",
+          "resolution"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "1:1",
+              "4:3",
+              "3:4",
+              "16:9",
+              "9:16",
+              "3:2",
+              "2:3",
+              "auto"
+            ]
+          },
+          "resolution": {
+            "type": "enum",
+            "enum": [
+              "1K",
+              "2K"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "flux-2/pro-text-to-image",
+      "display_name": "Flux 2 Pro Text To Image",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "aspect_ratio",
+          "resolution"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "1:1",
+              "4:3",
+              "3:4",
+              "16:9",
+              "9:16",
+              "3:2",
+              "2:3",
+              "auto"
+            ]
+          },
+          "resolution": {
+            "type": "enum",
+            "enum": [
+              "1K",
+              "2K"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "flux-2/flex-image-to-image",
+      "display_name": "Flux 2 Flex Image To Image",
+      "category": "image-to-image",
+      "modality": "image-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input",
+          "aspect_ratio",
+          "resolution"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "1:1",
+              "4:3",
+              "3:4",
+              "16:9",
+              "9:16",
+              "3:2",
+              "2:3",
+              "auto"
+            ]
+          },
+          "resolution": {
+            "type": "enum",
+            "enum": [
+              "1K",
+              "2K"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "flux-2/flex-text-to-image",
+      "display_name": "Flux 2 Flex Text To Image",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "aspect_ratio",
+          "resolution"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "1:1",
+              "4:3",
+              "3:4",
+              "16:9",
+              "9:16",
+              "3:2",
+              "2:3",
+              "auto"
+            ]
+          },
+          "resolution": {
+            "type": "enum",
+            "enum": [
+              "1K",
+              "2K"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "topaz/image-upscale",
+      "display_name": "Topaz Image Upscale",
+      "category": "upscale",
+      "modality": "upscale",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "image_input",
+          "upscale_factor"
+        ],
+        "properties": {
+          "image_input": {
+            "type": "array"
+          },
+          "upscale_factor": {
+            "type": "enum",
+            "enum": [
+              "1",
+              "2",
+              "4",
+              "8"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "kling/v2-5-turbo-text-to-video-pro",
+      "display_name": "Kling V2 5 Turbo Text To Video Pro",
+      "category": "text-to-video",
+      "modality": "text-to-video",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 2500
+          },
+          "duration": {
+            "type": "enum",
+            "enum": [
+              "5",
+              "10"
+            ]
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "16:9",
+              "9:16",
+              "1:1"
+            ]
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 2500
+          },
+          "cfg_scale": {
+            "type": "number",
+            "max_length": 1
+          }
+        }
+      }
+    },
+    {
+      "model_id": "kling/v2-5-turbo-image-to-video-pro",
+      "display_name": "Kling V2 5 Turbo Image To Video Pro",
+      "category": "image-to-video",
+      "modality": "image-to-video",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 2500
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "duration": {
+            "type": "enum",
+            "enum": [
+              "5",
+              "10"
+            ]
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 2496
+          },
+          "cfg_scale": {
+            "type": "number",
+            "max_length": 1
+          }
+        }
+      }
+    },
+    {
+      "model_id": "wan/2-5-image-to-video",
+      "display_name": "Wan 2 5 Image To Video",
+      "category": "image-to-video",
+      "modality": "image-to-video",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 800
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "duration": {
+            "type": "enum",
+            "enum": [
+              "5",
+              "10"
+            ]
+          },
+          "resolution": {
+            "type": "enum",
+            "enum": [
+              "720p",
+              "1080p"
+            ]
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 500
+          },
+          "enable_prompt_expansion": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "wan/2-5-text-to-video",
+      "display_name": "Wan 2 5 Text To Video",
+      "category": "text-to-video",
+      "modality": "text-to-video",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 800
+          },
+          "duration": {
+            "type": "enum",
+            "enum": [
+              "5",
+              "10"
+            ]
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "16:9",
+              "9:16",
+              "1:1"
+            ]
+          },
+          "resolution": {
+            "type": "enum",
+            "enum": [
+              "720p",
+              "1080p"
+            ]
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 500
+          },
+          "enable_prompt_expansion": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "wan/2-2-animate-move",
+      "display_name": "Wan 2 2 Animate Move",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "video_input",
+          "image_input"
+        ],
+        "properties": {
+          "video_input": {
+            "type": "array"
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "resolution": {
+            "type": "enum",
+            "enum": [
+              "480p",
+              "580p",
+              "720p"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "wan/2-2-animate-replace",
+      "display_name": "Wan 2 2 Animate Replace",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "video_input",
+          "image_input"
+        ],
+        "properties": {
+          "video_input": {
+            "type": "array"
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "resolution": {
+            "type": "enum",
+            "enum": [
+              "480p",
+              "580p",
+              "720p"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "hailuo/02-text-to-video-pro",
+      "display_name": "Hailuo 02 Text To Video Pro",
+      "category": "text-to-video",
+      "modality": "text-to-video",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 1500
+          },
+          "prompt_optimizer": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "hailuo/02-image-to-video-pro",
+      "display_name": "Hailuo 02 Image To Video Pro",
+      "category": "image-to-video",
+      "modality": "image-to-video",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 1500
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "end_image_url": {
+            "type": "string"
+          },
+          "prompt_optimizer": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "hailuo/02-image-to-video-standard",
+      "display_name": "Hailuo 02 Image To Video Standard",
+      "category": "image-to-video",
+      "modality": "image-to-video",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 1500
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "end_image_url": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "enum",
+            "enum": [
+              "6",
+              "10"
+            ]
+          },
+          "resolution": {
+            "type": "enum",
+            "enum": [
+              "512P",
+              "768P"
+            ]
+          },
+          "prompt_optimizer": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "hailuo/02-text-to-video-standard",
+      "display_name": "Hailuo 02 Text To Video Standard",
+      "category": "text-to-video",
+      "modality": "text-to-video",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 1500
+          },
+          "duration": {
+            "type": "enum",
+            "enum": [
+              "6",
+              "10"
+            ]
+          },
+          "prompt_optimizer": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "topaz/video-upscale",
+      "display_name": "Topaz Video Upscale",
+      "category": "video-upscale",
+      "modality": "video-upscale",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "video_input"
+        ],
+        "properties": {
+          "video_input": {
+            "type": "array"
+          },
+          "upscale_factor": {
+            "type": "enum",
+            "enum": [
+              "1",
+              "2",
+              "4"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "kling/v1-avatar-standard",
+      "display_name": "Kling V1 Avatar Standard",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "image_input",
+          "audio_input",
+          "prompt"
+        ],
+        "properties": {
+          "image_input": {
+            "type": "array"
+          },
+          "audio_input": {
+            "type": "array"
+          },
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          }
+        }
+      }
+    },
+    {
+      "model_id": "kling/ai-avatar-v1-pro",
+      "display_name": "Kling Ai Avatar V1 Pro",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "image_input",
+          "audio_input",
+          "prompt"
+        ],
+        "properties": {
+          "image_input": {
+            "type": "array"
+          },
+          "audio_input": {
+            "type": "array"
+          },
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          }
+        }
+      }
+    },
+    {
+      "model_id": "bytedance/seedream-v4-text-to-image",
+      "display_name": "Bytedance Seedream V4 Text To Image",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "image_size": {
+            "type": "enum",
+            "enum": [
+              "square",
+              "square_hd",
+              "portrait_4_3",
+              "portrait_3_2",
+              "portrait_16_9",
+              "landscape_4_3",
+              "landscape_3_2",
+              "landscape_16_9",
+              "landscape_21_9"
+            ]
+          },
+          "image_resolution": {
+            "type": "enum",
+            "enum": [
+              "1K",
+              "2K",
+              "4K"
+            ]
+          },
+          "max_images": {
+            "type": "number",
+            "max_length": 6
+          }
+        }
+      }
+    },
+    {
+      "model_id": "bytedance/seedream-v4-edit",
+      "display_name": "Bytedance Seedream V4 Edit",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "image_size": {
+            "type": "enum",
+            "enum": [
+              "square",
+              "square_hd",
+              "portrait_4_3",
+              "portrait_3_2",
+              "portrait_16_9",
+              "landscape_4_3",
+              "landscape_3_2",
+              "landscape_16_9",
+              "landscape_21_9"
+            ]
+          },
+          "image_resolution": {
+            "type": "enum",
+            "enum": [
+              "1K",
+              "2K",
+              "4K"
+            ]
+          },
+          "max_images": {
+            "type": "number",
+            "max_length": 6
+          }
+        }
+      }
+    },
+    {
+      "model_id": "recraft/remove-background",
+      "display_name": "Recraft Remove Background",
+      "category": "image-edit",
+      "modality": "image-edit",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "image_input"
+        ],
+        "properties": {
+          "image_input": {
+            "type": "array"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "recraft/crisp-upscale",
+      "display_name": "Recraft Crisp Upscale",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "image_input"
+        ],
+        "properties": {
+          "image_input": {
+            "type": "array"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "ideogram/v3-reframe",
+      "display_name": "Ideogram V3 Reframe",
+      "category": "outpaint",
+      "modality": "outpaint",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "image_input",
+          "image_size"
+        ],
+        "properties": {
+          "image_input": {
+            "type": "array"
+          },
+          "image_size": {
+            "type": "enum",
+            "enum": [
+              "square",
+              "square_hd",
+              "portrait_4_3",
+              "portrait_16_9",
+              "landscape_4_3",
+              "landscape_16_9"
+            ]
+          },
+          "rendering_speed": {
+            "type": "enum",
+            "enum": [
+              "TURBO",
+              "BALANCED",
+              "QUALITY"
+            ]
+          },
+          "style": {
+            "type": "enum",
+            "enum": [
+              "AUTO",
+              "GENERAL",
+              "REALISTIC",
+              "DESIGN"
+            ]
+          },
+          "num_images": {
+            "type": "enum",
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "wan/2-2-a14b-speech-to-video-turbo",
+      "display_name": "Wan 2 2 A14B Speech To Video Turbo",
+      "category": "speech-to-video",
+      "modality": "speech-to-video",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input",
+          "audio_input"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "audio_input": {
+            "type": "array"
+          },
+          "num_frames": {
+            "type": "number",
+            "max_length": 120
+          },
+          "frames_per_second": {
+            "type": "number",
+            "max_length": 60
+          },
+          "resolution": {
+            "type": "enum",
+            "enum": [
+              "480p",
+              "580p",
+              "720p"
+            ]
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 500
+          },
+          "num_inference_steps": {
+            "type": "number",
+            "max_length": 40
+          },
+          "guidance_scale": {
+            "type": "number",
+            "max_length": 10
+          },
+          "shift": {
+            "type": "number",
+            "max_length": 10
+          },
+          "enable_safety_checker": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "bytedance/seedream",
+      "display_name": "Bytedance Seedream",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "image_size": {
+            "type": "enum",
+            "enum": [
+              "square",
+              "square_hd",
+              "portrait_4_3",
+              "portrait_16_9",
+              "landscape_4_3",
+              "landscape_16_9"
+            ]
+          },
+          "guidance_scale": {
+            "type": "number",
+            "max_length": 10
+          },
+          "enable_safety_checker": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "qwen/text-to-image",
+      "display_name": "Qwen Text To Image",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "image_size": {
+            "type": "enum",
+            "enum": [
+              "square",
+              "square_hd",
+              "portrait_4_3",
+              "portrait_16_9",
+              "landscape_4_3",
+              "landscape_16_9"
+            ]
+          },
+          "num_inference_steps": {
+            "type": "number",
+            "max_length": 250
+          },
+          "guidance_scale": {
+            "type": "number",
+            "max_length": 20
+          },
+          "enable_safety_checker": {
+            "type": "boolean"
+          },
+          "output_format": {
+            "type": "enum",
+            "enum": [
+              "png",
+              "jpeg"
+            ]
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 500
+          },
+          "acceleration": {
+            "type": "enum",
+            "enum": [
+              "none",
+              "regular",
+              "high"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "qwen/image-to-image",
+      "display_name": "Qwen Image To Image",
+      "category": "image-to-image",
+      "modality": "image-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "strength": {
+            "type": "number",
+            "max_length": 1
+          },
+          "output_format": {
+            "type": "enum",
+            "enum": [
+              "png",
+              "jpeg"
+            ]
+          },
+          "acceleration": {
+            "type": "enum",
+            "enum": [
+              "none",
+              "regular",
+              "high"
+            ]
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 500
+          },
+          "num_inference_steps": {
+            "type": "number",
+            "max_length": 250
+          },
+          "guidance_scale": {
+            "type": "number",
+            "max_length": 20
+          },
+          "enable_safety_checker": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "qwen/image-edit",
+      "display_name": "Qwen Image Edit",
+      "category": "image-edit",
+      "modality": "image-edit",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 2000
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "acceleration": {
+            "type": "enum",
+            "enum": [
+              "none",
+              "regular",
+              "high"
+            ]
+          },
+          "image_size": {
+            "type": "enum",
+            "enum": [
+              "square",
+              "square_hd",
+              "portrait_4_3",
+              "portrait_16_9",
+              "landscape_4_3",
+              "landscape_16_9"
+            ]
+          },
+          "num_inference_steps": {
+            "type": "number",
+            "max_length": 49
+          },
+          "guidance_scale": {
+            "type": "number",
+            "max_length": 20
+          },
+          "num_images": {
+            "type": "enum",
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4"
+            ]
+          },
+          "enable_safety_checker": {
+            "type": "boolean"
+          },
+          "output_format": {
+            "type": "enum",
+            "enum": [
+              "jpeg",
+              "png"
+            ]
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 500
+          }
+        }
+      }
+    },
+    {
+      "model_id": "ideogram/character-edit",
+      "display_name": "Ideogram Character Edit",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input",
+          "mask_input",
+          "reference_image_input"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "mask_input": {
+            "type": "array"
+          },
+          "reference_image_input": {
+            "type": "array"
+          },
+          "rendering_speed": {
+            "type": "enum",
+            "enum": [
+              "TURBO",
+              "BALANCED",
+              "QUALITY"
+            ]
+          },
+          "style": {
+            "type": "enum",
+            "enum": [
+              "AUTO",
+              "REALISTIC",
+              "FICTION"
+            ]
+          },
+          "expand_prompt": {
+            "type": "boolean"
+          },
+          "num_images": {
+            "type": "enum",
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "ideogram/character-remix",
+      "display_name": "Ideogram Character Remix",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input",
+          "reference_image_input"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "reference_image_input": {
+            "type": "array"
+          },
+          "rendering_speed": {
+            "type": "enum",
+            "enum": [
+              "TURBO",
+              "BALANCED",
+              "QUALITY"
+            ]
+          },
+          "style": {
+            "type": "enum",
+            "enum": [
+              "AUTO",
+              "REALISTIC",
+              "FICTION"
+            ]
+          },
+          "expand_prompt": {
+            "type": "boolean"
+          },
+          "image_size": {
+            "type": "enum",
+            "enum": [
+              "square",
+              "square_hd",
+              "portrait_4_3",
+              "portrait_16_9",
+              "landscape_4_3",
+              "landscape_16_9"
+            ]
+          },
+          "num_images": {
+            "type": "enum",
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4"
+            ]
+          },
+          "strength": {
+            "type": "number",
+            "max_length": 1
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 500
+          }
+        }
+      }
+    },
+    {
+      "model_id": "ideogram/character",
+      "display_name": "Ideogram Character",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "reference_image_input"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "reference_image_input": {
+            "type": "array"
+          },
+          "rendering_speed": {
+            "type": "enum",
+            "enum": [
+              "TURBO",
+              "BALANCED",
+              "QUALITY"
+            ]
+          },
+          "style": {
+            "type": "enum",
+            "enum": [
+              "AUTO",
+              "REALISTIC",
+              "FICTION"
+            ]
+          },
+          "expand_prompt": {
+            "type": "boolean"
+          },
+          "num_images": {
+            "type": "enum",
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4"
+            ]
+          },
+          "image_size": {
+            "type": "enum",
+            "enum": [
+              "square",
+              "square_hd",
+              "portrait_4_3",
+              "portrait_16_9",
+              "landscape_4_3",
+              "landscape_16_9"
+            ]
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 5000
+          }
+        }
+      }
+    },
+    {
+      "model_id": "bytedance/v1-pro-fast-image-to-video",
+      "display_name": "Bytedance V1 Pro Fast Image To Video",
+      "category": "image-to-video",
+      "modality": "image-to-video",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 10000
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "resolution": {
+            "type": "enum",
+            "enum": [
+              "720p",
+              "1080p"
+            ]
+          },
+          "duration": {
+            "type": "enum",
+            "enum": [
+              "5",
+              "10"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "kling/v2-1-master-image-to-video",
+      "display_name": "Kling V2 1 Master Image To Video",
+      "category": "image-to-video",
+      "modality": "image-to-video",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "duration": {
+            "type": "enum",
+            "enum": [
+              "5",
+              "10"
+            ]
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 500
+          },
+          "cfg_scale": {
+            "type": "number",
+            "max_length": 1
+          }
+        }
+      }
+    },
+    {
+      "model_id": "kling/v2-1-standard",
+      "display_name": "Kling V2 1 Standard",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "duration": {
+            "type": "enum",
+            "enum": [
+              "5",
+              "10"
+            ]
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 500
+          },
+          "cfg_scale": {
+            "type": "number",
+            "max_length": 1
+          }
+        }
+      }
+    },
+    {
+      "model_id": "kling/v2-1-pro",
+      "display_name": "Kling V2 1 Pro",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "duration": {
+            "type": "enum",
+            "enum": [
+              "5",
+              "10"
+            ]
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 500
+          },
+          "cfg_scale": {
+            "type": "number",
+            "max_length": 1
+          },
+          "tail_image_url": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "kling/v2-1-master-text-to-video",
+      "display_name": "Kling V2 1 Master Text To Video",
+      "category": "text-to-video",
+      "modality": "text-to-video",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "duration": {
+            "type": "enum",
+            "enum": [
+              "5",
+              "10"
+            ]
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "16:9",
+              "9:16",
+              "1:1"
+            ]
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 500
+          },
+          "cfg_scale": {
+            "type": "number",
+            "max_length": 1
+          }
+        }
+      }
+    },
+    {
+      "model_id": "ideogram/v3-text-to-image",
+      "display_name": "Ideogram V3 Text To Image",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "rendering_speed": {
+            "type": "enum",
+            "enum": [
+              "TURBO",
+              "BALANCED",
+              "QUALITY"
+            ]
+          },
+          "style": {
+            "type": "enum",
+            "enum": [
+              "AUTO",
+              "GENERAL",
+              "REALISTIC",
+              "DESIGN"
+            ]
+          },
+          "expand_prompt": {
+            "type": "boolean"
+          },
+          "image_size": {
+            "type": "enum",
+            "enum": [
+              "square",
+              "square_hd",
+              "portrait_4_3",
+              "portrait_16_9",
+              "landscape_4_3",
+              "landscape_16_9"
+            ]
+          },
+          "num_images": {
+            "type": "enum",
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4"
+            ]
+          },
+          "seed": {
+            "type": "integer"
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 5000
+          }
+        }
+      }
+    },
+    {
+      "model_id": "ideogram/v3-edit",
+      "display_name": "Ideogram V3 Edit",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input",
+          "mask_input"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "mask_input": {
+            "type": "array"
+          },
+          "rendering_speed": {
+            "type": "enum",
+            "enum": [
+              "TURBO",
+              "BALANCED",
+              "QUALITY"
+            ]
+          },
+          "expand_prompt": {
+            "type": "boolean"
+          },
+          "num_images": {
+            "type": "enum",
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4"
+            ]
+          },
+          "seed": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "ideogram/v3-remix",
+      "display_name": "Ideogram V3 Remix",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_input"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "image_input": {
+            "type": "array"
+          },
+          "rendering_speed": {
+            "type": "enum",
+            "enum": [
+              "TURBO",
+              "BALANCED",
+              "QUALITY"
+            ]
+          },
+          "style": {
+            "type": "enum",
+            "enum": [
+              "AUTO",
+              "GENERAL",
+              "REALISTIC",
+              "DESIGN"
+            ]
+          },
+          "expand_prompt": {
+            "type": "boolean"
+          },
+          "image_size": {
+            "type": "enum",
+            "enum": [
+              "square",
+              "square_hd",
+              "portrait_4_3",
+              "portrait_16_9",
+              "landscape_4_3",
+              "landscape_16_9"
+            ]
+          },
+          "num_images": {
+            "type": "enum",
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4"
+            ]
+          },
+          "seed": {
+            "type": "integer"
+          },
+          "strength": {
+            "type": "number",
+            "max_length": 1
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 5000
+          }
+        }
+      }
+    },
+    {
+      "model_id": "wan/2-2-a14b-text-to-video-turbo",
+      "display_name": "Wan 2 2 A14B Text To Video Turbo",
+      "category": "text-to-video",
+      "modality": "text-to-video",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "resolution": {
+            "type": "enum",
+            "enum": [
+              "480p",
+              "580p",
+              "720p"
+            ]
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "16:9",
+              "9:16",
+              "1:1"
+            ]
+          },
+          "enable_prompt_expansion": {
+            "type": "boolean"
+          },
+          "seed": {
+            "type": "number",
+            "max_length": 2147483647
+          },
+          "acceleration": {
+            "type": "enum",
+            "enum": [
+              "none",
+              "regular"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "wan/2-2-a14b-image-to-video-turbo",
+      "display_name": "Wan 2 2 A14B Image To Video Turbo",
+      "category": "image-to-video",
+      "modality": "image-to-video",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "image_input",
+          "prompt"
+        ],
+        "properties": {
+          "image_input": {
+            "type": "array"
+          },
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "resolution": {
+            "type": "enum",
+            "enum": [
+              "480p",
+              "580p",
+              "720p"
+            ]
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "auto",
+              "16:9",
+              "9:16",
+              "1:1"
+            ]
+          },
+          "enable_prompt_expansion": {
+            "type": "boolean"
+          },
+          "seed": {
+            "type": "number",
+            "max_length": 2147483647
+          },
+          "acceleration": {
+            "type": "enum",
+            "enum": [
+              "none",
+              "regular"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "google/imagen4-ultra",
+      "display_name": "Google Imagen4 Ultra",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "1:1",
+              "16:9",
+              "9:16",
+              "3:4",
+              "4:3"
+            ]
+          },
+          "seed": {
+            "type": "string",
+            "max_length": 500
+          }
+        }
+      }
+    },
+    {
+      "model_id": "google/imagen4-fast",
+      "display_name": "Google Imagen4 Fast",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "1:1",
+              "16:9",
+              "9:16",
+              "3:4",
+              "4:3"
+            ]
+          },
+          "num_images": {
+            "type": "enum",
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4"
+            ]
+          },
+          "seed": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "google/imagen4",
+      "display_name": "Google Imagen4",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "negative_prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "aspect_ratio": {
+            "type": "enum",
+            "enum": [
+              "1:1",
+              "16:9",
+              "9:16",
+              "3:4",
+              "4:3"
+            ]
+          },
+          "num_images": {
+            "type": "enum",
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4"
+            ]
+          },
+          "seed": {
+            "type": "string",
+            "max_length": 500
+          }
+        }
+      }
+    },
+    {
+      "model_id": "google/nano-banana",
+      "display_name": "Google Nano Banana",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "output_format": {
+            "type": "enum",
+            "enum": [
+              "png",
+              "jpeg"
+            ]
+          },
+          "image_size": {
+            "type": "enum",
+            "enum": [
+              "1:1",
+              "9:16",
+              "16:9",
+              "3:4",
+              "4:3",
+              "3:2",
+              "2:3",
+              "5:4",
+              "4:5",
+              "21:9",
+              "auto"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "google/nano-banana-edit",
+      "display_name": "Google Nano Banana Edit",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt",
+          "image_urls"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "max_length": 5000
+          },
+          "image_urls": {
+            "type": "array"
+          },
+          "output_format": {
+            "type": "enum",
+            "enum": [
+              "png",
+              "jpeg"
+            ]
+          },
+          "image_size": {
+            "type": "enum",
+            "enum": [
+              "1:1",
+              "9:16",
+              "16:9",
+              "3:4",
+              "4:3",
+              "3:2",
+              "2:3",
+              "5:4",
+              "4:5",
+              "21:9",
+              "auto"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "model_id": "elevenlabs/speech-to-text",
+      "display_name": "Elevenlabs Speech To Text",
+      "category": "speech-to-text",
+      "modality": "speech-to-text",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "audio_url"
+        ],
+        "properties": {
+          "audio_url": {
+            "type": "string"
+          },
+          "language_code": {
+            "type": "string",
+            "max_length": 500
+          },
+          "tag_audio_events": {
+            "type": "boolean"
+          },
+          "diarize": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "grok/imagine",
+      "display_name": "Grok Imagine",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "openai/4o-image",
+      "display_name": "Openai 4O Image",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "flux/kontext",
+      "display_name": "Flux Kontext",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "google/veo-3",
+      "display_name": "Google Veo 3",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "google/veo-3.1",
+      "display_name": "Google Veo 3.1",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "sora-2-pro-storyboard",
+      "display_name": "Sora 2 Pro Storyboard",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "kling/v2-5-turbo",
+      "display_name": "Kling V2 5 Turbo",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "hailuo/2.3",
+      "display_name": "Hailuo 2.3",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "infinitalk/from-audio",
+      "display_name": "Infinitalk From Audio",
+      "category": "audio-to-audio",
+      "modality": "audio-to-audio",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "elevenlabs/audio-isolation",
+      "display_name": "Elevenlabs Audio Isolation",
+      "category": "audio-to-audio",
+      "modality": "audio-to-audio",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "audio_url"
+        ],
+        "properties": {
+          "audio_url": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "elevenlabs/sound-effect",
+      "display_name": "Elevenlabs Sound Effect",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "elevenlabs/text-to-speech",
+      "display_name": "Elevenlabs Text To Speech",
+      "category": "text-to-speech",
+      "modality": "text-to-speech",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "text"
+        ],
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "google/nanobanana-gemini-2.5-flash",
+      "display_name": "Google Nanobanana Gemini 2.5 Flash",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "runway/gen-4",
+      "display_name": "Runway Gen 4",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "suno/v5",
+      "display_name": "Suno V5",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "model_id": "midjourney/api",
+      "display_name": "Midjourney Api",
+      "category": "text-to-image",
+      "modality": "text-to-image",
+      "provider": "Kie.ai",
+      "pricing": {
+        "credits_per_gen": 10.0,
+        "kie_price_usd": 0.05,
+        "kie_price_rub": 5.0,
+        "our_price_rub": 12.0,
+        "markup_percent": 140
+      },
+      "input_schema": {
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "prompt": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ]
+}

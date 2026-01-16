@@ -1,0 +1,159 @@
+# Environment variables (NEVER commit .env files!)
+.env
+.env.*
+TRT_RENDER.env
+*TRT_RENDER*.env
+*.pem
+*.key
+*.p12
+secrets.*
+config.local.*
+config.prod.*
+config.dev.*
+services_config.json
+render.yaml
+.github_token
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+pnpm-lock.yaml
+
+# Результаты работы
+kie_full_api.json
+kie_scraper.log
+kie_scraper_stats.json
+missing_report.txt
+repository_analysis.json
+next_data_*.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Bot specific
+# NOTE: Data files in ./data/ directory are NOT ignored to preserve them during deploys
+# All JSON data files (user_balances.json, payments.json, etc.) are kept in repository
+# However, data/ directory itself should be mounted as volume in production
+*.db
+*.sqlite
+*.sqlite3
+
+# Data directory (for local development - production uses volume)
+# Uncomment if you want to ignore local data directory
+# data/
+
+# Temporary data files
+*.tmp
+*.corrupted.*
+*.backup
+*.bak
+
+# BATCH 48.10: Pending git pushes (temporary queue)
+data/pending_git_pushes/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+models/catalog.json
+
+# Watchdog artifacts (создаются при проверках)
+artifacts/verify_last_pass.json
+
+# Observability artifacts (generated, never commit)
+artifacts/render_logs_latest.txt
+artifacts/db_diag_latest.json
+artifacts/critical5.md
+
+# Старые отчёты и документация (можно удалить)
+*_ОТЧЕТ*.md
+*_REPORT*.md
+*_CHECK*.md
+*_SUMMARY*.md
+*_СТАТУС*.md
+*_ФИНАЛЬНЫЙ*.md
+*_ПОЛНЫЙ*.md
+*_ИСПРАВЛЕНИЕ*.md
+*_РЕШЕНИЕ*.md
+*_ИНСТРУКЦИЯ*.md
+*_НАСТРОЙКА*.md
+*_КРИТИЧЕСКОЕ*.md
+*_СРОЧНО*.md
+*_БЫСТРАЯ*.md
+*_ДИАГНОСТИКА*.md
+
+# Исключения - важные файлы документации
+!README.md
+!README_DEPLOY_RENDER.md
+!DEPLOY_CHECKLIST.md
+!RENDER_ENV_VARIABLES.md
+!RENDER_ENV_SETUP.md
+!TRT_REPORT.md
+
+# Дубликаты и старые версии
+*_new.py
+*_old.py
+*_backup.py
+*_copy.py
+
+# Временные скрипты (если не нужны)
+# *.bat
+# *.sh
+# *.ps1
+
+# Локальные файлы
+*.rar
+*.lnk
+desktop.ini
+*.bat
+5656-main/
+Новая папка/
+bot.rar

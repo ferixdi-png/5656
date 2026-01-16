@@ -1,0 +1,40 @@
+═══════════════════════════════════════════════════════
+  ИНСТРУКЦИЯ: Сборка EXE-файла
+═══════════════════════════════════════════════════════
+
+Python установлен, но нужно перезагрузить компьютер,
+чтобы он заработал в командной строке.
+
+ВАРИАНТ 1 (РЕКОМЕНДУЕТСЯ):
+─────────────────────────
+1. Перезагрузите компьютер
+2. Откройте папку BB_Scanner
+3. Дважды кликните на build_exe.bat
+4. Подождите 3-5 минут
+5. Готовый EXE будет в папке dist\BB_Scanner.exe
+
+ВАРИАНТ 2 (без перезагрузки):
+─────────────────────────────
+1. Откройте НОВОЕ окно командной строки (cmd.exe)
+2. Перейдите в папку BB_Scanner:
+   cd C:\Users\User\Desktop\BB_Scanner
+3. Запустите:
+   C:\Users\User\AppData\Local\Programs\Python\Launcher\py.exe -m pip install pyinstaller playwright winotify pyperclip
+4. Затем:
+   C:\Users\User\AppData\Local\Programs\Python\Launcher\py.exe -m playwright install chromium
+5. И наконец:
+   C:\Users\User\AppData\Local\Programs\Python\Launcher\py.exe -m PyInstaller --onefile --windowed --name="BB_Scanner" --add-data "app;app" --hidden-import=playwright --hidden-import=winotify --hidden-import=pyperclip --collect-all playwright run_scanner.py
+
+ПОСЛЕ СБОРКИ:
+─────────────
+- EXE будет в папке dist\BB_Scanner.exe
+- Этот EXE работает БЕЗ Python (самодостаточный)
+- Просто скопируйте его куда удобно и запускайте
+
+═══════════════════════════════════════════════════════
+
+
+
+
+
+

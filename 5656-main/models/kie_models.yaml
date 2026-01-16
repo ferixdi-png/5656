@@ -1,0 +1,1732 @@
+meta:
+  source: kie_models.py
+  total_models: 72
+models:
+  z-image:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 1000
+      aspect_ratio:
+        type: enum
+        required: true
+        values:
+        - '1:1'
+        - '4:3'
+        - '3:4'
+        - '16:9'
+        - '9:16'
+  nano-banana-pro:
+    model_type: text_to_image
+    input:
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      prompt:
+        type: string
+        required: true
+        max: 10000
+      aspect_ratio:
+        type: enum
+        required: false
+        values:
+        - '1:1'
+        - '2:3'
+        - '3:2'
+        - '3:4'
+        - '4:3'
+        - '4:5'
+        - '5:4'
+        - '9:16'
+        - '16:9'
+        - '21:9'
+        - auto
+      resolution:
+        type: enum
+        required: false
+        values:
+        - 1K
+        - 2K
+        - 4K
+      output_format:
+        type: enum
+        required: false
+        values:
+        - png
+        - jpg
+  seedream/4.5-text-to-image:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 3000
+      aspect_ratio:
+        type: enum
+        required: true
+        values:
+        - '1:1'
+        - '4:3'
+        - '3:4'
+        - '16:9'
+        - '9:16'
+        - '2:3'
+        - '3:2'
+        - '21:9'
+      quality:
+        type: enum
+        required: true
+        values:
+        - basic
+        - high
+  seedream/4.5-edit:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 3000
+      image_urls:
+        type: array
+        item_type: string
+        required: true
+      aspect_ratio:
+        type: enum
+        required: true
+        values:
+        - '1:1'
+        - '4:3'
+        - '3:4'
+        - '16:9'
+        - '9:16'
+        - '2:3'
+        - '3:2'
+        - '21:9'
+      quality:
+        type: enum
+        required: true
+        values:
+        - basic
+        - high
+  sora-2-pro-image-to-video:
+    model_type: image_to_video
+    input:
+      image_urls:
+        type: array
+        item_type: string
+        required: true
+      prompt:
+        type: string
+        required: true
+        max: 10000
+      aspect_ratio:
+        type: enum
+        required: false
+        values:
+        - portrait
+        - landscape
+      n_frames:
+        type: enum
+        required: false
+        values:
+        - '10'
+        - '15'
+      size:
+        type: enum
+        required: false
+        values:
+        - standard
+        - high
+      remove_watermark:
+        type: boolean
+        required: false
+  sora-watermark-remover:
+    model_type: text_to_image
+    input:
+      video_url:
+        type: string
+        required: true
+        max: 500
+  sora-2-text-to-video:
+    model_type: text_to_video
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 10000
+      aspect_ratio:
+        type: enum
+        required: true
+        values:
+        - portrait
+        - landscape
+      n_frames:
+        type: enum
+        required: false
+        values:
+        - '10'
+        - '15'
+      remove_watermark:
+        type: boolean
+        required: false
+  kling-2.6/image-to-video:
+    model_type: image_to_video
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 1000
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      sound:
+        type: boolean
+        required: true
+      duration:
+        type: enum
+        required: true
+        values:
+        - '5'
+        - '10'
+  kling-2.6/text-to-video:
+    model_type: text_to_video
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 1000
+      sound:
+        type: boolean
+        required: true
+      aspect_ratio:
+        type: enum
+        required: true
+        values:
+        - '1:1'
+        - '16:9'
+        - '9:16'
+      duration:
+        type: enum
+        required: true
+        values:
+        - '5'
+        - '10'
+  flux-2/pro-image-to-image:
+    model_type: image_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        min: 3
+        max: 5000
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      aspect_ratio:
+        type: enum
+        required: true
+        values:
+        - '1:1'
+        - '4:3'
+        - '3:4'
+        - '16:9'
+        - '9:16'
+        - '3:2'
+        - '2:3'
+        - auto
+      resolution:
+        type: enum
+        required: true
+        values:
+        - 1K
+        - 2K
+  flux-2/pro-text-to-image:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        min: 3
+        max: 5000
+      aspect_ratio:
+        type: enum
+        required: true
+        values:
+        - '1:1'
+        - '4:3'
+        - '3:4'
+        - '16:9'
+        - '9:16'
+        - '3:2'
+        - '2:3'
+        - auto
+      resolution:
+        type: enum
+        required: true
+        values:
+        - 1K
+        - 2K
+  flux-2/flex-image-to-image:
+    model_type: image_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        min: 3
+        max: 5000
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      aspect_ratio:
+        type: enum
+        required: true
+        values:
+        - '1:1'
+        - '4:3'
+        - '3:4'
+        - '16:9'
+        - '9:16'
+        - '3:2'
+        - '2:3'
+        - auto
+      resolution:
+        type: enum
+        required: true
+        values:
+        - 1K
+        - 2K
+  flux-2/flex-text-to-image:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        min: 3
+        max: 5000
+      aspect_ratio:
+        type: enum
+        required: true
+        values:
+        - '1:1'
+        - '4:3'
+        - '3:4'
+        - '16:9'
+        - '9:16'
+        - '3:2'
+        - '2:3'
+        - auto
+      resolution:
+        type: enum
+        required: true
+        values:
+        - 1K
+        - 2K
+  topaz/image-upscale:
+    model_type: upscale
+    input:
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      upscale_factor:
+        type: enum
+        required: true
+        values:
+        - '1'
+        - '2'
+        - '4'
+        - '8'
+  kling/v2-5-turbo-text-to-video-pro:
+    model_type: text_to_video
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 2500
+      duration:
+        type: enum
+        required: false
+        values:
+        - '5'
+        - '10'
+      aspect_ratio:
+        type: enum
+        required: false
+        values:
+        - '16:9'
+        - '9:16'
+        - '1:1'
+      negative_prompt:
+        type: string
+        required: false
+        max: 2500
+      cfg_scale:
+        type: number
+        required: false
+        min: 0
+        max: 1
+  kling/v2-5-turbo-image-to-video-pro:
+    model_type: image_to_video
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 2500
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      duration:
+        type: enum
+        required: false
+        values:
+        - '5'
+        - '10'
+      negative_prompt:
+        type: string
+        required: false
+        max: 2496
+      cfg_scale:
+        type: number
+        required: false
+        min: 0
+        max: 1
+  wan/2-5-image-to-video:
+    model_type: image_to_video
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 800
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      duration:
+        type: enum
+        required: false
+        values:
+        - '5'
+        - '10'
+      resolution:
+        type: enum
+        required: false
+        values:
+        - 720p
+        - 1080p
+      negative_prompt:
+        type: string
+        required: false
+        max: 500
+      enable_prompt_expansion:
+        type: boolean
+        required: false
+  wan/2-5-text-to-video:
+    model_type: text_to_video
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 800
+      duration:
+        type: enum
+        required: false
+        values:
+        - '5'
+        - '10'
+      aspect_ratio:
+        type: enum
+        required: false
+        values:
+        - '16:9'
+        - '9:16'
+        - '1:1'
+      resolution:
+        type: enum
+        required: false
+        values:
+        - 720p
+        - 1080p
+      negative_prompt:
+        type: string
+        required: false
+        max: 500
+      enable_prompt_expansion:
+        type: boolean
+        required: false
+  wan/2-2-animate-move:
+    model_type: text_to_image
+    input:
+      video_input:
+        type: array
+        item_type: string
+        required: true
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      resolution:
+        type: enum
+        required: false
+        values:
+        - 480p
+        - 580p
+        - 720p
+  wan/2-2-animate-replace:
+    model_type: text_to_image
+    input:
+      video_input:
+        type: array
+        item_type: string
+        required: true
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      resolution:
+        type: enum
+        required: false
+        values:
+        - 480p
+        - 580p
+        - 720p
+  hailuo/02-text-to-video-pro:
+    model_type: text_to_video
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 1500
+      prompt_optimizer:
+        type: boolean
+        required: false
+  hailuo/02-image-to-video-pro:
+    model_type: image_to_video
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 1500
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      end_image_url:
+        type: string
+        required: false
+      prompt_optimizer:
+        type: boolean
+        required: false
+  hailuo/02-image-to-video-standard:
+    model_type: image_to_video
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 1500
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      end_image_url:
+        type: string
+        required: false
+      duration:
+        type: enum
+        required: false
+        values:
+        - '6'
+        - '10'
+      resolution:
+        type: enum
+        required: false
+        values:
+        - 512P
+        - 768P
+      prompt_optimizer:
+        type: boolean
+        required: false
+  hailuo/02-text-to-video-standard:
+    model_type: text_to_video
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 1500
+      duration:
+        type: enum
+        required: false
+        values:
+        - '6'
+        - '10'
+      prompt_optimizer:
+        type: boolean
+        required: false
+  topaz/video-upscale:
+    model_type: video_upscale
+    input:
+      video_input:
+        type: array
+        item_type: string
+        required: true
+      upscale_factor:
+        type: enum
+        required: false
+        values:
+        - '1'
+        - '2'
+        - '4'
+  kling/v1-avatar-standard:
+    model_type: text_to_image
+    input:
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      audio_input:
+        type: array
+        item_type: string
+        required: true
+      prompt:
+        type: string
+        required: true
+        max: 5000
+  kling/ai-avatar-v1-pro:
+    model_type: text_to_image
+    input:
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      audio_input:
+        type: array
+        item_type: string
+        required: true
+      prompt:
+        type: string
+        required: true
+        max: 5000
+  bytedance/seedream-v4-text-to-image:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      image_size:
+        type: enum
+        required: false
+        values:
+        - square
+        - square_hd
+        - portrait_4_3
+        - portrait_3_2
+        - portrait_16_9
+        - landscape_4_3
+        - landscape_3_2
+        - landscape_16_9
+        - landscape_21_9
+      image_resolution:
+        type: enum
+        required: false
+        values:
+        - 1K
+        - 2K
+        - 4K
+      max_images:
+        type: number
+        required: false
+        min: 1
+        max: 6
+  bytedance/seedream-v4-edit:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      image_size:
+        type: enum
+        required: false
+        values:
+        - square
+        - square_hd
+        - portrait_4_3
+        - portrait_3_2
+        - portrait_16_9
+        - landscape_4_3
+        - landscape_3_2
+        - landscape_16_9
+        - landscape_21_9
+      image_resolution:
+        type: enum
+        required: false
+        values:
+        - 1K
+        - 2K
+        - 4K
+      max_images:
+        type: number
+        required: false
+        min: 1
+        max: 6
+  recraft/remove-background:
+    model_type: image_edit
+    input:
+      image_input:
+        type: array
+        item_type: string
+        required: true
+  recraft/crisp-upscale:
+    model_type: text_to_image
+    input:
+      image_input:
+        type: array
+        item_type: string
+        required: true
+  ideogram/v3-reframe:
+    model_type: outpaint
+    input:
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      image_size:
+        type: enum
+        required: true
+        values:
+        - square
+        - square_hd
+        - portrait_4_3
+        - portrait_16_9
+        - landscape_4_3
+        - landscape_16_9
+      rendering_speed:
+        type: enum
+        required: false
+        values:
+        - TURBO
+        - BALANCED
+        - QUALITY
+      style:
+        type: enum
+        required: false
+        values:
+        - AUTO
+        - GENERAL
+        - REALISTIC
+        - DESIGN
+      num_images:
+        type: enum
+        required: false
+        values:
+        - '1'
+        - '2'
+        - '3'
+        - '4'
+  wan/2-2-a14b-speech-to-video-turbo:
+    model_type: speech_to_video
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      audio_input:
+        type: array
+        item_type: string
+        required: true
+      num_frames:
+        type: number
+        required: false
+        min: 40
+        max: 120
+      frames_per_second:
+        type: number
+        required: false
+        min: 4
+        max: 60
+      resolution:
+        type: enum
+        required: false
+        values:
+        - 480p
+        - 580p
+        - 720p
+      negative_prompt:
+        type: string
+        required: false
+        max: 500
+      num_inference_steps:
+        type: number
+        required: false
+        min: 2
+        max: 40
+      guidance_scale:
+        type: number
+        required: false
+        min: 1
+        max: 10
+      shift:
+        type: number
+        required: false
+        min: 1
+        max: 10
+      enable_safety_checker:
+        type: boolean
+        required: false
+  bytedance/seedream:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      image_size:
+        type: enum
+        required: false
+        values:
+        - square
+        - square_hd
+        - portrait_4_3
+        - portrait_16_9
+        - landscape_4_3
+        - landscape_16_9
+      guidance_scale:
+        type: number
+        required: false
+        min: 1
+        max: 10
+      enable_safety_checker:
+        type: boolean
+        required: false
+  qwen/text-to-image:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      image_size:
+        type: enum
+        required: false
+        values:
+        - square
+        - square_hd
+        - portrait_4_3
+        - portrait_16_9
+        - landscape_4_3
+        - landscape_16_9
+      num_inference_steps:
+        type: number
+        required: false
+        min: 2
+        max: 250
+      guidance_scale:
+        type: number
+        required: false
+        min: 0
+        max: 20
+      enable_safety_checker:
+        type: boolean
+        required: false
+      output_format:
+        type: enum
+        required: false
+        values:
+        - png
+        - jpeg
+      negative_prompt:
+        type: string
+        required: false
+        max: 500
+      acceleration:
+        type: enum
+        required: false
+        values:
+        - none
+        - regular
+        - high
+  qwen/image-to-image:
+    model_type: image_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      strength:
+        type: number
+        required: false
+        min: 0
+        max: 1
+      output_format:
+        type: enum
+        required: false
+        values:
+        - png
+        - jpeg
+      acceleration:
+        type: enum
+        required: false
+        values:
+        - none
+        - regular
+        - high
+      negative_prompt:
+        type: string
+        required: false
+        max: 500
+      num_inference_steps:
+        type: number
+        required: false
+        min: 2
+        max: 250
+      guidance_scale:
+        type: number
+        required: false
+        min: 0
+        max: 20
+      enable_safety_checker:
+        type: boolean
+        required: false
+  qwen/image-edit:
+    model_type: image_edit
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 2000
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      acceleration:
+        type: enum
+        required: false
+        values:
+        - none
+        - regular
+        - high
+      image_size:
+        type: enum
+        required: false
+        values:
+        - square
+        - square_hd
+        - portrait_4_3
+        - portrait_16_9
+        - landscape_4_3
+        - landscape_16_9
+      num_inference_steps:
+        type: number
+        required: false
+        min: 2
+        max: 49
+      guidance_scale:
+        type: number
+        required: false
+        min: 0
+        max: 20
+      num_images:
+        type: enum
+        required: false
+        values:
+        - '1'
+        - '2'
+        - '3'
+        - '4'
+      enable_safety_checker:
+        type: boolean
+        required: false
+      output_format:
+        type: enum
+        required: false
+        values:
+        - jpeg
+        - png
+      negative_prompt:
+        type: string
+        required: false
+        max: 500
+  ideogram/character-edit:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      mask_input:
+        type: array
+        item_type: string
+        required: true
+      reference_image_input:
+        type: array
+        item_type: string
+        required: true
+      rendering_speed:
+        type: enum
+        required: false
+        values:
+        - TURBO
+        - BALANCED
+        - QUALITY
+      style:
+        type: enum
+        required: false
+        values:
+        - AUTO
+        - REALISTIC
+        - FICTION
+      expand_prompt:
+        type: boolean
+        required: false
+      num_images:
+        type: enum
+        required: false
+        values:
+        - '1'
+        - '2'
+        - '3'
+        - '4'
+  ideogram/character-remix:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      reference_image_input:
+        type: array
+        item_type: string
+        required: true
+      rendering_speed:
+        type: enum
+        required: false
+        values:
+        - TURBO
+        - BALANCED
+        - QUALITY
+      style:
+        type: enum
+        required: false
+        values:
+        - AUTO
+        - REALISTIC
+        - FICTION
+      expand_prompt:
+        type: boolean
+        required: false
+      image_size:
+        type: enum
+        required: false
+        values:
+        - square
+        - square_hd
+        - portrait_4_3
+        - portrait_16_9
+        - landscape_4_3
+        - landscape_16_9
+      num_images:
+        type: enum
+        required: false
+        values:
+        - '1'
+        - '2'
+        - '3'
+        - '4'
+      strength:
+        type: number
+        required: false
+        min: 0.1
+        max: 1
+      negative_prompt:
+        type: string
+        required: false
+        max: 500
+  ideogram/character:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      reference_image_input:
+        type: array
+        item_type: string
+        required: true
+      rendering_speed:
+        type: enum
+        required: false
+        values:
+        - TURBO
+        - BALANCED
+        - QUALITY
+      style:
+        type: enum
+        required: false
+        values:
+        - AUTO
+        - REALISTIC
+        - FICTION
+      expand_prompt:
+        type: boolean
+        required: false
+      num_images:
+        type: enum
+        required: false
+        values:
+        - '1'
+        - '2'
+        - '3'
+        - '4'
+      image_size:
+        type: enum
+        required: false
+        values:
+        - square
+        - square_hd
+        - portrait_4_3
+        - portrait_16_9
+        - landscape_4_3
+        - landscape_16_9
+      negative_prompt:
+        type: string
+        required: false
+        max: 5000
+  bytedance/v1-pro-fast-image-to-video:
+    model_type: image_to_video
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 10000
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      resolution:
+        type: enum
+        required: false
+        values:
+        - 720p
+        - 1080p
+      duration:
+        type: enum
+        required: false
+        values:
+        - '5'
+        - '10'
+  kling/v2-1-master-image-to-video:
+    model_type: image_to_video
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      duration:
+        type: enum
+        required: false
+        values:
+        - '5'
+        - '10'
+      negative_prompt:
+        type: string
+        required: false
+        max: 500
+      cfg_scale:
+        type: number
+        required: false
+        min: 0
+        max: 1
+  kling/v2-1-standard:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      duration:
+        type: enum
+        required: false
+        values:
+        - '5'
+        - '10'
+      negative_prompt:
+        type: string
+        required: false
+        max: 500
+      cfg_scale:
+        type: number
+        required: false
+        min: 0
+        max: 1
+  kling/v2-1-pro:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      duration:
+        type: enum
+        required: false
+        values:
+        - '5'
+        - '10'
+      negative_prompt:
+        type: string
+        required: false
+        max: 500
+      cfg_scale:
+        type: number
+        required: false
+        min: 0
+        max: 1
+      tail_image_url:
+        type: string
+        required: false
+  kling/v2-1-master-text-to-video:
+    model_type: text_to_video
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      duration:
+        type: enum
+        required: false
+        values:
+        - '5'
+        - '10'
+      aspect_ratio:
+        type: enum
+        required: false
+        values:
+        - '16:9'
+        - '9:16'
+        - '1:1'
+      negative_prompt:
+        type: string
+        required: false
+        max: 500
+      cfg_scale:
+        type: number
+        required: false
+        min: 0
+        max: 1
+  ideogram/v3-text-to-image:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      rendering_speed:
+        type: enum
+        required: false
+        values:
+        - TURBO
+        - BALANCED
+        - QUALITY
+      style:
+        type: enum
+        required: false
+        values:
+        - AUTO
+        - GENERAL
+        - REALISTIC
+        - DESIGN
+      expand_prompt:
+        type: boolean
+        required: false
+      image_size:
+        type: enum
+        required: false
+        values:
+        - square
+        - square_hd
+        - portrait_4_3
+        - portrait_16_9
+        - landscape_4_3
+        - landscape_16_9
+      num_images:
+        type: enum
+        required: false
+        values:
+        - '1'
+        - '2'
+        - '3'
+        - '4'
+      seed:
+        type: integer
+        required: false
+      negative_prompt:
+        type: string
+        required: false
+        max: 5000
+  ideogram/v3-edit:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      mask_input:
+        type: array
+        item_type: string
+        required: true
+      rendering_speed:
+        type: enum
+        required: false
+        values:
+        - TURBO
+        - BALANCED
+        - QUALITY
+      expand_prompt:
+        type: boolean
+        required: false
+      num_images:
+        type: enum
+        required: false
+        values:
+        - '1'
+        - '2'
+        - '3'
+        - '4'
+      seed:
+        type: integer
+        required: false
+  ideogram/v3-remix:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      rendering_speed:
+        type: enum
+        required: false
+        values:
+        - TURBO
+        - BALANCED
+        - QUALITY
+      style:
+        type: enum
+        required: false
+        values:
+        - AUTO
+        - GENERAL
+        - REALISTIC
+        - DESIGN
+      expand_prompt:
+        type: boolean
+        required: false
+      image_size:
+        type: enum
+        required: false
+        values:
+        - square
+        - square_hd
+        - portrait_4_3
+        - portrait_16_9
+        - landscape_4_3
+        - landscape_16_9
+      num_images:
+        type: enum
+        required: false
+        values:
+        - '1'
+        - '2'
+        - '3'
+        - '4'
+      seed:
+        type: integer
+        required: false
+      strength:
+        type: number
+        required: false
+        min: 0.01
+        max: 1
+      negative_prompt:
+        type: string
+        required: false
+        max: 5000
+  wan/2-2-a14b-text-to-video-turbo:
+    model_type: text_to_video
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      resolution:
+        type: enum
+        required: false
+        values:
+        - 480p
+        - 580p
+        - 720p
+      aspect_ratio:
+        type: enum
+        required: false
+        values:
+        - '16:9'
+        - '9:16'
+        - '1:1'
+      enable_prompt_expansion:
+        type: boolean
+        required: false
+      seed:
+        type: number
+        required: false
+        min: 0
+        max: 2147483647
+      acceleration:
+        type: enum
+        required: false
+        values:
+        - none
+        - regular
+  wan/2-2-a14b-image-to-video-turbo:
+    model_type: image_to_video
+    input:
+      image_input:
+        type: array
+        item_type: string
+        required: true
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      resolution:
+        type: enum
+        required: false
+        values:
+        - 480p
+        - 580p
+        - 720p
+      aspect_ratio:
+        type: enum
+        required: false
+        values:
+        - auto
+        - '16:9'
+        - '9:16'
+        - '1:1'
+      enable_prompt_expansion:
+        type: boolean
+        required: false
+      seed:
+        type: number
+        required: false
+        min: 0
+        max: 2147483647
+      acceleration:
+        type: enum
+        required: false
+        values:
+        - none
+        - regular
+  google/imagen4-ultra:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      negative_prompt:
+        type: string
+        required: false
+        max: 5000
+      aspect_ratio:
+        type: enum
+        required: false
+        values:
+        - '1:1'
+        - '16:9'
+        - '9:16'
+        - '3:4'
+        - '4:3'
+      seed:
+        type: string
+        required: false
+        max: 500
+  google/imagen4-fast:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      negative_prompt:
+        type: string
+        required: false
+        max: 5000
+      aspect_ratio:
+        type: enum
+        required: false
+        values:
+        - '1:1'
+        - '16:9'
+        - '9:16'
+        - '3:4'
+        - '4:3'
+      num_images:
+        type: enum
+        required: false
+        values:
+        - '1'
+        - '2'
+        - '3'
+        - '4'
+      seed:
+        type: integer
+        required: false
+  google/imagen4:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      negative_prompt:
+        type: string
+        required: false
+        max: 5000
+      aspect_ratio:
+        type: enum
+        required: false
+        values:
+        - '1:1'
+        - '16:9'
+        - '9:16'
+        - '3:4'
+        - '4:3'
+      num_images:
+        type: enum
+        required: false
+        values:
+        - '1'
+        - '2'
+        - '3'
+        - '4'
+      seed:
+        type: string
+        required: false
+        max: 500
+  google/nano-banana:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      output_format:
+        type: enum
+        required: false
+        values:
+        - png
+        - jpeg
+      image_size:
+        type: enum
+        required: false
+        values:
+        - '1:1'
+        - '9:16'
+        - '16:9'
+        - '3:4'
+        - '4:3'
+        - '3:2'
+        - '2:3'
+        - '5:4'
+        - '4:5'
+        - '21:9'
+        - auto
+  google/nano-banana-edit:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+        max: 5000
+      image_urls:
+        type: array
+        item_type: string
+        required: true
+      output_format:
+        type: enum
+        required: false
+        values:
+        - png
+        - jpeg
+      image_size:
+        type: enum
+        required: false
+        values:
+        - '1:1'
+        - '9:16'
+        - '16:9'
+        - '3:4'
+        - '4:3'
+        - '3:2'
+        - '2:3'
+        - '5:4'
+        - '4:5'
+        - '21:9'
+        - auto
+  elevenlabs/speech-to-text:
+    model_type: speech_to_text
+    input:
+      audio_url:
+        type: string
+        required: true
+      language_code:
+        type: string
+        required: false
+        max: 500
+      tag_audio_events:
+        type: boolean
+        required: false
+      diarize:
+        type: boolean
+        required: false
+  grok/imagine:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+  openai/4o-image:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+  flux/kontext:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+  google/veo-3:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+  google/veo-3.1:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+  sora-2-pro-storyboard:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+  kling/v2-5-turbo:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+  hailuo/2.3:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+  infinitalk/from-audio:
+    model_type: audio_to_audio
+    input:
+      prompt:
+        type: string
+        required: true
+  elevenlabs/audio-isolation:
+    model_type: audio_to_audio
+    input:
+      audio_url:
+        type: string
+        required: true
+  elevenlabs/sound-effect:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+  elevenlabs/text-to-speech:
+    model_type: text_to_speech
+    input:
+      text:
+        type: string
+        required: true
+  google/nanobanana-gemini-2.5-flash:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+  runway/gen-4:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+  suno/v5:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
+  midjourney/api:
+    model_type: text_to_image
+    input:
+      prompt:
+        type: string
+        required: true
